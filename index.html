@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#264b3c">
+  <title>Little Sprouts — Play & Learn</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=reach">
+</head>
+<body>
+  <header>
+    <a href="#" class="brand" aria-label="Little Sprouts home"><span class="logo" aria-hidden="true">✿</span> little sprouts<span class="brand-note">PLAY • DISCOVER • GROW</span></a>
+    <button id="parents" class="quiet" aria-label="Parent corner"><span aria-hidden="true">⚙</span> <span class="parent-long">Parent corner</span><span class="parent-short">Parents</span></button>
+  </header>
+  <main id="app"></main>
+  <noscript><p class="noscript">Little Sprouts needs JavaScript to run the games.</p></noscript>
+  <footer>Little steps. Big discoveries. <span>Made for curious little minds.</span></footer>
+
+  <dialog id="settings" aria-labelledby="settingsTitle">
+    <form id="parentForm">
+      <div class="modal-head">
+        <div><small>GROWN-UPS ONLY</small><h2 id="settingsTitle">Room to grow</h2></div>
+        <button type="button" id="close" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-scroll">
+        <p>Choose a learner and make their next adventure just right.</p>
+        <label>Learner<select id="editProfile"></select></label>
+        <label>Name<input id="name" maxlength="24" required autocomplete="off"></label>
+        <label>Math band
+          <select id="stage">
+            <option value="preschool">Preschool</option>
+            <option value="kindergarten">Kindergarten</option>
+            <option value="grade4">4th grade</option>
+          </select>
+        </label>
+        <p class="hint">Math games follow this band, not the shape and color levels. Learner 1 starts in preschool, Learner 2 in kindergarten, and Learner 3 in 4th grade.</p>
+        <div class="form-grid">
+          <label>Set all game levels
+            <select id="level">
+              <option value="1">1 · Little explorer</option>
+              <option value="2">2 · Growing thinker</option>
+              <option value="3">3 · Super discoverer</option>
+            </select>
+          </label>
+          <label>Questions per round
+            <select id="rounds"><option>5</option><option>10</option><option>15</option></select>
+          </label>
+        </div>
+        <p class="hint">These levels apply in every play style.</p>
+        <p class="hint">Level 1: 3 choices, circle / square / triangle, four colors, and 3 shapes to remember. Word games show the word on screen.</p>
+        <p class="hint">Level 2: 4 choices, more shapes and colors, and 4 shapes to remember. Word and letter games hide the word on screen; the voice still says it. Letter games add 1 extra letter.</p>
+        <p class="hint">Level 3: up to 6 choices, the full shape and color sets, and 5 shapes to remember. Letter games add 2 extra letters. A word game cannot show more choices than there are words in the list.</p>
+        <p class="hint">Preschool math: count 1–5, then 8, then 10. Find numbers and say which is more. Hunt still uses real objects, up to 10.</p>
+        <p class="hint">Kindergarten math: count 1–10, then 20. Before, after, and which is more, then hops that add or take away within 10.</p>
+        <p class="hint">4th grade math is all multiplication and multiples. Count & clap: arrays (level 1), times tables to 12 and missing factors (level 2), then 2-digit × 1-digit, multiples of ten, and 2-digit × 2-digit (level 3). Number path: skip-counting and multiples of 2, 5, and 10 (level 1), multiples of 3–12 (level 2), then factors, common multiples, and primes (level 3). In Move they skip-count with a jump, clap, or step for each multiple; in Hunt they build groups with real objects or check on a calendar. Hints give a strategy, not the answer.</p>
+        <p class="hint">Catch the answer, Word lanes, and Rocket climb are played on the screen in every play style. Catch the answer follows the math band: numbers fall and the learner catches the right one. Word lanes speaks a sight word and the learner steers into that lane. Level 1 shows the word in the heading. Levels 2 and 3 only say it. Rocket climb mixes those same math questions and sight words. The tank lasts 18 seconds, then 12, then 8. A right answer refuels the rocket and sends it higher. A wrong answer burns fuel. An empty tank dips the rocket, counts as a miss, and refills so they can try again.</p>
+        <h3>Skills & progress</h3>
+        <p class="hint">Set each skill independently. “Flourishing” means at least 80% correct on first tries across 10 or more questions at that level. This is a practice indicator, not a formal assessment. The line under each skill matches the level selected above it.</p>
+        <div id="skillSettings"></div>
+        <label>Sight words <textarea id="words" rows="3" placeholder="I, a, the, my, see"></textarea></label>
+        <p class="hint">Separate words with commas. Use your teacher’s list. Add at least 3 different words. Letters only, with at most one apostrophe, up to 12 letters. Build a word uses words longer than one letter when it can. Words from the question sheet are used instead when that sheet has at least 3 words for this learner.</p>
+        <h3>Question sheet</h3>
+        <p class="hint" id="sheetStatus">Checking the question sheet…</p>
+        <p class="hint">The default sheet is included with the app. Columns: learner, game, item, extra. game is words, count, hunt, or facts. Leave learner blank, or write *, for every learner. For count, item is the name and extra is the picture. For hunt, item is one object and extra is the plural. For facts, item is a times table from 2 to 12. A list in the <a href="https://docs.google.com/spreadsheets/d/e/2PACX-1vQdhKSZBII7leKaxTQ6mRPG0Q6POsFtOrCADtNIFDl6yrlnPoCXLXaUCsGvzzNIZPodTxfOHnAjP5MQ/pubhtml" target="_blank" rel="noopener">Google Sheet</a> replaces that same list from the default. Add a hide column with yes to turn a row off. New default rows are copied into the Google Sheet about once an hour after the sheet script is installed.</p>
+        <button type="button" class="quiet" id="reloadSheet">Reload question sheet</button>
+        <h3>This device</h3>
+        <label class="check"><input type="checkbox" id="sound"> Read prompts aloud for every learner</label>
+        <p class="hint">This sound setting is shared by all three learners on this browser.</p>
+        <label>Read-aloud voice<select id="voice"></select></label>
+        <button type="button" class="quiet" id="hearVoice">Hear this voice</button>
+        <p class="hint">This voice is shared by all three learners on this browser. It downloads once and then stays on this device. If it cannot load, the browser’s own voice is used.</p>
+        <h3>Moving & real-world play</h3>
+        <p class="hint">Move and Hunt turn each game into a movement or find-it activity, and a grown-up confirms the answer. Print floor cards for Move.</p>
+        <button type="button" class="quiet" id="printOpen"><span aria-hidden="true">🖨</span> Print floor cards</button>
+        <label class="check"><input type="checkbox" id="camera"> Allow Reach play for every learner (uses this device’s camera)</label>
+        <p class="hint">Reach play finds the child’s hands with an on-device pose model so they can hold a hand on an answer until it fills. Stand far enough back that both shoulders and both hands stay in the picture. Video is processed in this browser only; it is never recorded, saved or uploaded. The pose model downloads from Google the first time, and the browser will ask for camera permission. This choice is shared by all three learners.</p>
+        <p class="hint">Settings and progress stay in this browser. They do not sync between devices. Parent corner is a grown-up check, not a security lock.</p>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="quiet" id="resetProgress">Reset progress for this learner</button>
+        <p id="error" role="alert"></p>
+        <button class="primary" type="submit">Save learning settings ↗</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="gate" aria-labelledby="gateTitle">
+    <form id="gateForm">
+      <small>PARENT CORNER</small>
+      <h2 id="gateTitle">A quick grown-up check</h2>
+      <label><span id="gateLabel">What is 12 + 9?</span><input id="gateAnswer" type="number" inputmode="numeric" autocomplete="off"></label>
+      <p id="gateError" role="alert"></p>
+      <button class="primary" type="submit" id="unlock">Continue</button>
+      <button type="button" class="quiet" id="gateCancel">Cancel</button>
+    </form>
+  </dialog>
+
+  <dialog id="confirm" aria-labelledby="confirmTitle">
+    <form id="confirmForm">
+      <h2 id="confirmTitle">Leave this round?</h2>
+      <p id="confirmText"></p>
+      <button class="primary" type="submit" id="confirmOk">Leave round</button>
+      <button type="button" class="quiet" id="confirmCancel">Go back</button>
+    </form>
+  </dialog>
+
+  <dialog id="printDialog" aria-labelledby="printTitle">
+    <form id="printForm">
+      <div class="modal-head">
+        <div><small>FOR GROWN-UPS</small><h2 id="printTitle">Floor cards</h2></div>
+        <button type="button" id="printClose" aria-label="Close">✕</button>
+      </div>
+      <p>Cards match <b id="printFor"></b>’s levels and sight words. Print, cut along the dashed lines and spread them out with a big step between each card.</p>
+      <div id="deckList"></div>
+      <p class="hint">Two cards per page. Tape them down on hard floors so they don’t slide. Turn on background graphics in the print settings if the colors don’t show.</p>
+      <button class="primary" type="submit" id="printGo"><span aria-hidden="true">🖨</span> Print cards</button>
+    </form>
+  </dialog>
+  <div id="printArea" aria-hidden="true"></div>
+  <script type="module" src="app.js?v=play"></script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+# Production stack (VPS): static site served by nginx.
+# App joins `360ws-network` so NPM can reach it by container name (little-sprouts-app:80).
+#
+# NPM Proxy Host: Forward to http://little-sprouts-app:80
+# Public host: https://grow.360web.cloud
+
+name: little-sprouts
+
+services:
+  app:
+    build: .
+    container_name: little-sprouts-app
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${APP_PUBLISH_PORT:-8032}:80"
+    networks:
+      - proxy
+    labels:
+      - "com.360ws.type=docker-app"
+      - "com.360ws.app=little-sprouts"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  proxy:
+    external: true
+    name: 360ws-network
