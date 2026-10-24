@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=reach">
+  <link rel="stylesheet" href="style.css?v=credits">
 </head>
 <body>
   <header>
@@ -17,7 +17,7 @@
   </header>
   <main id="app"></main>
   <noscript><p class="noscript">Little Sprouts needs JavaScript to run the games.</p></noscript>
-  <footer>Little steps. Big discoveries. <span>Made for curious little minds.</span></footer>
+  <footer><span class="footer-note">Little steps. Big discoveries. <span>Made for curious little minds.</span></span><button type="button" id="creditsOpen" class="credit-link">Credits</button></footer>
 
   <dialog id="settings" aria-labelledby="settingsTitle">
     <form id="parentForm">
@@ -28,6 +28,15 @@
       <div class="modal-scroll">
         <p>Choose a learner and make their next adventure just right.</p>
         <label>Learner<select id="editProfile"></select></label>
+        <div class="learner-actions">
+          <button type="button" class="quiet" id="addLearner">Add a learner</button>
+          <button type="button" class="quiet" id="removeLearner">Remove this learner</button>
+        </div>
+        <p class="hint">Each learner keeps their own name, math band, levels, sight words, and garden buddy. This device can hold 8 learners.</p>
+        <fieldset class="sprite-pick">
+          <legend>Garden buddy</legend>
+          <div id="spritePick" class="sprite-row"></div>
+        </fieldset>
         <label>Name<input id="name" maxlength="24" required autocomplete="off"></label>
         <label>Math band
           <select id="stage">
@@ -36,7 +45,7 @@
             <option value="grade4">4th grade</option>
           </select>
         </label>
-        <p class="hint">Math games follow this band, not the shape and color levels. Learner 1 starts in preschool, Learner 2 in kindergarten, and Learner 3 in 4th grade.</p>
+        <p class="hint">Math games follow this band, not the shape and color levels. Malik starts in preschool, Micah in kindergarten, and Mitch in 4th grade.</p>
         <div class="form-grid">
           <label>Set all game levels
             <select id="level">
@@ -49,34 +58,60 @@
             <select id="rounds"><option>5</option><option>10</option><option>15</option></select>
           </label>
         </div>
+        <label class="check"><input type="checkbox" id="arcade"> Arcade play</label>
+        <p class="hint">Arcade play belongs to this learner, preschool or anyone. Dirt ride, Sky flight, Garden walk, Moon shot, Stick bridge, Tilt maze, Garden chase, Sprout hop, Toast pop, Island glide, and Market walk run without questions. Shape, word, count, and color games still ask.</p>
         <p class="hint">These levels apply in every play style.</p>
         <p class="hint">Level 1: 3 choices, circle / square / triangle, four colors, and 3 shapes to remember. Word games show the word on screen.</p>
         <p class="hint">Level 2: 4 choices, more shapes and colors, and 4 shapes to remember. Word and letter games hide the word on screen; the voice still says it. Letter games add 1 extra letter.</p>
         <p class="hint">Level 3: up to 6 choices, the full shape and color sets, and 5 shapes to remember. Letter games add 2 extra letters. A word game cannot show more choices than there are words in the list.</p>
         <p class="hint">Preschool math: count 1–5, then 8, then 10. Find numbers and say which is more. Hunt still uses real objects, up to 10.</p>
         <p class="hint">Kindergarten math: count 1–10, then 20. Before, after, and which is more, then hops that add or take away within 10.</p>
-        <p class="hint">4th grade math is all multiplication and multiples. Count & clap: arrays (level 1), times tables to 12 and missing factors (level 2), then 2-digit × 1-digit, multiples of ten, and 2-digit × 2-digit (level 3). Number path: skip-counting and multiples of 2, 5, and 10 (level 1), multiples of 3–12 (level 2), then factors, common multiples, and primes (level 3). In Move they skip-count with a jump, clap, or step for each multiple; in Hunt they build groups with real objects or check on a calendar. Hints give a strategy, not the answer.</p>
-        <p class="hint">Catch the answer, Word lanes, and Rocket climb are played on the screen in every play style. Catch the answer follows the math band: numbers fall and the learner catches the right one. Word lanes speaks a sight word and the learner steers into that lane. Level 1 shows the word in the heading. Levels 2 and 3 only say it. Rocket climb mixes those same math questions and sight words. The tank lasts 18 seconds, then 12, then 8. A right answer refuels the rocket and sends it higher. A wrong answer burns fuel. An empty tank dips the rocket, counts as a miss, and refills so they can try again.</p>
+        <p class="hint">4th grade math is all multiplication and multiples. Count & clap: arrays (level 1), the times tables listed in the question sheet and missing factors (level 2), then the double-digit and tens rows that are turned on (level 3). The sheet starts with tables through 10, double digits in the 10s, and 10 × a number. Clear off on a 20s or 30s row to add that set. Number path: skip-counting and multiples of 2, 5, and 10 (level 1), the other tables and any tens you turned on (level 2), then factors, common multiples, and primes (level 3). In Move they skip-count with a jump, clap, or step for each multiple; in Hunt they build groups with real objects or check on a calendar. Hints give a strategy, not the answer.</p>
+        <p class="hint">Catch the answer, Word lanes, and Rocket climb are played on the screen in every play style. Catch the answer follows the math band: numbers fall and the learner catches the right one. Word lanes speaks a sight word and the learner steers into that lane. With Reach on, the camera shows the learner and the lanes and words sit on top of the picture. The word is said first, then a 10 second count. The lane is checked when the count ends, so standing in a lane at the start does not pick the answer. The first screen chooses Slow, Steady, Fast, or Survival, then the words keep coming without another start. Survival gets faster after each correct word. Level 1 shows the word in the heading. Levels 2 and 3 only say it. Rocket climb mixes those same math questions and sight words. The tank lasts 18 seconds, then 12, then 8. The next question comes on its own. A quick right answer lifts the rocket more. A slow right answer still lifts it a little. A wrong answer or an empty tank brings it down. Reach space and the learner steers for a few seconds, onto the moon or past the stars. Coming all the way down starts a new flight. Moon shot is on the screen in every play style. A right answer unlocks one freethrow. Pull back and let go. Level 1 shoots on the Moon with a still hoop. Level 2 shoots on Mars and the hoop drifts. Level 3 shoots on Earth, the hoop drifts, and a rock sits in the arc. A made basket finishes the question. A miss locks the ball until they answer again. Sight words and the same math as Catch the answer take turns. Level 1 shows a sight word in the heading. Levels 2 and 3 only say it. Hook the fish is on the screen in every play style. Questions take turns between the same math as Catch the answer and a sight word. The learner steers a hook onto the fish with the right answer. With Reach on, the camera shows the learner and the hook follows their raised hand. Level 1 is a sunny pond with three fish. Level 2 adds one piece of trash in kelp cove. Level 3 is deeper, with five fish and two pieces of trash. Hooking the wrong fish or the trash does not count as a first try. Level 1 shows a sight word in the heading. Levels 2 and 3 only say it. The words stay on the fish. Sky shot is on the screen in every play style. Questions take turns between the same math as Catch the answer and a sight word. The learner turns a ship and shoots the rock with the right answer while other ships shoot back. Level 1 has three rocks and one enemy ship. Level 2 has four rocks and two enemy ships. Level 3 has five rocks and three enemy ships. A wrong rock or a hit on the learner’s ship does not count as a first try. A hit freezes the sky long enough to show the hit, then the same question starts over while hull lives are left. When the last life is gone, the sky shows game over and the learning stars from the questions played. Level 1 shows a sight word in the heading. Levels 2 and 3 only say it. The words stay on the rocks. Planet guard is on the screen in every play style. Questions take turns between the same math as Catch the answer and a sight word. The learner aims a gun on the planet. Rocks fly in from the edges, and a shot blows one up. The right rock finishes the question. Level 1 has three rocks. Level 2 has four. Level 3 has five, and they come in faster. A wrong rock, or a rock that reaches the planet, does not count as a first try. A hit on the planet freezes the sky long enough to show the hit, then the same question starts over while shields are left. When the last shield is gone, the sky shows game over and the learning stars from the questions played. Level 1 shows a sight word in the heading. Levels 2 and 3 only say it. The words stay on the rocks. Shape puzzle stays on the screen in every play style. The learner drags glass pieces into a shape, then taps the shape or says its name. Level 1 uses 2 pieces and shows an outline. Level 2 uses 4 pieces with no outline. Level 3 uses 6 pieces. The shape buttons stay on screen. The say button is there when the microphone is available. Pair match stays on the screen in every play style. Flip two cards. A pair stays up when both cards show the same shape, color, number, or sight word. Level 1 is 4 pairs. Level 2 is 6 pairs. Level 3 is 8 pairs. A mismatch keeps that board from counting as a first try. Marble path stays on the screen in every play style. The question names a color. Every marble of that color the learner clears counts, then the color changes. Points raise the level and the path moves faster. The game ends when the marbles reach the nest. Stick bridge stays on the screen in every play style. Questions take turns between the same math as Catch the answer and a sight word. A right answer grows the bridge to the next stop. A wrong answer means the learner presses and holds to grow the bridge. A stick that misses the next stop has to be tried again. Level 1 uses wide stops and short gaps. Level 3 uses narrow stops and longer gaps. Level 1 shows a sight word in the heading. Levels 2 and 3 only say it. Tilt maze stays on the screen in every play style. Tilt the board, or use the arrows, to roll to the flag before the clock runs out. Level 1 gives 50 seconds. Level 2 gives 40. Level 3 gives 30. Falling in a hole asks a question. A right answer puts the ball back and adds time. A wrong answer ends the maze. An empty clock asks a question too. A right answer adds time. A wrong answer ends the round. Garden chase stays on the screen in every play style. Steer the sprout and eat only the berries that match. Questions take turns through that learner’s sight words, math band, Shape safari shapes, and Color garden colors. Level 1 is a small maze with one slow bug. Level 3 is larger, with more bugs and more berries. A wrong berry or a bug does not count as a first try. Level 1 shows a sight word in the heading. Levels 2 and 3 only say it. Shape berries show the shape. Words and numbers stay written on the berries. Math follows that learner’s math band and their counting or number-path level. Sprout hop stays on the screen in every play style. The sprout bounces up a column of leaves, and the column scrolls. Hold left or right to steer, and the sprout keeps a little momentum. Going off one side comes back on the other. Hop on the platform with the right answer. A wrong one breaks. Level 1 is steady leaves. Higher levels add sliding leaves, and level 3 adds springs and leaves that break. A wrong platform or a fall does not count as a first try. Level 1 shows a sight word in the heading. Levels 2 and 3 only say it. The words stay on the platforms. Toast pop stays on the screen in every play style. Toasts fly up in an arc. Tap the one with the right answer before it lands. A wrong toast does not count as a first try. Letting the right toast land costs a life. Level 1 has 5 lives and 3 toasts. Level 3 has 3 lives and 5 faster toasts. The next toast comes a little sooner as the round goes on. When the last life is gone, the counter shows game over and the learning stars from the toasts that were caught. Level 1 shows a sight word in the heading. Levels 2 and 3 only say it. The words stay on the toasts. Color by number stays on the screen in every play style. A legend shows which color each number is. The learner picks a color and paints the matching areas. Paint stays inside those areas. A wrong color does not count as a first try. When every area is filled, the picture is done.</p>
         <h3>Skills & progress</h3>
         <p class="hint">Set each skill independently. “Flourishing” means at least 80% correct on first tries across 10 or more questions at that level. This is a practice indicator, not a formal assessment. The line under each skill matches the level selected above it.</p>
         <div id="skillSettings"></div>
         <label>Sight words <textarea id="words" rows="3" placeholder="I, a, the, my, see"></textarea></label>
-        <p class="hint">Separate words with commas. Use your teacher’s list. Add at least 3 different words. Letters only, with at most one apostrophe, up to 12 letters. Build a word uses words longer than one letter when it can. Words from the question sheet are used instead when that sheet has at least 3 words for this learner.</p>
+        <p class="hint">Separate words with commas. Use your teacher’s list. Add at least 3 different words. Letters only, with at most one apostrophe, up to 12 letters. Build a word uses words longer than one letter when it can. Words from the question sheet are used instead when that sheet has at least 3 words for this learner. Rows marked grade4, preschool, or kindergarten are used only for that math band. A word on the 4th grade list stays there, even when the shared list also has it.</p>
+        <h3>Gas race</h3>
+        <p class="hint">Gas race stays on the screen in every play style. The tank starts full. Steering into the right answer fills it again. A wrong lane ends the race, and so does an empty tank. The score is how far the car traveled. Every learner on this device shares one distance board. Math facts follow the math band and the Gas race level. Sight words follow the list above. Shapes and colors follow those skill levels. Level 1 gives a longer tank. Level 3 gives a shorter tank and more lanes.</p>
+        <div class="race-kinds">
+          <label class="check"><input type="checkbox" data-race="facts"> Math facts</label>
+          <label class="check"><input type="checkbox" data-race="words"> Sight words</label>
+          <label class="check"><input type="checkbox" data-race="shapes"> Shapes</label>
+          <label class="check"><input type="checkbox" data-race="colors"> Colors</label>
+        </div>
+        <h3>Garden walk</h3>
+        <p class="hint">Garden walk stays on the screen in every play style. The sprout walks across the meadow. Hold left or right and walk past the other pictures. Let go on the one that matches, or tap a picture and the sprout walks to it. Questions take turns through this learner’s sight words, math, shapes, and colors. The right picture finishes the question. A wrong picture sends the sprout back and does not count as a first try. Level 1 has three pictures. Level 3 has five, and the sprout walks a little faster. Level 1 shows a sight word above the meadow. Levels 2 and 3 only say it. The words stay written on the signs. The meadow and the sprout are drawn here. The walking uses BlocksJS.</p>
+        <h3>Backroad rally</h3>
+        <p class="hint">These choices belong to the learner selected above. Spelling says the word, then the learner taps or types the letters in order. Match asks for a shape, color, or word. 4th grade math starts with single-digit facts and the 12s. Choose “Open it up” for double-digit facts, tens, factors, and primes. Preschool and kindergarten math uses that learner’s counting and number path. Questions are spread along the stage. Five right answers, and the learner can drive the rest of the way to the finish. A 10-question round asks seven, and a 15-question round asks eight. Sky shot uses this same 4th-grade math menu. Sight words still take turns with those facts, and the Sky shot level still sets how many rocks and enemy ships. Sky flight uses these same choices. The plane holds its height and the learner steers through the gate with the answer. A wrong gate slows the plane and turns it back, and that question stays until the right gate is flown through. After five right answers, the learner gets two minutes of free flight. The plane keeps flying where they look. Forward flies faster, back flies backward, and the side buttons slide. Hitting the ground ends the flight. Dirt ride uses them too. Hold the gas and the bike pulls away. Lean back to lift the front wheel, and lean forward to bring the nose down. Ride the hills and land on both wheels. A question comes after a longer stretch of trail. A right answer says good, and the ride continues. A wrong answer speeds the bike up. Level 1 stays upright. Level 3 lets the learner tilt in the air.</p>
+        <div class="race-kinds">
+          <label class="check"><input type="checkbox" data-rally="spell"> Spelling</label>
+          <label class="check"><input type="checkbox" data-rally="match"> Match</label>
+          <label class="check"><input type="checkbox" data-rally="math"> Math facts</label>
+        </div>
+        <label>4th grade math in this game
+          <select id="rallySpan">
+            <option value="single">Single-digit facts only (1–9 × 1–9)</option>
+            <option value="twelves">Single-digit facts and the 12s</option>
+            <option value="wide">Open it up: double-digit, tens, factors, and primes</option>
+          </select>
+        </label>
         <h3>Question sheet</h3>
         <p class="hint" id="sheetStatus">Checking the question sheet…</p>
-        <p class="hint">The default sheet is included with the app. Columns: learner, game, item, extra. game is words, count, hunt, or facts. Leave learner blank, or write *, for every learner. For count, item is the name and extra is the picture. For hunt, item is one object and extra is the plural. For facts, item is a times table from 2 to 12. A list in the <a href="https://docs.google.com/spreadsheets/d/e/2PACX-1vQdhKSZBII7leKaxTQ6mRPG0Q6POsFtOrCADtNIFDl6yrlnPoCXLXaUCsGvzzNIZPodTxfOHnAjP5MQ/pubhtml" target="_blank" rel="noopener">Google Sheet</a> replaces that same list from the default. Add a hide column with yes to turn a row off. New default rows are copied into the Google Sheet about once an hour after the sheet script is installed.</p>
+        <p class="hint">The default sheet is included with the app. Columns: learner, game, item, extra. game is words, count, hunt, or facts. Leave learner blank, or write *, for every learner. Write grade4, preschool, or kindergarten to limit words to that math band. For count, item is the name and extra is the picture. For hunt, item is one object and extra is the plural. For facts, item is a times table from 2 to 12, or double, 10s, 20s, or 30s. Put off in extra to leave that row out, and clear off to add the 20s or 30s. A list in the <a href="https://docs.google.com/spreadsheets/d/e/2PACX-1vQdhKSZBII7leKaxTQ6mRPG0Q6POsFtOrCADtNIFDl6yrlnPoCXLXaUCsGvzzNIZPodTxfOHnAjP5MQ/pubhtml" target="_blank" rel="noopener">Google Sheet</a> replaces that same list from the default. Facts rows the Google Sheet does not have yet, such as double and 20s, are added from the default sheet. Add a hide column with yes to turn a row off. New default rows are copied into the Google Sheet about once an hour after the sheet script is installed.</p>
         <button type="button" class="quiet" id="reloadSheet">Reload question sheet</button>
         <h3>This device</h3>
         <label class="check"><input type="checkbox" id="sound"> Read prompts aloud for every learner</label>
-        <p class="hint">This sound setting is shared by all three learners on this browser.</p>
+        <p class="hint">This sound setting is shared by every learner on this browser.</p>
         <label>Read-aloud voice<select id="voice"></select></label>
         <button type="button" class="quiet" id="hearVoice">Hear this voice</button>
-        <p class="hint">This voice is shared by all three learners on this browser. It downloads once and then stays on this device. If it cannot load, the browser’s own voice is used.</p>
+        <p class="hint">This voice is shared by every learner on this browser. It downloads once and then stays on this device. If it cannot load, the browser’s own voice is used.</p>
         <h3>Moving & real-world play</h3>
         <p class="hint">Move and Hunt turn each game into a movement or find-it activity, and a grown-up confirms the answer. Print floor cards for Move.</p>
         <button type="button" class="quiet" id="printOpen"><span aria-hidden="true">🖨</span> Print floor cards</button>
         <label class="check"><input type="checkbox" id="camera"> Allow Reach play for every learner (uses this device’s camera)</label>
-        <p class="hint">Reach play finds the child’s hands with an on-device pose model so they can hold a hand on an answer until it fills. Stand far enough back that both shoulders and both hands stay in the picture. Video is processed in this browser only; it is never recorded, saved or uploaded. The pose model downloads from Google the first time, and the browser will ask for camera permission. This choice is shared by all three learners.</p>
+        <p class="hint">Reach play finds the child’s hands with an on-device pose model so they can hold a hand on an answer until it fills. Stand far enough back that both shoulders and both hands stay in the picture. Video is processed in this browser only; it is never recorded, saved or uploaded. The pose model downloads from Google the first time, and the browser will ask for camera permission. This choice is shared by every learner.</p>
         <p class="hint">Settings and progress stay in this browser. They do not sync between devices. Parent corner is a grown-up check, not a security lock.</p>
       </div>
       <div class="modal-actions">
@@ -120,6 +155,34 @@
     </form>
   </dialog>
   <div id="printArea" aria-hidden="true"></div>
-  <script type="module" src="app.js?v=play"></script>
+
+  <dialog id="credits" aria-labelledby="creditsTitle">
+    <div class="modal-head">
+      <div><small>THANKS</small><h2 id="creditsTitle">Who made the pieces</h2></div>
+      <button type="button" id="creditsClose" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-scroll">
+      <p>Most of the pictures, questions, and games are Little Sprouts’ own. The people below made work this app uses, or ideas it follows.</p>
+      <ul class="credit-list">
+        <li><a href="https://github.com/jakesgordon/javascript-racer" target="_blank" rel="noopener">Jake Gordon — javascript-racer</a><p>Word lanes and Gas race use his road drawing. MIT, copyright 2012–2016 Jake Gordon and contributors.</p></li>
+        <li><a href="https://github.com/cnrasili/Hooked" target="_blank" rel="noopener">cnrasili — Hooked</a><p>Hook the fish follows that cast-and-steer idea. The pond, fish, and sounds here are new.</p></li>
+        <li><a href="https://codepen.io/hellokatili/pen/xwKRmo" target="_blank" rel="noopener">hellokatili — HTML5 Pacman</a><p>Garden chase uses that maze and the way it moves. The berries are new.</p></li>
+        <li><a href="https://codepen.io/FRADAR/pen/XWMzvaM" target="_blank" rel="noopener">FRADAR — Doodle Jump</a><p>Sprout hop uses that hop. The sprout and the leaves are drawn here.</p></li>
+        <li><a href="https://codepen.io/Megafry/pen/yyyZyYw" target="_blank" rel="noopener">Megafry — Toast Catcher</a><p>Toast pop uses that arc and the lives. The questions are Little Sprouts’ own.</p></li>
+        <li><a href="https://www.williammalone.com/articles/create-html5-canvas-javascript-drawing-app/" target="_blank" rel="noopener">William Malone — canvas drawing</a><p>Color by number follows his brush strokes. The pictures are new.</p></li>
+        <li><a href="https://www.williammalone.com/" target="_blank" rel="noopener">William Malone — BlocksJS</a><p>Garden walk uses BlocksJS 0.5.32 for the canvas and the walk. MIT, copyright 2014 William Malone. The meadow and the sprout are drawn here.</p></li>
+        <li><a href="https://freefrontend.com/javascript-games/#2025-11-02-js-planet-defense-game-l" target="_blank" rel="noopener">JS Planet Defense on FreeFrontend</a><p>Planet guard follows that aim and those incoming rocks. It is drawn here.</p></li>
+        <li><a href="https://freefrontend.com/javascript-games/#2026-01-01-glass-physics-3d-jigsaw-puzzle-l" target="_blank" rel="noopener">Glass Physics 3D Jigsaw on FreeFrontend</a><p>Shape puzzle follows that glass-piece idea. The pieces and the speech check are new.</p></li>
+        <li><a href="https://freefrontend.com/javascript-games/#2025-09-09-emoji-memory-match-l" target="_blank" rel="noopener">Animated emoji memory game on FreeFrontend</a><p>Pair match follows that flip. The cards are shapes, colors, numbers, and words drawn here.</p></li>
+        <li><a href="https://github.com/jeanjerome/OpenSkyFlight" target="_blank" rel="noopener">jeanjerome — OpenSkyFlight</a><p>Sky flight uses that project’s chase camera and aircraft loading.</p></li>
+        <li><a href="https://www.cgtrader.com/free-3d-models/aircraft/military-aircraft/dassault-rafale-b-bdc1590e-5936-4912-ba44-79f5c2e09f07" target="_blank" rel="noopener">pjedvaj — Dassault Rafale B</a><p>The plane in Sky flight is this model, made in Cheetah3D and shared royalty-free on CGTrader.</p></li>
+        <li><a href="https://github.com/mrdoob/three.js" target="_blank" rel="noopener">Ricardo Cabello and the Three.js authors</a><p>Sky flight and Paint sphere draw with Three.js. MIT, copyright 2010–2024.</p></li>
+        <li><a href="https://github.com/hexgrad/kokoro" target="_blank" rel="noopener">hexgrad — Kokoro</a><p>Spoken prompts use Kokoro-82M, Apache 2.0. The browser copy is <a href="https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX" target="_blank" rel="noopener">onnx-community’s ONNX build</a>, run with kokoro-js. If it cannot load, the browser’s own voice is used.</p></li>
+        <li><a href="https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker" target="_blank" rel="noopener">Google — MediaPipe Pose</a><p>Reach play uses Google’s pose model to find hands. Video stays in this browser. It is never recorded or uploaded.</p></li>
+        <li><a href="https://fonts.google.com/specimen/Outfit" target="_blank" rel="noopener">Outfit</a> and <a href="https://fonts.google.com/specimen/DM+Sans" target="_blank" rel="noopener">DM Sans</a><p>The type on this site, from Google Fonts. Outfit is by Rodrigo Fuenzalida. DM Sans is by Colophon Foundry.</p></li>
+      </ul>
+    </div>
+  </dialog>
+  <script type="module" src="app.js?v=credits"></script>
 </body>
 </html>

@@ -28,6 +28,16 @@ function own(samples) {
   return out;
 }
 
+function floatsFrom(stored) {
+  if (!stored) return null;
+  if (stored instanceof Float32Array) return own(stored);
+  const buffer = stored instanceof ArrayBuffer ? stored : stored.buffer;
+  const offset = stored instanceof ArrayBuffer ? 0 : stored.byteOffset || 0;
+  const bytes = stored instanceof ArrayBuffer ? buffer.byteLength : stored.byteLength;
+  if (!buffer || bytes < 4 || bytes % 4) return null;
+  return own(new Float32Array(buffer, offset, bytes / 4));
+}
+
 function usable(samples) {
   if (!samples || samples.length < 400) return false;
   let peak = 0, sum = 0, crossings = 0, wild = 0, prev = 0;
@@ -110,7 +120,8 @@ async function recall(key) {
       request(tx.objectStore('meta').get(key))
     ]);
     if (!buffer) return null;
-    const samples = new Float32Array(buffer);
+    const samples = floatsFrom(buffer);
+    if (!samples) return null;
     const rate = meta?.rate || 24000;
     rememberMemory(key, samples, rate);
     return { samples, rate };

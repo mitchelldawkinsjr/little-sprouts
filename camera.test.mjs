@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { handRaised, mapCover, pickPose, pointerNorm, reachScore, zoneHit } from './camera.js';
+import { bodyCenter, handRaised, mapCover, pickPose, pointHits, pointerNorm, reachScore, zoneHit } from './camera.js';
 
 const joint = (x, y, visibility = 0.9, z = 0) => ({ x, y, z, visibility });
 
@@ -27,6 +27,18 @@ test('the closest visible pose wins', () => {
   assert.equal(pickPose([far.map(() => joint(0.5, 0.5, 0))]), null);
 });
 
+test('body center is the midpoint of the visible shoulders', () => {
+  const pose = Array.from({ length: 33 }, () => joint(0.5, 0.5, 0));
+  pose[11] = joint(0.2, 0.4);
+  pose[12] = joint(0.6, 0.4);
+  const center = bodyCenter(pose);
+  assert.ok(Math.abs(center.x - 0.4) < 0.001);
+  assert.ok(Math.abs(center.y - 0.4) < 0.001);
+  pose[11] = joint(0.2, 0.4, 0.1);
+  pose[12] = joint(0.6, 0.4, 0.1);
+  assert.equal(bodyCenter(pose), null);
+});
+
 test('the pointer prefers a visible fingertip and falls back to the wrist', () => {
   const finger = pointerNorm({
     wrist: joint(0.4, 0.4),
@@ -40,6 +52,13 @@ test('the pointer prefers a visible fingertip and falls back to the wrist', () =
     pinky: joint(0.4, 0.1, 0.05)
   });
   assert.equal(wrist.y, 0.5);
+});
+
+test('a hand point catches the number it lands on', () => {
+  const stage = { left: 0, top: 0, width: 200, height: 200 };
+  const number = { left: 80, right: 120, top: 140, bottom: 180 };
+  assert.equal(pointHits(0.5, 0.8, stage, number), true);
+  assert.equal(pointHits(0.1, 0.1, stage, number), false);
 });
 
 test('a hand above the shoulder counts as a reach, and a hand at the side does not', () => {

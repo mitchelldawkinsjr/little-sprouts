@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <title>Garden walk</title>
+  <link rel="stylesheet" href="vendor/blocksjs-0.5.32.min.css">
+  <style>
+    html, body { margin: 0; height: 100%; background: #8ec8e6; overflow: hidden; font-family: "Trebuchet MS", sans-serif; }
+    #BlocksGame { position: fixed; inset: 0; }
+    #hud { position: fixed; left: 12px; right: 12px; top: 10px; z-index: 2; text-align: center; pointer-events: none; color: #16382c; }
+    #prompt { margin: 0 auto; max-width: 720px; padding: 8px 14px; border-radius: 14px; background: #faf9f5ee; font-size: clamp(18px, 3vw, 28px); font-weight: 700; line-height: 1.25; }
+    #show { display: flex; justify-content: center; margin-top: 8px; }
+    #show:empty { display: none; }
+    #show .countrow, #show .numpath { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 0; }
+    #show .countrow { font-size: 28px; }
+    #show .countrow.array { display: grid; grid-template-columns: repeat(var(--cols), auto); gap: 6px 10px; }
+    #show .numpath span, #show .countrow span { min-width: 28px; padding: 2px 4px; border-radius: 8px; background: #fff; }
+    #show .numpath .here { outline: 3px solid #db8b32; }
+    #hear { pointer-events: auto; margin-top: 8px; border: 0; border-radius: 12px; background: #16382ce6; color: #faf9f5; font: 700 15px "Trebuchet MS", sans-serif; padding: 8px 14px; }
+    .steer { position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 2; display: flex; justify-content: space-between; pointer-events: none; }
+    .steer button { pointer-events: auto; touch-action: none; width: 84px; height: 84px; border: 0; border-radius: 22px; background: #16382ce6; color: #faf9f5; font-size: 34px; }
+    .steer button:active { background: #2f6a52; }
+  </style>
+</head>
+<body>
+  <div id="BlocksGame"></div>
+  <div id="hud">
+    <p id="prompt">Walk to the picture that matches.</p>
+    <div id="show"></div>
+    <button type="button" id="hear">Hear it again</button>
+  </div>
+  <div class="steer">
+    <button type="button" id="left" aria-label="Walk left">◀</button>
+    <button type="button" id="right" aria-label="Walk right">▶</button>
+  </div>
+  <script src="vendor/blocksjs-0.5.32.min.js"></script>
+  <script src="garden.js?v=arcade-play"></script>
+</body>
+</html>

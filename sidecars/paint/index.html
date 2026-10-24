@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Paint Sphere</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7' fill='%23ff6a3d'/%3E%3C/svg%3E" />
+    <script type="module" crossorigin src="./assets/index-BWzy7L7v.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-Cj79EYcE.css">
+  </head>
+  <body>
+    <header id="hud" hidden>
+      <p id="question">What is 1 + 1?</p>
+      <div id="show"></div>
+      <div id="clock">Look 5</div>
+      <p id="hint">The answers float on either side of the train.</p>
+    </header>
+    <div id="crosshair" hidden></div>
+    <p id="resume" hidden>Click to keep playing</p>
+    <div id="overlay">
+      <div class="card" id="menu-card">
+        <h1 id="title">Paint Sphere</h1>
+        <p id="blurb">
+          You are inside a hollow world. A question appears, and each answer floats on one half of the shell.
+          Look for five seconds, then paint for ten. Only paint on the right answer scores.
+        </p>
+        <ul id="help">
+          <li>Mouse or right stick to look. Click or RT to throw paint</li>
+          <li>WASD or left stick to run, Shift or LB to sprint, Space or A to jump</li>
+          <li>Look for 5 seconds. Then throw paint for 10 seconds</li>
+          <li>Start on a controller plays without the mouse</li>
+          <li>Paint the half with the answer you think is right</li>
+          <li>The train on the middle circle sets you down beside the track</li>
+        </ul>
+        <p id="result" hidden></p>
+        <div class="actions">
+          <button id="play" type="button">Play</button>
+          <button id="friend" type="button">Play with a friend</button>
+        </div>
+        <p id="room" hidden></p>
+      </div>
+      <section id="board" hidden>
+        <header id="board-head">
+          <p id="board-kicker">Scoreboard</p>
+          <h2 id="board-title">You win</h2>
+          <p id="board-question"></p>
+        </header>
+        <div class="tape">
+          <figure class="fighter you" id="you-fighter">
+            <img id="you-portrait" alt="You at the end of the round" />
+            <figcaption id="you-name">You</figcaption>
+          </figure>
+          <div class="tape-stats">
+            <div class="tape-row score">
+              <span class="val" id="you-right">0%</span>
+              <span class="name">Right side</span>
+              <span class="val" id="bot-right">0%</span>
+            </div>
+            <div class="tape-row">
+              <span class="val" id="you-ground">0%</span>
+              <span class="name">All ground</span>
+              <span class="val" id="bot-ground">0%</span>
+            </div>
+            <div class="tape-row">
+              <span class="val" id="you-them">0%</span>
+              <span class="name">On them</span>
+              <span class="val" id="bot-you">0%</span>
+            </div>
+          </div>
+          <figure class="fighter bot" id="bot-fighter">
+            <img id="bot-portrait" alt="Rival at the end of the round" />
+            <figcaption id="bot-name">Bot</figcaption>
+          </figure>
+        </div>
+        <footer id="board-foot">
+          <p id="board-answer"></p>
+          <p id="board-room" hidden></p>
+          <button id="again" type="button">Play again</button>
+        </footer>
+      </section>
+    </div>
+  </body>
+</html>

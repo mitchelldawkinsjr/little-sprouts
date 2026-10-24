@@ -17,6 +17,18 @@ const SIDES = [
 let landmarker = null;
 let stream = null;
 let view = null;
+let handListener = null;
+let bodyListener = null;
+
+export function watchHands(fn) {
+  handListener = fn;
+  return () => { if (handListener === fn) handListener = null; };
+}
+
+export function watchBody(fn) {
+  bodyListener = fn;
+  return () => { if (bodyListener === fn) bodyListener = null; };
+}
 let needDrop = false;
 let lastTime = 0;
 let videoCb = 0;
@@ -58,6 +70,16 @@ export function pickPose(poses) {
   return best;
 }
 
+export function bodyCenter(pose) {
+  if (!pose || pose.length < 13) return null;
+  const shoulders = [11, 12].map(i => pose[i]).filter(p => vis(p) >= 0.3);
+  if (!shoulders.length) return null;
+  return {
+    x: shoulders.reduce((sum, p) => sum + p.x, 0) / shoulders.length,
+    y: shoulders.reduce((sum, p) => sum + p.y, 0) / shoulders.length
+  };
+}
+
 export function pointerNorm(parts) {
   const { wrist, index, pinky } = parts;
   const tip = vis(index) >= 0.25 ? index : vis(pinky) >= 0.25 ? pinky : null;
@@ -88,6 +110,12 @@ export function reachScore(parts) {
 
 export function handRaised(wasUp, score) {
   return wasUp ? score > -0.055 : score > 0.04;
+}
+
+export function pointHits(nx, ny, stage, item, pad = 24) {
+  const x = stage.left + nx * stage.width;
+  const y = stage.top + ny * stage.height;
+  return x >= item.left - pad && x <= item.right + pad && y >= item.top - pad && y <= item.bottom + pad;
 }
 
 export function zoneHit(zones, x, y, pad) {
@@ -401,6 +429,16 @@ function follow(poses, now, video) {
   });
 
   coach(pose, hands, target, go, zones);
+  handListener?.(hands.filter(h => h.live).map(h => ({
+    up: !!h.up,
+    x: box.width ? h.px / box.width : 0.5,
+    y: box.height ? h.py / box.height : 0.5
+  })));
+  const torso = pose ? bodyCenter(pose) : null;
+  if (torso) {
+    const mapped = mapCover(torso.x, torso.y, video.videoWidth, video.videoHeight, box.width, box.height);
+    bodyListener?.({ live: true, x: box.width ? mapped.x / box.width : 0.5 });
+  } else bodyListener?.({ live: false, x: 0.5 });
 
   if (target && done >= 1) {
     const el = target;
@@ -419,8 +457,19 @@ function release(el) {
 
 function coach(pose, hands, target, go, zones) {
   let msg;
+  const catching = view.stage.classList.contains('catch-cam');
+  const stepping = view.stage.classList.contains('lane-cam');
+  const fishing = view.stage.classList.contains('hook-cam');
   if (needDrop) msg = 'Put your hands down, then reach again.';
+  else if (stepping && !pose) msg = 'Step back so your shoulders fit in the picture.';
+  else if (stepping) msg = 'Get into the lane before the count ends.';
+  else if (fishing && !pose) msg = 'Step back so your shoulders and hands fit.';
+  else if (fishing && !hands.some(h => h.up)) msg = 'Lift a hand. Move it onto the fish.';
+  else if (fishing) msg = 'Move your hand onto the right fish.';
   else if (!pose) msg = 'Step back so your shoulders and hands fit.';
+  else if (catching && !hands.some(h => h.live)) msg = 'I see you. Reach one hand up.';
+  else if (catching && !hands.some(h => h.up)) msg = 'Lift a hand to catch the number.';
+  else if (catching) msg = 'Catch the number with your hand.';
   else if (target && go && target === go) msg = 'Hold both hands up…';
   else if (target) msg = 'Hold it there…';
   else if (!zones.length && go) msg = 'Raise both hands and hold to go on.';

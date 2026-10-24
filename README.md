@@ -1,60 +1,90 @@
-# Little Sprouts — Play & Learn
+# Little Sprouts
 
-Eleven early-learning activities (including three math games and three screen games) with three learner profiles, spoken prompts, adjustable levels, custom sight words, and per-skill progress.
+Early-learning games for young children. A learner picks a picture, hears the question, and answers. Grown-ups can set the level, the sight words, and how the child plays.
 
-## Run locally
-Extract this ZIP. From the little-sprouts directory, run:
+Three learners start on this device: Malik in preschool, Micah in kindergarten, and Mitch in 4th grade. Each one keeps a name, a garden buddy, a math band, and stars. Progress stays in this browser.
 
-    python3 -m http.server 8000
+![Home screen, with a hello for Malik and the star garden](docs/screenshots/home.jpg)
 
-Open http://localhost:8000 in your browser. No build step or dependencies are required.
+## How to run
 
-## Files
-- index.html — page structure and parent settings
-- style.css — responsive styling
-- app.js — games, settings, progress, speech, play styles and floor-card printing
-- arcade.js — Catch the answer, Word lanes, and Rocket climb
-- speech.js — Kokoro read-aloud (loaded on the first spoken prompt)
-- speech-worker.js — runs that voice off the main thread so game buttons stay responsive
-- logic.mjs — scoring, word rules and level text shared with tests
-- logic.test.mjs — checks for those rules (`node --test logic.test.mjs`)
-- camera.js — Reach play (loaded only when Reach is used)
-- camera.test.mjs — checks for Reach tracking math (`node --test camera.test.mjs`)
+From this folder:
 
-## Parent controls
-Open Parent corner and answer the grown-up check (21). Continue is the button Enter and Go activate. Rename learners, set the math band (preschool, kindergarten, or 4th grade), set levels per activity, change the round length, enter custom words (letters, with at most one apostrophe), reset that learner’s progress, print floor cards and allow Reach play. Read-aloud, the spoken voice, and Reach apply to every learner on this device. Saving during a round asks before leaving it. Reload question sheet reads `sheet.csv` first, then a published Google Sheet (learner, game, item, extra), and saves the combined lists in this browser. A Google Sheet list replaces that same list from the default file. `push-sheet.gs` adds new default rows to the Google Sheet about once an hour and leaves rows already there unchanged. Words, count pictures, hunt objects, and 4th-grade times tables come from those lists.
+```
+python3 -m http.server 8000
+```
 
-## Play styles
-Pick a style on the home screen under "How are we playing?". It is saved per learner, and progress is tracked separately for each style.
-- Tap — answer on the screen.
-- Move — the game calls out a movement ("Hop like a bunny to the triangle!") and the child moves to a printed floor card. A grown-up taps ✓ Got it or Not yet. In What's missing?, the child does a movement break while the shapes are hidden. Use "Print floor cards" to print cards that match the learner's levels and sight words, two per page.
-- Hunt — the child finds real things that match (something blue, something round, a sight word in a book). A grown-up confirms. What's missing? plays as Move.
-- Reach — appears once a grown-up allows it in Parent corner. The camera tracks the child's fingertips with an on-device pose model. Holding a hand on an answer until it fills picks it, and raising both hands continues. The cursor stays steady if a frame jitters or drops, and a short coach line tells the child what to do next. Video is never recorded, saved or uploaded. The pose model (MediaPipe) downloads from Google's CDN on first use, so this needs internet once, plus https or localhost for camera access. Answers can still be tapped if the camera is unavailable.
+Open http://localhost:8000. There is no build step.
 
-## Math games
-Math follows a band on each learner (change it in Parent corner). Defaults: Learner 1 preschool, Learner 2 kindergarten, Learner 3 4th grade. The 1–3 skill level only changes difficulty inside that band.
-- Preschool — Count & clap: 1–5, then 8, then 10 pictures. Number path: find numbers, then one more, then before / after / which is more up to 10.
-- Kindergarten — Count & clap: 1–10, then 20 (Hunt stays at 10). Number path: find 1–10; before / after / which is more; then hops that add or take away within 10.
-- 4th grade — multiplication and multiples throughout. Count & clap: arrays (rows of 2–5 by 2–6), then times tables to 12 × 12 with missing-factor questions, then 2-digit × 1-digit, multiples of ten (40 × 6), and 2-digit × 2-digit up to 19 × 15. Number path: skip-counting and multiples of 2, 5 and 10, then multiples of 3–12, then factors, common multiples and primes. Wrong choices are common mistakes (neighbouring facts, adding instead of multiplying) rather than random numbers. Hints give a strategy without highlighting the answer.
-  - Move: the movement is the method — jump once per skip-count (7 × 8 is seven jumps counting by 8s), clap arrays row by row, take giant steps for tens and baby steps for ones in 23 × 4, clap and stomp two skip-counts to find a common multiple.
-  - Hunt: build arrays and groups with spoons, coins or blocks (when the total is 40 or less), or check multiples on a calendar or 100 chart.
-  - The Numbers deck prints 0–12 as fact cards.
+## How a round works
 
-For preschool and kindergarten, the Numbers floor-card deck covers every number those games can ask for. 6 and 9 are underlined so they can't be confused on the floor.
+On the home screen, under **How are we playing?**:
 
-After each correct Move or Hunt answer, a short grown-up prompt suggests a question to extend the conversation.
+- **Tap** — the child answers on the screen.
+- **Move** — the game calls out a movement, and a grown-up taps when the child lands on the right floor card. Floor cards can be printed from Parent corner.
+- **Hunt** — the child finds a real thing that matches, and a grown-up confirms.
+- **Reach** — after a grown-up allows it, the camera watches the child’s hands. Holding a hand on an answer picks it. Video is never recorded or uploaded.
 
-## Arcade games
-Catch the answer, Word lanes, and Rocket climb are screen games. Move, Hunt, and Reach do not change them. A round is still that learner’s question count, and a miss before the right catch, lane, or fuel-up keeps it from counting as a first try.
+Parent corner is the gear at the top. The grown-up check is a small addition problem. Inside, you can rename learners, set the math band, set each game’s level, change the sight words, and turn read-aloud on or off. It is a grown-up check, not a lock.
 
-- Catch the answer — move a basket under the falling answer. Preschool and kindergarten use counting and the number path, with the pictures or number line still on screen. 4th grade uses multiplication (arrays, times tables, missing factors, and larger products). Level 1 drops 3 slow answers, level 2 drops 4, and level 3 drops 5 a little faster.
-- Word lanes — the voice says a sight word and the car has to be in that lane at the finish. There are 3 lanes, then 4, then 5, and never more lanes than words in the list. Level 1 shows the word in the heading. Levels 2 and 3 only say it. The lane signs stay visible.
-- Rocket climb — questions alternate between the same math as Catch the answer and a sight word. The fuel tank lasts 18 seconds at level 1, 12 at level 2, and 8 at level 3. Reduced motion drains it more slowly. A right answer refills the tank and lifts the rocket from the garden through the clouds, sky, and stars toward the Moon. A wrong answer burns about a third of the tank. An empty tank dips the rocket, counts as a miss, and refills partway so the learner can try that question again. Level 1 shows a sight word in the heading. Levels 2 and 3 only say it. The answer buttons stay visible.
+![Parent corner, where a grown-up sets the learner, buddy, and levels](docs/screenshots/parents.jpg)
 
-Steer with the arrow keys, A and D, the on-screen buttons, or a drag or tap on that side of the field. Reduced motion slows the fall and the drive.
+Most rounds are 5, 10, or 15 questions. A right answer on the first try earns a learning star. Arcade games such as Gas race, Dirt ride, and Sky flight keep going on their own clocks.
 
-## Hosting
-Upload index.html, style.css, app.js, arcade.js, speech.js, speech-worker.js and camera.js together to any static web host. Access restrictions for the hosted ChatGPT version are not part of these source files; configure access separately on your host if needed.
+## The shelf
+
+Every game is a card on the home screen. Shapes, colors, words, and counting sit beside the arcade games.
+
+![The game shelf](docs/screenshots/library.jpg)
+
+Backroad rally’s stage files are not in this repository, so that card stays hidden unless those files are added beside the others.
+
+<p>
+  <img src="docs/screenshots/shapes.jpg" width="49%" alt="Shape safari asking the learner to find the circle">
+  <img src="docs/screenshots/lanes.jpg" width="49%" alt="Word lanes, with a car driving toward the word go">
+</p>
+<p>
+  <img src="docs/screenshots/hook.jpg" width="49%" alt="Hook the fish over a sunny pond">
+  <img src="docs/screenshots/sky.jpg" width="49%" alt="Sky shot, aiming at numbered rocks">
+</p>
+<p>
+  <img src="docs/screenshots/lunar.jpg" width="49%" alt="Moon shot, a freethrow locked until the learner answers">
+  <img src="docs/screenshots/chase.jpg" width="49%" alt="Garden chase, a maze of word berries">
+</p>
+<p>
+  <img src="docs/screenshots/hop.jpg" width="49%" alt="Sprout hop, bouncing toward word leaves">
+  <img src="docs/screenshots/crayon.jpg" width="49%" alt="Color by number, a flower waiting to be painted">
+</p>
+<p>
+  <img src="docs/screenshots/walk.jpg" width="49%" alt="Garden walk, a sprout heading for the word can">
+  <img src="docs/screenshots/bike.jpg" width="49%" alt="Dirt ride, a bike on a sunny trail">
+</p>
+<p>
+  <img src="docs/screenshots/flight.jpg" width="49%" alt="Sky flight, a plane flying toward letter gates">
+  <img src="docs/screenshots/paint.jpg" width="49%" alt="Paint sphere, looking down a painted track">
+</p>
+
+## Credits
+
+Most of the pictures, questions, and games are Little Sprouts’ own. These creators made work the app uses, or ideas it follows. The same list is on the site under **Credits**.
+
+- [Jake Gordon — javascript-racer](https://github.com/jakesgordon/javascript-racer) (MIT). Word lanes and Gas race use his road drawing.
+- [cnrasili — Hooked](https://github.com/cnrasili/Hooked). Hook the fish follows that cast-and-steer idea. The pictures and sounds here are new.
+- [hellokatili — HTML5 Pacman](https://codepen.io/hellokatili/pen/xwKRmo). Garden chase uses that maze and the way it moves. The berries are new.
+- [FRADAR — Doodle Jump](https://codepen.io/FRADAR/pen/XWMzvaM). Sprout hop uses that hop. The sprout and leaves are drawn here.
+- [Megafry — Toast Catcher](https://codepen.io/Megafry/pen/yyyZyYw). Toast pop uses that arc and the lives.
+- [William Malone — canvas drawing](https://www.williammalone.com/articles/create-html5-canvas-javascript-drawing-app/). Color by number follows his brush. The pictures are new.
+- [William Malone — BlocksJS](https://www.williammalone.com/) 0.5.32 (MIT). Garden walk uses it for the canvas and the walk.
+- [JS Planet Defense](https://freefrontend.com/javascript-games/#2025-11-02-js-planet-defense-game-l) on FreeFrontend. Planet guard follows that aim. It is drawn here.
+- [Glass Physics 3D Jigsaw](https://freefrontend.com/javascript-games/#2026-01-01-glass-physics-3d-jigsaw-puzzle-l) on FreeFrontend. Shape puzzle follows that glass-piece idea.
+- [Animated emoji memory game](https://freefrontend.com/javascript-games/#2025-09-09-emoji-memory-match-l) on FreeFrontend. Pair match follows that flip. The cards are new.
+- [jeanjerome — OpenSkyFlight](https://github.com/jeanjerome/OpenSkyFlight). Sky flight uses that chase camera and aircraft loading.
+- [pjedvaj — Dassault Rafale B](https://www.cgtrader.com/free-3d-models/aircraft/military-aircraft/dassault-rafale-b-bdc1590e-5936-4912-ba44-79f5c2e09f07). The plane model, made in Cheetah3D and shared royalty-free on CGTrader.
+- [Ricardo Cabello and the Three.js authors](https://github.com/mrdoob/three.js) (MIT). Sky flight and Paint sphere draw with Three.js.
+- [hexgrad — Kokoro](https://github.com/hexgrad/kokoro) (Apache 2.0). Spoken prompts use Kokoro-82M through [onnx-community’s ONNX build](https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX). If it cannot load, the browser’s own voice speaks.
+- [Google — MediaPipe Pose](https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker). Reach play uses it to find hands. Video stays on the device.
+- [Outfit](https://fonts.google.com/specimen/Outfit) by Rodrigo Fuenzalida and [DM Sans](https://fonts.google.com/specimen/DM+Sans) by Colophon Foundry, from Google Fonts.
 
 ## Notes
-Progress and settings use browser localStorage and do not sync between devices or transfer from the original hosted URL. Clearing site data removes saved progress. Spoken prompts use Kokoro, downloaded once and then run on this device. A line that has already been spoken (including “You found it!” and Hear it again) plays back from a saved clip instead of being generated again. The voice starts loading on the home screen. If that voice cannot load, speech uses the browser’s own voice. Fonts load from Google Fonts with `display=swap` and local fallbacks. The parent check is not a security lock.
+
+Settings and stars stay in this browser. They do not sync to another device. Clearing site data clears them. `node --test logic.test.mjs` and `node --test camera.test.mjs` check the learning rules and the Reach math.

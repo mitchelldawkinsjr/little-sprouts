@@ -23,6 +23,33 @@ export function parseWords(text) {
   return { words, ok: words.length >= 3 && words.every(validWord) };
 }
 
+export function wordsFromSheet(rows, name, stage) {
+  const list = (rows || []).filter(row => row && row.game === 'words' && String(row.item || '').trim());
+  const who = String(name || '').trim().toLowerCase();
+  const band = String(stage || '').trim().toLowerCase();
+  const learnerOf = row => String(row.learner || '*').trim().toLowerCase() || '*';
+  const grade4Only = new Set();
+  if (band !== 'grade4') {
+    for (const row of list) {
+      if (learnerOf(row) === 'grade4') grade4Only.add(String(row.item).trim().toLowerCase());
+    }
+  }
+  const keep = row => !grade4Only.has(String(row.item).trim().toLowerCase());
+  const specific = list.filter(row => {
+    const learner = learnerOf(row);
+    return learner !== '*' && (learner === who || learner === band) && keep(row);
+  });
+  const general = list.filter(row => {
+    const learner = learnerOf(row);
+    return (!learner || learner === '*') && keep(row);
+  });
+  for (const set of [specific, general]) {
+    const parsed = parseWords(set.map(row => row.item).join(','));
+    if (parsed.ok) return parsed.words;
+  }
+  return [];
+}
+
 export function candidateWords(words, mode) {
   if (mode !== 'build') return words;
   const longer = words.filter(w => w.replace(/'/g, '').length > 1);
@@ -39,9 +66,604 @@ export function rocketSubject(index) {
   return index % 2 === 0 ? 'math' : 'words';
 }
 
+export function rocketZone(altitude) {
+  const n = Math.min(1, Math.max(0, +altitude || 0));
+  if (n >= 0.9) return 'Space';
+  if (n >= 0.65) return 'Stars';
+  if (n >= 0.4) return 'Sky';
+  if (n >= 0.18) return 'Clouds';
+  return 'Garden';
+}
+
 export function fuelSeconds(level) {
   const index = Math.min(3, Math.max(1, Math.round(+level) || 1)) - 1;
   return [18, 12, 8][index];
+}
+
+const HOOK_CASTS = [
+  { id: 'pond', name: 'Sunny pond', fish: 3, drop: 0.11, trash: 0 },
+  { id: 'cove', name: 'Kelp cove', fish: 4, drop: 0.16, trash: 1 },
+  { id: 'deep', name: 'Deep water', fish: 5, drop: 0.22, trash: 2 }
+];
+
+export function hookCast(level) {
+  const index = Math.min(3, Math.max(1, Math.round(+level) || 1)) - 1;
+  return { ...HOOK_CASTS[index] };
+}
+
+const SKY_WAVES = [
+  { rocks: 3, foes: 1, drift: 34, foe: 26, bolt: 80, aim: 2.6 },
+  { rocks: 4, foes: 2, drift: 50, foe: 38, bolt: 110, aim: 1.9 },
+  { rocks: 5, foes: 3, drift: 68, foe: 52, bolt: 140, aim: 1.35 }
+];
+
+export function skyWave(level) {
+  const index = Math.min(3, Math.max(1, Math.round(+level) || 1)) - 1;
+  return { ...SKY_WAVES[index] };
+}
+
+const PLANET_WAVES = [
+  { rocks: 3, seconds: 8 },
+  { rocks: 4, seconds: 6 },
+  { rocks: 5, seconds: 4.5 }
+];
+
+export function planetWave(level) {
+  const index = Math.min(3, Math.max(1, Math.round(+level) || 1)) - 1;
+  return { ...PLANET_WAVES[index] };
+}
+
+const PUZZLE_BOARDS = [
+  { pieces: 2, outline: true },
+  { pieces: 4, outline: false },
+  { pieces: 6, outline: false }
+];
+
+export function puzzleBoard(level) {
+  const index = Math.min(3, Math.max(1, Math.round(+level) || 1)) - 1;
+  return { ...PUZZLE_BOARDS[index] };
+}
+
+const MARBLE_TRACKS = [
+  { colors: 3, speed: 26, quota: 4, step: 8, gap: 32, chain: 14 },
+  { colors: 4, speed: 36, quota: 6, step: 10, gap: 30, chain: 18 },
+  { colors: 5, speed: 48, quota: 8, step: 12, gap: 28, chain: 22 }
+];
+
+export function marbleTrack(level) {
+  const index = Math.min(3, Math.max(1, Math.round(+level) || 1)) - 1;
+  return { ...MARBLE_TRACKS[index] };
+}
+
+export function marbleLevel(points, step) {
+  const size = Math.max(1, Math.round(+step) || 1);
+  return 1 + Math.floor(Math.max(0, +points || 0) / size);
+}
+
+export function marbleClear(chain, min = 3) {
+  const left = Array.isArray(chain) ? chain.slice() : [];
+  const need = Math.max(2, min | 0);
+  const cleared = [];
+  let guard = 0;
+  while (guard++ < 24) {
+    let cut = null;
+    for (let i = 0; i < left.length;) {
+      let j = i + 1;
+      while (j < left.length && left[j] === left[i]) j++;
+      if (j - i >= need) { cut = [i, j]; break; }
+      i = j;
+    }
+    if (!cut) break;
+    cleared.push(...left.slice(cut[0], cut[1]));
+    left.splice(cut[0], cut[1] - cut[0]);
+  }
+  return { left, cleared };
+}
+
+const BRIDGE_SPANS = [
+  { gap: 86, pad: 84, grow: 150 },
+  { gap: 128, pad: 62, grow: 190 },
+  { gap: 168, pad: 46, grow: 230 }
+];
+
+export function bridgeSpan(level) {
+  const index = Math.min(3, Math.max(1, Math.round(+level) || 1)) - 1;
+  return { ...BRIDGE_SPANS[index] };
+}
+
+export function bridgeReach(length, near, far) {
+  const stick = +length || 0;
+  return stick >= near && stick <= far;
+}
+
+export function bridgeWindow(easy, near, far) {
+  const span = Math.max(0, far - near);
+  if (easy) return { near: near - span * 0.45, far: far + span * 0.35 };
+  const mid = (near + far) / 2;
+  const half = Math.max(6, span * 0.12);
+  return { near: mid - half, far: mid + half };
+}
+
+const MAZE_CLOCKS = [
+  { seconds: 50, cols: 7, rows: 9, holes: 2, bonus: 12 },
+  { seconds: 40, cols: 9, rows: 11, holes: 4, bonus: 10 },
+  { seconds: 30, cols: 11, rows: 13, holes: 6, bonus: 8 }
+];
+
+export function mazeClock(level) {
+  const index = Math.min(3, Math.max(1, Math.round(+level) || 1)) - 1;
+  return { ...MAZE_CLOCKS[index] };
+}
+
+const CHASE_BOARDS = [
+  { cols: 9, rows: 7, bugs: 1, player: 3.4, bug: 2.15, copies: 2, choices: 3 },
+  { cols: 11, rows: 9, bugs: 2, player: 3.8, bug: 2.7, copies: 3, choices: 4 },
+  { cols: 13, rows: 9, bugs: 3, player: 4.2, bug: 3.15, copies: 3, choices: 5 }
+];
+
+export function chaseBoard(level) {
+  const index = Math.min(3, Math.max(1, Math.round(+level) || 1)) - 1;
+  return { ...CHASE_BOARDS[index] };
+}
+
+const HOP_BOARDS = [
+  { choices: 3, gap: 86, width: 96, gravity: 480, drift: 0 },
+  { choices: 4, gap: 98, width: 84, gravity: 600, drift: 0 },
+  { choices: 5, gap: 110, width: 74, gravity: 720, drift: 36 }
+];
+
+export function hopBoard(level) {
+  const index = Math.min(3, Math.max(1, Math.round(+level) || 1)) - 1;
+  return { ...HOP_BOARDS[index] };
+}
+
+const TOAST_BOARDS = [
+  { choices: 3, lives: 5, flight: 3400, minFlight: 2200, gap: 1000, minGap: 560 },
+  { choices: 4, lives: 4, flight: 2800, minFlight: 1800, gap: 800, minGap: 460 },
+  { choices: 5, lives: 3, flight: 2200, minFlight: 1400, gap: 620, minGap: 380 }
+];
+
+export function toastBoard(level) {
+  const index = Math.min(3, Math.max(1, Math.round(+level) || 1)) - 1;
+  return { ...TOAST_BOARDS[index] };
+}
+
+const AISLE_BOARDS = [
+  { choices: 3, seconds: 32 },
+  { choices: 4, seconds: 26 },
+  { choices: 5, seconds: 20 }
+];
+
+export function aisleBoard(level) {
+  const index = Math.min(3, Math.max(1, Math.round(+level) || 1)) - 1;
+  return { ...AISLE_BOARDS[index] };
+}
+
+export function toastPace(board, elapsedSeconds) {
+  const steps = Math.max(0, Math.floor((+elapsedSeconds || 0) / 10));
+  const flight = Math.max(board.minFlight, board.flight - steps * 160);
+  const gap = Math.max(board.minGap, board.gap - steps * 90);
+  return { flight, gap };
+}
+
+export function matchPairs(level) {
+  const index = Math.min(3, Math.max(1, Math.round(+level) || 1)) - 1;
+  return [4, 6, 8][index];
+}
+
+const TRACE_BOARDS = [
+  { kind: 'shape', guide: 8, fade: false, tolerance: 14 },
+  { kind: 'shape', guide: 3.5, fade: false, tolerance: 9 },
+  { kind: 'mark', guide: 2.2, fade: true, tolerance: 7 }
+];
+
+export function traceBoard(level) {
+  const index = Math.min(3, Math.max(1, Math.round(+level) || 1)) - 1;
+  return { ...TRACE_BOARDS[index] };
+}
+
+function pointSegmentDistance(point, a, b) {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len = dx * dx + dy * dy;
+  if (len === 0) return Math.hypot(point.x - a.x, point.y - a.y);
+  const t = Math.max(0, Math.min(1, ((point.x - a.x) * dx + (point.y - a.y) * dy) / len));
+  return Math.hypot(point.x - (a.x + t * dx), point.y - (a.y + t * dy));
+}
+
+export function traceOnPath(point, path, tolerance) {
+  if (!point || !Array.isArray(path) || !path.length) return false;
+  const limit = +tolerance;
+  if (!Number.isFinite(limit) || limit < 0) return false;
+  let best = path.length === 1 ? Math.hypot(point.x - path[0].x, point.y - path[0].y) : Infinity;
+  for (let i = 0; i < path.length - 1; i++) best = Math.min(best, pointSegmentDistance(point, path[i], path[i + 1]));
+  return best <= limit;
+}
+
+const SORT_BOARDS = [
+  { colors: 2, capacity: 3, empty: 1, mixes: 4 },
+  { colors: 3, capacity: 4, empty: 1, mixes: 7 },
+  { colors: 4, capacity: 4, empty: 2, mixes: 10 }
+];
+
+export function sortBoard(level) {
+  const index = Math.min(3, Math.max(1, Math.round(+level) || 1)) - 1;
+  return { ...SORT_BOARDS[index] };
+}
+
+export function sortTopRun(tube) {
+  if (!tube?.length) return 0;
+  const top = tube[tube.length - 1];
+  let count = 1;
+  for (let i = tube.length - 2; i >= 0 && tube[i] === top; i--) count += 1;
+  return count;
+}
+
+export function sortPourCount(from, to, capacity) {
+  const cap = Math.max(1, capacity | 0);
+  if (!from?.length) return 0;
+  const room = cap - (to?.length || 0);
+  if (room <= 0) return 0;
+  const run = sortTopRun(from);
+  if (!to?.length) return Math.min(run, room);
+  if (to[to.length - 1] !== from[from.length - 1]) return 0;
+  return Math.min(run, room);
+}
+
+export function sortPour(tubes, from, to, capacity) {
+  if (!Array.isArray(tubes) || from === to || from < 0 || to < 0 || from >= tubes.length || to >= tubes.length) return null;
+  const next = tubes.map(tube => [...tube]);
+  const count = sortPourCount(next[from], next[to], capacity);
+  if (!count) return null;
+  next[to].push(...next[from].splice(next[from].length - count, count));
+  return next;
+}
+
+export function sortSolved(tubes, capacity) {
+  const cap = Math.max(1, capacity | 0);
+  const seen = new Set();
+  if (!Array.isArray(tubes) || !tubes.length) return false;
+  for (const tube of tubes) {
+    if (!tube?.length) continue;
+    if (tube.length !== cap || tube.some(item => item !== tube[0]) || seen.has(tube[0])) return false;
+    seen.add(tube[0]);
+  }
+  return seen.size > 0;
+}
+
+export function sortDeal(kinds, board, random = Math.random) {
+  const list = (Array.isArray(kinds) ? kinds : []).map(kind => String(kind)).filter(Boolean);
+  const cap = Math.max(1, board?.capacity | 0);
+  const tubes = list.map(kind => Array(cap).fill(kind));
+  for (let i = 0; i < Math.max(0, board?.empty | 0); i++) tubes.push([]);
+  const rand = typeof random === 'function' ? random : Math.random;
+  for (let n = 0; n < Math.max(0, board?.mixes | 0); n++) {
+    const sources = tubes.flatMap((tube, index) => tube.length ? [index] : []);
+    const from = sources[Math.floor(rand() * sources.length)];
+    const dests = tubes.flatMap((tube, index) => index !== from && tube.length < cap ? [index] : []);
+    if (from == null || !dests.length) break;
+    tubes[dests[Math.floor(rand() * dests.length)]].push(tubes[from].pop());
+  }
+  if (sortSolved(tubes, cap)) {
+    const full = tubes.findIndex(tube => tube.length === cap);
+    const space = tubes.findIndex(tube => tube.length < cap);
+    if (full >= 0 && space >= 0) tubes[space].push(tubes[full].pop());
+  }
+  return tubes;
+}
+
+const CRAYON_BOARDS = [
+  { regions: 4, colors: 4, brush: 8, cover: 0.3 },
+  { regions: 6, colors: 4, brush: 6.2, cover: 0.38 },
+  { regions: 8, colors: 6, brush: 4.6, cover: 0.46 }
+];
+
+export function crayonBoard(level) {
+  const index = Math.min(3, Math.max(1, Math.round(+level) || 1)) - 1;
+  return { ...CRAYON_BOARDS[index] };
+}
+
+export function crayonLegend(ids, palette, numbers) {
+  const slots = Math.min(ids?.length || 0, palette?.length || 0, numbers?.length || 0);
+  if (!slots) return [];
+  return ids.map((id, index) => {
+    const slot = index % slots;
+    const [name, hex] = palette[slot];
+    return { id, name, hex, number: numbers[slot] };
+  });
+}
+
+export function shapeHolds(shape, x, y) {
+  if (!shape || !Number.isFinite(+x) || !Number.isFinite(+y)) return false;
+  if (shape.parts) return shape.parts.some(part => shapeHolds(part, x, y));
+  if (shape.circle) {
+    const [cx, cy, r] = shape.circle;
+    return (x - cx) ** 2 + (y - cy) ** 2 <= r * r;
+  }
+  if (shape.ellipse) {
+    const [cx, cy, rx, ry] = shape.ellipse;
+    if (!(rx > 0) || !(ry > 0)) return false;
+    const dx = (x - cx) / rx;
+    const dy = (y - cy) / ry;
+    return dx * dx + dy * dy <= 1;
+  }
+  const points = shape.poly;
+  if (!Array.isArray(points) || points.length < 3) return false;
+  let inside = false;
+  for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+    const [xi, yi] = points[i];
+    const [xj, yj] = points[j];
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+export function regionAt(regions, x, y) {
+  if (!Array.isArray(regions)) return null;
+  for (let i = regions.length - 1; i >= 0; i--) {
+    if (shapeHolds(regions[i]?.shape, x, y)) return regions[i];
+  }
+  return null;
+}
+
+export function crayonSamples(regions, step = 2) {
+  const gap = Math.max(1, +step || 2);
+  return (regions || []).map(region => {
+    const points = [];
+    for (let y = gap / 2; y < 100; y += gap) {
+      for (let x = gap / 2; x < 100; x += gap) {
+        if (regionAt(regions, x, y)?.id === region.id) points.push({ x, y });
+      }
+    }
+    return points;
+  });
+}
+
+export function crayonInk(point, from, to, radius) {
+  if (!point || !from || !to) return false;
+  const limit = +radius;
+  if (!Number.isFinite(limit) || limit < 0) return false;
+  return pointSegmentDistance(point, from, to) <= limit;
+}
+
+export function crayonCovered(hit, total, need) {
+  const count = +total;
+  if (!Number.isFinite(count) || count <= 0) return false;
+  return hit / count >= +need;
+}
+
+const flowerPage = {
+  name: 'flower',
+  regions: [
+    { id: 'sky', label: [12, 18], shape: { poly: [[0, 0], [100, 0], [100, 64], [0, 64]] } },
+    { id: 'grass', label: [86, 86], shape: { poly: [[0, 64], [100, 64], [100, 100], [0, 100]] } },
+    {
+      id: 'petals',
+      label: [50, 41],
+      shape: {
+        parts: [
+          { circle: [50, 41, 12] },
+          { circle: [64, 51, 12] },
+          { circle: [59, 68, 12] },
+          { circle: [41, 68, 12] },
+          { circle: [36, 51, 12] },
+          { poly: [[47, 70], [53, 70], [53, 92], [47, 92]] },
+          { ellipse: [74, 88, 8, 3.6] }
+        ]
+      }
+    },
+    { id: 'center', label: [50, 56], shape: { circle: [50, 56, 8] } }
+  ]
+};
+
+const fishPage = {
+  name: 'fish',
+  marks: [
+    { circle: [70, 51, 3.4], fill: '#fffdf8' },
+    { circle: [71.2, 51, 1.5], fill: '#2c2824', stroke: false }
+  ],
+  regions: [
+    { id: 'water', label: [12, 12], shape: { poly: [[0, 0], [100, 0], [100, 100], [0, 100]] } },
+    { id: 'tail', label: [16, 54], shape: { poly: [[40, 54], [8, 36], [8, 72]] } },
+    { id: 'body', label: [68, 58], shape: { ellipse: [58, 54, 20, 14] } },
+    { id: 'fin', label: [52, 32], shape: { poly: [[54, 42], [42, 22], [70, 28]] } }
+  ]
+};
+
+const housePage = {
+  name: 'house',
+  marks: [
+    { poly: [[34, 52], [44, 52], [44, 62], [34, 62]], fill: '#fffdf8' },
+    { line: [[39, 52], [39, 62]] },
+    { line: [[34, 57], [44, 57]] }
+  ],
+  regions: [
+    { id: 'sky', label: [16, 28], shape: { poly: [[0, 0], [100, 0], [100, 70], [0, 70]] } },
+    { id: 'grass', label: [16, 88], shape: { poly: [[0, 70], [100, 70], [100, 100], [0, 100]] } },
+    { id: 'sun', label: [82, 18], shape: { circle: [82, 18, 11] } },
+    { id: 'wall', label: [66, 58], shape: { poly: [[28, 46], [76, 46], [76, 80], [28, 80]] } },
+    { id: 'roof', label: [52, 36], shape: { poly: [[22, 46], [52, 24], [82, 46]] } },
+    { id: 'door', label: [53, 72], shape: { poly: [[46, 62], [60, 62], [60, 80], [46, 80]] } }
+  ]
+};
+
+const boatPage = {
+  name: 'boat',
+  marks: [{ line: [[52, 64], [52, 14]], width: 2.5 }],
+  regions: [
+    { id: 'sky', label: [16, 22], shape: { poly: [[0, 0], [100, 0], [100, 62], [0, 62]] } },
+    { id: 'sea', label: [16, 90], shape: { poly: [[0, 58], [100, 58], [100, 100], [0, 100]] } },
+    { id: 'sun', label: [82, 18], shape: { circle: [82, 18, 10] } },
+    { id: 'sail', label: [62, 40], shape: { poly: [[52, 66], [52, 18], [76, 50]] } },
+    { id: 'hull', label: [52, 74], shape: { poly: [[28, 62], [80, 62], [70, 82], [36, 82]] } },
+    { id: 'flag', label: [58, 20], shape: { poly: [[52, 14], [68, 20], [52, 26]] } }
+  ]
+};
+
+const gardenPage = {
+  name: 'garden',
+  marks: [
+    { poly: [[62, 52], [70, 52], [70, 61], [62, 61]], fill: '#fffdf8' },
+    { line: [[66, 52], [66, 61]] },
+    { line: [[62, 56], [70, 56]] }
+  ],
+  regions: [
+    { id: 'sky', label: [28, 44], shape: { poly: [[0, 0], [100, 0], [100, 68], [0, 68]] } },
+    { id: 'grass', label: [50, 90], shape: { poly: [[0, 68], [100, 68], [100, 100], [0, 100]] } },
+    { id: 'sun', label: [16, 16], shape: { circle: [16, 16, 9] } },
+    {
+      id: 'cloud',
+      label: [48, 16],
+      shape: { parts: [{ circle: [40, 18, 8] }, { circle: [48, 16, 10] }, { circle: [58, 18, 7] }] }
+    },
+    { id: 'wall', label: [84, 56], shape: { poly: [[60, 48], [90, 48], [90, 78], [60, 78]] } },
+    { id: 'roof', label: [75, 38], shape: { poly: [[54, 48], [75, 28], [96, 48]] } },
+    { id: 'door', label: [75, 70], shape: { poly: [[70, 60], [80, 60], [80, 78], [70, 78]] } },
+    {
+      id: 'flower',
+      label: [26, 70],
+      shape: {
+        parts: [
+          { circle: [26, 70, 8] },
+          { circle: [34, 76, 8] },
+          { circle: [30, 86, 8] },
+          { circle: [22, 86, 8] },
+          { circle: [18, 76, 8] },
+          { circle: [26, 78, 5] },
+          { poly: [[24, 84], [28, 84], [28, 98], [24, 98]] }
+        ]
+      }
+    }
+  ]
+};
+
+const butterflyPage = {
+  name: 'butterfly',
+  marks: [
+    { line: [[48, 34], [42, 24]] },
+    { line: [[52, 34], [58, 24]] },
+    { circle: [42, 24, 1.6], fill: '#2c2824', stroke: false },
+    { circle: [58, 24, 1.6], fill: '#2c2824', stroke: false }
+  ],
+  regions: [
+    { id: 'sky', label: [50, 12], shape: { poly: [[0, 0], [100, 0], [100, 70], [0, 70]] } },
+    { id: 'grass', label: [50, 92], shape: { poly: [[0, 70], [100, 70], [100, 100], [0, 100]] } },
+    { id: 'sun', label: [84, 16], shape: { circle: [84, 16, 8] } },
+    { id: 'left', label: [26, 50], shape: { ellipse: [34, 48, 18, 24] } },
+    { id: 'right', label: [74, 52], shape: { ellipse: [66, 48, 18, 24] } },
+    { id: 'body', label: [50, 56], shape: { ellipse: [50, 50, 6, 18] } },
+    { id: 'spots', label: [28, 40], shape: { parts: [{ circle: [28, 40, 6] }, { circle: [72, 40, 6] }] } },
+    {
+      id: 'flower',
+      label: [18, 76],
+      shape: {
+        parts: [
+          { circle: [18, 76, 7] },
+          { circle: [25, 80, 7] },
+          { circle: [22, 88, 7] },
+          { circle: [14, 88, 7] },
+          { circle: [11, 80, 7] },
+          { circle: [18, 82, 4] }
+        ]
+      }
+    }
+  ]
+};
+
+const CRAYON_PAGES = {
+  4: [flowerPage, fishPage],
+  6: [housePage, boatPage],
+  8: [gardenPage, butterflyPage]
+};
+
+export function crayonPicture(level, index = 0) {
+  const pages = CRAYON_PAGES[crayonBoard(level).regions];
+  const n = Number.isFinite(+index) ? Math.abs(Math.trunc(+index)) : 0;
+  return pages[n % pages.length];
+}
+
+const MERGE_BOARDS = [
+  { size: 78, count: 4, chain: 3 },
+  { size: 60, count: 6, chain: 4 },
+  { size: 46, count: 8, chain: 5 }
+];
+
+export function mergeBoard(level) {
+  const index = Math.min(3, Math.max(1, Math.round(+level) || 1)) - 1;
+  return { ...MERGE_BOARDS[index] };
+}
+
+export function mergePromote(a, b, chain) {
+  if (a == null || b == null || String(a) !== String(b)) return null;
+  const list = Array.isArray(chain) ? chain : [];
+  const index = list.findIndex(item => String(item) === String(a));
+  if (index < 0 || index >= list.length - 1) return null;
+  return list[index + 1];
+}
+
+const SHAPE_WORDS = {
+  circle: ['circle', 'round'],
+  square: ['square'],
+  triangle: ['triangle'],
+  rectangle: ['rectangle'],
+  oval: ['oval'],
+  diamond: ['diamond'],
+  star: ['star'],
+  hexagon: ['hexagon']
+};
+
+export function spokenShape(transcript, names) {
+  const text = ` ${String(transcript || '').toLowerCase().replace(/[^a-z]+/g, ' ').replace(/\s+/g, ' ').trim()} `;
+  const list = Array.isArray(names) && names.length ? names : Object.keys(SHAPE_WORDS);
+  const hits = [];
+  for (const name of list) {
+    const words = SHAPE_WORDS[name] || [String(name).toLowerCase()];
+    if (words.some(word => text.includes(` ${word} `))) hits.push(name);
+  }
+  return hits.length === 1 ? hits[0] : '';
+}
+
+export const RACE_KINDS = ['facts', 'words', 'shapes', 'colors'];
+
+export function raceKinds(saved) {
+  if (!saved || typeof saved !== 'object') return [...RACE_KINDS];
+  const on = RACE_KINDS.filter(kind => saved[kind] === true);
+  return on.length ? on : [...RACE_KINDS];
+}
+
+export function raceGateSeconds(level) {
+  const index = Math.min(3, Math.max(1, Math.round(+level) || 1)) - 1;
+  return [11, 8, 6][index];
+}
+
+function raceEntry(entry) {
+  const name = String(entry?.name || '').trim().slice(0, 24);
+  const distance = Math.round(+entry?.distance);
+  if (!name || !Number.isFinite(distance) || distance < 0) return null;
+  return { name, distance, at: +entry.at || 0 };
+}
+
+export function raceStandings(entries, limit = 8) {
+  const byName = new Map();
+  for (const entry of entries || []) {
+    const item = raceEntry(entry);
+    if (!item) continue;
+    const key = item.name.toLowerCase();
+    const prev = byName.get(key);
+    if (!prev || item.distance > prev.distance) byName.set(key, item);
+  }
+  return [...byName.values()]
+    .sort((a, b) => b.distance - a.distance || a.at - b.at)
+    .slice(0, Math.max(1, limit | 0));
+}
+
+export function raceBoard(entries, next, limit = 8) {
+  const row = raceEntry(next) || { name: 'Learner', distance: 0, at: 0 };
+  const full = raceStandings([...(Array.isArray(entries) ? entries : []), row], 1000);
+  const key = row.name.toLowerCase();
+  const best = full.find(item => item.name.toLowerCase() === key)?.distance ?? row.distance;
+  const rank = full.findIndex(item => item.name.toLowerCase() === key) + 1;
+  return { list: full.slice(0, Math.max(1, limit | 0)), rank, distance: row.distance, best };
 }
 
 export function distractorLetters(word, level) {
@@ -61,9 +683,101 @@ export function starChip(profile) {
   return `${stars} · ${profile.correct} of ${profile.total} first tries`;
 }
 
+/** Sprout sprites grow as learning stars add up. */
+export function spriteGrow(stars) {
+  const n = Math.max(0, Math.floor(+stars) || 0);
+  if (n >= 40) return 5;
+  if (n >= 20) return 4;
+  if (n >= 8) return 3;
+  if (n >= 1) return 2;
+  return 1;
+}
+
+export const SPRITES = ['fox', 'bear', 'bunny', 'frog', 'owl', 'chick'];
+
+export function profileSprite(profile, index = 0) {
+  if (SPRITES.includes(profile?.sprite)) return profile.sprite;
+  return SPRITES[Math.max(0, index | 0) % SPRITES.length];
+}
+
+export function nextSprite(profiles) {
+  const list = Array.isArray(profiles) ? profiles : [];
+  const used = new Set(list.map((profile, index) => profileSprite(profile, index)));
+  return SPRITES.find(kind => !used.has(kind)) || SPRITES[list.length % SPRITES.length];
+}
+
+export function blankLearner(name = 'New learner', sprite = 'fox') {
+  const trimmed = String(name || 'New learner').trim().slice(0, 24);
+  return {
+    name: trimmed || 'New learner',
+    stage: 'preschool',
+    level: 1,
+    rounds: 5,
+    style: 'tap',
+    sprite: profileSprite({ sprite }, 0),
+    words: ['I', 'a', 'the', 'my', 'see'],
+    stars: 0,
+    earned: 0,
+    sessions: 0,
+    correct: 0,
+    total: 0
+  };
+}
+
+/**
+ * Star-garden standings. With no stars yet, learners stay in their usual order.
+ * Once someone has stars, the board is a podium: second, first, third.
+ */
+export function pointBoard(profiles) {
+  const rows = (Array.isArray(profiles) ? profiles : []).map((profile, index) => {
+    const stars = Math.max(0, Math.floor(+profile?.stars) || 0);
+    return {
+      index,
+      name: String(profile?.name || `Learner ${index + 1}`).trim() || `Learner ${index + 1}`,
+      stars,
+      earned: Math.max(0, Math.floor(+profile?.earned) || 0),
+      grow: spriteGrow(stars),
+      sprite: profileSprite(profile, index)
+    };
+  });
+  const ranked = [...rows].sort((a, b) => b.stars - a.stars || a.index - b.index);
+  ranked.forEach((row, place) => {
+    row.rank = place && row.stars === ranked[place - 1].stars ? ranked[place - 1].rank : place + 1;
+  });
+  if (!rows.some(row => row.stars > 0) || ranked.length < 3) return ranked;
+  return [ranked[1], ranked[0], ranked[2], ...ranked.slice(3)];
+}
+
 export function roundsSentence(profile) {
   const rounds = profile.sessions === 1 ? '1 round' : `${profile.sessions} rounds`;
   return `${rounds} completed · ${profile.correct} of ${profile.total} first tries correct.`;
+}
+
+export const ROUND_CHOICES = [5, 10, 15];
+
+/** Questions in one round. Only 5, 10, or 15. */
+export function roundCount(value) {
+  const n = Math.round(+value);
+  return ROUND_CHOICES.includes(n) ? n : 5;
+}
+
+/** How many rally questions fit a stage. Five on a usual round, up to eight on a long one. */
+export function rallyQuestionCount(rounds) {
+  const n = roundCount(rounds);
+  if (n <= 5) return n;
+  if (n >= 15) return 8;
+  return 7;
+}
+
+/** Right answers that open the rest of a rally stage. A usual round opens after five. */
+export function rallyClearCount(rounds) {
+  return Math.min(5, rallyQuestionCount(rounds));
+}
+
+/** Progress marks from just after the start to just before the finish. */
+export function rallyGates(count) {
+  const stops = Math.max(1, Math.round(+count) || 1);
+  return Array.from({ length: stops }, (_, index) => (index + 1) / (stops + 1));
 }
 
 export function skillState(record) {
@@ -111,6 +825,7 @@ export function applyRound(profile, mode, key, rounds, firstCorrect) {
   return {
     ...profile,
     stars: profile.stars + rounds,
+    earned: Math.max(0, rounds | 0),
     sessions: profile.sessions + 1,
     correct: profile.correct + firstCorrect,
     total: profile.total + rounds,
@@ -250,8 +965,110 @@ const uniqueOthers = (list, target) => [...new Set(list)].filter(n => Number.isI
 const productPool = (a, b) => uniqueOthers([(a + 1) * b, (a - 1) * b, a * (b + 1), a * (b - 1), a + b, a * b + 10, a * b - 10, a * b + 1, a * b - 1], a * b);
 const g4 = q => ({ show: 'none', floor: false, grade: true, lo: 1, hi: q.target * 2 + 10, ...q });
 
-function factNumbers(facts, fallback) {
-  const nums = [...new Set((facts || []).map(Number).filter(n => Number.isInteger(n) && n >= 2 && n <= 12))];
+const FACT_OFF = /^(off|hide|no|skip|false)$/i;
+
+function asFactSet(facts) {
+  if (!facts) return null;
+  if (Array.isArray(facts)) {
+    const tables = [...new Set(facts.map(Number).filter(n => Number.isInteger(n) && n >= 2 && n <= 12))];
+    return tables.length ? { tables, decades: [], double: false } : null;
+  }
+  if (typeof facts === 'object') return facts;
+  return null;
+}
+
+function decadesIn(text) {
+  return [...String(text).matchAll(/([1-9])0s?/gi)].map(match => Number(match[1]) * 10);
+}
+
+export function factSetFromRows(rows) {
+  const tables = [];
+  const decades = [];
+  let double = false;
+  let enabled = 0;
+  for (const row of rows || []) {
+    const extra = String(row?.extra || '').trim();
+    if (FACT_OFF.test(extra)) continue;
+    const item = String(row?.item || '').trim().toLowerCase();
+    if (!item) continue;
+    if (item === 'double' || item === 'digits' || item === 'doubles' || item === 'double digits') {
+      double = true;
+      enabled += 1;
+      decades.push(...decadesIn(extra));
+      continue;
+    }
+    const decade = item.match(/^([1-9])0s$/);
+    if (decade) {
+      decades.push(Number(decade[1]) * 10);
+      enabled += 1;
+      continue;
+    }
+    const n = Number(item);
+    if (Number.isInteger(n) && n >= 2 && n <= 12) {
+      tables.push(n);
+      enabled += 1;
+    }
+  }
+  if (!enabled) return null;
+  return {
+    tables: [...new Set(tables)].sort((a, b) => a - b),
+    decades: [...new Set(decades)].filter(n => n >= 10 && n <= 90).sort((a, b) => a - b),
+    double
+  };
+}
+
+function tableQuestion(tables, rand) {
+  const a = pickFrom(tables, rand);
+  const b = pickFrom(tables, rand);
+  if (rand() < 0.3) {
+    return g4({
+      kind: 'missing', a, b, product: a * b, target: a, lo: 1, hi: Math.max(...tables),
+      question: `What times ${b} makes ${a * b}?`
+    });
+  }
+  return g4({ kind: 'mul', a, b, target: a * b, pool: productPool(a, b), question: `What is ${a} × ${b}?` });
+}
+
+function tensQuestion(decade, rand) {
+  const a = decade;
+  const b = between(2, 9, rand);
+  return g4({
+    kind: 'tens', a, b, target: a * b,
+    pool: uniqueOthers([a * b / 10, (a + 10) * b, Math.max(0, a - 10) * b, a * (b + 1), a * (b - 1), a * b * 10], a * b),
+    question: `What is ${a} × ${b}?`
+  });
+}
+
+function doubleQuestion(decade, rand) {
+  const ones = between(1, 9, rand);
+  const a = decade + ones;
+  const b = between(2, 9, rand);
+  return g4({
+    kind: 'mul21', a, b, tens: decade, ones, target: a * b,
+    pool: uniqueOthers([decade * b + ones, decade * b + ones * b + 10, a * b - 10, a * (b + 1), a * (b - 1), (a + 1) * b], a * b),
+    question: `What is ${a} × ${b}?`
+  });
+}
+
+function placedQuestion(set, rand) {
+  const kinds = [];
+  if (set.double) kinds.push('mul21');
+  if (set.decades.length) kinds.push('tens');
+  if (!kinds.length) return set.tables.length ? tableQuestion(set.tables, rand) : null;
+  const decade = pickFrom(set.decades.length ? set.decades : [10], rand);
+  return pickFrom(kinds, rand) === 'tens' && set.decades.length
+    ? tensQuestion(decade, rand)
+    : doubleQuestion(set.decades.length ? decade : 10, rand);
+}
+
+function stepNumbers(set, level, fallback) {
+  if (!set) return fallback;
+  let nums = set.tables.slice();
+  if (level > 1) nums = nums.concat(set.decades);
+  if (level === 1) {
+    const easy = nums.filter(n => [2, 3, 4, 5, 10].includes(n));
+    if (easy.length) nums = easy;
+  }
   return nums.length ? nums : fallback;
 }
 
@@ -264,34 +1081,25 @@ function gradeCount(level, rand, facts) {
       question: `${rows} rows of ${cols}. How many in all?`
     });
   }
-  if (level === 2) {
-    const tables = factNumbers(facts, numberRange(2, 12));
-    const a = pickFrom(tables, rand), b = pickFrom(tables, rand);
-    if (rand() < 0.3) {
-      return g4({
-        kind: 'missing', a, b, product: a * b, target: a, lo: 1, hi: 12,
-        question: `What times ${b} makes ${a * b}?`
-      });
+  const set = asFactSet(facts);
+  if (!set) {
+    if (level === 2) return tableQuestion(numberRange(2, 12), rand);
+    const kind = pickFrom(['mul21', 'mul21', 'mul21', 'tens'], rand);
+    if (kind === 'tens') {
+      const a = between(2, 9, rand) * 10, b = between(2, 9, rand);
+      return g4({ kind, a, b, target: a * b, pool: uniqueOthers([a * b / 10, (a + 10) * b, (a - 10) * b, a * (b + 1), a * (b - 1), a * b * 10], a * b), question: `What is ${a} × ${b}?` });
     }
-    return g4({ kind: 'mul', a, b, target: a * b, pool: productPool(a, b), question: `What is ${a} × ${b}?` });
+    let a = between(12, 49, rand);
+    if (a % 10 === 0) a += 1;
+    const b = between(3, 9, rand), tens = a - (a % 10), ones = a % 10;
+    return g4({
+      kind: 'mul21', a, b, tens, ones, target: a * b,
+      pool: uniqueOthers([tens * b + ones, tens * b + ones * b + 10, a * b - 10, a * (b + 1), a * (b - 1), (a + 1) * b], a * b),
+      question: `What is ${a} × ${b}?`
+    });
   }
-  const kind = pickFrom(['mul21', 'mul21', 'tens', 'mul22'], rand);
-  if (kind === 'tens') {
-    const a = between(2, 9, rand) * 10, b = between(2, 9, rand);
-    return g4({ kind, a, b, target: a * b, pool: uniqueOthers([a * b / 10, (a + 10) * b, (a - 10) * b, a * (b + 1), a * (b - 1), a * b * 10], a * b), question: `What is ${a} × ${b}?` });
-  }
-  if (kind === 'mul22') {
-    const a = between(11, 19, rand), b = between(11, 15, rand);
-    return g4({ kind, a, b, target: a * b, pool: uniqueOthers([a * (b - 10) + a, a * b + 10, a * b - 10, a * (b + 1), (a + 1) * b, a * b + 100], a * b), question: `What is ${a} × ${b}?` });
-  }
-  let a = between(12, 49, rand);
-  if (a % 10 === 0) a++;
-  const b = between(3, 9, rand), tens = a - (a % 10), ones = a % 10;
-  return g4({
-    kind, a, b, tens, ones, target: a * b,
-    pool: uniqueOthers([tens * b + ones, tens * b + ones * b + 10, a * b - 10, a * (b + 1), a * (b - 1), (a + 1) * b], a * b),
-    question: `What is ${a} × ${b}?`
-  });
+  if (level === 2 && set.tables.length) return tableQuestion(set.tables, rand);
+  return placedQuestion(set, rand) || tableQuestion(set.tables.length ? set.tables : [2, 10], rand);
 }
 
 const FACTOR_TARGETS = [12, 16, 18, 20, 24, 28, 30, 32, 36, 40, 42, 45, 48, 54, 56, 60, 63, 64, 72, 84, 90, 96];
@@ -302,7 +1110,7 @@ const lcm = (a, b) => { let m = Math.max(a, b); while (m % a || m % b) m++; retu
 
 function gradePath(kind, level, rand, facts) {
   if (kind === 'next') {
-    const n = pickFrom(factNumbers(facts, level === 1 ? [2, 3, 4, 5, 10] : [6, 7, 8, 9, 11, 12]), rand), k = between(1, 6, rand);
+    const n = pickFrom(stepNumbers(asFactSet(facts), level, level === 1 ? [2, 3, 4, 5, 10] : [6, 7, 8, 9, 11, 12]), rand), k = between(1, 6, rand);
     const strip = [n * k, n * (k + 1), n * (k + 2)], target = n * (k + 3);
     return g4({
       kind, n, strip, target, pool: uniqueOthers([target + n, target - 1, target + 1, target + 10, target - 2], target),
@@ -310,7 +1118,7 @@ function gradePath(kind, level, rand, facts) {
     });
   }
   if (kind === 'multipleOf') {
-    const n = pickFrom(factNumbers(facts, level === 1 ? [2, 5, 10] : [3, 4, 6, 7, 8, 9]), rand), target = n * between(2, 9, rand);
+    const n = pickFrom(stepNumbers(asFactSet(facts), level, level === 1 ? [2, 5, 10] : [3, 4, 6, 7, 8, 9]), rand), target = n * between(2, 9, rand);
     const near = numberRange(Math.max(2, target - 12), target + 12).filter(x => x % n);
     return g4({ kind, n, target, choices: [...shuffleWith(near, rand).slice(0, 3), target], question: `Which number is a multiple of ${n}?` });
   }
@@ -428,7 +1236,7 @@ export function numberDeck(stage, countLevel, pathLevel) {
 }
 
 export function resetProgress(profile) {
-  return { ...profile, stars: 0, sessions: 0, correct: 0, total: 0, skills: {} };
+  return { ...profile, stars: 0, earned: 0, sessions: 0, correct: 0, total: 0, skills: {} };
 }
 
 const SHEET_GAMES = { words: 'words', word: 'words', count: 'count', hunt: 'hunt', facts: 'facts', fact: 'facts' };
@@ -484,10 +1292,27 @@ export function parseSheet(text) {
   return { rows, note: rows.length ? 'ok' : 'none' };
 }
 
+function withNewFacts(defaults, extra) {
+  const seen = new Set(extra.filter(row => row.game === 'facts').map(row => String(row.item).trim().toLowerCase()));
+  const added = defaults.filter(row => row.game === 'facts' && !seen.has(String(row.item).trim().toLowerCase()));
+  return added.length ? [...extra, ...added] : extra;
+}
+
+function withNewBandWords(defaults, extra) {
+  const bands = new Set(['preschool', 'kindergarten', 'grade4']);
+  const seen = new Set(extra.filter(row => row.game === 'words').map(row => `${String(row.learner || '').trim().toLowerCase()}|${String(row.item).trim().toLowerCase()}`));
+  const added = defaults.filter(row => {
+    if (row.game !== 'words') return false;
+    const who = String(row.learner || '').trim().toLowerCase();
+    return bands.has(who) && !seen.has(`${who}|${String(row.item).trim().toLowerCase()}`);
+  });
+  return added.length ? [...extra, ...added] : extra;
+}
+
 export function mergeSheets(base, overlay) {
   const defaults = base?.rows || [];
   const extra = overlay?.rows || [];
   const games = [...new Set(extra.map(row => row.game))];
-  const rows = [...defaults.filter(row => !games.includes(row.game)), ...extra];
+  const rows = withNewBandWords(defaults, withNewFacts(defaults, [...defaults.filter(row => !games.includes(row.game)), ...extra]));
   return { rows, note: rows.length ? 'ok' : (base?.note || 'empty'), games };
 }

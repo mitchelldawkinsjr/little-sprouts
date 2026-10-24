@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#10131a">
+<title>Dirt ride</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: #0c0e14; overflow: hidden; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; }
+  #stage { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  canvas { background: #0c0e14; touch-action: none; box-shadow: 0 10px 60px rgba(0,0,0,.7); }
+  #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; color: #ffd34d; font-size: 22px; letter-spacing: 2px; }
+  #ask { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; background: rgba(20, 16, 12, .45); font-family: Outfit, Inter, sans-serif; color: #244b3d; }
+  #ask[hidden] { display: none !important; }
+  #ask .card { width: min(720px, 92%); background: #faf9f5; border-radius: 22px; padding: 22px 20px 18px; box-shadow: 0 16px 40px #0005; }
+  #ask .prompt { margin: 0 0 12px; text-align: center; font-size: clamp(22px, 3.4vw, 34px); font-weight: 700; line-height: 1.25; }
+  #ask .show { display: flex; justify-content: center; gap: 8px; margin: 0 0 12px; font-size: 28px; }
+  #ask .show .countrow, #ask .show .numpath { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+  #ask .show .here { outline: 3px solid #db8b32; border-radius: 8px; }
+  #ask .choices { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+  #ask button { min-width: 120px; min-height: 92px; padding: 10px 14px; border: 3px solid #d7decc; border-radius: 16px; background: #fff; color: #244b3d; font: 700 clamp(20px, 3vw, 30px)/1.1 Outfit, Inter, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; cursor: pointer; }
+  #ask button.wrong { border-color: #b42318; background: #fff4e9; }
+  #ask button.correct { border-color: #32634e; background: #e7f0df; }
+  #ask .shape { display: block; width: 54px; height: 54px; background: var(--shape-color, #5d7a45); }
+  #ask .circle { border-radius: 50%; }
+  #ask .square { border-radius: 5px; }
+  #ask .triangle { clip-path: polygon(50% 0, 0 100%, 100% 100%); }
+  #ask .rectangle { width: 72px; height: 44px; border-radius: 5px; }
+  #ask .oval { width: 72px; border-radius: 50%; }
+  #ask .diamond { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+  #ask .star { clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 94%, 50% 73%, 21% 94%, 32% 57%, 2% 35%, 39% 35%); }
+  #ask .hexagon { clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); }
+  #ask .swatch { width: 54px; height: 54px; border-radius: 50%; border: 1px solid #0002; }
+  #ask .slots { margin: 0 0 14px; text-align: center; font: 800 32px Outfit, Inter, sans-serif; letter-spacing: .14em; }
+  #ask button.letter { min-width: 64px; min-height: 64px; }
+  #ask .spell-type { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 14px 0 0; font-size: 15px; font-weight: 700; }
+  #ask .spell-key { width: min(220px, 80%); height: 52px; border: 3px solid #d7decc; border-radius: 14px; text-align: center; font: 700 28px Outfit, Inter, sans-serif; color: #244b3d; background: #fff; }
+  #ask .spell-key.wrong { border-color: #b42318; background: #fff4e9; }
+  #ask .note { margin: 12px 0 0; text-align: center; font-size: 15px; font-weight: 600; }
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="game" width="1280" height="720"></canvas></div>
+<div id="loading">LOADING…</div>
+<div id="ask" hidden></div>
+<script src="rampage.js?v=dirt-rider"></script>
+<script src="sprouts-bridge.js?v=arcade-play"></script>
+</body>
+</html>
