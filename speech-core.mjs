@@ -70,6 +70,16 @@ export function usable(samples) {
   return peak >= 0.02 && peak <= 1.5 && rms >= 0.008 && wild / samples.length < 0.002 && zcr < 0.4;
 }
 
+// Brings each clip's loudest point up to the same level, so a quiet line still sits above the game sound.
+export function voiceGain(samples, target = 0.95, most = 3) {
+  let peak = 0;
+  for (let i = 0; i < (samples?.length || 0); i++) {
+    const mag = Math.abs(samples[i]);
+    if (mag > peak) peak = mag;
+  }
+  return peak > 0 ? Math.min(most, target / peak) : 1;
+}
+
 // Stored clips from older model or key versions go first, then the least recently heard past the limit.
 export function evictionPlan(rows, limit) {
   const stale = rows.filter(row => !currentKey(row.key)).map(row => row.key);

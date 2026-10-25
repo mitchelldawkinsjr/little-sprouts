@@ -16,15 +16,21 @@ function resize() {
 }
 addEventListener('resize', resize); resize();
 
+// Game sound sits well under the spoken question, and dips further while a line is being read.
+const GAME_LEVEL = 0.32;
+const DUCK_LEVEL = 0.08;
+
 class Sound {
-  constructor() { this.ctx = null; this.enabled = true; this.engineOn = false; }
+  constructor() { this.ctx = null; this.enabled = true; this.engineOn = false; this.ducked = false; }
+  level() { return this.enabled ? (this.ducked ? DUCK_LEVEL : GAME_LEVEL) : 0; }
+  apply() { if (this.master) this.master.gain.setTargetAtTime(this.level(), this.ctx.currentTime, this.ducked ? 0.05 : 0.25); }
   init() {
     if (this.ctx) return;
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) { this.enabled = false; return; }
     this.ctx = new AC();
     this.master = this.ctx.createGain();
-    this.master.gain.value = 0.85;
+    this.master.gain.value = this.level();
     this.master.connect(this.ctx.destination);
     const b = this.ctx.createBuffer(1, this.ctx.sampleRate * 1.2, this.ctx.sampleRate);
     const d = b.getChannelData(0);
@@ -88,7 +94,7 @@ class Sound {
   click() { this.tone(660, 0.06, 'square', 0.08); }
   toggle() {
     this.enabled = !this.enabled;
-    if (this.master) this.master.gain.setTargetAtTime(this.enabled ? 0.85 : 0, this.ctx.currentTime, 0.03);
+    this.apply();
     return this.enabled;
   }
 }
@@ -1003,7 +1009,11 @@ window.DirtRampage = {
   setAudio(on) {
     audio.init();
     audio.enabled = !!on;
-    if (audio.master && audio.ctx) audio.master.gain.setTargetAtTime(on ? 0.85 : 0, audio.ctx.currentTime, 0.03);
+    audio.apply();
+  },
+  setDuck(on) {
+    audio.ducked = !!on;
+    audio.apply();
   },
   toggleMute() {
     audio.init();

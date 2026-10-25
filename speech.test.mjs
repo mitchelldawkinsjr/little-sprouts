@@ -12,7 +12,8 @@ import {
   settler,
   speakable,
   usable,
-  voiceFor
+  voiceFor,
+  voiceGain
 } from './speech-core.mjs';
 
 const tone = (n = 4800) => Float32Array.from({ length: n }, (_, i) => 0.3 * Math.sin(i * 2 * Math.PI * 200 / 24000));
@@ -141,8 +142,11 @@ class FakeAudio {
     return { duration: length / rate, getChannelData: () => data };
   }
   createBufferSource() {
-    const node = { connect() {}, start() { node.started = true; sources.push(node); }, stop() { node.stopped = true; } };
+    const node = { connect(next) { node.next = next; }, start() { node.started = true; sources.push(node); }, stop() { node.stopped = true; } };
     return node;
+  }
+  createGain() {
+    return { gain: { value: 1 }, connect() {} };
   }
   resume() { return Promise.resolve(); }
 }
@@ -165,6 +169,30 @@ async function fresh({ ready = false } = {}) {
   return speech;
 }
 const audioFor = (req, extra = {}) => ({ type: 'AUDIO', id: req.id, text: req.text, voice: req.voice, speed: req.speed, samples: tone(), rate: 24000, source: 'model', synthMs: 900, ...extra });
+
+test('a quiet clip is raised to the same loudness, and a loud one is left alone', () => {
+  assert.equal(voiceGain(Float32Array.from([0.2, -0.5])), 0.95 / 0.5);
+  assert.equal(voiceGain(Float32Array.from([0.01, -0.02])), 3);
+  assert.ok(Math.abs(voiceGain(Float32Array.from([0.95, -0.5])) - 1) < 1e-6);
+  assert.equal(voiceGain(new Float32Array(10)), 1);
+});
+
+test('the voice is raised before it reaches the speakers, and the game hears when it is talking', async () => {
+  const speech = await fresh({ ready: true });
+  const seen = [];
+  const off = speech.onSpeechStatus(shot => seen.push(shot.speaking));
+  const line = speech.speakAndWait('Spell cat.');
+  assert.equal(speech.getSpeechStatus().speaking, null, 'quiet while the line is still being made');
+  workers[0].reply(audioFor(workers[0].last('SYNTHESIZE')));
+  await flush();
+  assert.equal(sources[0].next.gain.value, 3, 'the clip is louder than it came out of the model');
+  assert.equal(speech.getSpeechStatus().speaking, 'kokoro');
+  sources[0].onended();
+  await line;
+  assert.equal(speech.getSpeechStatus().speaking, null);
+  assert.ok(seen.includes('kokoro'));
+  off();
+});
 
 test('a queued question waits until the line already speaking has finished', async () => {
   const speech = await fresh({ ready: true });

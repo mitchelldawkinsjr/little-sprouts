@@ -1,7 +1,7 @@
 // Kokoro runs here so a prompt cannot freeze taps or the Next button.
 // Identical lines are reused: first from memory, then from this browser’s storage, and only then generated.
 // Requests: INIT, SYNTHESIZE, PREFETCH, CANCEL, CLEAR_CACHE, GET_STATUS. Replies: READY, PROGRESS, AUDIO, ERROR, STATUS.
-import { DTYPE, MODEL, clipKey, createQueue, evictionPlan, usable } from './speech-core.mjs?v=voice-life';
+import { DTYPE, MODEL, clipKey, createQueue, evictionPlan, usable } from './speech-core.mjs?v=mix-level';
 
 const KOKORO = 'https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1';
 const MEMORY_LIMIT = 32;

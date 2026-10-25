@@ -194,6 +194,7 @@
       if (waiting) openAsk();
     }
     if (data.type === 'mark') bike.grant(!!data.ok);
+    if (data.type === 'duck') bike.setDuck(!!data.on);
   });
   window.addEventListener('keydown', function (event) {
     if (event.target && event.target.classList && event.target.classList.contains('spell-key')) event.stopPropagation();

@@ -81,7 +81,14 @@ Text is cleaned before speaking and before building keys:
 - Emoji are removed.
 - Mr., Dr., and similar abbreviations are spelled out.
 
-`warm()` on the home screen prefetches the common feedback lines. Starting a word game prefetches that game's prompts for the learner's first 8 sight words. `wordPrompt()` in `app.js` builds both the prefetched and the spoken prompt, so the two can't drift apart.
+`warm()` on the home screen prefetches the common feedback lines. Starting a word game prefetches that game's prompts for the learner's first 8 sight words. `wordPrompt()` in `app.js` builds both the prefetched and the spoken prompt, so the two can't drift apart. Sidecar games (dirt ride, rally, flight, walk) prefetch each question when it is chosen, a few seconds before its card opens, plus their right and wrong lines.
+
+## Timing and the mix
+
+- `say()` queues: a question waits for the line already playing instead of cutting it off. **Hear it again** cuts in. Leaving a round or starting a game clears the queue.
+- Sidecar questions are spoken when the card opens (the guest's `show` message).
+- Each Kokoro clip is raised so its loudest point reaches 0.95 (at most 3×). The browser voice plays at full volume.
+- While a line is audible, the page sends `{ type: 'duck', on }` to the sidecar. The dirt bike plays at 0.32 and dips to 0.08. `sidecar-guest.js` routes everything a guest sends to the speakers through one gain: 0.4, dipping to 0.12.
 
 ## Voice roles
 

@@ -2,7 +2,7 @@
 // The browser’s own voice speaks only while Kokoro is still downloading with no stored copy of the line,
 // or when Kokoro cannot run here. A slow line on a working Kokoro is waited for, not swapped.
 // A queued line waits its turn, so the question on screen is not thrown away by the next line.
-import { SPEED, chooseEngine, clipKey, commonLines, contextFor, profiles, retryDelay, settler, speakable, usable, voiceFor } from './speech-core.mjs?v=voice-life';
+import { SPEED, chooseEngine, clipKey, commonLines, contextFor, profiles, retryDelay, settler, speakable, usable, voiceFor, voiceGain } from './speech-core.mjs?v=mix-level';
 
 export { commonLines, contextFor, profiles, voiceFor };
 
@@ -59,7 +59,7 @@ function snapshot() {
     error: state.error,
     attempts: state.attempts,
     retryIn: state.retryAt ? Math.max(0, state.retryAt - Date.now()) : null,
-    speaking: current?.engine ?? null,
+    speaking: current?.startedAt ? current.engine : null,
     cache: state.cache,
     metrics: { ...metrics, fallbacks: { ...metrics.fallbacks } },
     log: trail.slice()
@@ -126,7 +126,7 @@ function crashed(message) {
 
 function ensureWorker() {
   if (worker) return worker;
-  worker = new Worker(new URL('./speech-worker.js?v=voice-life', import.meta.url), { type: 'module' });
+  worker = new Worker(new URL('./speech-worker.js?v=mix-level', import.meta.url), { type: 'module' });
   worker.onmessage = event => receive(event.data || {});
   worker.onerror = event => {
     event?.preventDefault?.();
@@ -214,6 +214,7 @@ function browserSay(req, reason) {
   synth.cancel();
   const utterance = new SpeechSynthesisUtterance(req.text);
   utterance.rate = SPEED;
+  utterance.volume = 1;
   utterance.onstart = () => begin(req);
   utterance.onend = () => finish(req, 'completed');
   utterance.onerror = event => finish(req, ['interrupted', 'canceled'].includes(event?.error) ? 'interrupted' : 'failed');
@@ -243,7 +244,10 @@ async function play(req, clip) {
   buffer.getChannelData(0).set(clip.samples);
   const node = ctx.createBufferSource();
   node.buffer = buffer;
-  node.connect(ctx.destination);
+  const level = ctx.createGain();
+  level.gain.value = voiceGain(clip.samples);
+  node.connect(level);
+  level.connect(ctx.destination);
   node.onended = () => finish(req, 'completed');
   req.node = node;
   begin(req);

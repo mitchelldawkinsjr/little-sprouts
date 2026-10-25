@@ -69,7 +69,7 @@ import {
   crayonPicture,
   crayonLegend
 } from './logic.mjs?v=lily-cross';
-import { canSpeak, commonLines, contextFor, getSpeechStatus, knownVoice, onSpeechStatus, prefetchSpeech, prepareSpeech, profiles, sampleLine, speak, speakAndWait, stop, voiceFor, voices, warm } from './speech.js?v=prompt-queue';
+import { canSpeak, commonLines, contextFor, getSpeechStatus, knownVoice, onSpeechStatus, prefetchSpeech, prepareSpeech, profiles, sampleLine, speak, speakAndWait, stop, voiceFor, voices, warm } from './speech.js?v=mix-level';
 import './pad.js?v=pad-rt';
 import { mountCatch, mountLanes, mountRace, mountRocket, pokeRocket, stopArcade } from './arcade.js?v=gas-car';
 import { mountLunar } from './lunar.js?v=moon-board';
@@ -91,7 +91,7 @@ import { mountCrayon, stopCrayon } from './crayon.js?v=color-num';
 import { mountMarble, stopMarble } from './marble.js?v=marble-path';
 import { mountBridge, stopBridge } from './bridge.js?v=bridge-run';
 import { mountMaze, stopMaze } from './maze.js?v=maze-board';
-import { findBuiltSidecars, mountSidecar, postSidecar, sidecarGame, sidecarIsBuilt, sidecarRows, stopSidecar } from './sidecar.js?v=arcade-play';
+import { findBuiltSidecars, mountSidecar, postSidecar, sidecarGame, sidecarIsBuilt, sidecarRows, stopSidecar } from './sidecar.js?v=mix-level';
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -430,15 +430,32 @@ function voiceNow(mode = game?.mode) {
 function say(t) {
   if (data.sound) speak(t, voiceNow(), { context: contextFor(game?.mode), queue: true });
 }
+// For a tap on Hear it again: cut in instead of waiting behind the line already playing.
+function sayNow(t) {
+  if (data.sound) speak(t, voiceNow(), { context: contextFor(game?.mode) });
+}
+let talking = false;
+onSpeechStatus(shot => {
+  const now = !!shot.speaking;
+  if (now === talking) return;
+  talking = now;
+  postSidecar({ type: 'duck', on: now });
+});
 function wordPrompt(mode, word, style) {
   if (mode === 'lanes') return style === 'reach' ? `Step into the word ${word}. You have 10 seconds.` : `Drive to the word ${word}.`;
   return mode === 'words' ? `Park on the word ${word}.` : `Build the word ${word}.`;
 }
+const sidecarLines = {
+  bike: ['Good.', 'Not yet. The bike speeds up.'],
+  rally: ['Yes! Turbo!', 'Not yet. The car slows down.'],
+  flight: ['Yes! Through the gate.', 'Not yet. The plane turns back.'],
+  walk: ['You found it.', 'Not yet. Walk to another one.']
+};
 function prefetchRound(g) {
   if (!data.sound) return;
   const voiceId = voiceNow(g.mode);
   const words = ['words', 'build', 'lanes'].includes(g.mode) ? wordList().slice(0, 8).map(w => wordPrompt(g.mode, w, g.style)) : [];
-  prefetchSpeech(words.concat(commonLines).map(text => ({ text, voiceId })), { priority: 'next' });
+  prefetchSpeech(words.concat(sidecarLines[g.mode] || [], commonLines).map(text => ({ text, voiceId })), { priority: 'next' });
 }
 function stopSpeech() {
   stop();
@@ -1266,11 +1283,12 @@ function question() {
       rallyAsk(g);
       if (g.mode === 'flight') flightAsk(g);
     }
+    // The card opens a few seconds later, when the ride reaches it. Make the line now so it plays the moment it shows.
+    if (data.sound && g.prompt) prefetchSpeech([{ text: g.prompt, voiceId: voiceNow(g.mode) }], { priority: 'next' });
     if (document.querySelector('iframe.sidecar-frame')) {
       paintRallyChrome(g);
       postSidecar(rallyMessage(g));
     } else renderGame();
-    if (g.prompt) say(g.prompt);
     return;
   }
   hybrid(g);
@@ -2261,7 +2279,7 @@ function renderGame() {
     : (wordHidden(g) ? '<button class="quiet" id="reveal" aria-label="Show the word"><span aria-hidden="true">👁</span></button>' : '');
   $('#app').innerHTML = `<div class="playtop"><button class="quiet" id="back">← All games</button><b>${esc(g.title)}</b>${tally}</div>${bar}<section class="playarea"><h1>${esc(heading(g))}</h1><button class="speaker" id="listen"><span aria-hidden="true">🔈</span> Hear it again</button>${reveal}${memory}${scene}${body}<p class="feedback" id="feedback" aria-live="polite"></p><button class="primary" id="next" data-camera-go hidden>${g.index + 1 === rounds ? 'See my stars ★' : 'Next adventure →'}</button></section>`;
   $('#back').onclick = requestHome;
-  $('#listen').onclick = () => say(g.prompt);
+  $('#listen').onclick = () => sayNow(g.prompt);
   if ($('#reveal')) $('#reveal').onclick = () => {
     g.shown = true;
     const title = $('#app h1');
@@ -2425,7 +2443,7 @@ function renderGame() {
         if (game && !game.finished) say(game.prompt);
       },
       onReplay() {
-        if (game && !game.finished) say(game.prompt);
+        if (game && !game.finished) sayNow(game.prompt);
       },
       onNeed() {
         if (!game || game.finished || game.freePlay) return;

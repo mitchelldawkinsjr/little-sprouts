@@ -20,7 +20,7 @@ export const SIDECARS = [
     icon: '🏎',
     tint: '#efe6d4',
     tag: 'DRIVE',
-    src: 'sidecars/rally/index.html?v=rally-hear',
+    src: 'sidecars/rally/index.html?v=mix-level',
     howTo: 'Pick a car and a road. Questions are spread along the stage. Five right answers, and you can drive the rest of the way to the finish. A longer round asks up to eight.'
   },
   {
@@ -40,7 +40,7 @@ export const SIDECARS = [
     icon: '🏍',
     tint: '#f3e2c4',
     tag: 'RIDE',
-    src: 'sidecars/bike/index.html?v=arcade-play',
+    src: 'sidecars/bike/index.html?v=mix-level',
     howTo: 'Hold the gas and the bike pulls away. Lean back to lift the front wheel, and lean forward to bring the nose down. Ride the hills and land on both wheels. A question comes after a longer stretch of trail. A right answer says good, and the ride continues. A wrong answer speeds the bike up. Level 1 stays upright. Level 3 lets you tilt in the air.'
   },
   {

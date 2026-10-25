@@ -24,8 +24,41 @@
     quit: function () { send('quit'); }
   };
 
-  var savedMaster = null;
-  var duckToken = 0;
+  // Every sound the game sends to the speakers passes through one level here, so the spoken
+  // question sits well above the game, and the game dips further while a line is being read.
+  var GAME_LEVEL = 0.4;
+  var DUCK_LEVEL = 0.12;
+  var ducked = false;
+  var mixes = [];
+  function mixFor(destination) {
+    var ctx = destination.context;
+    if (!ctx.__sproutsMix) {
+      var mix = ctx.createGain();
+      mix.gain.value = ducked ? DUCK_LEVEL : GAME_LEVEL;
+      plainConnect.call(mix, destination);
+      ctx.__sproutsMix = mix;
+      mixes.push(mix);
+    }
+    return ctx.__sproutsMix;
+  }
+  function routed(args) {
+    var list = Array.prototype.slice.call(args);
+    if (window.AudioDestinationNode && list[0] instanceof AudioDestinationNode) list[0] = mixFor(list[0]);
+    return list;
+  }
+  var plainConnect = window.AudioNode ? AudioNode.prototype.connect : null;
+  var plainDisconnect = window.AudioNode ? AudioNode.prototype.disconnect : null;
+  if (plainConnect) {
+    AudioNode.prototype.connect = function () { return plainConnect.apply(this, routed(arguments)); };
+    AudioNode.prototype.disconnect = function () { return plainDisconnect.apply(this, routed(arguments)); };
+  }
+  function duck(on) {
+    ducked = !!on;
+    mixes.forEach(function (mix) {
+      try { mix.gain.setTargetAtTime(ducked ? DUCK_LEVEL : GAME_LEVEL, mix.context.currentTime, ducked ? 0.05 : 0.3); } catch (e) { /* context closed */ }
+    });
+  }
+
   var ask = null;
   var asking = false;
   var quietUntil = 0;
@@ -127,27 +160,6 @@
     var hear = root.querySelector('button.hear');
     if (hear) hear.onclick = function () { send('replay'); };
   }
-  function duckRally(down) {
-    var slider = document.querySelector('input[type=range][data-g="master"]');
-    if (!slider) return;
-    if (down) {
-      duckToken += 1;
-      if (savedMaster == null) savedMaster = slider.value;
-      if (slider.value !== '12') {
-        slider.value = '12';
-        slider.dispatchEvent(new Event('input', { bubbles: true }));
-      }
-      return;
-    }
-    var token = duckToken;
-    setTimeout(function () {
-      var master = document.querySelector('input[type=range][data-g="master"]');
-      if (token !== duckToken || savedMaster == null || !master) return;
-      master.value = savedMaster;
-      savedMaster = null;
-      master.dispatchEvent(new Event('input', { bubbles: true }));
-    }, 1800);
-  }
   function paintSpell() {
     root.innerHTML = '<div class="card"><p class="prompt">' + esc(ask.prompt || 'Spell the word.') + '</p><p class="slots">' + esc(slots()) + '</p><div class="choices">' + ask.letters.map(function (letter, index) {
       return '<button type="button" class="letter" data-i="' + index + '">' + esc(letter) + '</button>';
@@ -213,7 +225,6 @@
     gate++;
     quietUntil = performance.now() + DRIVE_S * 1000;
     if (root) root.hidden = true;
-    duckRally(false);
     resumeRally();
   }
   function choose(index, button) {
@@ -286,7 +297,6 @@
       return;
     }
     asking = true;
-    duckRally(true);
     paint();
     send('show');
   }
@@ -348,6 +358,7 @@
       };
     }
     if (data.type === 'mark') mark(!!data.ok);
+    if (data.type === 'duck') duck(data.on);
   });
   requestAnimationFrame(frame);
   send('ready');
