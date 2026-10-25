@@ -436,4 +436,4 @@ body:has(.playtop) .trace-play,body:has(.playtop) .sort-play,body:has(.playtop) 
 body.pad-on .pad-cursor{display:block}
 .pad-focus{outline:4px solid #db8b32;outline-offset:4px}
 .pad-note{display:none;position:fixed;left:16px;bottom:12px;z-index:100000;margin:0;padding:8px 12px;border-radius:999px;background:#244b3d;color:#fff;font-size:13px;font-weight:700}
-body.pad-on .pad-note{display:block}
+body.pad-on .pad-note{display:block}.tilt-toggle{white-space:nowrap}.tilt-toggle[aria-pressed="true"]{background:#e7eddf;border-color:#97ad7b;color:var(--green)}

@@ -20,7 +20,7 @@ export const SIDECARS = [
     icon: '🏎',
     tint: '#efe6d4',
     tag: 'DRIVE',
-    src: 'sidecars/rally/index.html?v=mix-level',
+    src: 'sidecars/rally/index.html?v=tilt-steer',
     howTo: 'Pick a car and a road. Questions are spread along the stage. Five right answers, and you can drive the rest of the way to the finish. A longer round asks up to eight.'
   },
   {

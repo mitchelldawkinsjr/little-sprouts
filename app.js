@@ -71,6 +71,7 @@ import {
 } from './logic.mjs?v=lily-cross';
 import { canSpeak, commonLines, contextFor, getSpeechStatus, knownVoice, onSpeechStatus, prefetchSpeech, prepareSpeech, profiles, sampleLine, speak, speakAndWait, stop, voiceFor, voices, warm } from './speech.js?v=mix-level';
 import './pad.js?v=pad-rt';
+import './tilt.js?v=tilt-steer';
 import { mountCatch, mountLanes, mountRace, mountRocket, pokeRocket, stopArcade } from './arcade.js?v=gas-car';
 import { mountLunar } from './lunar.js?v=moon-board';
 import { mountHook, stopHook } from './hook.js?v=hook-reach';
@@ -91,7 +92,7 @@ import { mountCrayon, stopCrayon } from './crayon.js?v=color-num';
 import { mountMarble, stopMarble } from './marble.js?v=marble-path';
 import { mountBridge, stopBridge } from './bridge.js?v=bridge-run';
 import { mountMaze, stopMaze } from './maze.js?v=maze-board';
-import { findBuiltSidecars, mountSidecar, postSidecar, sidecarGame, sidecarIsBuilt, sidecarRows, stopSidecar } from './sidecar.js?v=mix-level';
+import { findBuiltSidecars, mountSidecar, postSidecar, sidecarGame, sidecarIsBuilt, sidecarRows, stopSidecar } from './sidecar.js?v=tilt-steer';
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -2277,7 +2278,7 @@ function renderGame() {
   const reveal = race
     ? (raceEars ? '<button class="quiet" id="reveal" hidden aria-label="Show the word"><span aria-hidden="true">👁</span></button>' : '')
     : (wordHidden(g) ? '<button class="quiet" id="reveal" aria-label="Show the word"><span aria-hidden="true">👁</span></button>' : '');
-  $('#app').innerHTML = `<div class="playtop"><button class="quiet" id="back">← All games</button><b>${esc(g.title)}</b>${tally}</div>${bar}<section class="playarea"><h1>${esc(heading(g))}</h1><button class="speaker" id="listen"><span aria-hidden="true">🔈</span> Hear it again</button>${reveal}${memory}${scene}${body}<p class="feedback" id="feedback" aria-live="polite"></p><button class="primary" id="next" data-camera-go hidden>${g.index + 1 === rounds ? 'See my stars ★' : 'Next adventure →'}</button></section>`;
+  $('#app').innerHTML = `<div class="playtop" data-mode="${esc(g.mode)}"><button class="quiet" id="back">← All games</button><b>${esc(g.title)}</b>${tally}</div>${bar}<section class="playarea"><h1>${esc(heading(g))}</h1><button class="speaker" id="listen"><span aria-hidden="true">🔈</span> Hear it again</button>${reveal}${memory}${scene}${body}<p class="feedback" id="feedback" aria-live="polite"></p><button class="primary" id="next" data-camera-go hidden>${g.index + 1 === rounds ? 'See my stars ★' : 'Next adventure →'}</button></section>`;
   $('#back').onclick = requestHome;
   $('#listen').onclick = () => sayNow(g.prompt);
   if ($('#reveal')) $('#reveal').onclick = () => {

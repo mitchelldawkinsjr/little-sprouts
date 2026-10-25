@@ -20,7 +20,7 @@ node --input-type=module -e '
 import { readFileSync, writeFileSync } from "node:fs";
 const page = "dist/index.html";
 let html = readFileSync(page, "utf8");
-const tag = "<script src=\"/sidecar-guest.js?v=mix-level\"></script>";
+const tag = "<script src=\"/sidecar-guest.js?v=tilt-steer\"></script>";
 if (!html.includes(tag)) {
   html = html.includes("</body>") ? html.replace("</body>", tag + "</body>") : html + tag;
   writeFileSync(page, html);

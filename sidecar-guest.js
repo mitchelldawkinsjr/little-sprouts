@@ -78,8 +78,11 @@
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
     });
   }
+  var ownKey = false;
   function key(code, down) {
-    window.dispatchEvent(new KeyboardEvent(down ? 'keydown' : 'keyup', { code: code, bubbles: true, cancelable: true }));
+    ownKey = true;
+    try { window.dispatchEvent(new KeyboardEvent(down ? 'keydown' : 'keyup', { code: code, bubbles: true, cancelable: true })); }
+    finally { ownKey = false; }
   }
   function rallyPaused() {
     var texts = document.querySelectorAll('.menu-root .text');
@@ -300,8 +303,72 @@
     paint();
     send('show');
   }
+  // Phones and tablets: steer, gas, and brake buttons over the road while a stage is running.
+  function touchDevice() {
+    try { if (window.parent.document.documentElement.classList.contains('touch')) return true; } catch (e) { /* another origin */ }
+    return matchMedia('(any-pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+  }
+  var pad = null;
+  var padHeld = {};
+  function padKey(code, down) {
+    if (!!padHeld[code] === down) return;
+    padHeld[code] = down;
+    window.dispatchEvent(new KeyboardEvent(down ? 'keydown' : 'keyup', { code: code, key: code, bubbles: true, cancelable: true }));
+  }
+  function buildPad() {
+    var style = document.createElement('style');
+    style.textContent = [
+      '#sprouts-pad{position:fixed;inset:auto 0 0 0;z-index:99999;display:flex;justify-content:space-between;align-items:flex-end;padding:0 max(14px,env(safe-area-inset-right)) calc(16vmin + max(14px,env(safe-area-inset-bottom))) max(14px,env(safe-area-inset-left));pointer-events:none;touch-action:none;user-select:none;-webkit-user-select:none}',
+      '#sprouts-pad[hidden]{display:none}',
+      '#sprouts-pad .side{display:flex;gap:12px}',
+      '#sprouts-pad button{pointer-events:auto;touch-action:none;width:clamp(64px,13vmin,96px);height:clamp(64px,13vmin,96px);border-radius:50%;border:2px solid #fff8;background:#0006;color:#fff;font:800 clamp(20px,4.5vmin,30px)/1 Outfit,Inter,sans-serif;-webkit-tap-highlight-color:transparent}',
+      '#sprouts-pad button.on{background:#fff7;color:#244b3d}',
+      '#sprouts-pad button.gas{background:#32634ecc}',
+      '#sprouts-pad button.gas.on{background:#9fd08acc}'
+    ].join('');
+    document.head.appendChild(style);
+    pad = document.createElement('div');
+    pad.id = 'sprouts-pad';
+    pad.hidden = true;
+    pad.innerHTML = '<div class="side"><button type="button" data-code="ArrowLeft" aria-label="Steer left">◀</button><button type="button" data-code="ArrowRight" aria-label="Steer right">▶</button></div>'
+      + '<div class="side"><button type="button" data-code="ArrowDown" aria-label="Brake">■</button><button type="button" class="gas" data-code="ArrowUp" aria-label="Gas">GO</button></div>';
+    pad.querySelectorAll('button').forEach(function (button) {
+      var code = button.dataset.code;
+      function down(event) {
+        event.preventDefault();
+        try { button.setPointerCapture(event.pointerId); } catch (e) { /* the pointer already ended */ }
+        button.classList.add('on');
+        padKey(code, true);
+      }
+      function up() {
+        button.classList.remove('on');
+        padKey(code, false);
+      }
+      button.addEventListener('pointerdown', down);
+      button.addEventListener('pointerup', up);
+      button.addEventListener('pointercancel', up);
+      button.addEventListener('lostpointercapture', up);
+      button.addEventListener('contextmenu', function (event) { event.preventDefault(); });
+    });
+    document.body.appendChild(pad);
+  }
+  function showPad(on) {
+    if (!pad) {
+      if (!on) return;
+      buildPad();
+    }
+    if (pad.hidden === !on) return;
+    pad.hidden = !on;
+    if (!on) pad.querySelectorAll('button').forEach(function (button) {
+      button.classList.remove('on');
+      padKey(button.dataset.code, false);
+    });
+  }
+  var touch = touchDevice();
+
   function frame() {
     requestAnimationFrame(frame);
+    if (touch) showPad(!asking && stageProgress() != null);
     if (finishedSent || asking) return;
     var progress = stageProgress();
     if (progress == null) return;
@@ -320,10 +387,10 @@
       event.preventDefault();
       event.stopImmediatePropagation();
     }
-    if (event.isTrusted) real[event.code] = true;
+    if (!ownKey) real[event.code] = true;
   }, true);
   window.addEventListener('keyup', function (event) {
-    if (event.isTrusted) real[event.code] = false;
+    if (!ownKey) real[event.code] = false;
   });
   window.addEventListener('message', function (event) {
     var data = event.data;
