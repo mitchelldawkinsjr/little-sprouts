@@ -92,10 +92,6 @@ Most of the pictures, questions, and games are Little Sprouts’ own. These crea
 - [Google — MediaPipe Pose](https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker). Reach play uses it to find hands. Video stays on the device.
 - [Outfit](https://fonts.google.com/specimen/Outfit) by Rodrigo Fuenzalida and [DM Sans](https://fonts.google.com/specimen/DM+Sans) by Colophon Foundry, from Google Fonts.
 
-## Deploy
-
-A push to `main` deploys to https://grow.360web.cloud. The workflow, the container layout, and the steps for adding another app on the same server are in [docs/deploy.md](docs/deploy.md).
-
 ## Notes
 
 Settings and stars stay in this browser. They do not sync to another device. Clearing site data clears them. `node --test logic.test.mjs camera.test.mjs speech.test.mjs pad.test.mjs touch.test.mjs` checks the learning rules, Reach, read-aloud, the controller, and tilt.
