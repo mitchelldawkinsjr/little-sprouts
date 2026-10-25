@@ -166,6 +166,37 @@ async function fresh({ ready = false } = {}) {
 }
 const audioFor = (req, extra = {}) => ({ type: 'AUDIO', id: req.id, text: req.text, voice: req.voice, speed: req.speed, samples: tone(), rate: 24000, source: 'model', synthMs: 900, ...extra });
 
+test('a queued question waits until the line already speaking has finished', async () => {
+  const speech = await fresh({ ready: true });
+  const first = speech.speakAndWait('Find the circle.', { queue: true });
+  const one = workers[0].last('SYNTHESIZE');
+  const second = speech.speakAndWait('Spell cat.', { queue: true });
+  const repeat = speech.speakAndWait('Spell cat.', { queue: true });
+  assert.equal(workers[0].count('SYNTHESIZE'), 1);
+  assert.equal(workers[0].count('CANCEL'), 0);
+  assert.deepEqual(await repeat, { status: 'skipped', engine: null });
+  workers[0].reply(audioFor(one));
+  await flush();
+  sources[0].onended();
+  assert.deepEqual(await first, { status: 'completed', engine: 'kokoro' });
+  const two = workers[0].last('SYNTHESIZE');
+  assert.equal(two.text, 'Spell cat.');
+  workers[0].reply(audioFor(two));
+  await flush();
+  sources[1].onended();
+  assert.deepEqual(await second, { status: 'completed', engine: 'kokoro' });
+});
+
+test('leaving the screen drops a question that was still waiting', async () => {
+  const speech = await fresh({ ready: true });
+  const first = speech.speakAndWait('Find the circle.', { queue: true });
+  const second = speech.speakAndWait('Spell cat.', { queue: true });
+  speech.stop();
+  assert.equal((await first).status, 'interrupted');
+  assert.equal((await second).status, 'interrupted');
+  assert.equal(workers[0].count('SYNTHESIZE'), 1);
+});
+
 test('a slow line on a ready Kokoro is waited for, then reports completion when the audio ends', async () => {
   const speech = await fresh({ ready: true });
   const done = speech.speakAndWait('Find the circle.', { voiceId: 'af_heart' });

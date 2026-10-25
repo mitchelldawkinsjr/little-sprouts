@@ -189,7 +189,9 @@
     if (data.type === 'config') applyConfig(data);
     if (data.type === 'ask' && data.choices && data.choices.length) {
       if (asking) return;
+      var waiting = needing;
       remember(data);
+      if (waiting) openAsk();
     }
     if (data.type === 'mark') bike.grant(!!data.ok);
   });

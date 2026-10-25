@@ -1,6 +1,7 @@
 // Spoken prompts use Kokoro on this device. Generation runs in a worker so the games stay tappable.
 // The browser’s own voice speaks only while Kokoro is still downloading with no stored copy of the line,
 // or when Kokoro cannot run here. A slow line on a working Kokoro is waited for, not swapped.
+// A queued line waits its turn, so the question on screen is not thrown away by the next line.
 import { SPEED, chooseEngine, clipKey, commonLines, contextFor, profiles, retryDelay, settler, speakable, usable, voiceFor } from './speech-core.mjs?v=voice-life';
 
 export { commonLines, contextFor, profiles, voiceFor };
@@ -39,6 +40,8 @@ const metrics = { requests: 0, kokoro: 0, browser: 0, cacheHits: 0, completed: 0
 const trail = [];
 const listeners = new Set();
 const clips = new Map();
+const upcoming = [];
+const LINE_LIMIT = 6;
 let ctx = null, worker = null, current = null, nextId = 0, loadStarted = 0, askedStatus = 0;
 
 function note(entry) {
@@ -195,6 +198,7 @@ function finish(req, status) {
   });
   req.settle(status, req.engine);
   emit();
+  if (status !== 'interrupted') pump();
 }
 
 function halt(req) {
@@ -298,7 +302,25 @@ function receive(message) {
   }
 }
 
+function dropUpcoming(reason) {
+  const waiting = upcoming.splice(0);
+  for (const item of waiting) {
+    item.reason ??= reason;
+    item.settle('interrupted', null);
+  }
+}
+
+function waitingText(text) {
+  return (current && current.text === text) || upcoming.some(item => item.text === text);
+}
+
+function pump() {
+  if (current || !upcoming.length) return;
+  startLine(upcoming.shift());
+}
+
 export function stop(reason = 'interrupted') {
+  dropUpcoming(reason);
   const req = current;
   if (!req) return;
   current = null;
@@ -310,19 +332,9 @@ export function stop(reason = 'interrupted') {
 
 const MISS_REASON = { idle: 'not-ready', loading: 'not-ready', failed: 'engine-failed', unsupported: 'unsupported' };
 
-// Resolves once the line has finished, been cut off, or could not be said: { status, engine }.
-export function speakAndWait(text, { voiceId, context = 'narrator', interrupt = true, fallback = 'not-ready', spell = false } = {}) {
-  let settle;
-  const finished = new Promise(resolve => { settle = settler(resolve); });
-  metrics.requests += 1;
-  const spoken = speakable(text, { spell });
-  if (!spoken || (!interrupt && current)) {
-    metrics.skipped += 1;
-    settle('skipped', null);
-    return finished;
-  }
-  stop();
-  const req = { id: ++nextId, text: spoken, voice: knownVoice(voiceId), speed: SPEED, context, fallback, settle, engine: null, asked: now() };
+function startLine(req) {
+  req.id = ++nextId;
+  req.asked = now();
   current = req;
   req.resumed = prime();
   const hit = stored(clipKey(req));
@@ -331,44 +343,78 @@ export function speakAndWait(text, { voiceId, context = 'narrator', interrupt = 
     req.source = 'page';
     metrics.cacheHits += 1;
     play(req, hit);
-    return finished;
+    return;
   }
   const before = state.engine;
-  const route = chooseEngine({ engine: before, fallback, browser: browserVoice(), store: !!worker || before === 'idle' || before === 'loading' });
+  const route = chooseEngine({ engine: before, fallback: req.fallback, browser: browserVoice(), store: !!worker || before === 'idle' || before === 'loading' });
   if (route === 'browser') {
     if (before === 'idle') startEngine();
     browserSay(req, MISS_REASON[before] || 'not-ready');
-    return finished;
+    return;
   }
   if (!route) {
     req.reason = MISS_REASON[before] || null;
     finish(req, 'failed');
-    return finished;
+    return;
   }
   req.engine = 'kokoro';
   req.cachedOnly = route === 'cached';
   req.missReason = MISS_REASON[before] || 'not-ready';
   if (before === 'idle' && !startEngine()) {
     fallBack(req, 'engine-failed');
-    return finished;
+    return;
   }
   try {
-    ensureWorker().postMessage({ type: 'SYNTHESIZE', id: req.id, text: spoken, voice: req.voice, speed: req.speed, cachedOnly: req.cachedOnly });
+    ensureWorker().postMessage({ type: 'SYNTHESIZE', id: req.id, text: req.text, voice: req.voice, speed: req.speed, cachedOnly: req.cachedOnly });
   } catch (error) {
     crashed(String(error?.message || error));
-    return finished;
+    return;
   }
   if (req.cachedOnly) arm(req, STORED_MS, () => fallBack(req, req.missReason));
   else if (state.engine === 'ready') arm(req, STALL_MS, () => fallBack(req, 'stall'));
+}
+
+// Resolves once the line has finished, been cut off, or could not be said: { status, engine }.
+// queue holds the line until the one already speaking finishes, instead of cutting it off.
+export function speakAndWait(text, { voiceId, context = 'narrator', interrupt = true, queue = false, fallback = 'not-ready', spell = false } = {}) {
+  let settle;
+  const finished = new Promise(resolve => { settle = settler(resolve); });
+  metrics.requests += 1;
+  const spoken = speakable(text, { spell });
+  if (!spoken || (!queue && !interrupt && current)) {
+    metrics.skipped += 1;
+    settle('skipped', null);
+    return finished;
+  }
+  const req = { text: spoken, voice: knownVoice(voiceId), speed: SPEED, context, fallback, settle, engine: null, asked: now() };
+  if (queue) {
+    if (waitingText(spoken)) {
+      metrics.skipped += 1;
+      settle('skipped', null);
+      return finished;
+    }
+    if (current) {
+      upcoming.push(req);
+      if (upcoming.length > LINE_LIMIT) {
+        const dropped = upcoming.shift();
+        metrics.skipped += 1;
+        dropped.settle('skipped', null);
+      }
+      return finished;
+    }
+  } else stop();
+  startLine(req);
   return finished;
 }
 
 // The older call shape. full waits for Kokoro to download instead of using the browser voice meanwhile.
+// queue keeps this line behind the one already speaking so a question is not thrown away.
 export function speak(text, voice, opts = {}) {
   return speakAndWait(text, {
     voiceId: voice,
     context: opts.context,
     spell: opts.spell,
+    queue: opts.queue,
     fallback: opts.fallback || (opts.full ? 'on-error' : 'not-ready')
   });
 }
