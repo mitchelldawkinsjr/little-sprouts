@@ -1,7 +1,14 @@
 // Spoken prompts use Kokoro on this device. Generation runs in a worker so the games stay tappable.
-// A line that is not ready almost immediately is spoken by the browser so play does not sit in silence.
-const SPEED = 1;
-const FALLBACK_MS = 220;
+// The browser’s own voice speaks only while Kokoro is still downloading with no stored copy of the line,
+// or when Kokoro cannot run here. A slow line on a working Kokoro is waited for, not swapped.
+import { SPEED, chooseEngine, clipKey, commonLines, contextFor, profiles, retryDelay, settler, speakable, usable, voiceFor } from './speech-core.mjs?v=voice-life';
+
+export { commonLines, contextFor, profiles, voiceFor };
+
+const STALL_MS = 15000;
+const STORED_MS = 600;
+const CLIP_LIMIT = 48;
+const TRAIL_LIMIT = 50;
 
 export const voices = [
   ['af_heart', 'Heart · American'],
@@ -21,148 +28,139 @@ export function knownVoice(id) {
   return voices.some(([voice]) => voice === id) ? id : defaultVoice;
 }
 
-export function canSpeak() {
-  const audio = 'AudioContext' in window || 'webkitAudioContext' in window;
-  const browser = 'speechSynthesis' in window;
-  if (failed) return browser;
-  return audio || browser;
+const now = () => performance.now();
+const audioCtor = () => globalThis.AudioContext || globalThis.webkitAudioContext;
+const browserVoice = () => 'speechSynthesis' in globalThis && typeof globalThis.SpeechSynthesisUtterance === 'function';
+const supported = () => typeof globalThis.Worker === 'function' && typeof globalThis.WebAssembly === 'object' && !!audioCtor();
+const DEV = ['localhost', '127.0.0.1'].includes(globalThis.location?.hostname) || /[?&]voicedebug\b/.test(globalThis.location?.search || '');
+
+const state = { engine: supported() ? 'idle' : 'unsupported', progress: 0, loadMs: null, error: null, attempts: 0, retryAt: 0, cache: null };
+const metrics = { requests: 0, kokoro: 0, browser: 0, cacheHits: 0, completed: 0, interrupted: 0, failed: 0, skipped: 0, fallbacks: {} };
+const trail = [];
+const listeners = new Set();
+const clips = new Map();
+let ctx = null, worker = null, current = null, nextId = 0, loadStarted = 0, askedStatus = 0;
+
+function note(entry) {
+  if (!DEV) return;
+  trail.push(entry);
+  if (trail.length > TRAIL_LIMIT) trail.shift();
+  console.debug('[voice]', entry);
 }
 
-const REPEATED = [
-  'You found it! Great growing!',
-  'Try another one.',
-  'Try another letter.',
-  'You did it! Great growing!'
-];
+function snapshot() {
+  return {
+    engine: state.engine,
+    progress: state.progress,
+    loadMs: state.loadMs,
+    error: state.error,
+    attempts: state.attempts,
+    retryIn: state.retryAt ? Math.max(0, state.retryAt - Date.now()) : null,
+    speaking: current?.engine ?? null,
+    cache: state.cache,
+    metrics: { ...metrics, fallbacks: { ...metrics.fallbacks } },
+    log: trail.slice()
+  };
+}
 
-let ctx, source, token = 0, worker, failed = false, fallbackTimer = 0;
-const waiters = new Map();
-const clips = new Map();
+function emit() {
+  if (!listeners.size) return;
+  const shot = snapshot();
+  for (const listener of listeners) {
+    try { listener(shot); } catch { /* a broken listener must not stop speech */ }
+  }
+}
+
+export function onSpeechStatus(listener) {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+export function getSpeechStatus() {
+  if (worker && Date.now() - askedStatus > 2000) {
+    askedStatus = Date.now();
+    worker.postMessage({ type: 'GET_STATUS' });
+  }
+  return snapshot();
+}
+
+export function canSpeak() {
+  const browser = browserVoice();
+  if (state.engine === 'unsupported' || (state.engine === 'failed' && !state.retryAt)) return browser;
+  return !!audioCtor() || browser;
+}
+
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 function prime() {
-  const AudioCtx = window.AudioContext || window.webkitAudioContext;
-  if (!AudioCtx) return null;
-  ctx ??= new AudioCtx();
-  return ctx.state === 'suspended' ? ctx.resume() : Promise.resolve();
+  const AudioCtx = audioCtor();
+  if (!AudioCtx) return Promise.resolve();
+  try { ctx ??= new AudioCtx(); }
+  catch { return Promise.resolve(); }
+  if (ctx.state === 'running') return Promise.resolve();
+  // Without a tap, resume can wait forever on phones. Give up quickly and let play() decide.
+  return Promise.race([Promise.resolve(ctx.resume?.()).catch(() => {}), wait(300)]);
 }
 
-function halt() {
-  if ('speechSynthesis' in window) speechSynthesis.cancel();
-  try { source?.stop(); } catch { /* already stopped */ }
-  source = null;
+function markFailed(kind, message) {
+  state.attempts += 1;
+  const delay = retryDelay(state.attempts);
+  state.engine = 'failed';
+  state.error = `${kind}: ${message}`;
+  state.retryAt = delay == null ? 0 : Date.now() + delay;
+  note({ event: 'engine-failed', kind, attempts: state.attempts });
+  emit();
 }
 
-function finishWaiters() {
-  for (const waiter of waiters.values()) waiter.resolve();
-  waiters.clear();
-}
-
-function clearFallback() {
-  clearTimeout(fallbackTimer);
-  fallbackTimer = 0;
-}
-
-function settle(waiter) {
-  if (!waiter || waiter.settled) return;
-  waiter.settled = true;
-  waiter.resolve();
-}
-
-export function stop() {
-  token += 1;
-  clearFallback();
-  halt();
-  finishWaiters();
-}
-
-function browserSay(text) {
-  if (!text || !('speechSynthesis' in window)) return;
-  speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.rate = SPEED;
-  speechSynthesis.speak(utterance);
-}
-
-function clipKey(text, voice) {
-  return `${knownVoice(voice)}\n${text}`;
-}
-
-function keep(text, voice, samples, rate) {
-  const key = clipKey(text, voice);
-  clips.delete(key);
-  clips.set(key, { samples, rate });
-  while (clips.size > 24) clips.delete(clips.keys().next().value);
-}
-
-function usable(samples) {
-  if (!samples || samples.length < 400) return false;
-  let peak = 0, wild = 0;
-  for (let i = 0; i < samples.length; i++) {
-    const x = samples[i];
-    if (!Number.isFinite(x)) return false;
-    const mag = Math.abs(x);
-    if (mag > peak) peak = mag;
-    if (mag > 1.5) wild++;
-  }
-  return peak >= 0.02 && peak <= 1.5 && wild / samples.length < 0.002;
-}
-
-function play(samples, rate) {
-  if (!ctx || !usable(samples)) return false;
-  if ('speechSynthesis' in window) speechSynthesis.cancel();
-  const copy = new Float32Array(samples.length);
-  for (let i = 0; i < copy.length; i++) copy[i] = samples[i];
-  const buffer = ctx.createBuffer(1, copy.length, rate || 24000);
-  buffer.getChannelData(0).set(copy);
-  const node = ctx.createBufferSource();
-  node.buffer = buffer;
-  node.connect(ctx.destination);
-  source = node;
-  node.onended = () => { if (source === node) source = null; };
-  node.start();
-  return true;
+function crashed(message) {
+  try { worker?.terminate(); } catch { /* already gone */ }
+  worker = null;
+  markFailed('worker', message);
+  if (waitingOnWorker(current)) fallBack(current, 'worker-error');
 }
 
 function ensureWorker() {
   if (worker) return worker;
-  worker = new Worker(new URL('./speech-worker.js?v=voice-clean', import.meta.url), { type: 'module' });
-  worker.onmessage = async event => {
-    const { id, samples, rate, error } = event.data;
-    const waiter = waiters.get(id);
-    if (!waiter || id !== token) {
-      waiter?.resolve();
-      waiters.delete(id);
-      return;
-    }
-    try {
-      if (error) {
-        if (waiter.live !== 'browser') browserSay(waiter.text);
-      } else {
-        keep(waiter.text, waiter.voice, samples, rate);
-        if (waiter.live !== 'browser') {
-          clearFallback();
-          if (waiter.resumed) await waiter.resumed;
-          if (id !== token) return;
-          if (!play(samples, rate)) browserSay(waiter.text);
-        }
-      }
-    } finally {
-      settle(waiter);
-      waiters.delete(id);
-    }
-  };
-  worker.onerror = () => {
-    failed = true;
-    clearFallback();
-    const current = waiters.get(token);
-    if (current && current.live !== 'browser') browserSay(current.text);
-    finishWaiters();
+  worker = new Worker(new URL('./speech-worker.js?v=voice-life', import.meta.url), { type: 'module' });
+  worker.onmessage = event => receive(event.data || {});
+  worker.onerror = event => {
+    event?.preventDefault?.();
+    crashed(event?.message || 'worker error');
   };
   return worker;
 }
 
-function stored(text, voice) {
-  const key = clipKey(text, voice);
+// Returns true when Kokoro is ready or on its way. Automatic retries wait for their backoff; force skips it.
+function startEngine(force = false) {
+  if (state.engine === 'ready' || state.engine === 'loading') return true;
+  if (state.engine === 'unsupported') return false;
+  if (state.engine === 'failed' && !force && (!state.retryAt || Date.now() < state.retryAt)) return false;
+  try { ensureWorker().postMessage({ type: 'INIT' }); }
+  catch (error) {
+    markFailed('worker', String(error?.message || error));
+    return false;
+  }
+  state.engine = 'loading';
+  state.error = null;
+  state.progress = 0;
+  loadStarted = now();
+  emit();
+  return true;
+}
+
+function waitingOnWorker(req) {
+  return !!req && !req.done && req.engine === 'kokoro' && !req.node;
+}
+
+function keep(key, clip) {
+  clips.delete(key);
+  clips.set(key, clip);
+  while (clips.size > CLIP_LIMIT) clips.delete(clips.keys().next().value);
+}
+
+function stored(key) {
   const hit = clips.get(key);
   if (!hit) return null;
   clips.delete(key);
@@ -170,59 +168,256 @@ function stored(text, voice) {
   return hit;
 }
 
-export function warm(voice) {
-  if (failed) return;
-  try {
-    const chosen = knownVoice(voice);
-    const active = ensureWorker();
-    active.postMessage({ preload: true });
-    for (const text of REPEATED) {
-      if (!stored(text, chosen)) active.postMessage({ prefetch: true, text, voice: chosen });
-    }
-  } catch { /* the next spoken line still tries */ }
+function arm(req, ms, then) {
+  clearTimeout(req.guard);
+  req.guard = setTimeout(then, ms);
 }
 
-function armFallback(id) {
-  clearFallback();
-  fallbackTimer = setTimeout(() => {
-    if (id !== token) return;
-    const waiter = waiters.get(id);
-    if (!waiter || waiter.live) return;
-    waiter.live = 'browser';
-    browserSay(waiter.text);
-    settle(waiter);
-  }, FALLBACK_MS);
+function begin(req) {
+  if (req.startedAt) return;
+  req.startedAt = now();
+  metrics[req.engine] += 1;
+  emit();
 }
 
-export function speak(text, voice, opts = {}) {
-  const mine = ++token;
-  clearFallback();
-  halt();
-  finishWaiters();
-  const resumed = prime();
-  const chosen = knownVoice(voice);
-  if (failed) {
-    browserSay(text);
-    return Promise.resolve();
+function finish(req, status) {
+  if (req.done) return;
+  req.done = true;
+  clearTimeout(req.guard);
+  if (current === req) current = null;
+  metrics[status] += 1;
+  const end = now();
+  note({
+    id: req.id, status, engine: req.engine, voice: req.voice, context: req.context, chars: req.text.length,
+    source: req.source ?? null, reason: req.reason ?? null, synthMs: req.synthMs ?? null,
+    waitMs: req.startedAt ? Math.round(req.startedAt - req.asked) : null,
+    playMs: req.startedAt ? Math.round(end - req.startedAt) : null
+  });
+  req.settle(status, req.engine);
+  emit();
+}
+
+function halt(req) {
+  if (req.utterance) globalThis.speechSynthesis?.cancel();
+  try { req.node?.stop(); } catch { /* already stopped */ }
+}
+
+function browserSay(req, reason) {
+  const synth = globalThis.speechSynthesis;
+  req.engine = 'browser';
+  req.reason = reason;
+  metrics.fallbacks[reason] = (metrics.fallbacks[reason] || 0) + 1;
+  synth.cancel();
+  const utterance = new SpeechSynthesisUtterance(req.text);
+  utterance.rate = SPEED;
+  utterance.onstart = () => begin(req);
+  utterance.onend = () => finish(req, 'completed');
+  utterance.onerror = event => finish(req, ['interrupted', 'canceled'].includes(event?.error) ? 'interrupted' : 'failed');
+  req.utterance = utterance;
+  synth.speak(utterance);
+  // Some browsers never send end. The guard keeps a waiting caller from hanging.
+  arm(req, 4000 + req.text.length * 150, () => finish(req, 'completed'));
+}
+
+function fallBack(req, reason) {
+  if (!req || req.done || current !== req) return;
+  clearTimeout(req.guard);
+  if (req.fallback === 'never' || !browserVoice()) {
+    req.reason = reason;
+    finish(req, 'failed');
+    return;
   }
-  const hit = stored(text, chosen);
+  browserSay(req, reason);
+}
+
+async function play(req, clip) {
+  await req.resumed;
+  if (current !== req || req.done) return;
+  if (!usable(clip.samples)) return fallBack(req, 'bad-audio');
+  if (!ctx || ctx.state !== 'running') return fallBack(req, 'audio-locked');
+  const buffer = ctx.createBuffer(1, clip.samples.length, clip.rate || 24000);
+  buffer.getChannelData(0).set(clip.samples);
+  const node = ctx.createBufferSource();
+  node.buffer = buffer;
+  node.connect(ctx.destination);
+  node.onended = () => finish(req, 'completed');
+  req.node = node;
+  begin(req);
+  node.start();
+  arm(req, buffer.duration * 1000 + 2000, () => finish(req, 'completed'));
+}
+
+function receive(message) {
+  switch (message.type) {
+    case 'PROGRESS':
+      state.progress = message.progress;
+      emit();
+      break;
+    case 'READY':
+      state.engine = 'ready';
+      state.progress = 1;
+      state.loadMs = message.loadMs ?? state.loadMs ?? Math.round(now() - loadStarted);
+      state.attempts = 0;
+      state.retryAt = 0;
+      state.error = null;
+      note({ event: 'ready', loadMs: state.loadMs });
+      if (waitingOnWorker(current) && !current.cachedOnly) arm(current, STALL_MS, () => fallBack(current, 'stall'));
+      emit();
+      break;
+    case 'AUDIO': {
+      const clip = { samples: message.samples, rate: message.rate };
+      const req = current;
+      const mine = waitingOnWorker(req) && req.id === message.id;
+      if (!usable(clip.samples)) {
+        if (mine) fallBack(req, 'bad-audio');
+        break;
+      }
+      keep(clipKey(message), clip);
+      if (!mine) break;
+      clearTimeout(req.guard);
+      req.source = message.source;
+      req.synthMs = message.synthMs;
+      if (message.source !== 'model') metrics.cacheHits += 1;
+      play(req, clip);
+      break;
+    }
+    case 'ERROR': {
+      if (message.kind === 'load') markFailed('load', message.message);
+      else if (message.kind !== 'miss') note({ event: 'error', kind: message.kind });
+      const req = current;
+      if (!waitingOnWorker(req)) break;
+      if (message.kind === 'load') {
+        if (!req.cachedOnly) fallBack(req, 'load-error');
+      } else if (message.id === req.id) fallBack(req, message.kind === 'miss' ? req.missReason : 'synth-error');
+      break;
+    }
+    case 'STATUS':
+      state.cache = message.cache;
+      emit();
+      break;
+  }
+}
+
+export function stop(reason = 'interrupted') {
+  const req = current;
+  if (!req) return;
+  current = null;
+  if (waitingOnWorker(req)) worker?.postMessage({ type: 'CANCEL', id: req.id });
+  halt(req);
+  req.reason ??= reason;
+  finish(req, 'interrupted');
+}
+
+const MISS_REASON = { idle: 'not-ready', loading: 'not-ready', failed: 'engine-failed', unsupported: 'unsupported' };
+
+// Resolves once the line has finished, been cut off, or could not be said: { status, engine }.
+export function speakAndWait(text, { voiceId, context = 'narrator', interrupt = true, fallback = 'not-ready', spell = false } = {}) {
+  let settle;
+  const finished = new Promise(resolve => { settle = settler(resolve); });
+  metrics.requests += 1;
+  const spoken = speakable(text, { spell });
+  if (!spoken || (!interrupt && current)) {
+    metrics.skipped += 1;
+    settle('skipped', null);
+    return finished;
+  }
+  stop();
+  const req = { id: ++nextId, text: spoken, voice: knownVoice(voiceId), speed: SPEED, context, fallback, settle, engine: null, asked: now() };
+  current = req;
+  req.resumed = prime();
+  const hit = stored(clipKey(req));
   if (hit) {
-    return Promise.resolve(resumed).then(() => {
-      if (mine !== token) return;
-      if (!play(hit.samples, hit.rate)) browserSay(text);
-    });
+    req.engine = 'kokoro';
+    req.source = 'page';
+    metrics.cacheHits += 1;
+    play(req, hit);
+    return finished;
   }
-  return new Promise(resolve => {
-    waiters.set(mine, { resolve, resumed, text, voice: chosen });
-    if (!opts.full) armFallback(mine);
-    try {
-      ensureWorker().postMessage({ id: mine, text, voice: chosen });
-    } catch {
-      failed = true;
-      clearFallback();
-      browserSay(text);
-      resolve();
-      waiters.delete(mine);
-    }
+  const before = state.engine;
+  const route = chooseEngine({ engine: before, fallback, browser: browserVoice(), store: !!worker || before === 'idle' || before === 'loading' });
+  if (route === 'browser') {
+    if (before === 'idle') startEngine();
+    browserSay(req, MISS_REASON[before] || 'not-ready');
+    return finished;
+  }
+  if (!route) {
+    req.reason = MISS_REASON[before] || null;
+    finish(req, 'failed');
+    return finished;
+  }
+  req.engine = 'kokoro';
+  req.cachedOnly = route === 'cached';
+  req.missReason = MISS_REASON[before] || 'not-ready';
+  if (before === 'idle' && !startEngine()) {
+    fallBack(req, 'engine-failed');
+    return finished;
+  }
+  try {
+    ensureWorker().postMessage({ type: 'SYNTHESIZE', id: req.id, text: spoken, voice: req.voice, speed: req.speed, cachedOnly: req.cachedOnly });
+  } catch (error) {
+    crashed(String(error?.message || error));
+    return finished;
+  }
+  if (req.cachedOnly) arm(req, STORED_MS, () => fallBack(req, req.missReason));
+  else if (state.engine === 'ready') arm(req, STALL_MS, () => fallBack(req, 'stall'));
+  return finished;
+}
+
+// The older call shape. full waits for Kokoro to download instead of using the browser voice meanwhile.
+export function speak(text, voice, opts = {}) {
+  return speakAndWait(text, {
+    voiceId: voice,
+    context: opts.context,
+    spell: opts.spell,
+    fallback: opts.fallback || (opts.full ? 'on-error' : 'not-ready')
   });
 }
+
+export function prefetchSpeech(items, { priority = 'background' } = {}) {
+  const jobs = [];
+  for (const item of items || []) {
+    const { text, voiceId, spell } = typeof item === 'string' ? { text: item } : item || {};
+    const spoken = speakable(text, { spell });
+    if (!spoken) continue;
+    const job = { text: spoken, voice: knownVoice(voiceId), speed: SPEED };
+    if (!clips.has(clipKey(job))) jobs.push(job);
+  }
+  if (!jobs.length || !startEngine()) return 0;
+  worker.postMessage({ type: 'PREFETCH', items: jobs, priority });
+  return jobs.length;
+}
+
+export function warm(voiceId, { lines = commonLines } = {}) {
+  prefetchSpeech(lines.map(text => ({ text, voiceId })));
+}
+
+// For a grown-up's tap: tries again even after earlier failures and reports download progress.
+export function prepareSpeech({ voiceId, onProgress } = {}) {
+  prime();
+  if (state.engine === 'ready' || state.engine === 'unsupported') return Promise.resolve({ status: state.engine });
+  startEngine(true);
+  if (state.engine !== 'loading') return Promise.resolve({ status: state.engine, error: state.error });
+  if (voiceId) warm(voiceId);
+  return new Promise(resolve => {
+    const off = onSpeechStatus(shot => {
+      if (shot.engine === 'loading') {
+        onProgress?.(shot.progress);
+        return;
+      }
+      off();
+      resolve({ status: shot.engine, error: shot.error });
+    });
+  });
+}
+
+export function clearSpeechCache() {
+  clips.clear();
+  worker?.postMessage({ type: 'CLEAR_CACHE' });
+}
+
+if (globalThis.document?.addEventListener) {
+  // Phones keep audio locked until a tap. Unlock on any tap so timed prompts later can play.
+  for (const type of ['pointerdown', 'keydown']) document.addEventListener(type, () => { prime(); }, { capture: true, passive: true });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) stop('hidden'); });
+}
+if (DEV) globalThis.sproutsVoice = { status: getSpeechStatus, clear: clearSpeechCache };

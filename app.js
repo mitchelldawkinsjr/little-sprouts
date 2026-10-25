@@ -69,7 +69,7 @@ import {
   crayonPicture,
   crayonLegend
 } from './logic.mjs?v=lily-cross';
-import { canSpeak, knownVoice, sampleLine, speak, stop, voices, warm } from './speech.js?v=voice-clean';
+import { canSpeak, commonLines, contextFor, getSpeechStatus, knownVoice, onSpeechStatus, prefetchSpeech, prepareSpeech, profiles, sampleLine, speak, speakAndWait, stop, voiceFor, voices, warm } from './speech.js?v=voice-life';
 import { mountCatch, mountLanes, mountRace, mountRocket, pokeRocket, stopArcade } from './arcade.js?v=gas-car';
 import { mountLunar } from './lunar.js?v=moon-board';
 import { mountHook, stopHook } from './hook.js?v=hook-reach';
@@ -98,6 +98,7 @@ const defaults = () => ({
   active: 0,
   sound: true,
   voice: 'af_heart',
+  characterVoices: false,
   camera: false,
   profiles: [
     { name: 'Malik', stage: 'preschool', level: 1, rounds: 5, style: 'tap', words: ['I', 'a', 'the', 'my', 'see'], stars: 0, sessions: 0, correct: 0, total: 0 },
@@ -138,6 +139,7 @@ if (!Number.isInteger(+data.active) || !data.profiles[+data.active]) {
   named = true;
 } else data.active = +data.active;
 data.voice = knownVoice(data.voice);
+data.characterVoices = !!data.characterVoices;
 if (data.sheet && !Array.isArray(data.sheet.rows)) delete data.sheet;
 const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQdhKSZBII7leKaxTQ6mRPG0Q6POsFtOrCADtNIFDl6yrlnPoCXLXaUCsGvzzNIZPodTxfOHnAjP5MQ/pub?output=csv';
 let game = null, lunarCourt = null, storageOK = true, camera = null, cleanSnapshot = '', askResolve = null, loadingForm = false;
@@ -421,8 +423,21 @@ const mixDeck = l => {
 };
 const roundActive = () => !!(game && !game.finished);
 
+function voiceNow(mode = game?.mode) {
+  return voiceFor(contextFor(mode), data.voice, data.characterVoices);
+}
 function say(t) {
-  if (data.sound) speak(t, data.voice);
+  if (data.sound) speak(t, voiceNow(), { context: contextFor(game?.mode) });
+}
+function wordPrompt(mode, word, style) {
+  if (mode === 'lanes') return style === 'reach' ? `Step into the word ${word}. You have 10 seconds.` : `Drive to the word ${word}.`;
+  return mode === 'words' ? `Park on the word ${word}.` : `Build the word ${word}.`;
+}
+function prefetchRound(g) {
+  if (!data.sound) return;
+  const voiceId = voiceNow(g.mode);
+  const words = ['words', 'build', 'lanes'].includes(g.mode) ? wordList().slice(0, 8).map(w => wordPrompt(g.mode, w, g.style)) : [];
+  prefetchSpeech(words.concat(commonLines).map(text => ({ text, voiceId })), { priority: 'next' });
 }
 function stopSpeech() {
   stop();
@@ -869,6 +884,7 @@ function start(mode) {
   const style = styleOf(mode);
   game = { mode, style, key: keyFor(style, skillLevel(mode)), index: 0, firstCorrect: 0, missed: false, done: false, finished: false, freePlay: !!p().arcade && ARCADE_PLAY.has(mode) };
   question();
+  if (game?.mode === mode) prefetchRound(game);
 }
 function question() {
   const g = game;
@@ -924,7 +940,7 @@ function question() {
   if (g.mode === 'words' || g.mode === 'build') {
     const words = wordList();
     g.target = pick(candidateWords(words, g.mode));
-    g.prompt = g.mode === 'words' ? `Park on the word ${g.target}.` : `Build the word ${g.target}.`;
+    g.prompt = wordPrompt(g.mode, g.target);
     g.options = shuffle(words.filter(x => x !== g.target)).slice(0, n - 1).concat(g.target);
     g.render = x => `${esc(x)}<span aria-hidden="true" style="font-size:20px">🚙</span>`;
     if (g.mode === 'build') g.letters = shuffle([...g.target, ...distractorLetters(g.target, l)]);
@@ -962,7 +978,7 @@ function question() {
     const words = wordList();
     const count = laneCount(l, words.length);
     g.target = pick(words);
-    g.prompt = g.style === 'reach' ? `Step into the word ${g.target}. You have 10 seconds.` : `Drive to the word ${g.target}.`;
+    g.prompt = wordPrompt(g.mode, g.target, g.style);
     g.options = shuffle(words.filter(w => w !== g.target)).slice(0, Math.max(0, count - 1)).concat(g.target);
     g.speed = laneDriveSpeed(g);
     g.render = x => esc(x);
@@ -3816,6 +3832,7 @@ function formSnapshot() {
     words: $('#words').value,
     sound: $('#sound').checked,
     voice: $('#voice').value,
+    characterVoices: $('#characterVoices').checked,
     camera: $('#camera').checked,
     skills: [...document.querySelectorAll('[data-skill]')].map(el => `${el.dataset.skill}:${el.value}`),
     race: [...document.querySelectorAll('[data-race]')].map(el => `${el.dataset.race}:${el.checked ? 1 : 0}`).join(','),
@@ -3841,6 +3858,8 @@ function loadForm() {
   $('#words').value = x.words.join(', ');
   $('#sound').checked = data.sound;
   $('#voice').value = knownVoice(data.voice);
+  $('#characterVoices').checked = !!data.characterVoices;
+  paintVoiceStatus(getSpeechStatus());
   $('#camera').checked = !!data.camera;
   paintSheet();
   $('#error').textContent = '';
@@ -3890,6 +3909,7 @@ function applyForm() {
   };
   data.sound = $('#sound').checked;
   data.voice = knownVoice($('#voice').value);
+  data.characterVoices = $('#characterVoices').checked;
   data.camera = $('#camera').checked;
   data.active = +$('#editProfile').value;
   save();
@@ -4028,17 +4048,40 @@ $('#level').onchange = () => {
   paintStats();
 };
 $('#voice').innerHTML = voices.map(([id, label]) => `<option value="${esc(id)}">${esc(label)}</option>`).join('');
-$('#hearVoice').onclick = async () => {
-  const button = $('#hearVoice');
+async function hearWith(button, lines) {
   const label = button.textContent;
-  button.disabled = true;
-  button.textContent = 'Getting the voice ready…';
-  try { await speak(sampleLine, $('#voice').value, { full: true }); }
-  finally {
-    button.disabled = false;
+  const ready = n => { button.textContent = n ? `Getting the voice ready… ${Math.round(n * 100)}%` : 'Getting the voice ready…'; };
+  document.querySelectorAll('.voice-preview').forEach(b => { b.disabled = true; });
+  ready(0);
+  try {
+    await prepareSpeech({ onProgress: ready });
+    button.textContent = 'Playing…';
+    for (const [text, voiceId] of lines()) {
+      const { status } = await speakAndWait(text, { voiceId, fallback: 'on-error' });
+      if (status !== 'completed') break;
+    }
+  } finally {
+    document.querySelectorAll('.voice-preview').forEach(b => { b.disabled = false; });
     button.textContent = label;
   }
-};
+}
+$('#hearVoice').onclick = () => hearWith($('#hearVoice'), () => [[sampleLine, $('#voice').value]]);
+$('#hearHosts').onclick = () => hearWith($('#hearHosts'), () => Object.entries(profiles).map(([id, role]) => [`${role.label}. ${role.line}`, voiceFor(id, $('#voice').value, $('#characterVoices').checked)]));
+function paintVoiceStatus(s) {
+  const el = $('#voiceStatus');
+  if (!el) return;
+  const pct = Math.round((s.progress || 0) * 100);
+  el.textContent = {
+    unsupported: 'This browser cannot run the voice here, so the browser’s own voice reads aloud.',
+    idle: 'The voice downloads the first time read-aloud is used.',
+    loading: pct ? `Getting the voice ready… ${pct}%` : 'Getting the voice ready…',
+    ready: 'The voice is ready on this device.',
+    failed: s.retryIn != null
+      ? 'The voice could not load yet. The browser’s own voice reads aloud until it does.'
+      : 'The voice could not load. The browser’s own voice reads aloud. Tap Hear this voice to try again.'
+  }[s.engine] || '';
+}
+onSpeechStatus(paintVoiceStatus);
 function paintSheet() {
   const el = $('#sheetStatus');
   if (!el) return;

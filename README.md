@@ -31,6 +31,12 @@ Parent corner is the gear at the top. The grown-up check is a small addition pro
 
 Most rounds are 5, 10, or 15 questions. A right answer on the first try earns a learning star. Arcade games such as Gas race, Dirt ride, and Sky flight keep going on their own clocks.
 
+## Read-aloud
+
+Prompts are spoken by Kokoro, a voice model that runs in this browser. It downloads once, about 90 MB from jsDelivr and Hugging Face, the first time read-aloud is used. Every line it says is saved in the browser and replays at once later. While the model is still downloading, a line it has not said before is read by the browser’s own voice. Once the model is ready, a new line waits for Kokoro. On a recent laptop that takes about as long as the line itself. If the model cannot load, the browser’s voice reads aloud and the app tries again later.
+
+In Parent corner, **Hear this voice** shows download progress, then plays a sample. **Give game hosts their own voices** lets racing and arcade games use a second voice. Reading and math always use the voice the grown-up picked. The app itself still needs the server to load. Saved lines keep playing if the model cannot download. How it works, and the checks to run by hand: [docs/voice.md](docs/voice.md).
+
 ## The shelf
 
 Every game is a card on the home screen. Shapes, colors, words, and counting sit beside the arcade games.
@@ -88,4 +94,4 @@ Most of the pictures, questions, and games are Little Sprouts’ own. These crea
 
 ## Notes
 
-Settings and stars stay in this browser. They do not sync to another device. Clearing site data clears them. `node --test logic.test.mjs` and `node --test camera.test.mjs` check the learning rules and the Reach math.
+Settings and stars stay in this browser. They do not sync to another device. Clearing site data clears them. `node --test logic.test.mjs`, `node --test camera.test.mjs`, and `node --test speech.test.mjs` check the learning rules, the Reach math, and the read-aloud voice.

@@ -105,8 +105,11 @@
         <label class="check"><input type="checkbox" id="sound"> Read prompts aloud for every learner</label>
         <p class="hint">This sound setting is shared by every learner on this browser.</p>
         <label>Read-aloud voice<select id="voice"></select></label>
-        <button type="button" class="quiet" id="hearVoice">Hear this voice</button>
-        <p class="hint">This voice is shared by every learner on this browser. It downloads once and then stays on this device. If it cannot load, the browser’s own voice is used.</p>
+        <button type="button" class="quiet voice-preview" id="hearVoice">Hear this voice</button>
+        <label class="check"><input type="checkbox" id="characterVoices"> Give game hosts their own voices</label>
+        <button type="button" class="quiet voice-preview" id="hearHosts">Hear the game voices</button>
+        <p class="hint" id="voiceStatus"></p>
+        <p class="hint">This voice is shared by every learner on this browser. It downloads once, about 90 MB, then stays on this device. Lines it has already said are saved and replay without downloading again. Reading and math always use the voice above. With game hosts on, racing and arcade games use their own voices. While the voice is still downloading, or if it cannot run on this device, the browser’s own voice reads aloud.</p>
         <h3>Moving & real-world play</h3>
         <p class="hint">Move and Hunt turn each game into a movement or find-it activity, and a grown-up confirms the answer. Print floor cards for Move.</p>
         <button type="button" class="quiet" id="printOpen"><span aria-hidden="true">🖨</span> Print floor cards</button>
