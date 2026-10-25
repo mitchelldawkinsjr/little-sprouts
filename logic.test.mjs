@@ -53,6 +53,10 @@ import {
   toastBoard,
   toastPace,
   aisleBoard,
+  lilyBoard,
+  lilyPads,
+  lilyOverlap,
+  lilyRide,
   laneCount,
   raceBoard,
   raceGateSeconds,
@@ -498,6 +502,25 @@ test('garden chase and sprout hop get harder as the level rises', () => {
   assert.equal(hopBoard(1).drift, 0);
   assert.ok(hopBoard(3).drift > 0);
   assert.equal(hopBoard(0).choices, 3);
+});
+
+test('lily cross adds pads and lanes, and shortens the hops, as the level rises', () => {
+  assert.deepEqual([1, 2, 3].map(level => lilyBoard(level).choices), [3, 4, 5]);
+  assert.ok(lilyBoard(1).lives > lilyBoard(3).lives);
+  assert.ok(lilyBoard(1).speed < lilyBoard(3).speed);
+  assert.equal(lilyBoard(1).rivers, 2);
+  assert.equal(lilyBoard(3).rivers, 3);
+  assert.equal(lilyBoard(0).roads, 2);
+  assert.equal(lilyBoard(9).choices, 5);
+  assert.deepEqual(lilyPads(3), [0, 2, 4]);
+  assert.deepEqual(lilyPads(4), [0, 1, 3, 4]);
+  assert.deepEqual(lilyPads(5), [0, 1, 2, 3, 4]);
+  assert.deepEqual(lilyPads(1), [2]);
+  assert.equal(lilyOverlap(0.2, 0.6, 0.5, 1), true);
+  assert.equal(lilyOverlap(0.2, 0.6, 1.2, 1), false);
+  const ride = lilyRide(1, 0.6, [{ x: 0, w: 1.2, id: 'a' }, { x: 1.1, w: 2, id: 'b' }]);
+  assert.equal(ride.id, 'b');
+  assert.equal(lilyRide(3, 0.5, [{ x: 0, w: 1 }]), null);
 });
 
 test('market walk adds a shelf and shortens the clock as the level rises', () => {

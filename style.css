@@ -166,7 +166,7 @@ button.primary.reaching::after{content:"";position:absolute;left:0;right:0;botto
 .race-kinds{display:flex;flex-wrap:wrap;gap:8px 18px;margin:8px 0 16px}
 .rocket-sky.shake{animation:arcadeshake .28s ease}
 @keyframes rocketflame{50%{opacity:.4}}
-@media(prefers-reduced-motion:reduce){.road::before,.field.shake,.road.shake,.racer.shake,.pond.shake,.sky.shake,.planet.shake,.rocket-sky.shake,.rocket-ship.lit .flame,.camstage.lane-cam.shake,.chase.shake,.hop.shake,.toast.shake{animation:none}.car,.rocket-column,.rocket-sky.flying .rocket-ship{transition:none}}
+@media(prefers-reduced-motion:reduce){.road::before,.field.shake,.road.shake,.racer.shake,.pond.shake,.sky.shake,.planet.shake,.rocket-sky.shake,.rocket-ship.lit .flame,.camstage.lane-cam.shake,.chase.shake,.hop.shake,.toast.shake,.lily.shake{animation:none}.car,.rocket-column,.rocket-sky.flying .rocket-ship{transition:none}}
 #arcade .lj{height:auto;min-height:0;max-width:720px;margin:0 auto}
 #arcade .lj-stage{flex:0 0 auto;height:320px;max-height:320px;min-height:0}
 @media(max-width:560px){.field,.road,.pond,.sky,.planet{height:250px}.rocket-sky{height:220px}.race-view{height:260px}.falling{font-size:22px;min-width:52px;padding:8px 10px}.basket,.car{font-size:36px}.finish{top:64px}.steer-btn{width:76px;height:56px}#arcade .lj-stage{height:250px;max-height:250px}}
@@ -186,7 +186,7 @@ body:has(.playtop) .playtop,body:has(.playtop) .progress{flex:none}
 body:has(.playtop) .progress{margin:8px 0}
 body:has(.playtop) .playarea{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;padding:12px 16px 14px;overflow:hidden}
 body:has(.playtop) .playarea h1{font-size:clamp(22px,3.2vw,32px);margin:0 0 6px;flex:none}
-body:has(.playtop) .speaker,body:has(.playtop) #reveal,body:has(.playtop) #raceShow,body:has(.playtop) #rocketShow,body:has(.playtop) #chaseShow,body:has(.playtop) #hopShow,body:has(.playtop) #toastShow,body:has(.playtop) #aisleShow,body:has(.playtop) .feedback,body:has(.playtop) #next,body:has(.playtop) .race-hud,body:has(.playtop) .steer,body:has(.playtop) .lane-paces,body:has(.playtop) .hint{flex:none}
+body:has(.playtop) .speaker,body:has(.playtop) #reveal,body:has(.playtop) #raceShow,body:has(.playtop) #rocketShow,body:has(.playtop) #chaseShow,body:has(.playtop) #hopShow,body:has(.playtop) #toastShow,body:has(.playtop) #aisleShow,body:has(.playtop) #lilyShow,body:has(.playtop) .feedback,body:has(.playtop) #next,body:has(.playtop) .race-hud,body:has(.playtop) .steer,body:has(.playtop) .lane-paces,body:has(.playtop) .hint{flex:none}
 body:has(.playtop) .speaker{padding:8px 16px}
 body:has(.playtop) .feedback{margin:6px 0}
 body:has(.playtop) #arcade,body:has(.playtop) .camstage{flex:1;min-height:0;width:100%;align-self:stretch;display:flex;flex-direction:column}
@@ -196,8 +196,8 @@ body:has(.playtop) #arcade,body:has(.playtop) .camstage{flex:1;min-height:0;widt
 body:has(.sidecar-frame) .playarea>h1,body:has(.sidecar-frame) .playarea>.speaker,body:has(.sidecar-frame) .playarea>#next{display:none}
 body:has(.playtop) #arcade>.arcade{flex:1;min-height:0;width:100%;display:flex;flex-direction:column;overflow:auto}
 body:has(.playtop) .match-play{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;display:grid;place-items:center;overflow:hidden;container-type:size}
-body:has(.playtop) .race-play,body:has(.playtop) .arcade.racer,body:has(.playtop) .rocket-play,body:has(.playtop) .sky-play,body:has(.playtop) .planet-play,body:has(.playtop) .marble-play,body:has(.playtop) .bridge-play,body:has(.playtop) .maze-play,body:has(.playtop) .chase-play,body:has(.playtop) .hop-play,body:has(.playtop) .toast-play,body:has(.playtop) .glide-play,body:has(.playtop) .aisle-play{flex:1;min-height:0;width:100%;max-width:none;margin:0;display:flex;flex-direction:column}
-body:has(.playtop) .racer-view,body:has(.playtop) .race-view,body:has(.playtop) .field,body:has(.playtop) .rocket-sky,body:has(.playtop) .pond,body:has(.playtop) .sky,body:has(.playtop) .planet,body:has(.playtop) .marble,body:has(.playtop) .bridge,body:has(.playtop) .maze,body:has(.playtop) .chase,body:has(.playtop) .hop,body:has(.playtop) .toast,body:has(.playtop) .glide,body:has(.playtop) .aisle{flex:1;height:auto;min-height:140px;max-height:none}
+body:has(.playtop) .race-play,body:has(.playtop) .arcade.racer,body:has(.playtop) .rocket-play,body:has(.playtop) .sky-play,body:has(.playtop) .planet-play,body:has(.playtop) .marble-play,body:has(.playtop) .bridge-play,body:has(.playtop) .maze-play,body:has(.playtop) .chase-play,body:has(.playtop) .hop-play,body:has(.playtop) .toast-play,body:has(.playtop) .glide-play,body:has(.playtop) .aisle-play,body:has(.playtop) .lily-play{flex:1;min-height:0;width:100%;max-width:none;margin:0;display:flex;flex-direction:column}
+body:has(.playtop) .racer-view,body:has(.playtop) .race-view,body:has(.playtop) .field,body:has(.playtop) .rocket-sky,body:has(.playtop) .pond,body:has(.playtop) .sky,body:has(.playtop) .planet,body:has(.playtop) .marble,body:has(.playtop) .bridge,body:has(.playtop) .maze,body:has(.playtop) .chase,body:has(.playtop) .hop,body:has(.playtop) .toast,body:has(.playtop) .glide,body:has(.playtop) .aisle,body:has(.playtop) .lily{flex:1;height:auto;min-height:140px;max-height:none}
 body:has(.playtop) .steer{margin-top:8px}
 body:has(.playtop) .playarea>.choices{flex:0 1 auto;align-self:stretch;margin:8px auto;max-height:42%;overflow:auto}
 body:has(.playtop) .playarea:not(:has(#arcade))>.choices{flex:1;max-height:none}
@@ -263,6 +263,12 @@ body:has(.playtop) #arcade>.puzzle-stage{display:grid;flex-direction:unset;overf
 .toast canvas{width:100%;height:100%;display:block;touch-action:none}
 .glide-play{max-width:960px;margin:8px auto 0;touch-action:none;user-select:none}
 .aisle-play{max-width:720px;margin:8px auto 0;touch-action:none;user-select:none;display:flex;flex-direction:column;min-height:0}
+.lily-play{max-width:440px;margin:8px auto 0;touch-action:none;user-select:none;display:flex;flex-direction:column;min-height:0}
+#lilyShow:empty{display:none}
+#lilyShow{text-align:center}
+.lily{position:relative;flex:1;height:520px;min-height:280px;border-radius:20px;overflow:hidden;border:1px solid #d3dccb;background:#c5e4b4;touch-action:none}
+.lily canvas{width:100%;height:100%;display:block;touch-action:none}
+.lily.shake{animation:arcadeshake .28s ease}
 .aisle{width:100%;flex:1;min-height:220px;background:#f6efe2;border-radius:18px;touch-action:none}
 .market-pad{display:grid;grid-template-columns:repeat(3,72px);grid-template-areas:" . up ." "left down right";justify-content:center;gap:8px}
 .market-pad [data-dir="up"]{grid-area:up}

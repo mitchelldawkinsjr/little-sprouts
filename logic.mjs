@@ -239,6 +239,50 @@ export function aisleBoard(level) {
   return { ...AISLE_BOARDS[index] };
 }
 
+const LILY_BOARDS = [
+  { choices: 3, lives: 4, roads: 2, rivers: 2, speed: 1.35 },
+  { choices: 4, lives: 3, roads: 3, rivers: 2, speed: 1.9 },
+  { choices: 5, lives: 2, roads: 3, rivers: 3, speed: 2.45 }
+];
+
+export function lilyBoard(level) {
+  const index = Math.min(3, Math.max(1, Math.round(+level) || 1)) - 1;
+  return { ...LILY_BOARDS[index] };
+}
+
+export function lilyPads(choices, cols = 5) {
+  const width = Math.max(1, Math.round(+cols) || 1);
+  const n = Math.max(1, Math.min(width, Math.round(+choices) || 1));
+  if (n === 1) return [Math.floor((width - 1) / 2)];
+  const used = new Set();
+  const pads = [];
+  for (let i = 0; i < n; i++) {
+    let col = Math.round((i * (width - 1)) / (n - 1));
+    while (used.has(col)) col += 1;
+    used.add(col);
+    pads.push(col);
+  }
+  return pads;
+}
+
+export function lilyOverlap(x, w, otherX, otherW) {
+  return x < otherX + otherW && otherX < x + w;
+}
+
+export function lilyRide(x, w, logs) {
+  let best = null;
+  let cover = 0;
+  for (const log of logs || []) {
+    if (!lilyOverlap(x, w, log.x, log.w)) continue;
+    const overlap = Math.min(x + w, log.x + log.w) - Math.max(x, log.x);
+    if (overlap > cover) {
+      cover = overlap;
+      best = log;
+    }
+  }
+  return best;
+}
+
 export function toastPace(board, elapsedSeconds) {
   const steps = Math.max(0, Math.floor((+elapsedSeconds || 0) / 10));
   const flight = Math.max(board.minFlight, board.flight - steps * 160);

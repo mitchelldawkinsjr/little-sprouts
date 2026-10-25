@@ -72,6 +72,7 @@ Most of the pictures, questions, and games are Little Sprouts’ own. These crea
 - [cnrasili — Hooked](https://github.com/cnrasili/Hooked). Hook the fish follows that cast-and-steer idea. The pictures and sounds here are new.
 - [hellokatili — HTML5 Pacman](https://codepen.io/hellokatili/pen/xwKRmo). Garden chase uses that maze and the way it moves. The berries are new.
 - [FRADAR — Doodle Jump](https://codepen.io/FRADAR/pen/XWMzvaM). Sprout hop uses that hop. The sprout and leaves are drawn here.
+- [brockcooper — frogger_game](https://github.com/brockcooper/frogger_game). Lily cross follows that hop across the road and the river. The frog, the logs, and the questions are drawn here.
 - [Megafry — Toast Catcher](https://codepen.io/Megafry/pen/yyyZyYw). Toast pop uses that arc and the lives.
 - [William Malone — canvas drawing](https://www.williammalone.com/articles/create-html5-canvas-javascript-drawing-app/). Color by number follows his brush. The pictures are new.
 - [William Malone — BlocksJS](https://www.williammalone.com/) 0.5.32 (MIT). Garden walk uses it for the canvas and the walk.
