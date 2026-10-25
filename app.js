@@ -70,6 +70,7 @@ import {
   crayonLegend
 } from './logic.mjs?v=lily-cross';
 import { canSpeak, commonLines, contextFor, getSpeechStatus, knownVoice, onSpeechStatus, prefetchSpeech, prepareSpeech, profiles, sampleLine, speak, speakAndWait, stop, voiceFor, voices, warm } from './speech.js?v=voice-life';
+import './pad.js?v=pad-rt';
 import { mountCatch, mountLanes, mountRace, mountRocket, pokeRocket, stopArcade } from './arcade.js?v=gas-car';
 import { mountLunar } from './lunar.js?v=moon-board';
 import { mountHook, stopHook } from './hook.js?v=hook-reach';

@@ -432,3 +432,8 @@ body:has(.playtop) .trace-play,body:has(.playtop) .sort-play,body:has(.playtop) 
 .credit-list li{padding:14px 0;border-top:1px solid var(--line)}
 .credit-list a{color:#32634e;font-weight:700}
 .credit-list p{margin:4px 0 0;font-size:14px}
+.pad-cursor{position:fixed;z-index:100000;left:0;top:0;width:18px;height:18px;margin:-9px 0 0 -9px;border:3px solid #244b3d;border-radius:50%;background:#f8ce6c;box-shadow:0 0 0 4px #f8ce6c55;pointer-events:none;display:none}
+body.pad-on .pad-cursor{display:block}
+.pad-focus{outline:4px solid #db8b32;outline-offset:4px}
+.pad-note{display:none;position:fixed;left:16px;bottom:12px;z-index:100000;margin:0;padding:8px 12px;border-radius:999px;background:#244b3d;color:#fff;font-size:13px;font-weight:700}
+body.pad-on .pad-note{display:block}
