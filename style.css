@@ -186,7 +186,7 @@ body:has(.playtop) .playtop,body:has(.playtop) .progress{flex:none}
 body:has(.playtop) .progress{margin:8px 0}
 body:has(.playtop) .playarea{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;padding:12px 16px 14px;overflow:hidden}
 body:has(.playtop) .playarea h1{font-size:clamp(22px,3.2vw,32px);margin:0 0 6px;flex:none}
-body:has(.playtop) .speaker,body:has(.playtop) #reveal,body:has(.playtop) #raceShow,body:has(.playtop) #rocketShow,body:has(.playtop) #chaseShow,body:has(.playtop) #hopShow,body:has(.playtop) #toastShow,body:has(.playtop) #aisleShow,body:has(.playtop) #lilyShow,body:has(.playtop) #stackShow,body:has(.playtop) #lampShow,body:has(.playtop) .feedback,body:has(.playtop) #next,body:has(.playtop) .race-hud,body:has(.playtop) .steer,body:has(.playtop) .lane-paces,body:has(.playtop) .hint{flex:none}
+body:has(.playtop) .speaker,body:has(.playtop) #reveal,body:has(.playtop) #raceShow,body:has(.playtop) #rocketShow,body:has(.playtop) #chaseShow,body:has(.playtop) #hopShow,body:has(.playtop) #toastShow,body:has(.playtop) #aisleShow,body:has(.playtop) #lilyShow,body:has(.playtop) #stackShow,body:has(.playtop) #lampShow,body:has(.playtop) #lightShow,body:has(.playtop) .feedback,body:has(.playtop) #next,body:has(.playtop) .race-hud,body:has(.playtop) .steer,body:has(.playtop) .lane-paces,body:has(.playtop) .hint{flex:none}
 body:has(.playtop) .speaker{padding:8px 16px}
 body:has(.playtop) .feedback{margin:6px 0}
 body:has(.playtop) #arcade,body:has(.playtop) .camstage{flex:1;min-height:0;width:100%;align-self:stretch;display:flex;flex-direction:column}
@@ -196,8 +196,8 @@ body:has(.playtop) #arcade,body:has(.playtop) .camstage{flex:1;min-height:0;widt
 body:has(.sidecar-frame) .playarea>h1,body:has(.sidecar-frame) .playarea>.speaker,body:has(.sidecar-frame) .playarea>#next{display:none}
 body:has(.playtop) #arcade>.arcade{flex:1;min-height:0;width:100%;display:flex;flex-direction:column;overflow:auto}
 body:has(.playtop) .match-play{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;display:grid;place-items:center;overflow:hidden;container-type:size}
-body:has(.playtop) .race-play,body:has(.playtop) .arcade.racer,body:has(.playtop) .rocket-play,body:has(.playtop) .sky-play,body:has(.playtop) .planet-play,body:has(.playtop) .marble-play,body:has(.playtop) .bridge-play,body:has(.playtop) .maze-play,body:has(.playtop) .chase-play,body:has(.playtop) .hop-play,body:has(.playtop) .toast-play,body:has(.playtop) .glide-play,body:has(.playtop) .aisle-play,body:has(.playtop) .lily-play,body:has(.playtop) .mole-play,body:has(.playtop) .bust-play,body:has(.playtop) .stack-play,body:has(.playtop) .lamp-play,body:has(.playtop) .cube-play,body:has(.playtop) .hoop-play{flex:1;min-height:0;width:100%;max-width:none;margin:0;display:flex;flex-direction:column}
-body:has(.playtop) .racer-view,body:has(.playtop) .race-view,body:has(.playtop) .field,body:has(.playtop) .rocket-sky,body:has(.playtop) .pond,body:has(.playtop) .sky,body:has(.playtop) .planet,body:has(.playtop) .marble,body:has(.playtop) .bridge,body:has(.playtop) .maze,body:has(.playtop) .chase,body:has(.playtop) .hop,body:has(.playtop) .toast,body:has(.playtop) .glide,body:has(.playtop) .aisle,body:has(.playtop) .lily,body:has(.playtop) .mole,body:has(.playtop) .bust,body:has(.playtop) .stack,body:has(.playtop) .lamp,body:has(.playtop) .cube,body:has(.playtop) .hoop-play canvas{flex:1;height:auto;min-height:140px;max-height:none}
+body:has(.playtop) .race-play,body:has(.playtop) .arcade.racer,body:has(.playtop) .rocket-play,body:has(.playtop) .sky-play,body:has(.playtop) .planet-play,body:has(.playtop) .marble-play,body:has(.playtop) .bridge-play,body:has(.playtop) .maze-play,body:has(.playtop) .chase-play,body:has(.playtop) .hop-play,body:has(.playtop) .toast-play,body:has(.playtop) .glide-play,body:has(.playtop) .aisle-play,body:has(.playtop) .lily-play,body:has(.playtop) .mole-play,body:has(.playtop) .bust-play,body:has(.playtop) .stack-play,body:has(.playtop) .lamp-play,body:has(.playtop) .cube-play,body:has(.playtop) .hoop-play,body:has(.playtop) .light-play{flex:1;min-height:0;width:100%;max-width:none;margin:0;display:flex;flex-direction:column}
+body:has(.playtop) .racer-view,body:has(.playtop) .race-view,body:has(.playtop) .field,body:has(.playtop) .rocket-sky,body:has(.playtop) .pond,body:has(.playtop) .sky,body:has(.playtop) .planet,body:has(.playtop) .marble,body:has(.playtop) .bridge,body:has(.playtop) .maze,body:has(.playtop) .chase,body:has(.playtop) .hop,body:has(.playtop) .toast,body:has(.playtop) .glide,body:has(.playtop) .aisle,body:has(.playtop) .lily,body:has(.playtop) .mole,body:has(.playtop) .bust,body:has(.playtop) .stack,body:has(.playtop) .lamp,body:has(.playtop) .cube,body:has(.playtop) .hoop-play canvas,body:has(.playtop) .light-play canvas{flex:1;height:auto;min-height:140px;max-height:none}
 body:has(.playtop) .steer{margin-top:8px}
 body:has(.playtop) .playarea>.choices{flex:0 1 auto;align-self:stretch;margin:8px auto;max-height:42%;overflow:auto}
 body:has(.playtop) .playarea:not(:has(#arcade))>.choices{flex:1;max-height:none}
@@ -403,6 +403,16 @@ body:has(.playtop) .trace-play,body:has(.playtop) .sort-play,body:has(.playtop) 
 .hoop-play{position:relative;flex:1;min-height:240px;display:flex;flex-direction:column}
 .hoop-play canvas{width:100%;flex:1;min-height:220px;display:block;touch-action:none;cursor:grab;border-radius:18px}
 .hoop-hint{position:absolute;left:0;right:0;bottom:10px;margin:0;text-align:center;font-size:12px;font-weight:700;color:#32634e;pointer-events:none}
+.light-play{position:relative;flex:1;min-height:320px;border-radius:24px;overflow:hidden;background:#07080f;touch-action:manipulation}
+.light-play canvas{width:100%;height:100%;display:block}
+.light-catch{position:absolute;left:50%;top:46%;width:min(34vw,150px);height:min(34vw,150px);transform:translate(-50%,-50%);border-radius:50%;background:transparent;color:#f4fff8;font-family:Outfit,sans-serif;font-size:22px;font-weight:800;text-shadow:0 2px 0 #003}
+.light-menu,.light-over{position:absolute;inset:0;display:grid;align-content:center;justify-items:center;gap:12px;padding:20px;background:#07080ee8;color:#f4fff8;text-align:center}
+.light-menu[hidden],.light-over[hidden],.light-catch[hidden]{display:none}
+.light-kicker,.light-note,.light-over-line{margin:0}
+.light-note,.light-over-line{max-width:280px;font-size:14px}
+.light-speeds{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.light-speeds button{min-width:74px;min-height:44px;padding:8px 12px;border-radius:999px;border:2px solid #3d6b58;background:#10241c;color:#f4fff8;font-family:Outfit,sans-serif;font-weight:700}
+.light-speeds button[aria-pressed="true"]{background:#1ec75a;color:#073018;border-color:#d6ff6a}
 .merge-play{gap:8px}
 .merge-next{margin:0;font-weight:700}
 .merge-jar{position:relative;flex:1;min-height:240px;border-radius:24px;overflow:hidden;border:1px solid #d3dccb;background:linear-gradient(#f7f3e8,#e7f0df);touch-action:none}

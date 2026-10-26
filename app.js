@@ -80,6 +80,7 @@ import './tilt.js?v=ask-first';
 import { mountCatch, mountLanes, mountRace, mountRocket, pokeRocket, stopArcade } from './arcade.js?v=ask-first';
 import { mountLunar } from './lunar.js?v=moon-board';
 import { mountHoop, stopHoop } from './hoop.js?v=hoop-trio';
+import { mountLight, stopLight } from './light.js?v=catch-light';
 import { mountHook, stopHook } from './hook.js?v=ask-first';
 import { mountSky, stopSky } from './sky.js?v=ask-first';
 import { mountPlanet, stopPlanet } from './planet.js?v=ask-first';
@@ -155,7 +156,7 @@ data.voice = knownVoice(data.voice);
 data.characterVoices = !!data.characterVoices;
 if (data.sheet && !Array.isArray(data.sheet.rows)) delete data.sheet;
 const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQdhKSZBII7leKaxTQ6mRPG0Q6POsFtOrCADtNIFDl6yrlnPoCXLXaUCsGvzzNIZPodTxfOHnAjP5MQ/pub?output=csv';
-let game = null, lunarCourt = null, hoopCourt = null, storageOK = true, camera = null, cleanSnapshot = '', askResolve = null, loadingForm = false;
+let game = null, lunarCourt = null, hoopCourt = null, lightCourt = null, storageOK = true, camera = null, cleanSnapshot = '', askResolve = null, loadingForm = false;
 let grownupOk = false, gateNext = null, gateAnswer = 0, askYesOnCancel = false, coverTimer = 0, rocketTimer = 0, laneTimer = 0, hookTimer = 0, skyTimer = 0, planetTimer = 0, matchTimer = 0, learnTimer = 0, bridgeTimer = 0, chaseTimer = 0, hopTimer = 0, toastTimer = 0, glideTimer = 0, aisleTimer = 0, lilyTimer = 0, bustTimer = 0, moleTimer = 0, cubeTimer = 0, stackTimer = 0, lampTimer = 0, rallyTimer = 0;
 const p = () => data.profiles[data.active];
 const questionCount = () => roundCount(p().rounds);
@@ -181,11 +182,11 @@ function saveBoard(list) {
 
 const colors = [['red', '#dc6253'], ['blue', '#538cbf'], ['yellow', '#f5d400'], ['green', '#76a265'], ['orange', '#e99d4d'], ['purple', '#a381c0'], ['pink', '#e5a2bd'], ['brown', '#9a7153'], ['black', '#343c3a'], ['white', '#ffffff']];
 const shapes = ['circle', 'square', 'triangle', 'rectangle', 'oval', 'diamond', 'star', 'hexagon'];
-const games = [['shapes', 'Shape safari', 'Find circles, triangles & more.', '◒', '#edf0df', 'SHAPES'], ['colors', 'Color garden', 'Pick a color. Grow your skills.', '✿', '#f9e6dc', 'COLORS'], ['mix', 'Jump to it!', 'Match a shape and its color.', '◆', '#e4edf4', 'MIX & MATCH'], ['missing', 'What’s missing?', 'A little look. A big memory!', '☁', '#eee7f5', 'MEMORY'], ['words', 'Word parking', 'Drive into a new sight word.', '🚙', '#fcf0d5', 'READING'], ['build', 'Build a word', 'Little letters, big discoveries.', 'abc', '#e3eee7', 'LETTERS'], ['count', 'Count & clap', 'Count it, jump it, clap it.', '🍎', '#fbe9e3', 'COUNTING'], ['path', 'Number path', 'Hop along the numbers.', '🐸', '#e6efe9', 'NUMBERS'], ['catch', 'Catch the answer', 'Grab the right number as it falls.', '🧺', '#fbe9e3', 'MATH'], ['lanes', 'Word lanes', 'Steer into the word you hear.', '🚗', '#fcf0d5', 'READING'], ['rocket', 'Rocket climb', 'Answer in time and fly to space.', '🚀', '#e7f1f6', 'WORDS + MATH'], ['lunar', 'Moon shot', 'Answer, then shoot the freethrow.', '🌙', '#e4eef6', 'SPACE'], ['hoop', 'Shooting hoops', 'Flick the ball through the right hoop.', '🏀', '#f8e6dc', 'HOOPS'], ['race', 'Gas race', 'Drive to the answer. See who goes furthest.', '⛽', '#f8efd4', 'RACE'], ['hook', 'Hook the fish', 'Steer the hook onto the right fish.', '🎣', '#d7eef5', 'FISHING'], ['sky', 'Sky shot', 'Shoot the rock with the right answer.', '🛸', '#d9e4f2', 'SPACE'], ['planet', 'Planet guard', 'Aim and keep the planet safe.', '🪐', '#d7e6f4', 'SPACE'], ['puzzle', 'Shape puzzle', 'Build the pieces, then tap or say the shape.', '🧩', '#e5f4ef', 'SHAPES'], ['match', 'Pair match', 'Flip cards. Match shapes, colors, numbers, and words.', '🃏', '#f3efe4', 'MEMORY'], ['marble', 'Marble path', 'Shoot one color. Points raise the level.', '🔴', '#fde8e4', 'COLORS'], ['bridge', 'Stick bridge', 'Hold the stick across each gap. Reach the last platform.', '🪵', '#f3ead7', 'WORDS + MATH'], ['maze', 'Tilt maze', 'Tilt to the flag. A right answer adds time.', '🧭', '#e4eef6', 'MAZE'], ['chase', 'Garden chase', 'Eat the berries that match your words, numbers, shapes, and colors.', '🫐', '#e7f0d8', 'MAZE'], ['hop', 'Sprout hop', 'Bounce up the leaves and hop on the right answer.', '🌿', '#e4f2ea', 'JUMP'], ['toast', 'Toast pop', 'Tap the toast with the right answer.', '🍞', '#f8e6c8', 'CATCH'], ['glide', 'Island glide', 'Hold to climb. Let go to dive. Grab the gem with the answer.', '✈', '#d7ebf5', 'FLIGHT'], ['aisle', 'Market walk', 'Tap the arrows to walk the aisles and pick up the right thing.', '🧺', '#f6efe2', 'SHOP'], ['lily', 'Lily cross', 'Hop across the road and the river. Land on the right lily pad.', '🪷', '#d7eef2', 'POND'], ['bust', 'Ghost bust', 'Tap the colored ghost with the right answer.', '👻', '#e4eee6', 'CATCH'], ['mole', 'Mole pop', 'Tap the mole with the right answer.', '🐹', '#efe4cf', 'HOLES'], ['cube', 'Cube dash', 'Dodge the red cubes. Touch the right one.', '🧊', '#d7eef8', 'DODGE'], ['stack', 'Stacker', 'Tap to drop the blocks. Land the right one on the tower.', '🧱', '#e4eaf2', 'STACK'], ['lamp', 'Light the lamp', 'Set the right stone and light the lamp.', '💡', '#f6ead8', 'LAMP'], ['trace', 'Trace drive', 'Trace the path. A car drives it.', '✎', '#e7f0df', 'TRACE'], ['sort', 'Sort bins', 'Tap a tube. Pour the top balls onto a match or into an empty tube.', '🧪', '#f8efd4', 'SORT'], ['merge', 'Merge jar', 'Drop two that match. Make the next one.', '◎', '#e4eef6', 'MERGE'], ['crayon', 'Color by number', 'Paint each number the color in the legend.', '🖍', '#fde8f0', 'COLORS']].concat(sidecarRows());
+const games = [['shapes', 'Shape safari', 'Find circles, triangles & more.', '◒', '#edf0df', 'SHAPES'], ['colors', 'Color garden', 'Pick a color. Grow your skills.', '✿', '#f9e6dc', 'COLORS'], ['mix', 'Jump to it!', 'Match a shape and its color.', '◆', '#e4edf4', 'MIX & MATCH'], ['missing', 'What’s missing?', 'A little look. A big memory!', '☁', '#eee7f5', 'MEMORY'], ['words', 'Word parking', 'Drive into a new sight word.', '🚙', '#fcf0d5', 'READING'], ['build', 'Build a word', 'Little letters, big discoveries.', 'abc', '#e3eee7', 'LETTERS'], ['count', 'Count & clap', 'Count it, jump it, clap it.', '🍎', '#fbe9e3', 'COUNTING'], ['path', 'Number path', 'Hop along the numbers.', '🐸', '#e6efe9', 'NUMBERS'], ['catch', 'Catch the answer', 'Grab the right number as it falls.', '🧺', '#fbe9e3', 'MATH'], ['lanes', 'Word lanes', 'Steer into the word you hear.', '🚗', '#fcf0d5', 'READING'], ['rocket', 'Rocket climb', 'Answer in time and fly to space.', '🚀', '#e7f1f6', 'WORDS + MATH'], ['lunar', 'Moon shot', 'Answer, then shoot the freethrow.', '🌙', '#e4eef6', 'SPACE'], ['hoop', 'Shooting hoops', 'Flick the ball through the right hoop.', '🏀', '#f8e6dc', 'HOOPS'], ['light', 'Catch the light', 'Tap when the light hits the green bulb.', '🔆', '#e5f6ea', 'LIGHT'], ['race', 'Gas race', 'Drive to the answer. See who goes furthest.', '⛽', '#f8efd4', 'RACE'], ['hook', 'Hook the fish', 'Steer the hook onto the right fish.', '🎣', '#d7eef5', 'FISHING'], ['sky', 'Sky shot', 'Shoot the rock with the right answer.', '🛸', '#d9e4f2', 'SPACE'], ['planet', 'Planet guard', 'Aim and keep the planet safe.', '🪐', '#d7e6f4', 'SPACE'], ['puzzle', 'Shape puzzle', 'Build the pieces, then tap or say the shape.', '🧩', '#e5f4ef', 'SHAPES'], ['match', 'Pair match', 'Flip cards. Match shapes, colors, numbers, and words.', '🃏', '#f3efe4', 'MEMORY'], ['marble', 'Marble path', 'Shoot one color. Points raise the level.', '🔴', '#fde8e4', 'COLORS'], ['bridge', 'Stick bridge', 'Hold the stick across each gap. Reach the last platform.', '🪵', '#f3ead7', 'WORDS + MATH'], ['maze', 'Tilt maze', 'Tilt to the flag. A right answer adds time.', '🧭', '#e4eef6', 'MAZE'], ['chase', 'Garden chase', 'Eat the berries that match your words, numbers, shapes, and colors.', '🫐', '#e7f0d8', 'MAZE'], ['hop', 'Sprout hop', 'Bounce up the leaves and hop on the right answer.', '🌿', '#e4f2ea', 'JUMP'], ['toast', 'Toast pop', 'Tap the toast with the right answer.', '🍞', '#f8e6c8', 'CATCH'], ['glide', 'Island glide', 'Hold to climb. Let go to dive. Grab the gem with the answer.', '✈', '#d7ebf5', 'FLIGHT'], ['aisle', 'Market walk', 'Tap the arrows to walk the aisles and pick up the right thing.', '🧺', '#f6efe2', 'SHOP'], ['lily', 'Lily cross', 'Hop across the road and the river. Land on the right lily pad.', '🪷', '#d7eef2', 'POND'], ['bust', 'Ghost bust', 'Tap the colored ghost with the right answer.', '👻', '#e4eee6', 'CATCH'], ['mole', 'Mole pop', 'Tap the mole with the right answer.', '🐹', '#efe4cf', 'HOLES'], ['cube', 'Cube dash', 'Dodge the red cubes. Touch the right one.', '🧊', '#d7eef8', 'DODGE'], ['stack', 'Stacker', 'Tap to drop the blocks. Land the right one on the tower.', '🧱', '#e4eaf2', 'STACK'], ['lamp', 'Light the lamp', 'Set the right stone and light the lamp.', '💡', '#f6ead8', 'LAMP'], ['trace', 'Trace drive', 'Trace the path. A car drives it.', '✎', '#e7f0df', 'TRACE'], ['sort', 'Sort bins', 'Tap a tube. Pour the top balls onto a match or into an empty tube.', '🧪', '#f8efd4', 'SORT'], ['merge', 'Merge jar', 'Drop two that match. Make the next one.', '◎', '#e4eef6', 'MERGE'], ['crayon', 'Color by number', 'Paint each number the color in the legend.', '🖍', '#fde8f0', 'COLORS']].concat(sidecarRows());
 const countItems = [['🍎', 'apples'], ['⭐', 'stars'], ['🐞', 'ladybugs'], ['🌼', 'flowers'], ['🐟', 'fish'], ['🎈', 'balloons']];
 const huntThings = [['sock', 'socks'], ['spoon', 'spoons'], ['toy', 'toys'], ['book', 'books'], ['block', 'blocks'], ['crayon', 'crayons']];
 const styles = [['tap', '👆', 'Tap', 'Tap the answer on the screen.'], ['move', '🦘', 'Move', 'Spread floor cards out. The game calls the moves and a grown-up taps ✓.'], ['hunt', '🔎', 'Hunt', 'Find real things around you. A grown-up taps ✓. What’s missing? plays as Move.'], ['reach', '📷', 'Reach', 'Stand back so the camera sees shoulders and hands. Hold one hand on an answer until it fills. Video stays on this device and is never recorded.']];
-const ARCADE_PLAY = new Set(['bike', 'flight', 'walk', 'lunar', 'hoop', 'bridge', 'maze', 'chase', 'hop', 'toast', 'glide', 'aisle', 'lily', 'mole', 'bust', 'stack', 'lamp', 'cube']);
+const ARCADE_PLAY = new Set(['bike', 'flight', 'walk', 'lunar', 'hoop', 'light', 'bridge', 'maze', 'chase', 'hop', 'toast', 'glide', 'aisle', 'lily', 'mole', 'bust', 'stack', 'lamp', 'cube']);
 const moves = [['Hop like a bunny', '🐰'], ['Stomp like an elephant', '🐘'], ['Tiptoe like a mouse', '🐭'], ['Waddle like a penguin', '🐧'], ['Gallop like a horse', '🐴'], ['Crawl like a turtle', '🐢'], ['Leap like a frog', '🐸']];
 const breaks = ['Run to the door and back!', 'Spin around three times!', 'Do five big jumps!', 'March in a circle and come back!'];
 const listen = {
@@ -195,6 +196,7 @@ const listen = {
   rocket: { tap: 'Listen, then pick the word.', move: 'Listen, then pick the word.', hunt: 'Listen, then pick the word.' },
   lunar: { tap: 'Listen, then pick the word and shoot.', move: 'Listen, then pick the word and shoot.', hunt: 'Listen, then pick the word and shoot.' },
   hoop: { tap: 'Listen, then flick the ball through the right hoop.', move: 'Listen, then flick the ball through the right hoop.', hunt: 'Listen, then flick the ball through the right hoop.' },
+  light: { tap: 'Listen, then catch the light.', move: 'Listen, then catch the light.', hunt: 'Listen, then catch the light.', reach: 'Listen, then catch the light.' },
   race: { tap: 'Listen, then drive to the word.', move: 'Listen, then drive to the word.', hunt: 'Listen, then drive to the word.' },
   hook: { tap: 'Listen, then hook the fish.', move: 'Listen, then hook the fish.', hunt: 'Listen, then hook the fish.', reach: 'Listen, then move your hand onto the fish.' },
   sky: { tap: 'Listen, then shoot the right rock.', move: 'Listen, then shoot the right rock.', hunt: 'Listen, then shoot the right rock.' },
@@ -601,7 +603,7 @@ function pathPanel() {
 }
 function styleBar() {
   const cur = styleOf(''), info = styles.find(s => s[0] === cur);
-  const arcadeNote = p().arcade ? '<p>Arcade play is on. Dirt ride, Sky flight, Garden walk, Moon shot, Shooting hoops, Stick bridge, Tilt maze, Garden chase, Sprout hop, Toast pop, Island glide, Market walk, Lily cross, Mole pop, Ghost bust, Stacker, and Cube dash skip the questions.</p>' : '';
+  const arcadeNote = p().arcade ? '<p>Arcade play is on. Dirt ride, Sky flight, Garden walk, Moon shot, Shooting hoops, Stick bridge, Tilt maze, Garden chase, Sprout hop, Toast pop, Island glide, Market walk, Lily cross, Mole pop, Ghost bust, Stacker, Cube dash, and Catch the light skip the questions.</p>' : '';
   return `<section class="stylebar"><div><small>HOW ARE WE PLAYING?</small><div class="styles">${styles.filter(s => s[0] !== 'reach' || data.camera).map(([id, icon, label]) => `<button class="stylebtn ${id === cur ? 'selected' : ''}" data-style="${id}" aria-pressed="${id === cur}"><span aria-hidden="true">${icon}</span> ${label}</button>`).join('')}</div><p>${info[3]}${cur === 'move' ? ' Clear a space, use bare feet or grippy socks, and stay close.' : ''}</p>${arcadeNote}</div>${cur === 'move' ? '<button class="quiet" id="printCards"><span aria-hidden="true">🖨</span> Print floor cards</button>' : ''}</section>`;
 }
 function gameCard(id) {
@@ -620,6 +622,57 @@ function stopLunar() {
 function stopCourt() {
   stopHoop();
   hoopCourt = null;
+}
+function clearLight() {
+  stopLight();
+  lightCourt = null;
+}
+function fillLightAsk(g) {
+  g.level = g.level || skillLevel('light');
+  g.subject = rocketSubject(g.index || 0);
+  g.shown = false;
+  if (g.freePlay) {
+    g.math = null;
+    g.target = '';
+    g.show = '';
+    g.options = [];
+    g.prompt = g.pace === 'rush' ? 'Rush gets faster after every catch.' : 'Tap when the light hits the green bulb.';
+    g.render = x => esc(String(x));
+    return '';
+  }
+  if (g.subject === 'words') {
+    const words = wordList();
+    g.math = null;
+    g.show = '';
+    g.target = pick(words);
+    g.prompt = `Catch the light on the word ${g.target}.`;
+    g.options = [g.target];
+    g.render = x => esc(x);
+  } else {
+    loadScreenMath(g, g.level);
+    g.options = [g.target];
+  }
+  return String(g.target ?? '');
+}
+function paintLightChrome(g) {
+  const title = $('#app h1');
+  if (title) title.textContent = heading(g);
+  const tally = $('#lightTally');
+  const rounds = questionCount();
+  if (tally) {
+    if (g.freePlay) tally.textContent = g.pace === 'rush' ? `Rush · ${g.streak || 0}` : 'Arcade';
+    else if (g.pace === 'rush') tally.textContent = g.index ? `Rush · ${g.index}` : 'Rush';
+    else tally.textContent = `${(g.index || 0) + 1} / ${rounds}`;
+  }
+  const progress = document.querySelector('.progress');
+  const bar = progress?.firstElementChild;
+  if (!g.freePlay && bar && progress) {
+    const now = Math.min(rounds, g.index || 0);
+    bar.style.width = `${rounds ? now / rounds * 100 : 0}%`;
+    progress.setAttribute('aria-valuenow', String(now));
+  }
+  const show = $('#lightShow');
+  if (show) show.innerHTML = g.show || '';
 }
 function clearCover() {
   clearTimeout(coverTimer);
@@ -923,6 +976,7 @@ function home(focus) {
   stopMatch();
   stopMarble();
   stopBridge();
+  clearLight();
   stopMaze();
   stopChase();
   stopHop();
@@ -1194,6 +1248,15 @@ function question() {
       const rest = shuffle(g.options.filter(x => String(x) !== String(g.target)));
       g.options = shuffle([...rest.slice(0, 2), g.target]);
     }
+  }
+  if (g.mode === 'light' && !g.started) {
+    g.phase = 'ready';
+    g.prompt = 'Tap when the light hits the green bulb.';
+    g.howTo = 'Rush gets faster after every catch, until you cannot time it.';
+    g.options = [];
+    g.target = '';
+    g.show = '';
+    g.render = x => esc(String(x));
   }
   if (g.mode === 'race') {
     g.phase = 'ready';
@@ -2226,6 +2289,7 @@ function finishRun(g, title, detail) {
   bridgeTimer = 0;
   stopMarble();
   stopBridge();
+  clearLight();
   stopMaze();
   stopChase();
   stopHop();
@@ -2260,7 +2324,7 @@ function finishRun(g, title, detail) {
 }
 function hybrid(g) {
   if (sidecarGame(g.mode)) return;
-  if (g.mode === 'catch' || g.mode === 'lanes' || g.mode === 'rocket' || g.mode === 'lunar' || g.mode === 'hoop' || g.mode === 'race' || g.mode === 'hook' || g.mode === 'sky' || g.mode === 'planet' || g.mode === 'puzzle' || g.mode === 'match' || g.mode === 'marble' || g.mode === 'bridge' || g.mode === 'maze' || g.mode === 'chase' || g.mode === 'hop' || g.mode === 'toast' || g.mode === 'glide' || g.mode === 'aisle' || g.mode === 'lily' || g.mode === 'mole' || g.mode === 'bust' || g.mode === 'stack' || g.mode === 'lamp' || g.mode === 'cube' || g.mode === 'trace' || g.mode === 'sort' || g.mode === 'merge' || g.mode === 'crayon') return;
+  if (g.mode === 'catch' || g.mode === 'lanes' || g.mode === 'rocket' || g.mode === 'lunar' || g.mode === 'hoop' || g.mode === 'light' || g.mode === 'race' || g.mode === 'hook' || g.mode === 'sky' || g.mode === 'planet' || g.mode === 'puzzle' || g.mode === 'match' || g.mode === 'marble' || g.mode === 'bridge' || g.mode === 'maze' || g.mode === 'chase' || g.mode === 'hop' || g.mode === 'toast' || g.mode === 'glide' || g.mode === 'aisle' || g.mode === 'lily' || g.mode === 'mole' || g.mode === 'bust' || g.mode === 'stack' || g.mode === 'lamp' || g.mode === 'cube' || g.mode === 'trace' || g.mode === 'sort' || g.mode === 'merge' || g.mode === 'crayon') return;
   const t = g.target, [verb, icon] = pick(moves);
   g.icon = icon;
   if (g.mode === 'count' || g.mode === 'path') { mathHybrid(g, verb); return; }
@@ -2329,7 +2393,7 @@ function wordHidden(g) {
   if (g.mode === 'trace' || g.mode === 'sort' || g.mode === 'merge') return false;
   if (g.mode === 'rally' || g.mode === 'flight' || g.mode === 'bike' || g.mode === 'walk') return g.subject === 'words';
   if (g.mode === 'glide') return g.subject === 'words';
-  if (g.mode === 'rocket' || g.mode === 'lunar' || g.mode === 'hoop' || g.mode === 'hook' || g.mode === 'sky' || g.mode === 'planet' || g.mode === 'bridge' || g.mode === 'maze' || g.mode === 'chase' || g.mode === 'hop' || g.mode === 'toast' || g.mode === 'aisle' || g.mode === 'lily' || g.mode === 'mole' || g.mode === 'bust' || g.mode === 'stack' || g.mode === 'lamp' || g.mode === 'cube') return g.subject === 'words';
+  if (g.mode === 'rocket' || g.mode === 'lunar' || g.mode === 'hoop' || g.mode === 'light' || g.mode === 'hook' || g.mode === 'sky' || g.mode === 'planet' || g.mode === 'bridge' || g.mode === 'maze' || g.mode === 'chase' || g.mode === 'hop' || g.mode === 'toast' || g.mode === 'aisle' || g.mode === 'lily' || g.mode === 'mole' || g.mode === 'bust' || g.mode === 'stack' || g.mode === 'lamp' || g.mode === 'cube') return g.subject === 'words';
   if (g.mode === 'race') return g.kind === 'words';
   return !!listen[g.mode];
 }
@@ -2344,6 +2408,7 @@ const heading = g => {
 };
 function foundLine(g) {
   if (g.mode === 'lunar' || g.mode === 'hoop') return g.streak >= 3 ? `Swish! ${g.streak} in a row.` : 'Swish!';
+  if (g.mode === 'light') return g.streak >= 3 ? `Amazing! ${g.streak} in a row.` : 'Amazing!';
   if (g.mode === 'hook') return `You hooked ${g.target}.`;
   if (g.mode === 'match') return 'You found the pairs.';
   if (g.mode === 'sky') return `You hit ${g.target}.`;
@@ -2417,6 +2482,7 @@ function strategyHint(g) {
     if (g.mode === 'bike') return g.rallyKind === 'math' ? 'Work out the fact, then tap that number.' : 'Tap the one that matches. A right answer says good, and the ride continues.';
     return 'Hop on the right number.';
   }
+  if (g.mode === 'light') return g.pace === 'rush' ? 'Each catch makes the light faster.' : 'Tap when the yellow light is on the green bulb.';
   if (g.mode === 'build') return 'Say the word, then find the next letter.';
   if (g.mode === 'words' || g.mode === 'lanes' || ((g.mode === 'rocket' || g.mode === 'lunar' || g.mode === 'hook' || g.mode === 'sky' || g.mode === 'planet' || g.mode === 'bridge' || g.mode === 'maze') && g.subject === 'words')) return 'Listen for the word, then find it.';
   if (g.mode === 'colors') return 'Look at the colors.';
@@ -2586,6 +2652,7 @@ function renderGame() {
   stopMatch();
   stopMarble();
   stopBridge();
+  clearLight();
   stopMaze();
   stopChase();
   stopHop();
@@ -2610,6 +2677,7 @@ function renderGame() {
   const rocket = g.mode === 'rocket';
   const lunar = g.mode === 'lunar';
   const hoop = g.mode === 'hoop';
+  const light = g.mode === 'light';
   const race = g.mode === 'race';
   const hook = g.mode === 'hook';
   const sky = g.mode === 'sky';
@@ -2635,7 +2703,7 @@ function renderGame() {
   const merge = g.mode === 'merge';
   const crayon = g.mode === 'crayon';
   const side = sidecarGame(g.mode);
-  const arcade = screen || rocket || lunar || hoop || race || hook || sky || planet || puzzle || match || marble || bridge || maze || chase || hop || toast || glide || aisle || lily || mole || cube || bust || stack || lamp || trace || sort || merge || crayon || !!side;
+  const arcade = screen || rocket || lunar || hoop || light || race || hook || sky || planet || puzzle || match || marble || bridge || maze || chase || hop || toast || glide || aisle || lily || mole || cube || bust || stack || lamp || trace || sort || merge || crayon || !!side;
   const reach = g.style === 'reach', phys = !arcade && (g.style === 'move' || g.style === 'hunt'), zone = reach ? ' data-zone' : '';
   const picks = (screen || race || hook || sky || planet || puzzle || match || marble || maze || chase || hop || toast || trace || sort || merge || side) ? '' : g.mode === 'build'
     ? g.letters.map((x, i) => `<button class="choice letter" data-letter="${i}"${zone}>${esc(x)}</button>`).join('')
@@ -2657,6 +2725,7 @@ function renderGame() {
     body = `<p class="hint">Shooting on ${esc(g.place)}. ${court}</p><div id="arcade"></div>${g.freePlay ? '' : `<div class="choices">${picks}</div>`}`;
   }
   else if (hoop) body = '<div id="arcade"></div>';
+  else if (light) body = '<div id="lightShow"></div><div id="arcade"></div>';
   else if ((hook || sky || planet || marble || bridge || maze || chase || hop || toast || aisle || lily || mole || cube || bust || stack || lamp) && g.phase === 'ready') body = `<p>${howTo}</p><button class="primary" id="arm">I’m ready! →</button>`;
   else if (hook || sky || planet || marble) body = '<div id="arcade"></div>';
   else if (chase) body = `<div id="chaseShow">${g.show || ''}</div><div id="arcade"></div>`;
@@ -2708,10 +2777,10 @@ function renderGame() {
   const freePlay = !!g.freePlay;
   const rallyNeed = rallyClearCount(rounds);
   const rallyRights = Math.min(rallyNeed, g.rallyRights || 0);
-  const scene = rocket || race || chase || hop || toast || glide || aisle || lily || mole || cube || bust || stack || lamp || side ? '' : g.show;
+  const scene = rocket || race || chase || hop || toast || glide || aisle || lily || mole || cube || bust || stack || lamp || light || side ? '' : g.show;
   const height = Math.round(Math.min(1, Math.max(0, g.altitude || 0)) * 100);
   const paceMark = g.mode === 'lanes' && g.started && g.style !== 'reach' ? `${lanePaceName(g)} · ` : '';
-  const tally = freePlay ? '<span>Arcade</span>' : rallyDrive ? `<span id="rallyTally">${rallyRights >= rallyNeed ? 'Finish the stage' : `${g.rallyRights || 0} / ${rallyNeed}`}</span>` : side ? `<span id="rallyTally">${g.index + 1} / ${rounds}</span>` : race ? '<span>Full tank</span>' : glide ? `<span id="glideTally">${g.index + 1} / ${rounds}</span>` : marble ? '<span id="runTally">Level 1 · 0</span>' : maze ? `<span id="runTally">${g.clock?.seconds || 0}s · 1 / ${rounds}</span>` : hop ? `<span id="hopTally">${g.index + 1} / ${rounds}</span>` : toast ? `<span id="toastTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 5} left</span>` : aisle ? `<span id="aisleTally">${g.index + 1} / ${rounds} · ${g.board?.seconds || 32}s</span>` : lily ? `<span id="lilyTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : cube ? `<span id="cubeTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : mole ? `<span id="moleTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 5} left</span>` : bust ? `<span id="bustTally">${g.index + 1} / ${rounds} · ${g.board?.seconds || 15}s</span>` : stack ? `<span id="stackTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : lamp ? `<span id="lampTally">${g.index + 1} / ${rounds}</span>` : bridge ? `<span id="bridgeTally">${g.index + 1} / ${rounds} · ${g.lives || 1} ${(g.lives || 1) === 1 ? 'life' : 'lives'}</span>` : rocket ? `<span id="rocketTally">${esc(rocketZone(g.altitude || 0.32))}</span>` : `<span>${paceMark}${g.index + 1} / ${rounds}</span>`;
+  const tally = light ? '<span id="lightTally">Pick a speed</span>' : freePlay ? '<span>Arcade</span>' : rallyDrive ? `<span id="rallyTally">${rallyRights >= rallyNeed ? 'Finish the stage' : `${g.rallyRights || 0} / ${rallyNeed}`}</span>` : side ? `<span id="rallyTally">${g.index + 1} / ${rounds}</span>` : race ? '<span>Full tank</span>' : glide ? `<span id="glideTally">${g.index + 1} / ${rounds}</span>` : marble ? '<span id="runTally">Level 1 · 0</span>' : maze ? `<span id="runTally">${g.clock?.seconds || 0}s · 1 / ${rounds}</span>` : hop ? `<span id="hopTally">${g.index + 1} / ${rounds}</span>` : toast ? `<span id="toastTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 5} left</span>` : aisle ? `<span id="aisleTally">${g.index + 1} / ${rounds} · ${g.board?.seconds || 32}s</span>` : lily ? `<span id="lilyTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : cube ? `<span id="cubeTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : mole ? `<span id="moleTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 5} left</span>` : bust ? `<span id="bustTally">${g.index + 1} / ${rounds} · ${g.board?.seconds || 15}s</span>` : stack ? `<span id="stackTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : lamp ? `<span id="lampTally">${g.index + 1} / ${rounds}</span>` : bridge ? `<span id="bridgeTally">${g.index + 1} / ${rounds} · ${g.lives || 1} ${(g.lives || 1) === 1 ? 'life' : 'lives'}</span>` : rocket ? `<span id="rocketTally">${esc(rocketZone(g.altitude || 0.32))}</span>` : `<span>${paceMark}${g.index + 1} / ${rounds}</span>`;
   const barMax = rallyDrive ? rallyNeed : marble ? (g.track?.step || 8) : maze ? (g.clock?.seconds || 50) : rocket ? 100 : rounds;
   const barNow = rallyDrive ? rallyRights : marble ? 0 : maze ? barMax : rocket ? height : g.index;
   const barLabel = rallyDrive ? 'Right answers before the open road' : marble ? 'Points to the next level' : maze ? 'Time left' : rocket ? 'Height toward space' : 'Questions completed';
@@ -3972,6 +4041,71 @@ function renderGame() {
       }
     });
   }
+  if (light) {
+    lightCourt = mountLight($('#arcade'), {
+      level: g.level,
+      reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
+      onPick(pace) {
+        if (game !== g || g.finished) return '';
+        g.started = true;
+        g.pace = pace;
+        g.phase = 'play';
+        g.streak = 0;
+        g.index = 0;
+        g.missed = false;
+        const mark = fillLightAsk(g);
+        paintLightChrome(g);
+        say(g.prompt);
+        return mark;
+      },
+      onCatch(info) {
+        if (game !== g || g.done || g.finished) return 'done';
+        g.streak = info?.streak || 1;
+        g.seconds = info?.seconds;
+        if (g.freePlay) {
+          paintLightChrome(g);
+          const feedback = $('#feedback');
+          if (feedback) feedback.textContent = g.streak >= 3 ? `Amazing! ${g.streak} in a row.` : 'Amazing!';
+          return;
+        }
+        if (!g.missed) g.firstCorrect++;
+        g.index++;
+        g.missed = false;
+        const feedback = $('#feedback');
+        if (feedback) feedback.textContent = g.streak >= 3 ? `Amazing! ${g.streak} in a row.` : 'Amazing!';
+        const rounds = questionCount();
+        if (g.pace !== 'rush' && g.index >= rounds) {
+          g.done = true;
+          finish();
+          return 'done';
+        }
+        fillLightAsk(g);
+        paintLightChrome(g);
+        lightCourt?.setLabel(String(g.target ?? ''));
+        say(g.prompt);
+      },
+      onMiss(info) {
+        if (game !== g || g.finished) return;
+        if (info?.end) {
+          if (g.freePlay) {
+            const feedback = $('#feedback');
+            const caught = info.streak || 0;
+            if (feedback) feedback.textContent = caught ? `Too fast. You caught ${caught}.` : 'Too fast.';
+            say(caught ? `You caught ${caught}.` : 'Too fast.');
+            return;
+          }
+          g.asked = g.index || 0;
+          const caught = g.asked;
+          finishRun(g, 'Too fast.', caught ? `You caught ${caught}.` : 'The light got away.');
+          return;
+        }
+        if (!g.freePlay) g.missed = true;
+        g.streak = 0;
+        const feedback = $('#feedback');
+        if (feedback) feedback.textContent = info?.verdict === 'almost' ? 'Almost. Watch the green bulb.' : 'Missed. Watch the green bulb.';
+      }
+    });
+  }
   if (rocket) {
     mountRocket($('#arcade'), {
       altitude: g.altitude || 0.32,
@@ -4476,6 +4610,7 @@ function finish(detail) {
   stopMatch();
   stopMarble();
   stopBridge();
+  clearLight();
   stopMaze();
   stopChase();
   stopHop();

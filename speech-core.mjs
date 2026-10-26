@@ -29,7 +29,7 @@ const ROLE_OF_MODE = {
   count: 'mathCoach', path: 'mathCoach', catch: 'mathCoach',
   race: 'sportsHost', rocket: 'sportsHost', lunar: 'sportsHost', hoop: 'sportsHost', rally: 'sportsHost', bike: 'sportsHost', flight: 'sportsHost',
   hook: 'gameHost', sky: 'gameHost', planet: 'gameHost', marble: 'gameHost', bridge: 'gameHost', maze: 'gameHost',
-  chase: 'gameHost', hop: 'gameHost', toast: 'gameHost', glide: 'gameHost', aisle: 'gameHost', lily: 'gameHost', mole: 'gameHost', cube: 'gameHost', stack: 'gameHost', lamp: 'gameHost',
+  chase: 'gameHost', hop: 'gameHost', toast: 'gameHost', glide: 'gameHost', aisle: 'gameHost', lily: 'gameHost', mole: 'gameHost', cube: 'gameHost', stack: 'gameHost', lamp: 'gameHost', light: 'gameHost',
   puzzle: 'gameHost', match: 'gameHost', merge: 'gameHost', sort: 'gameHost', crayon: 'gameHost', trace: 'gameHost',
   walk: 'gameHost', paint: 'gameHost'
 };
