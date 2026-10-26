@@ -80,6 +80,12 @@ Most of the pictures, questions, and games are Little Sprouts’ own. These crea
 - [FRADAR — Doodle Jump](https://codepen.io/FRADAR/pen/XWMzvaM). Sprout hop uses that hop. The sprout and leaves are drawn here.
 - [brockcooper — frogger_game](https://github.com/brockcooper/frogger_game). Lily cross follows that hop across the road and the river. The frog, the logs, and the questions are drawn here.
 - [Megafry — Toast Catcher](https://codepen.io/Megafry/pen/yyyZyYw). Toast pop uses that arc and the lives.
+- [Jamie Coulter — The Mine](https://codepen.io/jcoulterdesign/pen/NOMeEb). Market walk uses that aisle engine: one step per arrow, the shop follows, and you pick up what is in the spot you are standing in. The market and the shopper are drawn here.
+- [deeptoaster — Pure CSS Whac-A-Mole](https://codepen.io/deeptoaster/pen/eYdEPzj). Mole pop follows that peek from the holes. A tap on empty dirt misses. The moles and the questions are drawn here. MIT.
+- [Jason Leisure — Red vs Blue](https://codepen.io/Jason-Leisure/pen/zYeLvRd). Cube dash uses that blue path, the red cubes that rush in, and the lives. The questions and the on-screen buttons are Little Sprouts’ own.
+- [Jhey — Ghost bustin'](https://codepen.io/jh3y/pen/wYzWxz). Ghost bust follows that bob, the 15 second clock, and the colored-ghost score.
+- [Jerry Low — Pure CSS Stacker](https://codepen.io/jerrylow/pen/WMNdzr). Stacker follows that sliding row. Blocks that miss the row below fall away. The blocks and the questions are drawn here.
+- [Ben Evans — You Must Build a Lighthouse](https://codepen.io/ivorjetski/pen/OJXbvdL). Light the lamp follows that shore, the tower, and the lamp at night. The stones and the questions are drawn here.
 - [William Malone — canvas drawing](https://www.williammalone.com/articles/create-html5-canvas-javascript-drawing-app/). Color by number follows his brush. The pictures are new.
 - [William Malone — BlocksJS](https://www.williammalone.com/) 0.5.32 (MIT). Garden walk uses it for the canvas and the walk.
 - [JS Planet Defense](https://freefrontend.com/javascript-games/#2025-11-02-js-planet-defense-game-l) on FreeFrontend. Planet guard follows that aim. It is drawn here.
@@ -87,7 +93,7 @@ Most of the pictures, questions, and games are Little Sprouts’ own. These crea
 - [Animated emoji memory game](https://freefrontend.com/javascript-games/#2025-09-09-emoji-memory-match-l) on FreeFrontend. Pair match follows that flip. The cards are new.
 - [jeanjerome — OpenSkyFlight](https://github.com/jeanjerome/OpenSkyFlight). Sky flight uses that chase camera and aircraft loading.
 - [pjedvaj — Dassault Rafale B](https://www.cgtrader.com/free-3d-models/aircraft/military-aircraft/dassault-rafale-b-bdc1590e-5936-4912-ba44-79f5c2e09f07). The plane model, made in Cheetah3D and shared royalty-free on CGTrader.
-- [Ricardo Cabello and the Three.js authors](https://github.com/mrdoob/three.js) (MIT). Sky flight and Paint sphere draw with Three.js.
+- [Ricardo Cabello and the Three.js authors](https://github.com/mrdoob/three.js) (MIT). Sky flight, Paint sphere, and Cube dash draw with Three.js.
 - [hexgrad — Kokoro](https://github.com/hexgrad/kokoro) (Apache 2.0). Spoken prompts use Kokoro-82M through [onnx-community’s ONNX build](https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX). If it cannot load, the browser’s own voice speaks.
 - [Google — MediaPipe Pose](https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker). Reach play uses it to find hands. Video stays on the device.
 - [Outfit](https://fonts.google.com/specimen/Outfit) by Rodrigo Fuenzalida and [DM Sans](https://fonts.google.com/specimen/DM+Sans) by Colophon Foundry, from Google Fonts.

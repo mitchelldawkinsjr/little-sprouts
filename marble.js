@@ -4,6 +4,7 @@
  * into the chain; three or more of the same color pop, then the chain rolls
  * closed and can pop again. Clearing the asked color counts.
  */
+import { questionHolding } from './hold.js?v=ask-first';
 import { marbleLevel } from './logic.mjs?v=marble-path';
 
 const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
@@ -410,6 +411,11 @@ export function mountMarble(root, { palette, track, reduced, onQuestion, onScore
     if (session.dead) return;
     const dt = Math.min(0.033, last ? (now - last) / 1000 : 0.016);
     last = now;
+    if (questionHolding()) {
+      if (!session.dead) paint();
+      if (!session.dead) session.raf = requestAnimationFrame(tick);
+      return;
+    }
     if (held.left) aim -= 1.8 * dt;
     if (held.right) aim += 1.8 * dt;
     cool = Math.max(0, cool - dt);

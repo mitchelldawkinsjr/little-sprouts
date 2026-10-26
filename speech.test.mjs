@@ -1,7 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   CACHE_VERSION,
+  bakedLines,
+  bakedPath,
+  bakedTexts,
   chooseEngine,
   clipKey,
   contextFor,
@@ -13,12 +17,26 @@ import {
   speakable,
   usable,
   voiceFor,
-  voiceGain
+  voiceGain,
+  voiceIds
 } from './speech-core.mjs';
 
 const tone = (n = 4800) => Float32Array.from({ length: n }, (_, i) => 0.3 * Math.sin(i * 2 * Math.PI * 200 / 24000));
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 const flush = () => pause(0);
+
+test('a repeated line has a shipped file, and a new question does not', () => {
+  const path = bakedPath({ voice: 'af_heart', text: 'Try another one.' });
+  assert.match(path, /^voice\/1\/af_heart\/[0-9a-f]{16}\.m4a$/);
+  assert.notEqual(path, bakedPath({ voice: 'bf_emma', text: 'Try another one.' }));
+  assert.equal(bakedPath({ voice: 'af_heart', text: 'Try another one.', speed: 0.9 }), null);
+  assert.equal(bakedPath({ voice: 'af_heart', text: speakable('What is 7 × 8?') }), null);
+  assert.equal(bakedPath({ voice: 'af_heart', text: speakable('What is 3 + 4?') }), bakedPath({ voice: 'af_heart', text: 'What is 3 plus 4?' }));
+  const sources = ['app.js', 'speech.js', 'speech-core.mjs'].map(name => readFileSync(new URL(name, import.meta.url), 'utf8')).join('\n');
+  for (const line of bakedLines) assert.ok(sources.includes(line), line);
+  for (const id of voiceIds) assert.ok(sources.includes(`'${id}'`), id);
+  for (const match of sources.matchAll(/say\('([^'\\]+)'\)/g)) assert.ok(bakedTexts().includes(speakable(match[1])), match[1]);
+});
 
 test('clip keys separate voice, speed, and model version', () => {
   const a = clipKey({ voice: 'af_heart', text: 'Hi.' });
@@ -149,6 +167,7 @@ class FakeAudio {
     return { gain: { value: 1 }, connect() {} };
   }
   resume() { return Promise.resolve(); }
+  decodeAudioData() { return Promise.reject(new Error('no decoder')); }
 }
 globalThis.Worker = FakeWorker;
 globalThis.AudioContext = FakeAudio;
@@ -163,7 +182,7 @@ async function fresh({ ready = false } = {}) {
   const speech = await import(`./speech.js?test=${++copies}`);
   if (ready) {
     speech.warm('af_heart', { lines: [] });
-    speech.prefetchSpeech(['Try another one.']);
+    speech.prefetchSpeech(['Engine warm.']);
     workers[0].reply({ type: 'READY', loadMs: 1234 });
   }
   return speech;
@@ -240,6 +259,25 @@ test('a slow line on a ready Kokoro is waited for, then reports completion when 
   assert.equal(speech.getSpeechStatus().loadMs, 1234);
 });
 
+test('a line still waiting after 2 seconds uses the browser voice, and the late clip is kept', async () => {
+  const speech = await fresh({ ready: true });
+  const done = speech.speakAndWait('Find the circle.', { voiceId: 'af_heart' });
+  const req = workers[0].last('SYNTHESIZE');
+  await pause(2100);
+  assert.equal(synth.spoken.length, 1);
+  workers[0].reply(audioFor(req));
+  await flush();
+  assert.equal(sources.length, 0);
+  synth.spoken[0].onend();
+  assert.deepEqual(await done, { status: 'completed', engine: 'browser' });
+  assert.equal(speech.getSpeechStatus().metrics.fallbacks.stall, 1);
+  const again = speech.speakAndWait('Find the circle.', { voiceId: 'af_heart' });
+  await flush();
+  assert.equal(workers[0].count('SYNTHESIZE'), 1);
+  sources[0].onended();
+  assert.deepEqual(await again, { status: 'completed', engine: 'kokoro' });
+});
+
 test('advancing quickly cancels the old line and its late audio never plays', async () => {
   const speech = await fresh({ ready: true });
   const first = speech.speakAndWait('One.');
@@ -279,11 +317,59 @@ test('a prefetched line handed to the page plays even while the worker is busy',
   const speech = await fresh({ ready: true });
   const job = workers[0].last('PREFETCH').items[0];
   workers[0].reply({ type: 'AUDIO', text: job.text, voice: job.voice, speed: job.speed, samples: tone(), rate: 24000, source: 'model' });
-  const line = speech.speakAndWait('Try another one.');
+  const line = speech.speakAndWait(job.text);
   assert.equal(workers[0].count('SYNTHESIZE'), 0);
   await flush();
   sources[0].onended();
   assert.deepEqual(await line, { status: 'completed', engine: 'kokoro' });
+});
+
+test('a shipped line plays from its file without starting Kokoro', async () => {
+  const speech = await fresh();
+  const previousFetch = globalThis.fetch;
+  const previousDecode = FakeAudio.prototype.decodeAudioData;
+  const calls = [];
+  globalThis.fetch = async url => {
+    calls.push(String(url));
+    return { ok: true, arrayBuffer: async () => new ArrayBuffer(8) };
+  };
+  FakeAudio.prototype.decodeAudioData = async () => ({ sampleRate: 24000, getChannelData: () => tone() });
+  try {
+    const line = speech.speakAndWait('Try another one.');
+    for (let i = 0; i < 20 && sources.length === 0; i++) await flush();
+    assert.equal(workers.length, 0);
+    assert.equal(sources.length, 1);
+    assert.match(calls[0], /\/voice\/1\/af_heart\/[0-9a-f]{16}\.m4a$/);
+    sources[0].onended();
+    assert.deepEqual(await line, { status: 'completed', engine: 'kokoro' });
+    const again = speech.speakAndWait('Try another one.');
+    await flush();
+    assert.equal(calls.length, 1);
+    sources[1].onended();
+    assert.deepEqual(await again, { status: 'completed', engine: 'kokoro' });
+  } finally {
+    globalThis.fetch = previousFetch;
+    FakeAudio.prototype.decodeAudioData = previousDecode;
+  }
+});
+
+test('a missing shipped file is generated instead', async () => {
+  const speech = await fresh({ ready: true });
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({ ok: false, arrayBuffer: async () => new ArrayBuffer(0) });
+  try {
+    const line = speech.speakAndWait('Try another one.');
+    for (let i = 0; i < 20 && workers[0].count('SYNTHESIZE') === 0; i++) await flush();
+    const ask = workers[0].last('SYNTHESIZE');
+    assert.equal(ask.text, 'Try another one.');
+    assert.equal(ask.cachedOnly, false);
+    workers[0].reply(audioFor(ask));
+    await flush();
+    sources.at(-1).onended();
+    assert.deepEqual(await line, { status: 'completed', engine: 'kokoro' });
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
 });
 
 test('while downloading, a stored line plays in Kokoro and a new line uses the browser voice once', async () => {

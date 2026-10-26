@@ -1,5 +1,6 @@
 /**
  * Merge jar — drop tokens. Two of the same that touch become the next one.
+ * Matching tokens melt together with the gooey blur from Cassie Evans’s blobby background.
  * The tokens are drawn here. This is not a fruit-merge game.
  */
 import { mergePromote } from './logic.mjs?v=learn-three';
@@ -76,19 +77,44 @@ export function mountMerge(root, { queue = [], chain = [], target = '', size = 6
   let width = 360;
   let height = 420;
 
-  root.innerHTML = `<div class="merge-play${reduced ? ' plain' : ''}"><p class="merge-next"></p><div class="merge-jar"><canvas></canvas></div></div>`;
+  root.innerHTML = `<div class="merge-play${reduced ? ' plain' : ''}"><p class="merge-next"></p><div class="merge-jar"><div class="merge-goo"></div><canvas class="merge-ink"></canvas></div><svg class="merge-filter" aria-hidden="true"><filter id="mergeGoo" x="-40%" y="-40%" width="180%" height="180%" color-interpolation-filters="sRGB"><feGaussianBlur id="mergeBlur" in="SourceGraphic" stdDeviation="8" result="blur"/><feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7" result="goo"/></filter></svg></div>`;
   const next = root.querySelector('.merge-next');
-  const canvas = root.querySelector('canvas');
-  const ctx = canvas.getContext('2d');
-
-  const resize = () => {
-    const rect = canvas.parentElement.getBoundingClientRect();
-    width = Math.max(240, rect.width);
-    height = Math.max(240, rect.height);
+  const jar = root.querySelector('.merge-jar');
+  const goo = root.querySelector('.merge-goo');
+  const ink = root.querySelector('.merge-ink');
+  const ctx = ink.getContext('2d');
+  const blur = root.querySelector('#mergeBlur');
+  const layers = new Map();
+  const colors = ['#5d7a45', '#3d6d8c', '#c47b4a', '#7a5ea7', '#b85c6a', '#2f7d72', '#a6842f'];
+  const colorFor = id => {
+    const text = String(id);
+    let n = 0;
+    for (let i = 0; i < text.length; i++) n += text.charCodeAt(i) * (i + 1);
+    return colors[n % colors.length];
+  };
+  const fit = canvas => {
     const ratio = Math.min(2, window.devicePixelRatio || 1);
     canvas.width = Math.round(width * ratio);
     canvas.height = Math.round(height * ratio);
-    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    canvas.getContext('2d').setTransform(ratio, 0, 0, ratio, 0, 0);
+  };
+  const layer = id => {
+    let canvas = layers.get(id);
+    if (canvas) return canvas;
+    canvas = document.createElement('canvas');
+    goo.appendChild(canvas);
+    layers.set(id, canvas);
+    fit(canvas);
+    return canvas;
+  };
+
+  const resize = () => {
+    const rect = jar.getBoundingClientRect();
+    width = Math.max(240, rect.width);
+    height = Math.max(240, rect.height);
+    if (blur) blur.setAttribute('stdDeviation', reduced ? '0' : String(Math.min(10, Math.max(5, radiusFor() * 0.16))));
+    fit(ink);
+    layers.forEach(fit);
   };
 
   const radiusFor = () => Math.max(22, Math.min(width, height) * (size / 520));
@@ -98,43 +124,59 @@ export function mountMerge(root, { queue = [], chain = [], target = '', size = 6
     next.textContent = item ? `Next: ${item.label}` : (done ? 'Made.' : 'Jar');
   };
 
-  const drawBody = body => {
-    ctx.beginPath();
-    ctx.fillStyle = body.made ? '#e5f0dc' : '#f7f3e8';
-    ctx.strokeStyle = '#32634e';
-    ctx.lineWidth = 3;
-    ctx.arc(body.x, body.y, body.r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    if (body.draw === 'shape') {
-      ctx.fillStyle = '#5d7a45';
-      drawShape(ctx, body.label, body.x, body.y - 2, body.r * 0.42);
-    } else {
-      ctx.fillStyle = '#244b3d';
-      ctx.font = `700 ${Math.max(16, body.r * 0.62)}px Outfit, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(body.label, body.x, body.y);
+  const mark = (x, y, r, item, alpha = 1) => {
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = '#faf9f5';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    if (item.draw === 'shape') drawShape(ctx, item.label, x, y, r * 0.42);
+    else {
+      ctx.font = `700 ${Math.max(16, r * 0.55)}px Outfit, sans-serif`;
+      ctx.fillText(item.label, x, y);
     }
+    ctx.restore();
   };
 
   const paint = () => {
+    layers.forEach(canvas => canvas.getContext('2d').clearRect(0, 0, width, height));
+    bodies.forEach(body => {
+      const blob = layer(body.id).getContext('2d');
+      blob.fillStyle = colorFor(body.id);
+      blob.beginPath();
+      blob.arc(body.x, body.y, body.r, 0, Math.PI * 2);
+      blob.fill();
+    });
     ctx.clearRect(0, 0, width, height);
     ctx.strokeStyle = '#9db08c';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(18, 28);
-    ctx.lineTo(width - 18, 28);
+    ctx.moveTo(16, 36);
+    ctx.lineTo(16, height - 18);
+    ctx.quadraticCurveTo(width / 2, height + 10, width - 16, height - 18);
+    ctx.lineTo(width - 16, 36);
     ctx.stroke();
     const x = 18 + aim * (width - 36);
+    const preview = waiting[0];
+    if (preview && !done) {
+      const r = radiusFor();
+      ctx.save();
+      ctx.globalAlpha = 0.45;
+      ctx.fillStyle = colorFor(preview.id);
+      ctx.beginPath();
+      ctx.arc(x, r + 8, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      mark(x, r + 8, r, preview);
+    }
     ctx.fillStyle = '#32634e';
     ctx.beginPath();
-    ctx.moveTo(x, 18);
-    ctx.lineTo(x - 7, 6);
-    ctx.lineTo(x + 7, 6);
+    ctx.moveTo(x, 16);
+    ctx.lineTo(x - 7, 4);
+    ctx.lineTo(x + 7, 4);
     ctx.closePath();
     ctx.fill();
-    bodies.forEach(drawBody);
+    bodies.forEach(body => mark(body.x, body.y, body.r, body));
   };
 
   const separate = (a, b) => {
@@ -231,7 +273,7 @@ export function mountMerge(root, { queue = [], chain = [], target = '', size = 6
   };
 
   const pointAim = event => {
-    const rect = canvas.getBoundingClientRect();
+    const rect = jar.getBoundingClientRect();
     aim = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
   };
 
@@ -248,20 +290,20 @@ export function mountMerge(root, { queue = [], chain = [], target = '', size = 6
   };
 
   resize();
-  canvas.addEventListener('pointerdown', down);
-  canvas.addEventListener('pointermove', move);
+  jar.addEventListener('pointerdown', down);
+  jar.addEventListener('pointermove', move);
   window.addEventListener('keydown', key);
   window.addEventListener('resize', resize);
   session.cleanups.push(() => {
-    canvas.removeEventListener('pointerdown', down);
-    canvas.removeEventListener('pointermove', move);
+    jar.removeEventListener('pointerdown', down);
+    jar.removeEventListener('pointermove', move);
     window.removeEventListener('keydown', key);
     window.removeEventListener('resize', resize);
     cancelAnimationFrame(frame);
   });
   paintNext();
   frame = requestAnimationFrame(step);
-  canvas.setAttribute('tabindex', '0');
-  canvas.setAttribute('aria-label', 'Drop tokens into the jar. Left and right aim. Space drops.');
+  jar.tabIndex = 0;
+  jar.setAttribute('aria-label', 'Drop tokens into the jar. Left and right aim. Space drops.');
   return session;
 }

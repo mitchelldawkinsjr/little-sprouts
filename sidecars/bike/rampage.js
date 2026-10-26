@@ -961,7 +961,9 @@ function applyLearner(levelNo, reduced) {
 function frame(now) {
   let dt = (now - last) / 1000; last = now;
   if (dt > 0.05) dt = 0.05;
-  if (state === 'play') updatePlay(dt);
+  var listening = false;
+  try { listening = window.parent !== window && window.parent.document.body.classList.contains('listen-first'); } catch (e) { /* another origin */ }
+  if (state === 'play' && !listening) updatePlay(dt);
   ctx.clearRect(0, 0, W, H);
   if (state === 'menu') drawMenu();
   else if (state === 'play') {

@@ -155,7 +155,8 @@ function step(pad, dt) {
   }
   if (!dirs.x && !dirs.y) repeatAt = 0;
 
-  if (menu.length) releaseKeys(frames().concat(document));
+  const listening = document.body.classList.contains('listen-first');
+  if (menu.length || listening) releaseKeys(frames().concat(document));
   else setKeys(dirs, frames().concat(document));
 
   cursorX += (pad.rx || 0) * 900 * dt;
@@ -163,7 +164,7 @@ function step(pad, dt) {
   placeCursor();
   if (latched?.pointer && pointerEl) pointer('pointermove', pointerEl, cursorX, cursorY);
 
-  if (action && !pressed.action) {
+  if (action && !pressed.action && !(listening && !menu.length)) {
     if (menu.length && !menu.includes(focusEl)) highlight(menu[0]);
     startAction(actionFor(kindAt(cursorX, cursorY, menu.length)), menu.length ? focusEl : document.elementFromPoint(cursorX, cursorY));
   }

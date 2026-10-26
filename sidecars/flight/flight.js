@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
+import { questionHolding } from '../../hold.js?v=ask-first';
 import { assignAsk, beginArcade, createFlight, markFlight, pitchFlight, steerFlight, stepFlight, strafeFlight, thrustFlight, typeSpell } from './sim.mjs?v=arcade-play';
 import { CRUISE_ALT, groundMeters, landColor } from './terrain.mjs';
 import AircraftManager from './opensky/aircraft/AircraftManager.js';
@@ -457,6 +458,11 @@ spellInput.addEventListener('input', () => {
 function frame(now) {
   const dt = last ? Math.min(0.05, (now - last) / 1000) : 0;
   last = now;
+  if (questionHolding()) {
+    renderer.render(scene, camera);
+    requestAnimationFrame(frame);
+    return;
+  }
   if (state.free > 0) {
     steerFlight(state, lookYaw());
     pitchFlight(state, lookPitch());

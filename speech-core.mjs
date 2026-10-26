@@ -27,9 +27,9 @@ export const profiles = {
 const ROLE_OF_MODE = {
   words: 'readingCoach', build: 'readingCoach', lanes: 'readingCoach',
   count: 'mathCoach', path: 'mathCoach', catch: 'mathCoach',
-  race: 'sportsHost', rocket: 'sportsHost', lunar: 'sportsHost', rally: 'sportsHost', bike: 'sportsHost', flight: 'sportsHost',
+  race: 'sportsHost', rocket: 'sportsHost', lunar: 'sportsHost', hoop: 'sportsHost', rally: 'sportsHost', bike: 'sportsHost', flight: 'sportsHost',
   hook: 'gameHost', sky: 'gameHost', planet: 'gameHost', marble: 'gameHost', bridge: 'gameHost', maze: 'gameHost',
-  chase: 'gameHost', hop: 'gameHost', toast: 'gameHost', glide: 'gameHost', aisle: 'gameHost', lily: 'gameHost',
+  chase: 'gameHost', hop: 'gameHost', toast: 'gameHost', glide: 'gameHost', aisle: 'gameHost', lily: 'gameHost', mole: 'gameHost', cube: 'gameHost', stack: 'gameHost', lamp: 'gameHost',
   puzzle: 'gameHost', match: 'gameHost', merge: 'gameHost', sort: 'gameHost', crayon: 'gameHost', trace: 'gameHost',
   walk: 'gameHost', paint: 'gameHost'
 };
@@ -41,6 +41,187 @@ export function contextFor(mode) {
 export function voiceFor(context, parentVoice, characterVoices = false) {
   const own = profiles[context]?.voice;
   return characterVoices && own ? own : parentVoice;
+}
+
+// Grown-up picks and the two host voices. A shipped line exists for each of these.
+export const voiceIds = ['af_heart', 'af_bella', 'af_sarah', 'af_nicole', 'am_adam', 'am_michael', 'bf_emma', 'bf_isabella', 'bm_george'];
+
+// Bump this when the clips are rendered again. The number is part of the file path, so old copies are not reused.
+export const BAKE_VERSION = 1;
+
+// Lines that never change. Names, sight words, counts, and math stay on the live model.
+export const bakedLines = [
+  ...commonLines,
+  ...Object.values(profiles).map(role => role.line),
+  'Hi! Let’s find the circle.',
+  'Good.',
+  'Not yet. The bike speeds up.',
+  'Not yet. The car slows down.',
+  'Not yet. The plane turns back.',
+  'You found it.',
+  'Not yet. Walk to another one.',
+  'How far can you drive?',
+  'Move your hand onto the right fish. Leave the trash.',
+  'Move your hand onto the right fish.',
+  'Steer the hook onto the right fish. Leave the trash.',
+  'Steer the hook onto the right fish.',
+  'Turn the ship and shoot the rock with the right answer. Dodge the ships that shoot back.',
+  'Aim the gun with the pointer. Click or tap to shoot the rock with the right answer. Rocks fly in from the edges.',
+  'Put the pieces together.',
+  'Match the shapes, colors, numbers, and words.',
+  'Aim and shoot the color in the question. Three matching marbles pop, then the path rolls together. Clearing that color counts, points raise the level, and the nest ends the path.',
+  'Shoot the color before the marbles reach the nest.',
+  'Hold to grow the stick across each gap. Reach the last platform.',
+  'Each question is the next gap. Hold to grow the stick every time. A right answer makes the landing easier. A wrong answer makes it harder. Get them all to reach the last platform.',
+  'Hold to grow the bridge.',
+  'Tilt the maze to the flag. A fall puts the ball back. An empty clock adds time.',
+  'Tilt the maze to the flag before time runs out. If you fall in a hole, a right answer brings you back and adds time.',
+  'Tilt to the flag.',
+  'Steer through the maze. Eat the berries. Stay away from the ghosts.',
+  'Steer through the maze. Eat only the berries that match. Questions follow this learner’s words, math, shapes, and colors. Stay away from the ghosts.',
+  'Keep bouncing higher. The leaves hold you up.',
+  'Keep bouncing higher. Hop on the right answer and the climb continues. A wrong one breaks.',
+  'Tap the toasts before they land. Letting one land costs a life.',
+  'Tap the toast with the right answer before it lands. A wrong toast misses. Letting the right one land costs a life.',
+  'Hold to climb. Let go to dive. Yellow gems are fuel. Grab the gems.',
+  'Hold to climb. Let go to dive. Yellow gems are fuel. The labeled gems are answers. Grab the one that matches.',
+  'Walk the market and pick things up before the clock runs out.',
+  'Walk through the market and pick up the right thing before the clock runs out.',
+  'Hop across the road and the river. Ride the logs and reach a lily pad.',
+  'Hop across the road and the river. Ride the logs. Land on the lily pad with the right answer. A wrong pad sends you back. A car or the water costs a hop.',
+  'Steer the blue cube. Jump over the red ones.',
+  'Steer the blue cube. Jump over the red ones. Touch the cube with the right answer. A red cube costs a life.',
+  'Tap the moles before they hide. An empty hole is just dirt.',
+  'Tap to drop the blocks. Line them up on the tower. Blocks that hang off fall away.',
+  'Tap when the right answer is on the tower. Blocks that hang off fall away. Missing the tower costs a try.',
+  'Tap the stones to build the lighthouse. When it is tall, the lamp turns on.',
+  'Tap the stone with the right answer. It rises into the tower. A wrong stone splashes. When the questions are done, the lamp turns on.',
+  'Tap the mole with the right answer before it hides. A wrong mole misses. An empty hole is just dirt. Letting the right mole hide costs a life.',
+  'Fly the plane.',
+  'Walk the meadow.',
+  'Ride the dirt bike.',
+  'Step into the word. You have 10 seconds to get there.',
+  'Drive to the word.',
+  'Not yet. Get to the word.',
+  'Not yet. Get to the word. You have 10 seconds.',
+  'Reach up and catch the number with your hand.',
+  'Slide the basket under the number.',
+  'Step into the lane with the word. You get 10 seconds to get there.',
+  'That’s trash. Hook a fish.',
+  'Try another fish.',
+  'You got hit.',
+  'Try another rock.',
+  'A rock reached the planet.',
+  'Answer first, then shoot.',
+  'Answer again for another shot.',
+  'Too slow. The rocket is falling.',
+  'You’re in space! Fly the rocket.',
+  'The rocket is dropping.',
+  'Say the shape you see.',
+  'Pull back and shoot.',
+  'Not that hoop.',
+  'Missed the hoops.',
+  'A right answer brings you back and adds time.',
+  'A right answer adds time.',
+  'Look carefully. Remember these shapes!',
+  'Eat the berries. Stay away from the ghosts.',
+  'Not that letter. Keep spelling.',
+  'You found the pairs.',
+  'The bridge reaches.',
+  'More time.',
+  'Swish!',
+  'Which shape is missing?',
+  'Spell the word.',
+  'Fly through the letters in order.',
+  'Look at the shapes.',
+  'Look at the colors.',
+  'Look at the whole puzzle, then tap its name or say it.',
+  'Turn two cards that look the same.',
+  'Start at the dot and stay on the line.',
+  'Tap a tube to lift the top balls. Pour them onto the same kind, or into an empty tube.',
+  'Drop two that are the same so they touch.',
+  'Paint every number with the color beside it.',
+  'Count along the numbers with your finger.',
+  'Paint the half with the right answer.',
+  'Walk to the one that matches.',
+  'Steer through the gate that matches.',
+  'Listen for the word, then eat those berries.',
+  'Listen for the word, then pop that toast.',
+  'Listen for the word, then walk the aisles and pick it up.',
+  'Listen for the word, then hop to that pad.',
+  'Listen for the word, then whack that mole.',
+  'Listen for the word, then touch that cube.',
+  'Listen for the word, then grab that gem.',
+  'Tap the one that matches. A right answer turbos the car.',
+  'Tap the one that matches. A right answer says good, and the ride continues.',
+  'Listen for the word, then hop on it.',
+  'Eat the berry with the right number.',
+  'Pop the toast with the right number.',
+  'Walk the aisles and pick up the right number before time runs out.',
+  'Hop to the pad with the right number.',
+  'Whack the mole with the right number.',
+  'Touch the cube with the right number.',
+  'Grab the gem with the right number.',
+  'Work out the fact, then tap that number.',
+  'Hop on the right number.',
+  'Say the word, then find the next letter.',
+  'Listen for the word, then find it.',
+  'Listen for the word, then fly through each letter or type it.',
+  'Listen for the word, then tap or type the letters in order.',
+  'The marbles reached the nest.',
+  'The bridge fell.',
+  'You found every flag.',
+  'The toasts landed.',
+  'The moles hid.',
+  'The red cubes caught up.',
+  'Dodge the red cubes.',
+  'A red cube got you. You have one less life.',
+  'You drove past the answer. Steer into it.',
+  'That cube is not the one.',
+  'The blocks missed the tower.',
+  'Line the blocks up on the tower.',
+  'That block is not the one. Wait for the right answer.',
+  'That one missed the tower.',
+  'Listen for the word, then drop that block.',
+  'Drop the block with the right number.',
+  'Drop the blocks.',
+  'Listen for the word, then set that stone.',
+  'Set the stone with the right number.',
+  'Set the stones.',
+  'That stone splashes back. Set the right one.',
+  'Whack the right mole before it hides.',
+  'That mole is not the one.',
+  'That mole hid. You have one less life.',
+  'That hole is empty.',
+  'Whack the moles.',
+  'The hops ran out.',
+  'The maze is done.',
+  'Catch the right toast before it lands.',
+  'Ride the logs and land on the right lily pad.'
+];
+
+function fileHash(text) {
+  let h1 = 0x811c9dc5;
+  let h2 = 0x811c9dc5 ^ 0x01000193;
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    h1 = Math.imul(h1 ^ code, 0x01000193);
+    h2 = Math.imul(h2 ^ code, 0x01000193);
+  }
+  const hex = n => (n >>> 0).toString(16).padStart(8, '0');
+  return hex(h1) + hex(h2);
+}
+
+let bakedSpoken = null;
+export function bakedTexts() {
+  if (!bakedSpoken) bakedSpoken = [...new Set(bakedLines.map(line => speakable(line)).filter(Boolean))];
+  return bakedSpoken;
+}
+
+// A path under the site root, or null when this line still has to be generated.
+export function bakedPath({ voice, text, speed = SPEED } = {}) {
+  if (speed !== SPEED || !voice || !bakedTexts().includes(text)) return null;
+  return `voice/${BAKE_VERSION}/${voice}/${fileHash(`${BAKE_VERSION}|${voice}|${speed}|${text}`)}.m4a`;
 }
 
 export function clipKey({ voice, text, speed = SPEED }) {

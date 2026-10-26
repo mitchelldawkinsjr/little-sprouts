@@ -3,6 +3,8 @@
  * The arc, the speeding spawn, and the lives follow the toast catcher pen.
  * These toasts and the questions are drawn here.
  */
+import { questionHolding } from './hold.js?v=ask-first';
+
 const VIEW_W = 450;
 const VIEW_H = 680;
 const TOAST_W = 124;
@@ -397,7 +399,7 @@ export function mountToast(root, { board = {}, reduced, paceFor, nextQuestion, o
     if (session.dead) return;
     const dt = Math.min(0.05, last ? (now - last) / 1000 : 0.016);
     last = now;
-    if (!over && !ending) {
+    if (!over && !ending && !questionHolding()) {
       if (wait > 0) {
         wait -= dt;
         if (wait < 0) wait = 0;

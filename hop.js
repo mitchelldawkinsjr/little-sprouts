@@ -7,6 +7,8 @@
  * gravity picks up by 0.25. Wrong answers break. Springs and sliding
  * leaves show up on higher levels. This sprout and these leaves are drawn here.
  */
+import { questionHolding } from './hold.js?v=ask-first';
+
 let active = null;
 
 export function stopHop() {
@@ -467,7 +469,7 @@ export function mountHop(root, { board = {}, reduced, nextQuestion, onPrompt, on
       if (resized) tune();
     }
     pause = Math.max(0, pause - dt);
-    if (pause <= 0 && play) {
+    if (pause <= 0 && play && !questionHolding()) {
       if (scrolling) shiftWorld(scrollV * dt);
       const axis = held.has('left') === held.has('right') ? 0 : held.has('left') ? -1 : 1;
       player.vx = axis * xSpeed;

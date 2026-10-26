@@ -3,6 +3,8 @@
  * A fall or an empty clock waits for the host to add time.
  * The board is drawn here for Little Sprouts.
  */
+import { questionHolding } from './hold.js?v=ask-first';
+
 let active = null;
 
 export function stopMaze() {
@@ -295,12 +297,13 @@ export function mountMaze(root, { clock, reduced, onTick, onFall, onTime, onGoal
     if (session.dead) return;
     const dt = Math.min(0.033, last ? (now - last) / 1000 : 0.016);
     last = now;
-    const lean = paused || over ? { x: 0, y: 0 } : slope();
+    const heldQuestion = questionHolding();
+    const lean = paused || over || heldQuestion ? { x: 0, y: 0 } : slope();
     const glide = Math.min(1, dt * 6);
     shown.roll += (lean.x * maxTilt - shown.roll) * glide;
     shown.pitch += (lean.y * maxTilt - shown.pitch) * glide;
     board.style.transform = `rotateX(${shown.pitch}deg) rotateY(${-shown.roll}deg)`;
-    if (!paused && !over) {
+    if (!paused && !over && !heldQuestion) {
       const ax = shown.roll / maxTilt;
       const ay = shown.pitch / maxTilt;
       ball.vx = (ball.vx + ax * 7.5 * calm * dt) * (1 - Math.min(1, 1.8 * dt));

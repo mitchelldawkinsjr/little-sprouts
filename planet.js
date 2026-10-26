@@ -4,6 +4,8 @@
  * and rocks drift in from the edges until they hit the planet or blow up.
  * Drawn here for Little Sprouts. No outside pictures or game code.
  */
+import { questionHolding } from './hold.js?v=ask-first';
+
 const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 
 let active = null;
@@ -428,7 +430,7 @@ export function mountPlanet(root, { prompt, choices, target, wave, reduced, onDo
     last = now;
     fit();
     if (!spawned && width > 40) spawn();
-    const paused = !!document.querySelector('dialog[open]');
+    const paused = !!document.querySelector('dialog[open]') || questionHolding();
     if (!paused && spawned && phase === 'play') step(dt);
     else if (!paused && phase === 'down') {
       downLeft -= dt;

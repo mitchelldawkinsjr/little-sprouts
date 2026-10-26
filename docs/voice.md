@@ -38,8 +38,8 @@ Every promise settles exactly once. There is only one foreground line at a time.
 | Kokoro state | New line | Line already stored |
 |---|---|---|
 | Downloading (`idle` / `loading`) | Browser voice (`not-ready`) | Kokoro, from storage |
-| `ready` | Kokoro. It waits however long generation takes. | Kokoro |
-| `ready`, but no answer within 15 s | Browser voice (`stall`) | — |
+| `ready`, clip starts within 2 s | Kokoro | Kokoro |
+| `ready`, still waiting after 2 s | Browser voice (`stall`). The Kokoro clip is saved when it finishes, so the next time is Kokoro. | — |
 | `failed` (download or model error) | Browser voice (`engine-failed`) | Kokoro, from storage |
 | `unsupported` (no Worker, WASM, or Web Audio) | Browser voice (`unsupported`) | — |
 
@@ -68,6 +68,7 @@ Only the newest `SYNTHESIZE` can answer. Older ids are dropped, even if their au
 
 ## Caching
 
+- Lines that never change (feedback, how-tos, and the other fixed prompts in `bakedLines`) ship as audio files under `voice/1/<voice>/`. They play before Kokoro has downloaded. A missing file falls through to generation. `node tools/bake-voice.mjs` renders them again for every voice; bump `BAKE_VERSION` when the clips change so browsers do not keep the old files.
 - Keys are `v4|<model>|q8|<voice>|<speed>|<text>`, so voices, speeds, and model versions never share a clip.
 - The page keeps 48 clips. The worker keeps 32 in memory and 160 in IndexedDB (`sprouts-voice`, schema version 3, unchanged).
 - Clips with older keys are removed by the first trim of a visit. After that, the least recently heard clips go first.

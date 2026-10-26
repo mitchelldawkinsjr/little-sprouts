@@ -3,6 +3,8 @@
  * and the ghosts follow the HTML5 Pac-Man pen. The berries are the
  * learning pieces: eat only the ones that match.
  */
+import { questionHolding } from './hold.js?v=ask-first';
+
 const UNIT = 10;
 const STEP = 2;
 const TUNNEL_Y = 100;
@@ -561,7 +563,7 @@ export function mountChase(root, { prompt, choices = [], copies = 2, playerSpeed
     if (dying > 0) {
       dying = Math.max(0, dying - dt / (reduced ? 0.45 : 0.7));
       if (dying === 0) resetPlayer();
-    } else if (!finished) {
+    } else if (!finished && !questionHolding()) {
       let playerSteps = 0;
       let ghostSteps = 0;
       [playerAcc, playerSteps] = takeSteps(playerAcc, playerRate, dt);

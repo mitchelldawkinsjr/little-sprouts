@@ -1,3 +1,4 @@
+import { questionHolding } from './hold.js?v=ask-first';
 import { rocketZone } from './logic.mjs?v=rocket-fly';
 
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -251,7 +252,7 @@ export function mountCatch(root, { prompt, choices, target, speed, reduced, onDo
       const dt = last ? Math.min(0.05, (now - last) / 1000) : 0;
       last = now;
       if (reach && raised().length) steered = true;
-      if (holdUntil || document.querySelector('dialog[open]') || !steered) return;
+      if (holdUntil || document.querySelector('dialog[open]') || questionHolding() || !steered) return;
       if (!reach && !dragging && axis) {
         basketX = clamp(basketX + axis * 1.05 * dt, minX, maxX);
         paintBasket();
@@ -561,7 +562,7 @@ export function mountLanes(root, { prompt, choices, target, speed, reduced, onDo
       if (!canvas.isConnected) { session.destroy(); return; }
       const dt = last ? Math.min(0.05, (now - last) / 1000) : 0;
       last = now;
-      const paused = holdUntil || document.querySelector('dialog[open]');
+      const paused = holdUntil || document.querySelector('dialog[open]') || questionHolding();
       if (!paused && steered) {
         playerX = clamp(playerX + axis * 1.35 * dt, -0.92, 0.92);
         position += wordZ * drive * dt;
@@ -750,7 +751,7 @@ export function mountRocket(root, { altitude = 0.32, seconds = 18, reduced, onEm
       if (!sky.isConnected) { session.destroy(); return; }
       const dt = last ? Math.min(0.05, (now - last) / 1000) : 0;
       last = now;
-      if (document.querySelector('dialog[open]')) return;
+      if (document.querySelector('dialog[open]') || questionHolding()) return;
       if (mode === 'question') {
         if (live) {
           fuel = Math.max(0, fuel - drain * dt);
@@ -1225,7 +1226,7 @@ export function mountRace(root, { seconds = 18, gateSeconds = 11, reduced, nextG
       if (!canvas.isConnected) { session.destroy(); return; }
       const dt = last ? Math.min(0.05, (now - last) / 1000) : 0;
       last = now;
-      if (document.querySelector('dialog[open]')) { paint(); return; }
+      if (document.querySelector('dialog[open]') || questionHolding()) { paint(); return; }
       const step = driveScale * dt;
       const move = step * rush;
       if (hold) {

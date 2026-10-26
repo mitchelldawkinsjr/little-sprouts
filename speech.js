@@ -1,12 +1,13 @@
 // Spoken prompts use Kokoro on this device. Generation runs in a worker so the games stay tappable.
-// The browser’s own voice speaks only while Kokoro is still downloading with no stored copy of the line,
-// or when Kokoro cannot run here. A slow line on a working Kokoro is waited for, not swapped.
+// The browser’s own voice speaks while Kokoro is still downloading with no stored copy of the line,
+// when Kokoro cannot run here, or when a new line is still not ready after 2 seconds.
+// A clip that finishes after that switch is kept, so the next time plays from here.
 // A queued line waits its turn, so the question on screen is not thrown away by the next line.
-import { SPEED, chooseEngine, clipKey, commonLines, contextFor, profiles, retryDelay, settler, speakable, usable, voiceFor, voiceGain } from './speech-core.mjs?v=mix-level';
+import { SPEED, bakedPath, chooseEngine, clipKey, commonLines, contextFor, profiles, retryDelay, settler, speakable, usable, voiceFor, voiceGain } from './speech-core.mjs?v=lamp';
 
 export { commonLines, contextFor, profiles, voiceFor };
 
-const STALL_MS = 15000;
+const STALL_MS = 2000;
 const STORED_MS = 600;
 const CLIP_LIMIT = 48;
 const TRAIL_LIMIT = 50;
@@ -154,7 +155,7 @@ function startEngine(force = false) {
 }
 
 function waitingOnWorker(req) {
-  return !!req && !req.done && req.engine === 'kokoro' && !req.node;
+  return !!req && !req.done && req.engine === 'kokoro' && !req.node && req.source !== 'file';
 }
 
 function keep(key, clip) {
@@ -237,7 +238,7 @@ function fallBack(req, reason) {
 
 async function play(req, clip) {
   await req.resumed;
-  if (current !== req || req.done) return;
+  if (current !== req || req.done || req.engine === 'browser') return;
   if (!usable(clip.samples)) return fallBack(req, 'bad-audio');
   if (!ctx || ctx.state !== 'running') return fallBack(req, 'audio-locked');
   const buffer = ctx.createBuffer(1, clip.samples.length, clip.rate || 24000);
@@ -336,19 +337,7 @@ export function stop(reason = 'interrupted') {
 
 const MISS_REASON = { idle: 'not-ready', loading: 'not-ready', failed: 'engine-failed', unsupported: 'unsupported' };
 
-function startLine(req) {
-  req.id = ++nextId;
-  req.asked = now();
-  current = req;
-  req.resumed = prime();
-  const hit = stored(clipKey(req));
-  if (hit) {
-    req.engine = 'kokoro';
-    req.source = 'page';
-    metrics.cacheHits += 1;
-    play(req, hit);
-    return;
-  }
+function askWorker(req) {
   const before = state.engine;
   const route = chooseEngine({ engine: before, fallback: req.fallback, browser: browserVoice(), store: !!worker || before === 'idle' || before === 'loading' });
   if (route === 'browser') {
@@ -362,6 +351,7 @@ function startLine(req) {
     return;
   }
   req.engine = 'kokoro';
+  req.source = null;
   req.cachedOnly = route === 'cached';
   req.missReason = MISS_REASON[before] || 'not-ready';
   if (before === 'idle' && !startEngine()) {
@@ -376,6 +366,56 @@ function startLine(req) {
   }
   if (req.cachedOnly) arm(req, STORED_MS, () => fallBack(req, req.missReason));
   else if (state.engine === 'ready') arm(req, STALL_MS, () => fallBack(req, 'stall'));
+}
+
+// A shipped line plays before Kokoro has downloaded. A missing file falls through to generation.
+async function playFile(req, path) {
+  req.engine = 'kokoro';
+  req.source = 'file';
+  arm(req, STALL_MS, () => fallBack(req, 'stall'));
+  try {
+    const response = await fetch(new URL(path, import.meta.url));
+    if (!response.ok) throw new Error('missing');
+    const bytes = await response.arrayBuffer();
+    await req.resumed;
+    if (current !== req || req.done || req.engine === 'browser') return;
+    if (!ctx || ctx.state !== 'running') return fallBack(req, 'audio-locked');
+    const audio = await ctx.decodeAudioData(bytes.slice(0));
+    if (current !== req || req.done || req.engine === 'browser') return;
+    const channel = audio.getChannelData(0);
+    const samples = new Float32Array(channel.length);
+    samples.set(channel);
+    if (!usable(samples)) throw new Error('unusable');
+    const clip = { samples, rate: audio.sampleRate || 24000 };
+    keep(clipKey(req), clip);
+    metrics.cacheHits += 1;
+    req.synthMs = 0;
+    play(req, clip);
+  } catch {
+    if (current !== req || req.done || req.engine === 'browser') return;
+    askWorker(req);
+  }
+}
+
+function startLine(req) {
+  req.id = ++nextId;
+  req.asked = now();
+  current = req;
+  req.resumed = prime();
+  const hit = stored(clipKey(req));
+  if (hit) {
+    req.engine = 'kokoro';
+    req.source = 'page';
+    metrics.cacheHits += 1;
+    play(req, hit);
+    return;
+  }
+  const path = bakedPath(req);
+  if (path) {
+    void playFile(req, path);
+    return;
+  }
+  askWorker(req);
 }
 
 // Resolves once the line has finished, been cut off, or could not be said: { status, engine }.
@@ -430,7 +470,7 @@ export function prefetchSpeech(items, { priority = 'background' } = {}) {
     const spoken = speakable(text, { spell });
     if (!spoken) continue;
     const job = { text: spoken, voice: knownVoice(voiceId), speed: SPEED };
-    if (!clips.has(clipKey(job))) jobs.push(job);
+    if (!clips.has(clipKey(job)) && !bakedPath(job)) jobs.push(job);
   }
   if (!jobs.length || !startEngine()) return 0;
   worker.postMessage({ type: 'PREFETCH', items: jobs, priority });
@@ -439,6 +479,8 @@ export function prefetchSpeech(items, { priority = 'background' } = {}) {
 
 export function warm(voiceId, { lines = commonLines } = {}) {
   prefetchSpeech(lines.map(text => ({ text, voiceId })));
+  // Repeated lines are already files. The model still has to download for a new word or question.
+  startEngine();
 }
 
 // For a grown-up's tap: tries again even after earlier failures and reports download progress.

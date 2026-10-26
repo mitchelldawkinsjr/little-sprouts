@@ -57,6 +57,25 @@ import {
   lilyPads,
   lilyOverlap,
   lilyRide,
+  stackBoard,
+  stackRowWidth,
+  stackCycle,
+  stackLand,
+  stackStops,
+  stackStopsArcade,
+  stackPick,
+  lampBoard,
+  lampStones,
+  lampPick,
+  lampSky,
+  moleBoard,
+  cubeBoard,
+  cubeLanes,
+  cubeOverlap,
+  moleHoles,
+  moleSprite,
+  molePick,
+  bustBoard,
   laneCount,
   raceBoard,
   raceGateSeconds,
@@ -521,6 +540,106 @@ test('lily cross adds pads and lanes, and shortens the hops, as the level rises'
   const ride = lilyRide(1, 0.6, [{ x: 0, w: 1.2, id: 'a' }, { x: 1.1, w: 2, id: 'b' }]);
   assert.equal(ride.id, 'b');
   assert.equal(lilyRide(3, 0.5, [{ x: 0, w: 1 }]), null);
+});
+
+test('stacker shortens the row and speeds up as the tower climbs', () => {
+  assert.deepEqual([1, 2, 3].map(level => stackBoard(level).choices), [3, 4, 5]);
+  assert.ok(stackBoard(1).lives > stackBoard(3).lives);
+  assert.ok(stackBoard(1).cycle > stackBoard(3).cycle);
+  assert.equal(stackBoard(1).rows, 8);
+  assert.equal(stackBoard(0).cols, 7);
+  assert.equal(stackBoard(9).rows, 10);
+  assert.deepEqual([0, 1, 2, 4, 5, 8].map(stackRowWidth), [3, 3, 2, 2, 1, 1]);
+  assert.equal(stackCycle(2500, 0), 2500);
+  assert.equal(stackCycle(2500, 2), 2000);
+  assert.equal(stackCycle(2500, 4), 1500);
+  assert.equal(stackCycle(2500, 6), 1250);
+  assert.equal(stackCycle(2500, 8), 850);
+  assert.deepEqual(stackLand(2, 3, 2, 3), { ok: true, left: 2, width: 3 });
+  assert.deepEqual(stackLand(2, 3, 4, 3), { ok: true, left: 4, width: 1 });
+  assert.deepEqual(stackLand(2, 3, 0, 3), { ok: true, left: 2, width: 1 });
+  assert.deepEqual(stackLand(2, 2, 0, 2), { ok: false, left: 0, width: 0 });
+  assert.deepEqual(stackStops(3, 3), [0, 1, 2, 3, 4]);
+  assert.deepEqual(stackStopsArcade(3, 7), [0, 1, 2, 3, 4]);
+  assert.deepEqual(stackStopsArcade(1, 7), [0, 1, 2, 3, 4, 5, 6]);
+  assert.equal(stackPick(1, 3, 3), 2);
+  assert.equal(stackPick(0, 3, 3), -1);
+  const picks = stackStops(3, 5).map(left => stackPick(left, 5, 3)).filter(index => index >= 0);
+  assert.deepEqual([...new Set(picks)].sort((a, b) => a - b), [0, 1, 2, 3, 4]);
+});
+
+test('light the lamp adds shore stones and darkens as the tower climbs', () => {
+  assert.deepEqual([1, 2, 3].map(level => lampBoard(level).choices), [3, 4, 5]);
+  assert.deepEqual([1, 2, 3].map(level => lampBoard(level).courses), [6, 8, 10]);
+  assert.equal(lampBoard(0).choices, 3);
+  assert.equal(lampBoard(9).courses, 10);
+  const stones = lampStones(3, 520, 560);
+  assert.equal(stones.length, 3);
+  assert.ok(stones[0].x < stones[1].x && stones[1].x < stones[2].x);
+  assert.equal(lampPick({ x: stones[1].x, y: stones[1].y }, stones), 1);
+  assert.equal(lampPick({ x: stones[0].x, y: stones[0].y - stones[0].r - 4 }, stones), -1);
+  assert.equal(lampPick(null, stones), -1);
+  assert.equal(lampPick({ x: 10, y: 10 }, null), -1);
+  const crowded = lampStones(5, 280, 400);
+  assert.ok(crowded[0].r < stones[0].r);
+  assert.equal(lampSky(0, 5), 0);
+  assert.equal(lampSky(3, 6), 0.5);
+  assert.equal(lampSky(8, 5), 1);
+  assert.equal(lampSky(-2, 0), 0);
+});
+
+test('cube dash gives fewer lives and a faster rush as the level rises', () => {
+  assert.deepEqual([1, 2, 3].map(level => cubeBoard(level).choices), [3, 4, 5]);
+  assert.ok(cubeBoard(1).lives > cubeBoard(3).lives);
+  assert.ok(cubeBoard(1).spawn > cubeBoard(3).spawn);
+  assert.ok(cubeBoard(3).rush > cubeBoard(1).rush);
+  assert.equal(cubeBoard(0).choices, 3);
+  assert.equal(cubeBoard(9).lives, 2);
+  const lanes = cubeLanes(3, 7);
+  assert.equal(lanes.length, 3);
+  assert.ok(lanes[0] < lanes[1] && lanes[1] < lanes[2]);
+  assert.ok(Math.abs(lanes[0]) < 4);
+  assert.deepEqual(cubeLanes(1), [0]);
+  const a = { x: 0, y: 0.75, z: 0, w: 1, h: 1, d: 1 };
+  const b = { x: 0.4, y: 0.75, z: 0.2, w: 1, h: 1, d: 1 };
+  const c = { x: 3, y: 0.75, z: 0, w: 1, h: 1, d: 1 };
+  assert.equal(cubeOverlap(a, b), true);
+  assert.equal(cubeOverlap(a, c), false);
+  assert.equal(cubeOverlap(null, a), false);
+});
+
+test('mole pop adds holes and shortens the peek as the level rises', () => {
+  assert.deepEqual([1, 2, 3].map(level => moleBoard(level).choices), [3, 4, 5]);
+  assert.equal(moleBoard(1).holes, 3);
+  assert.equal(moleBoard(2).holes, 5);
+  assert.ok(moleBoard(1).lives > moleBoard(3).lives);
+  assert.ok(moleBoard(1).up > moleBoard(3).up);
+  assert.equal(moleBoard(0).choices, 3);
+  assert.equal(moleBoard(9).holes, 5);
+  const holes = moleHoles(5, 520, 560);
+  assert.equal(holes.length, 5);
+  assert.deepEqual(holes.map(hole => hole.high), [false, true, false, true, false]);
+  assert.ok(holes[0].y > holes[1].y);
+  assert.ok(holes[0].x < holes[4].x);
+  const sprite = moleSprite(holes[0], 1);
+  assert.ok(sprite.y < holes[0].y);
+  const rises = [1, 0, 0, 0, 0];
+  assert.equal(molePick({ x: sprite.x, y: sprite.y }, holes, rises).kind, 'mole');
+  assert.equal(molePick({ x: sprite.x, y: sprite.y - 50 }, holes, rises).kind, 'mole');
+  assert.equal(molePick({ x: holes[0].x, y: holes[0].y }, holes, rises).kind, 'dirt');
+  assert.equal(molePick({ x: holes[2].x, y: holes[2].y }, holes, [0, 0, 0, 0, 0]).kind, 'dirt');
+  assert.equal(molePick({ x: 0, y: 0 }, holes, rises), null);
+  assert.equal(molePick(null, holes, rises), null);
+});
+
+test('ghost bust shortens the clock and the bob as the level rises', () => {
+  assert.deepEqual([1, 2, 3].map(level => bustBoard(level).choices), [3, 4, 5]);
+  assert.deepEqual([1, 2, 3].map(level => bustBoard(level).seconds), [15, 12, 9]);
+  assert.ok(bustBoard(1).bob > bustBoard(3).bob);
+  assert.equal(bustBoard(1).colorScore, 5);
+  assert.equal(bustBoard(1).whiteScore, 1);
+  assert.equal(bustBoard(0).seconds, 15);
+  assert.equal(bustBoard(9).choices, 5);
 });
 
 test('market walk adds a shelf and shortens the clock as the level rises', () => {

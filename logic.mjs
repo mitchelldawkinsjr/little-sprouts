@@ -250,6 +250,17 @@ export function lilyBoard(level) {
   return { ...LILY_BOARDS[index] };
 }
 
+const BUST_BOARDS = [
+  { choices: 3, seconds: 15, bob: 2.6, colorScore: 5, whiteScore: 1 },
+  { choices: 4, seconds: 12, bob: 2.0, colorScore: 5, whiteScore: 1 },
+  { choices: 5, seconds: 9, bob: 1.45, colorScore: 5, whiteScore: 1 }
+];
+
+export function bustBoard(level) {
+  const index = Math.min(3, Math.max(1, Math.round(+level) || 1)) - 1;
+  return { ...BUST_BOARDS[index] };
+}
+
 export function lilyPads(choices, cols = 5) {
   const width = Math.max(1, Math.round(+cols) || 1);
   const n = Math.max(1, Math.min(width, Math.round(+choices) || 1));
@@ -269,6 +280,122 @@ export function lilyOverlap(x, w, otherX, otherW) {
   return x < otherX + otherW && otherX < x + w;
 }
 
+const STACK_BOARDS = [
+  { choices: 3, lives: 4, rows: 8, cycle: 3200 },
+  { choices: 4, lives: 3, rows: 10, cycle: 2500 },
+  { choices: 5, lives: 2, rows: 10, cycle: 1800 }
+];
+
+export function stackBoard(level) {
+  const index = Math.min(3, Math.max(1, Math.round(+level) || 1)) - 1;
+  return { cols: 7, ...STACK_BOARDS[index] };
+}
+
+// The carnival tower starts three blocks wide, then two, then one.
+export function stackRowWidth(row) {
+  const n = Math.max(0, Math.round(+row) || 0);
+  if (n < 2) return 3;
+  if (n < 5) return 2;
+  return 1;
+}
+
+// Higher rows cross the well faster. The steps match the pen's 2.5s row.
+export function stackCycle(base, row) {
+  const ms = Math.max(400, Math.round(+base) || 2500);
+  const n = Math.max(0, Math.round(+row) || 0);
+  if (n > 7) return Math.round(ms * 0.34);
+  if (n > 5) return Math.round(ms * 0.5);
+  if (n > 3) return Math.round(ms * 0.6);
+  if (n > 1) return Math.round(ms * 0.8);
+  return ms;
+}
+
+export function stackLand(prevLeft, prevWidth, nextLeft, nextWidth) {
+  const a0 = Math.round(+prevLeft);
+  const aw = Math.max(0, Math.round(+prevWidth) || 0);
+  const b0 = Math.round(+nextLeft);
+  const bw = Math.max(0, Math.round(+nextWidth) || 0);
+  const left = Math.max(Number.isFinite(a0) ? a0 : 0, Number.isFinite(b0) ? b0 : 0);
+  const right = Math.min((Number.isFinite(a0) ? a0 : 0) + aw, (Number.isFinite(b0) ? b0 : 0) + bw);
+  const width = right - left;
+  if (width <= 0 || aw <= 0 || bw <= 0) return { ok: false, left: Number.isFinite(b0) ? b0 : 0, width: 0 };
+  return { ok: true, left, width };
+}
+
+// Stops include one miss past each end so every choice can sit on the tower.
+export function stackStops(column, width) {
+  const c = Math.round(+column) || 0;
+  const w = Math.max(1, Math.round(+width) || 1);
+  const stops = [];
+  for (let left = c - w; left <= c + 1; left++) stops.push(left);
+  return stops;
+}
+
+export function stackStopsArcade(width, cols = 7) {
+  const span = Math.max(1, Math.round(+cols) || 1);
+  const w = Math.max(1, Math.min(span, Math.round(+width) || 1));
+  const stops = [];
+  for (let left = 0; left <= span - w; left++) stops.push(left);
+  return stops;
+}
+
+export function stackPick(left, width, column) {
+  const index = Math.round(+column) - Math.round(+left);
+  const w = Math.max(0, Math.round(+width) || 0);
+  if (!Number.isFinite(index) || index < 0 || index >= w) return -1;
+  return index;
+}
+
+const LAMP_BOARDS = [
+  { choices: 3, courses: 6 },
+  { choices: 4, courses: 8 },
+  { choices: 5, courses: 10 }
+];
+
+export function lampBoard(level) {
+  const index = Math.min(3, Math.max(1, Math.round(+level) || 1)) - 1;
+  return { ...LAMP_BOARDS[index] };
+}
+
+// Stones sit along the shore. A crowded shore uses smaller stones so the taps stay apart.
+export function lampStones(count, width = 520, height = 560) {
+  const n = Math.max(1, Math.min(5, Math.round(+count) || 1));
+  const wide = Math.max(240, +width || 520);
+  const tall = Math.max(320, +height || 560);
+  const left = wide * 0.14;
+  const right = wide * 0.86;
+  const gap = n === 1 ? 80 : (right - left) / (n - 1);
+  const r = Math.max(22, Math.min(34, gap * 0.38));
+  const stones = [];
+  for (let i = 0; i < n; i++) {
+    const x = n === 1 ? wide / 2 : left + gap * i;
+    stones.push({ x, y: tall * 0.8, r });
+  }
+  return stones;
+}
+
+export function lampPick(point, stones) {
+  if (!point || !Array.isArray(stones)) return -1;
+  const px = +point.x;
+  const py = +point.y;
+  if (!Number.isFinite(px) || !Number.isFinite(py)) return -1;
+  for (let i = stones.length - 1; i >= 0; i--) {
+    const stone = stones[i];
+    const dx = px - stone.x;
+    const dy = py - stone.y;
+    const r = +stone.r || 34;
+    if (dx * dx + dy * dy <= r * r) return i;
+  }
+  return -1;
+}
+
+// 0 is full day. 1 is night, when the last course is set.
+export function lampSky(built, total) {
+  const done = Math.max(0, +built || 0);
+  const need = Math.max(1, +total || 1);
+  return Math.max(0, Math.min(1, done / need));
+}
+
 export function lilyRide(x, w, logs) {
   let best = null;
   let cover = 0;
@@ -281,6 +408,94 @@ export function lilyRide(x, w, logs) {
     }
   }
   return best;
+}
+
+const MOLE_BOARDS = [
+  { choices: 3, holes: 3, lives: 5, up: 1700, gap: 480 },
+  { choices: 4, holes: 5, lives: 4, up: 1200, gap: 360 },
+  { choices: 5, holes: 5, lives: 3, up: 860, gap: 280 }
+];
+
+export function moleBoard(level) {
+  const index = Math.min(3, Math.max(1, Math.round(+level) || 1)) - 1;
+  return { ...MOLE_BOARDS[index] };
+}
+
+const CUBE_BOARDS = [
+  { choices: 3, lives: 4, spawn: 2.8, rush: 1 },
+  { choices: 4, lives: 3, spawn: 2.0, rush: 1.35 },
+  { choices: 5, lives: 2, spawn: 1.4, rush: 1.75 }
+];
+
+export function cubeBoard(level) {
+  const index = Math.min(3, Math.max(1, Math.round(+level) || 1)) - 1;
+  return { ...CUBE_BOARDS[index] };
+}
+
+// Answer cubes stand in a row across the path. One cube sits in the middle.
+export function cubeLanes(count, width = 7) {
+  const n = Math.max(1, Math.min(6, Math.round(+count) || 1));
+  const span = Math.max(1, +width || 7);
+  if (n === 1) return [0];
+  const lanes = [];
+  for (let i = 0; i < n; i++) lanes.push(-span / 2 + (span * i) / (n - 1));
+  return lanes;
+}
+
+export function cubeOverlap(a, b) {
+  if (!a || !b) return false;
+  const ax = +a.x, ay = +a.y, az = +a.z;
+  const bx = +b.x, by = +b.y, bz = +b.z;
+  if (![ax, ay, az, bx, by, bz].every(Number.isFinite)) return false;
+  const aw = +a.w || 1, ah = +a.h || 1, ad = +a.d || 1;
+  const bw = +b.w || 1, bh = +b.h || 1, bd = +b.d || 1;
+  return Math.abs(ax - bx) * 2 <= aw + bw
+    && Math.abs(ay - by) * 2 <= ah + bh
+    && Math.abs(az - bz) * 2 <= ad + bd;
+}
+
+// Five holes at most, staggered high and low the way the mole pen lays them out.
+export function moleHoles(count, width = 520, height = 560) {
+  const n = Math.max(1, Math.min(5, Math.round(+count) || 1));
+  const wide = Math.max(200, +width || 520);
+  const tall = Math.max(320, +height || 560);
+  const left = 86;
+  const right = wide - 86;
+  const holes = [];
+  for (let i = 0; i < n; i++) {
+    const x = n === 1 ? wide / 2 : left + ((right - left) * i) / (n - 1);
+    const high = i % 2 === 1;
+    holes.push({ x, y: high ? tall * 0.46 : tall * 0.64, high });
+  }
+  return holes;
+}
+
+export function moleSprite(hole, rise) {
+  const up = Math.max(0, Math.min(1, +rise || 0));
+  return { x: hole?.x || 0, y: (hole?.y || 0) - 10 - up * 58 };
+}
+
+// A tap on the mole counts. A tap on the hole, even beside a mole, is dirt.
+export function molePick(point, holes, rises) {
+  if (!point || !Array.isArray(holes)) return null;
+  const px = +point.x;
+  const py = +point.y;
+  if (!Number.isFinite(px) || !Number.isFinite(py)) return null;
+  for (let i = holes.length - 1; i >= 0; i--) {
+    const rise = +rises?.[i] || 0;
+    if (rise < 0.45) continue;
+    const sprite = moleSprite(holes[i], rise);
+    if (px >= sprite.x - 40 && px <= sprite.x + 40 && py >= sprite.y - 64 && py <= sprite.y + 34) {
+      return { kind: 'mole', index: i };
+    }
+  }
+  for (let i = 0; i < holes.length; i++) {
+    const hole = holes[i];
+    const dx = (px - hole.x) / 40;
+    const dy = (py - hole.y) / 16;
+    if (dx * dx + dy * dy <= 1) return { kind: 'dirt', index: i };
+  }
+  return null;
 }
 
 export function toastPace(board, elapsedSeconds) {

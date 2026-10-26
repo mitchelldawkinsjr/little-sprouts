@@ -4,6 +4,8 @@
  * and put a little fuel back. The ground and an empty tank end the flight.
  * The plane, island, and gems here are Little Sprouts' own.
  */
+import { questionHolding } from './hold.js?v=ask-first';
+
 let active = null;
 
 export function stopGlide() {
@@ -872,7 +874,7 @@ export function mountGlide(root, { reduced, onScore, nextQuestion, onPrompt, onC
     const dt = Math.min(0.033, last ? (now - last) / 1000 : 0.016);
     last = now;
     spin += dt * (mode === 'fly' ? 18 : 6) * calm;
-    const paused = !!document.querySelector('dialog[open]');
+    const paused = !!document.querySelector('dialog[open]') || questionHolding();
     if (!paused && mode === 'title') angle += dt * 0.12 * calm;
     if (!paused && mode === 'fly') {
       const lift = holding ? 1.35 : -1.15;

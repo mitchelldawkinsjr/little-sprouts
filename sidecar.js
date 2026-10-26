@@ -30,7 +30,7 @@ export const SIDECARS = [
     icon: '✈',
     tint: '#d7ebf5',
     tag: 'FLY',
-    src: 'sidecars/flight/index.html?v=arcade-play',
+    src: 'sidecars/flight/index.html?v=ask-first',
     howTo: 'The plane holds its height. Steer left or right through the gate with the right answer. A wrong gate slows the plane and turns it back. Those same gates stay until you fly through the right one. After five right answers, you get two minutes of free flight. The plane keeps flying where you look. Forward flies faster, back flies backward, and the side buttons slide. Hitting the ground ends the flight.'
   },
   {
@@ -40,7 +40,7 @@ export const SIDECARS = [
     icon: '🏍',
     tint: '#f3e2c4',
     tag: 'RIDE',
-    src: 'sidecars/bike/index.html?v=mix-level',
+    src: 'sidecars/bike/index.html?v=ask-first',
     howTo: 'Hold the gas and the bike pulls away. Lean back to lift the front wheel, and lean forward to bring the nose down. Ride the hills and land on both wheels. A question comes after a longer stretch of trail. A right answer says good, and the ride continues. A wrong answer speeds the bike up. Level 1 stays upright. Level 3 lets you tilt in the air.'
   },
   {
@@ -50,7 +50,7 @@ export const SIDECARS = [
     icon: '🌱',
     tint: '#e4f2df',
     tag: 'WALK',
-    src: 'sidecars/walk/index.html?v=arcade-play',
+    src: 'sidecars/walk/index.html?v=ask-first',
     howTo: 'Hold left or right and walk past the other pictures. Let go on the one that matches, or tap it and the sprout walks to it. The right picture finishes the question. A wrong picture sends the sprout back. Words, numbers, shapes, and colors take turns.'
   },
   {

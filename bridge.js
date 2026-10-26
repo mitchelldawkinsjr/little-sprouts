@@ -3,6 +3,7 @@
  * The learner times the stick every time. A right answer makes the
  * landing wide. A wrong answer makes it a thin strip.
  */
+import { questionHolding } from './hold.js?v=ask-first';
 import { bridgeReach, bridgeWindow } from './logic.mjs?v=bridge-run';
 
 let active = null;
@@ -230,7 +231,7 @@ export function mountBridge(root, { span, stops = 5, reduced, onCrossed, onMiss 
     if (session.dead) return;
     const dt = Math.min(0.033, last ? (now - last) / 1000 : 0.016);
     last = now;
-    const paused = !!document.querySelector('dialog[open]');
+    const paused = !!document.querySelector('dialog[open]') || questionHolding();
     if (!paused) {
       if (mode === 'stretch' && holding) {
         stick += growRate() * calm * dt;

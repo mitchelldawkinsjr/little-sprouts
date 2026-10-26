@@ -3,6 +3,8 @@
  * The drop-and-steer loop follows the idea in Hooked (cnrasili/Hooked).
  * Pictures here are drawn on the canvas. That project's art and music are not used.
  */
+import { questionHolding } from './hold.js?v=ask-first';
+
 const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 const HUES = ['#e07a4c', '#e6b325', '#3d9a8a', '#7a6bb5', '#d45d7a'];
 const PONDS = {
@@ -367,7 +369,7 @@ export function mountHook(root, { prompt, choices, target, cast, reduced, onDone
       if (Math.abs(rect.width - width) > 1 || Math.abs(rect.height - height) > 1) resize();
       const dt = last ? Math.min(0.05, (now - last) / 1000) : 0;
       last = now;
-      const paused = document.querySelector('dialog[open]');
+      const paused = document.querySelector('dialog[open]') || questionHolding();
       if (!paused && phase === 'pause' && now >= pauseUntil) phase = 'fish';
       let handOn = false;
       if (reach && !paused && phase !== 'reel') {

@@ -314,6 +314,9 @@
     if (question) place(question);
     game.addEventListener('postUpdate', function () {
       if (!booted || busy || settled || !buddy) return;
+      try {
+        if (window.parent !== window && window.parent.document.body.classList.contains('listen-first')) return;
+      } catch (e) { /* another origin */ }
       var dir = (held.right ? 1 : 0) - (held.left ? 1 : 0);
       if (!dir) {
         if (pose.indexOf('walk') === 0) face(pose.indexOf('Left') > 0 ? 'standLeft' : 'standRight');

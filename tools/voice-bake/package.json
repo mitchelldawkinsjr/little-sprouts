@@ -1,0 +1,8 @@
+{
+  "name": "sprouts-voice-bake",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "kokoro-js": "1.2.1"
+  }
+}

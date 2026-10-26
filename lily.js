@@ -4,6 +4,7 @@
  * The lanes follow a Frogger-style grid. The frog, logs, cars, and
  * questions are drawn here.
  */
+import { questionHolding } from './hold.js?v=ask-first';
 import { lilyPads, lilyRide, lilyOverlap } from './logic.mjs?v=lily-cross';
 
 const COLS = 5;
@@ -385,7 +386,7 @@ export function mountLily(root, { board = {}, reduced, nextQuestion, onPrompt, o
           phase = 'play';
         } else if (phase === 'score') begin();
       }
-    } else if (phase === 'play') {
+    } else if (phase === 'play' && !questionHolding()) {
       const standing = rows[frog.row];
       const ride = !hop && standing?.kind === 'river' ? lilyRide(frog.x, FROG, standing.movers) : null;
       rows.forEach(row => {

@@ -39,7 +39,7 @@ function hold(dir) {
   held = dir;
 }
 
-const playing = () => wanted && allowed && TILT_GAMES.has(mode) && !!document.querySelector('#arcade') && !document.querySelector('dialog[open]');
+const playing = () => wanted && allowed && TILT_GAMES.has(mode) && !!document.querySelector('#arcade') && !document.body.classList.contains('listen-first') && !document.querySelector('dialog[open]');
 
 function onTilt(event) {
   if (event.gamma == null && event.beta == null) return;
