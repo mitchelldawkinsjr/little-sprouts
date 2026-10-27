@@ -8,6 +8,9 @@
  * Messages are { source: 'sprouts-sidecar', type, ... }.
  * Host to guest: boot, ask, mark, config. Guest to host: ready, show, pick, slip, progress, finish, quit, need.
  * progress may include label and travel. The guest does not store learner profiles.
+ *
+ * Set `alone` to a short line when the game also has its own page.
+ * The host shows Play on its own and opens `src` without the query.
  */
 
 export const SIDECAR_SOURCE = 'sprouts-sidecar';
@@ -21,6 +24,7 @@ export const SIDECARS = [
     tint: '#efe6d4',
     tag: 'DRIVE',
     src: 'sidecars/rally/index.html?v=tilt-steer',
+    alone: 'Pick a car and a road on that page.',
     howTo: 'Pick a car and a road. Questions are spread along the stage. Five right answers, and you can drive the rest of the way to the finish. A longer round asks up to eight.'
   },
   {
@@ -31,6 +35,7 @@ export const SIDECARS = [
     tint: '#d7ebf5',
     tag: 'FLY',
     src: 'sidecars/flight/index.html?v=ask-first',
+    alone: 'The plane flies on its own, through sample gates.',
     howTo: 'The plane holds its height. Steer left or right through the gate with the right answer. A wrong gate slows the plane and turns it back. Those same gates stay until you fly through the right one. After five right answers, you get two minutes of free flight. The plane keeps flying where you look. Forward flies faster, back flies backward, and the side buttons slide. Hitting the ground ends the flight.'
   },
   {
@@ -41,6 +46,7 @@ export const SIDECARS = [
     tint: '#f3e2c4',
     tag: 'RIDE',
     src: 'sidecars/bike/index.html?v=ask-first',
+    alone: 'A level menu, four trails, and stars are on that page.',
     howTo: 'Hold the gas and the bike pulls away. Lean back to lift the front wheel, and lean forward to bring the nose down. Ride the hills and land on both wheels. A question comes after a longer stretch of trail. A right answer says good, and the ride continues. A wrong answer speeds the bike up. Level 1 stays upright. Level 3 lets you tilt in the air.'
   },
   {
@@ -51,6 +57,7 @@ export const SIDECARS = [
     tint: '#e4f2df',
     tag: 'WALK',
     src: 'sidecars/walk/index.html?v=ask-first',
+    alone: 'The meadow is on that page, and the sprout can walk.',
     howTo: 'Hold left or right and walk past the other pictures. Let go on the one that matches, or tap it and the sprout walks to it. The right picture finishes the question. A wrong picture sends the sprout back. Words, numbers, shapes, and colors take turns.'
   },
   {
@@ -61,6 +68,7 @@ export const SIDECARS = [
     tint: '#f8e2d4',
     tag: 'PAINT',
     src: 'sidecars/paint/index.html?v=paint-shell2',
+    alone: 'Play, a friend, and room mode are on that page.',
     howTo: 'A math question from this learner’s profile appears, and the two answers float on either half of the shell. Look for five seconds, then paint for ten. Only paint on the right answer counts. Click the picture to look around. The train on the middle circle sets you down beside the track.'
   }
 ];
@@ -69,6 +77,16 @@ const built = new Set();
 
 export function sidecarGame(id) {
   return SIDECARS.find(game => game.id === id) || null;
+}
+
+/** The game’s own page, when `alone` is set. Href is `src` with the cache query removed. */
+export function sidecarAlone(game) {
+  if (!game || typeof game.alone !== 'string' || !game.alone.trim() || !game.src) return null;
+  return {
+    title: game.title,
+    note: game.alone.trim(),
+    href: String(game.src).split('?')[0]
+  };
 }
 
 export function sidecarRows() {

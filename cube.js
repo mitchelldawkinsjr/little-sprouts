@@ -153,6 +153,7 @@ function begin(THREE, stage, session, { board, reduced, nextQuestion, onPrompt, 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.shadowMap.enabled = true;
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  renderer.domElement.classList.add('pad-space');
   stage.appendChild(renderer.domElement);
 
   const sun = new THREE.DirectionalLight(0xffffff, 1.15);

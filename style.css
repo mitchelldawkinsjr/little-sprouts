@@ -551,3 +551,6 @@ body.listen-first header,body.listen-first .playtop{position:relative;z-index:31
 @keyframes listen-pulse{50%{transform:scale(1.08)}}
 @keyframes listen-blink{0%,80%,100%{opacity:.25}40%{opacity:1}}
 @media(prefers-reduced-motion:reduce){.listen-mark,.listen-dots i{animation:none}.listen-dots i{opacity:.8}}
+.play-alone{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0 0;flex:none}
+.play-alone p{margin:0;font-size:13px;color:#718065}
+@media(max-width:560px){.play-alone{align-items:flex-start;flex-direction:column}}

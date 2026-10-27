@@ -1,7 +1,7 @@
 import test from 'node:test';
 import { assignAsk, beginArcade, createFlight, markFlight, pitchFlight, stepFlight, typeSpell } from './sidecars/flight/sim.mjs';
 import { groundMeters } from './sidecars/flight/terrain.mjs';
-import { findBuiltSidecars, sidecarGame, sidecarIsBuilt, sidecarRows } from './sidecar.js';
+import { findBuiltSidecars, sidecarAlone, sidecarGame, sidecarIsBuilt, sidecarRows } from './sidecar.js';
 import assert from 'node:assert/strict';
 import {
   applyRound,
@@ -88,6 +88,8 @@ import {
   parseSheet,
   parseWords,
   wordsFromSheet,
+  kindergartenWords,
+  spellingWords,
   pathPrompt,
   pathQuestion,
   stageOf,
@@ -683,8 +685,8 @@ test('word lanes never offer more lanes than the list has', () => {
 
 test('counting tops out by stage, and Hunt stays at 10 or below for young learners', () => {
   assert.deepEqual([1, 2, 3].map(l => countMax('preschool', l, 'tap')), [5, 8, 10]);
-  assert.deepEqual([1, 2, 3].map(l => countMax('kindergarten', l, 'tap')), [10, 20, 20]);
-  assert.deepEqual([1, 2, 3].map(l => countMax('kindergarten', l, 'hunt')), [10, 10, 10]);
+  assert.deepEqual([1, 2, 3].map(l => countMax('kindergarten', l, 'tap')), [5, 10, 20]);
+  assert.deepEqual([1, 2, 3].map(l => countMax('kindergarten', l, 'hunt')), [5, 10, 10]);
   assert.equal(countMax('preschool', 3, 'hunt'), 10);
 });
 
@@ -760,6 +762,7 @@ test('number path prompts fit the play style', () => {
 
 test('number floor cards stay small enough to print', () => {
   assert.deepEqual(numberDeck('preschool', 1, 1), [1, 2, 3, 4, 5]);
+  assert.equal(numberDeck('kindergarten', 1, 1).at(-1), 5);
   assert.equal(numberDeck('kindergarten', 3, 3).at(-1), 20);
   assert.deepEqual(numberDeck('grade4', 3, 3), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
 });
@@ -853,6 +856,54 @@ test('4th grade times tables follow the sheet numbers', () => {
   assert.equal(path.n, 7);
 });
 
+test('kindergarten level 1 stays on small finds and short counts', () => {
+  for (let s = 1; s < 40; s++) {
+    const count = countQuestion('kindergarten', 1, 'tap', seeded(s));
+    assert.equal(count.kind, 'count');
+    assert.ok(count.target >= 1 && count.target <= 5);
+    const path = pathQuestion('kindergarten', 1, seeded(s + 2));
+    assert.equal(path.kind, 'find');
+    assert.ok(path.target >= 1 && path.target <= 5, JSON.stringify(path));
+  }
+});
+
+test('kindergarten spelling stays on short words unless a longer word was added', () => {
+  const system = ['I', 'a', 'the', 'play', 'little', 'yellow'];
+  assert.deepEqual(kindergartenWords(system, []), ['I', 'a', 'the', 'play']);
+  assert.deepEqual(kindergartenWords(system, ['yellow']), ['I', 'a', 'the', 'play', 'yellow']);
+  assert.deepEqual(spellingWords(system, 'kindergarten', [], 1), ['the']);
+  assert.deepEqual(spellingWords(system, 'kindergarten', [], 2), ['the', 'play']);
+  assert.deepEqual(spellingWords(system, 'kindergarten', ['yellow'], 1), ['the', 'yellow']);
+  assert.deepEqual(spellingWords(['Seedling'], 'grade4'), ['Seedling']);
+});
+
+test('a fact cap keeps 4th grade math facts at that number and under', () => {
+  const rows = [
+    ...[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => ({ item: String(n), extra: '' })),
+    { item: 'double', extra: '' },
+    { item: '10s', extra: '' },
+    { item: '20s', extra: '' },
+    { item: '30s', extra: '' },
+    { item: 'cap', extra: '12' }
+  ];
+  const set = factSetFromRows(rows);
+  assert.equal(set.cap, 12);
+  assert.deepEqual(set.decades, [10]);
+  assert.ok(set.tables.every(n => n <= 12));
+  for (let s = 1; s < 80; s++) {
+    const q = countQuestion('grade4', 3, 'tap', seeded(s), set);
+    const factors = [q.a, q.b, q.tens, q.ones].filter(n => Number.isInteger(n));
+    assert.ok(factors.every(n => n <= 12), JSON.stringify(q));
+    assert.ok(q.a <= 12 && q.b <= 12, JSON.stringify(q));
+  }
+  const open = factSetFromRows(rows.map(row => row.item === 'cap' ? { ...row, extra: 'off' } : row));
+  assert.equal(open.cap, null);
+  assert.deepEqual(open.decades, [10, 20, 30]);
+  const above = factSetFromRows([{ item: '6', extra: '' }, { item: 'above', extra: 'off' }, { item: '20s', extra: '' }]);
+  assert.equal(above.cap, 12);
+  assert.deepEqual(above.decades, []);
+});
+
 test('question sheet turns 4th grade multiplication down to the 10s and double digits', () => {
   const rows = [
     ...[2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => ({ item: String(n), extra: '' })),
@@ -917,6 +968,17 @@ test('sidecar games stay a list a new bootstrapped game can join', async () => {
     globalThis.fetch = saved;
     assert.equal(sidecarIsBuilt('rally'), false);
   }
+});
+
+test('a sidecar opens its own page only when it sets alone', () => {
+  for (const [id, title] of [['rally', 'Backroad rally'], ['flight', 'Sky flight'], ['bike', 'Dirt ride'], ['walk', 'Garden walk'], ['paint', 'Paint sphere']]) {
+    const alone = sidecarAlone(sidecarGame(id));
+    assert.equal(alone.title, title);
+    assert.match(alone.href, new RegExp(`^sidecars/${id}/index\\.html$`));
+    assert.match(alone.note, /\S/);
+  }
+  assert.equal(sidecarAlone(null), null);
+  assert.equal(sidecarAlone({ title: 'Shape safari', src: 'index.html' }), null);
 });
 
 test('4th grade Move turns multiplying into skip-count movement', () => {

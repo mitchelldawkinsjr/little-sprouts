@@ -4,7 +4,7 @@
 // B goes back. Y hears the prompt again.
 import { actionDown, actionFor, held, moveDirs, nextIndex, readPad } from './pad-core.mjs?v=pad-rt';
 
-const PRIMARY = '#app .choice, #app [data-option], #app [data-letter], #app [data-game], #app .match-card, #app .sort-tube, #app #again, #app #gotit, #app #notyet';
+const PRIMARY = '#app .choice, #app [data-option], #app [data-letter], #app [data-game], #app .match-card, #app .sort-tube, #app #again, #app #gotit, #app #notyet, #app #arm';
 const EXTRA = '#app .profile, #app .stylebtn, #app #back, #app #listen, #app #next:not([hidden])';
 const CLICK_SURFACE = 'canvas, svg, .crayon-page';
 const REPEAT_MS = 220;
@@ -25,6 +25,7 @@ let latched = null;
 let pointerEl = null;
 let repeatAt = 0;
 let dirKey = '';
+let keyTarget = null;
 let seenPad = false;
 let cursorX = innerWidth / 2;
 let cursorY = innerHeight / 2;
@@ -79,16 +80,25 @@ function kindAt(x, y, menu) {
   if (!el) return 'none';
   if (el.closest('iframe')) return 'frame';
   if (el.closest('.choice, [data-option], [data-letter], [data-game], .match-card, .sort-tube, .crayon-chip')) return 'choice';
-  if (el.closest('.sky-view, [data-act="fire"], [data-act="shoot"], .bridge-hold')) return 'sky';
+  if (el.closest('.shard')) return 'canvas';
+  if (el.closest('.sky-view, [data-act="fire"], [data-act="shoot"], [data-act="jump"], .bridge-hold, .pad-space')) return 'sky';
   if (el.closest(CLICK_SURFACE)) return 'canvas';
   if (el.closest('button, a, [role="button"]')) return 'button';
   return 'none';
 }
 
-function key(type, code, keyName, docs) {
+// Paint sphere reads the controller itself. A key injected on the trigger would also walk it forward.
+function driveFrames() {
+  return frames().filter(doc => !String(doc.defaultView?.location?.pathname || '').includes('/paint/'));
+}
+
+function key(type, code, keyName, docs, repeat = false, target = null) {
+  const init = { code, key: keyName, bubbles: true, cancelable: true, repeat };
   for (const doc of docs) {
-    doc.dispatchEvent(new doc.defaultView.KeyboardEvent(type, { code, key: keyName, bubbles: true, cancelable: true }));
+    doc.dispatchEvent(new doc.defaultView.KeyboardEvent(type, init));
   }
+  if (!target?.isConnected) return;
+  target.dispatchEvent(new target.ownerDocument.defaultView.KeyboardEvent(type, { ...init, bubbles: false }));
 }
 
 function setKeys(dirs, docs) {
@@ -98,11 +108,29 @@ function setKeys(dirs, docs) {
     ['ArrowUp', 'ArrowUp', dirs.y < 0],
     ['ArrowDown', 'ArrowDown', dirs.y > 0]
   ];
+  const now = performance.now();
+  if (dirs.x || dirs.y) {
+    const hit = document.elementFromPoint(cursorX, cursorY)?.closest?.('.shard');
+    if (hit) keyTarget = hit;
+  }
+  const target = keyTarget;
+  if (!dirs.x && !dirs.y) keyTarget = null;
+  let edged = false;
   for (const [code, keyName, on] of want) {
     const was = pressed[code];
-    if (on && !was) key('keydown', code, keyName, docs);
-    if (!on && was) key('keyup', code, keyName, docs);
+    if (on && !was) {
+      key('keydown', code, keyName, docs, false, target);
+      edged = true;
+    }
+    if (!on && was) key('keyup', code, keyName, docs, false, target);
     pressed[code] = on;
+  }
+  if (edged) repeatAt = now + REPEAT_MS;
+  else if ((dirs.x || dirs.y) && now >= repeatAt) {
+    for (const [code, keyName, on] of want) {
+      if (on) key('keydown', code, keyName, docs, true, target);
+    }
+    repeatAt = now + REPEAT_MS;
   }
 }
 
@@ -126,14 +154,14 @@ function startAction(plan, el) {
     pointer('pointerdown', el, cursorX, cursorY);
   }
   if (plan.space) key('keydown', 'Space', ' ', [document]);
-  if (plan.gas) key('keydown', 'KeyW', 'w', frames());
+  if (plan.gas) key('keydown', 'KeyW', 'w', driveFrames());
 }
 
 function stopAction() {
   if (!latched) return;
   if (latched.pointer) pointer('pointerup', pointerEl, cursorX, cursorY);
   if (latched.space) key('keyup', 'Space', ' ', [document]);
-  if (latched.gas) key('keyup', 'KeyW', 'w', frames());
+  if (latched.gas) key('keyup', 'KeyW', 'w', driveFrames());
   latched = null;
   pointerEl = null;
 }

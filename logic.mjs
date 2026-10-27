@@ -50,6 +50,53 @@ export function wordsFromSheet(rows, name, stage) {
   return [];
 }
 
+export function letterCount(word) {
+  return String(word || '').replace(/'/g, '').length;
+}
+
+export function kindergartenWords(words, manual = []) {
+  const list = Array.isArray(words) ? words : [];
+  const extras = [];
+  const extraKeys = new Set();
+  for (const word of Array.isArray(manual) ? manual : []) {
+    const text = String(word || '').trim();
+    const n = letterCount(text);
+    if (n > 4 && n <= 12 && validWord(text) && !extraKeys.has(text.toLowerCase())) {
+      extraKeys.add(text.toLowerCase());
+      extras.push(text);
+    }
+  }
+  const kept = [];
+  const seen = new Set();
+  const push = word => {
+    const text = String(word || '').trim();
+    const key = text.toLowerCase();
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    kept.push(text);
+  };
+  for (const word of list) {
+    const text = String(word || '').trim();
+    const n = letterCount(text);
+    if ((n >= 1 && n <= 4) || extraKeys.has(text.toLowerCase())) push(text);
+  }
+  for (const word of extras) push(word);
+  return kept;
+}
+
+export function spellingWords(words, stage, manual = [], level = 3) {
+  const list = stage === 'kindergarten' ? kindergartenWords(words, manual) : (Array.isArray(words) ? words : []);
+  if (stage !== 'kindergarten') return list;
+  const max = (Math.round(+level) || 1) <= 1 ? 3 : 4;
+  const extra = new Set((Array.isArray(manual) ? manual : []).map(word => String(word || '').trim().toLowerCase()));
+  return list.filter(word => {
+    const n = letterCount(word);
+    if (n < 2 || n > 12) return false;
+    if (n <= max) return true;
+    return n > 4 && extra.has(String(word).trim().toLowerCase());
+  });
+}
+
 export function candidateWords(words, mode) {
   if (mode !== 'build') return words;
   const longer = words.filter(w => w.replace(/'/g, '').length > 1);
@@ -1112,20 +1159,20 @@ export function mathBlurb(stage, id) {
   if (id === 'catch') {
     return {
       preschool: 'Catch the number that answers the question.',
-      kindergarten: 'Catch how many, and hops that add or take away.',
+      kindergarten: 'Catch how many. Later, hops that add or take away.',
       grade4: 'Catch the product as the answers fall.'
     }[stage];
   }
   if (id === 'count') {
     return {
       preschool: 'Count a few pictures. Start small.',
-      kindergarten: 'Count groups up to 10, then 20.',
+      kindergarten: 'Count groups up to 5, then 10, then 20.',
       grade4: 'Arrays, times tables, and multi-digit multiplication.'
     }[stage];
   }
   return {
     preschool: 'Find numbers and say which is more.',
-    kindergarten: 'Before, after, and hops that add or take away.',
+    kindergarten: 'Find numbers through 5, then before and after, then hops that add or take away.',
     grade4: 'Skip-counting, multiples, factors, and primes.'
   }[stage];
 }
@@ -1147,7 +1194,7 @@ export function nearbyChoices(target, lo, hi, count, rand = Math.random) {
 export function countMax(stage, level, style) {
   const max = {
     preschool: [5, 8, 10],
-    kindergarten: [10, 20, 20],
+    kindergarten: [5, 10, 20],
     grade4: [12, 12, 12]
   }[stage][level - 1];
   return style === 'hunt' && stage !== 'grade4' ? Math.min(max, 10) : max;
@@ -1175,7 +1222,7 @@ export function pathQuestion(stage, level, rand = Math.random, facts) {
   }
   if (stage === 'kindergarten') {
     const kinds = [['find'], ['after', 'before', 'more'], ['add', 'take']][level - 1];
-    const hi = [10, 10, 10][level - 1];
+    const hi = [5, 10, 10][level - 1];
     const hop = level === 3 ? 5 : 3;
     return earlyPath(pickKind(kinds), hi, rand, hop);
   }
@@ -1240,16 +1287,38 @@ function decadesIn(text) {
   return [...String(text).matchAll(/([1-9])0s?/gi)].map(match => Number(match[1]) * 10);
 }
 
+function readCap(item, extra) {
+  if (item === 'cap' || item === 'max' || item === 'under') {
+    if (FACT_OFF.test(extra)) return null;
+    const n = Number(extra);
+    return Number.isInteger(n) && n >= 2 && n <= 90 ? n : 12;
+  }
+  if (item === 'above') {
+    if (FACT_OFF.test(extra) || extra === '' || extra === '12') return 12;
+    const n = Number(extra);
+    return Number.isInteger(n) && n >= 2 && n <= 90 ? n : 12;
+  }
+  return undefined;
+}
+
 export function factSetFromRows(rows) {
   const tables = [];
   const decades = [];
   let double = false;
   let enabled = 0;
+  let cap = null;
+  let sawCap = false;
   for (const row of rows || []) {
     const extra = String(row?.extra || '').trim();
-    if (FACT_OFF.test(extra)) continue;
     const item = String(row?.item || '').trim().toLowerCase();
     if (!item) continue;
+    const nextCap = readCap(item, extra);
+    if (nextCap !== undefined) {
+      sawCap = true;
+      cap = nextCap;
+      continue;
+    }
+    if (FACT_OFF.test(extra)) continue;
     if (item === 'double' || item === 'digits' || item === 'doubles' || item === 'double digits') {
       double = true;
       enabled += 1;
@@ -1269,10 +1338,12 @@ export function factSetFromRows(rows) {
     }
   }
   if (!enabled) return null;
+  const limit = sawCap ? cap : null;
   return {
-    tables: [...new Set(tables)].sort((a, b) => a - b),
-    decades: [...new Set(decades)].filter(n => n >= 10 && n <= 90).sort((a, b) => a - b),
-    double
+    tables: [...new Set(tables)].filter(n => limit == null || n <= limit).sort((a, b) => a - b),
+    decades: [...new Set(decades)].filter(n => n >= 10 && n <= 90 && (limit == null || n <= limit)).sort((a, b) => a - b),
+    double,
+    cap: limit
   };
 }
 
@@ -1298,8 +1369,10 @@ function tensQuestion(decade, rand) {
   });
 }
 
-function doubleQuestion(decade, rand) {
-  const ones = between(1, 9, rand);
+function doubleQuestion(decade, rand, cap) {
+  const hi = cap ? Math.min(9, cap - decade) : 9;
+  if (hi < 1) return null;
+  const ones = between(1, hi, rand);
   const a = decade + ones;
   const b = between(2, 9, rand);
   return g4({
@@ -1315,9 +1388,8 @@ function placedQuestion(set, rand) {
   if (set.decades.length) kinds.push('tens');
   if (!kinds.length) return set.tables.length ? tableQuestion(set.tables, rand) : null;
   const decade = pickFrom(set.decades.length ? set.decades : [10], rand);
-  return pickFrom(kinds, rand) === 'tens' && set.decades.length
-    ? tensQuestion(decade, rand)
-    : doubleQuestion(set.decades.length ? decade : 10, rand);
+  if (pickFrom(kinds, rand) === 'tens' && set.decades.length) return tensQuestion(decade, rand);
+  return doubleQuestion(set.decades.length ? decade : 10, rand, set.cap) || (set.tables.length ? tableQuestion(set.tables, rand) : null);
 }
 
 function stepNumbers(set, level, fallback) {
@@ -1491,7 +1563,8 @@ export function mathTip(q, mode, target) {
 export function numberDeck(stage, countLevel, pathLevel) {
   if (stage === 'grade4') return numberRange(0, 12);
   if (stage === 'preschool') return numberRange(1, countMax(stage, Math.max(countLevel, pathLevel), 'move'));
-  return numberRange(0, Math.max(countMax(stage, countLevel, 'move'), pathLevel > 1 ? 10 : 10));
+  const pathHi = [5, 10, 10][Math.min(3, Math.max(1, Math.round(+pathLevel) || 1)) - 1];
+  return numberRange(0, Math.max(countMax(stage, countLevel, 'move'), pathHi));
 }
 
 export function resetProgress(profile) {

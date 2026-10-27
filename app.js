@@ -72,10 +72,12 @@ import {
   mergeBoard,
   crayonBoard,
   crayonPicture,
-  crayonLegend
-} from './logic.mjs?v=lamp';
+  crayonLegend,
+  kindergartenWords,
+  spellingWords
+} from './logic.mjs?v=levels';
 import { canSpeak, commonLines, contextFor, getSpeechStatus, knownVoice, onSpeechStatus, prefetchSpeech, prepareSpeech, profiles, sampleLine, speak, speakAndWait, stop, voiceFor, voices, warm } from './speech.js?v=wait-2s';
-import './pad.js?v=ask-first';
+import './pad.js?v=pad-all';
 import './tilt.js?v=ask-first';
 import { mountCatch, mountLanes, mountRace, mountRocket, pokeRocket, stopArcade } from './arcade.js?v=ask-first';
 import { mountLunar } from './lunar.js?v=moon-board';
@@ -94,7 +96,7 @@ import { mountAisle, stopAisle } from './aisle.js?v=market-aisle';
 import { mountLily, stopLily } from './lily.js?v=ask-first';
 import { mountBust, stopBust } from './bust.js?v=ghost-yard';
 import { mountMole, stopMole } from './mole.js?v=mole-pop2';
-import { mountCube, stopCube } from './cube.js?v=cube-dash';
+import { mountCube, stopCube } from './cube.js?v=pad-jump';
 import { mountStack, stopStack } from './stack.js?v=stacker';
 import { mountLamp, stopLamp } from './lamp.js?v=lamp';
 import { mountTrace, stopTrace } from './trace.js?v=trace-car2';
@@ -104,7 +106,7 @@ import { mountCrayon, stopCrayon } from './crayon.js?v=color-num';
 import { mountMarble, stopMarble } from './marble.js?v=ask-first';
 import { mountBridge, stopBridge } from './bridge.js?v=ask-first';
 import { mountMaze, stopMaze } from './maze.js?v=ask-first';
-import { findBuiltSidecars, mountSidecar, postSidecar, sidecarGame, sidecarIsBuilt, sidecarRows, stopSidecar } from './sidecar.js?v=ask-first';
+import { findBuiltSidecars, mountSidecar, postSidecar, sidecarAlone, sidecarGame, sidecarIsBuilt, sidecarRows, stopSidecar } from './sidecar.js?v=alone';
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -244,7 +246,7 @@ function matchFaces(level) {
     take(ss).map(name => ({ id: `shape:${name}`, label: name, html: shape(name, '#5d7a45') })),
     take(cs).map(([name, hex]) => ({ id: `color:${name}`, label: name, html: `${swatch(name, hex)}<span class="match-name">${esc(name)}</span>` })),
     take(numberRange(1, Math.max(1, hi))).map(n => ({ id: `number:${n}`, label: String(n), html: `<b class="match-num">${n}</b>` })),
-    take(wordList()).map(word => ({ id: `word:${word}`, label: word, html: `<b class="match-word">${esc(word)}</b>` }))
+    ...(band() === 'preschool' ? [] : [take(wordList()).map(word => ({ id: `word:${word}`, label: word, html: `<b class="match-word">${esc(word)}</b>` }))])
   ].filter(group => group.length);
   const faces = [];
   let turn = 0;
@@ -288,7 +290,7 @@ function prepareTrace(g, l) {
     g.prompt = `Trace the ${g.target}.`;
     return;
   }
-  const letters = [...pick(wordList()).toLowerCase()].filter(ch => /[a-z]/.test(ch));
+  const letters = band() === 'preschool' ? [] : [...pick(wordList()).toLowerCase()].filter(ch => /[a-z]/.test(ch));
   if (g.index % 2 === 1 && letters.length) {
     g.traceKind = 'letter';
     g.target = pick(letters);
@@ -329,7 +331,8 @@ function prepareSort(g, l) {
   g.board = board;
   g.options = [];
   g.render = x => esc(String(x));
-  const kind = l >= 3 ? (g.index % 2 ? 'words' : 'numbers') : l === 2 ? (g.index % 2 ? 'shapes' : 'colors') : 'colors';
+  let kind = l >= 3 ? (g.index % 2 ? 'words' : 'numbers') : l === 2 ? (g.index % 2 ? 'shapes' : 'colors') : 'colors';
+  if (band() === 'preschool' && kind === 'words') kind = 'numbers';
   let pieces = sortPieces(kind, board.colors);
   if (pieces.length < 2) pieces = sortPieces('colors', 2);
   g.pieces = pieces;
@@ -419,7 +422,19 @@ function sheetRows(game) {
 }
 function wordList() {
   const fromSheet = wordsFromSheet(data.sheet?.rows, p().name, band());
-  return fromSheet.length ? fromSheet : p().words;
+  const base = fromSheet.length ? fromSheet : p().words;
+  return band() === 'kindergarten' ? kindergartenWords(base, p().words) : base;
+}
+function spellList(level) {
+  return candidateWords(spellingWords(wordList(), band(), p().words, level), 'build');
+}
+function playSubject(index) {
+  if (band() === 'preschool') return 'math';
+  return rocketSubject(index);
+}
+const READING_GAMES = new Set(['words', 'build', 'lanes']);
+function hidesReading(stage = band()) {
+  return stage === 'preschool';
 }
 function countPool() {
   const rows = sheetRows('count').filter(r => r.item && r.item.length <= 24);
@@ -589,7 +604,7 @@ function skillBadge(id) {
   return `${mark}${state} · Level ${skillLevel(id)}`;
 }
 function listedGames() {
-  return games.filter(([id]) => !sidecarGame(id) || sidecarIsBuilt(id));
+  return games.filter(([id]) => (!hidesReading() || !READING_GAMES.has(id)) && (!sidecarGame(id) || sidecarIsBuilt(id)));
 }
 function recommended() {
   return [...listedGames()].sort((a, b) => {
@@ -610,7 +625,12 @@ function gameCard(id) {
   const row = games.find(g => g[0] === id);
   if (!row) return '';
   const [gid, name, desc, icon, tint, tag] = row;
-  const blurb = gid === 'count' || gid === 'path' || gid === 'catch' ? mathBlurb(band(), gid) : desc;
+  const preschool = band() === 'preschool';
+  const blurb = gid === 'count' || gid === 'path' || gid === 'catch' ? mathBlurb(band(), gid)
+    : preschool && gid === 'match' ? 'Flip cards. Match shapes, colors, and numbers.'
+    : preschool && gid === 'chase' ? 'Eat the berries that match your numbers, shapes, and colors.'
+    : preschool && gid === 'rally' ? 'Match a shape or color, or answer a number question. A right answer turbos the car.'
+    : desc;
   const state = skillState(record(gid));
   const label = `${name}, ${stageLabel(band())}, Level ${skillLevel(gid)}, ${state}. ${blurb}`;
   return `<button class="card" data-game="${gid}" style="--tint:${tint}" aria-label="${esc(label)}"><div class="card-top"><span class="icon" aria-hidden="true">${icon}</span><span class="tag" aria-hidden="true">${tag}</span></div><span class="card-title">${name}</span><p>${blurb}</p><div class="skillbadge">${skillBadge(gid)}</div><span class="arrow" aria-hidden="true">↗</span></button>`;
@@ -629,7 +649,7 @@ function clearLight() {
 }
 function fillLightAsk(g) {
   g.level = g.level || skillLevel('light');
-  g.subject = rocketSubject(g.index || 0);
+    g.subject = playSubject(g.index || 0);
   g.shown = false;
   if (g.freePlay) {
     g.math = null;
@@ -1048,6 +1068,18 @@ function requestHome() {
   if (!roundActive()) { home(); return; }
   ask('Leave this round?', 'This round will not be saved.', 'Leave round', { keep: true }).then(ok => { if (ok) home(); });
 }
+function aloneBar(spec) {
+  const alone = sidecarAlone(spec);
+  if (!alone) return '';
+  return `<div class="play-alone"><button type="button" class="quiet" id="playAlone">Play on its own</button><p>${esc(alone.note)}</p></div>`;
+}
+function openSidecarAlone() {
+  const alone = sidecarAlone(sidecarGame(game?.mode));
+  if (!alone) return;
+  const go = () => { location.assign(new URL(alone.href, location.href)); };
+  if (!roundActive()) { go(); return; }
+  ask(`Play ${alone.title} on its own?`, `This round will not be saved. ${alone.note}`, 'Play on its own', { keep: true }).then(ok => { if (ok) go(); });
+}
 function start(mode) {
   releaseListen();
   stopSpeech();
@@ -1139,7 +1171,7 @@ function question() {
     g.render = x => shape(x);
   }
   if (g.mode === 'words' || g.mode === 'build') {
-    const words = wordList();
+    const words = g.mode === 'build' ? spellList(l) : wordList();
     g.target = pick(candidateWords(words, g.mode));
     g.prompt = wordPrompt(g.mode, g.target);
     g.options = shuffle(words.filter(x => x !== g.target)).slice(0, n - 1).concat(g.target);
@@ -1187,7 +1219,7 @@ function question() {
   }
   if (g.mode === 'rocket') {
     g.shown = false;
-    g.subject = rocketSubject(g.index);
+    g.subject = playSubject(g.index);
     g.seconds = fuelSeconds(l);
     if (g.altitude == null) g.altitude = 0.32;
     if (g.subject === 'words') {
@@ -1204,7 +1236,7 @@ function question() {
     g.points ??= 0;
     g.shots ??= 0;
     g.streak ??= 0;
-    g.subject = rocketSubject(g.index);
+    g.subject = playSubject(g.index);
     g.world = ['moon', 'mars', 'earth'][l - 1];
     g.place = ['the Moon', 'Mars', 'Earth'][l - 1];
     if (g.freePlay) {
@@ -1228,7 +1260,7 @@ function question() {
     g.points ??= 0;
     g.shots ??= 0;
     g.streak ??= 0;
-    g.subject = rocketSubject(g.index);
+    g.subject = playSubject(g.index);
     if (g.freePlay) {
       g.math = null;
       g.target = '';
@@ -1271,7 +1303,7 @@ function question() {
   }
   if (g.mode === 'hook') {
     g.shown = false;
-    g.subject = rocketSubject(g.index);
+    g.subject = playSubject(g.index);
     g.cast = hookCast(l);
     g.howTo = g.style === 'reach'
       ? (g.cast.trash ? 'Move your hand onto the right fish. Leave the trash.' : 'Move your hand onto the right fish.')
@@ -1293,7 +1325,7 @@ function question() {
   }
   if (g.mode === 'sky') {
     g.shown = false;
-    g.subject = rocketSubject(g.index);
+    g.subject = playSubject(g.index);
     g.wave = skyWave(l);
     g.howTo = 'Turn the ship and shoot the rock with the right answer. Dodge the ships that shoot back.';
     g.phase = g.started ? 'play' : 'ready';
@@ -1315,7 +1347,7 @@ function question() {
   }
   if (g.mode === 'planet') {
     g.shown = false;
-    g.subject = rocketSubject(g.index);
+    g.subject = playSubject(g.index);
     g.wave = planetWave(l);
     g.howTo = 'Aim the gun with the pointer. Click or tap to shoot the rock with the right answer. Rocks fly in from the edges.';
     g.phase = g.started ? 'play' : 'ready';
@@ -1345,7 +1377,7 @@ function question() {
   }
   if (g.mode === 'match') {
     g.faces = matchFaces(l);
-    g.prompt = 'Match the shapes, colors, numbers, and words.';
+    g.prompt = band() === 'preschool' ? 'Match the shapes, colors, and numbers.' : 'Match the shapes, colors, numbers, and words.';
     g.options = [];
     g.render = x => esc(String(x));
   }
@@ -1640,7 +1672,7 @@ function mathShow(q, item, name) {
 }
 function fillPlayQuestion(g, l) {
   const count = [3, 4, 5][(l || 1) - 1] || 3;
-  g.subject = rocketSubject(g.mode === 'maze' ? (g.asked || 0) : g.index);
+  g.subject = playSubject(g.mode === 'maze' ? (g.asked || 0) : g.index);
   g.shown = false;
   if (g.subject === 'words') {
     const words = wordList();
@@ -1669,7 +1701,7 @@ function tokenList(options, target) {
 function profileAsk(g, place) {
   const board = place === 'lamp' ? lampBoard(g.level) : place === 'stack' ? stackBoard(g.level) : place === 'bust' ? bustBoard(g.level) : place === 'lily' ? lilyBoard(g.level) : place === 'cube' ? cubeBoard(g.level) : place === 'mole' ? moleBoard(g.level) : place === 'hop' || place === 'glide' || place === 'rally' || place === 'walk' ? hopBoard(g.level) : place === 'toast' ? toastBoard(g.level) : place === 'aisle' ? aisleBoard(g.level) : chaseBoard(g.level);
   const want = board.choices;
-  const kinds = ['words', 'facts', 'shapes', 'colors'].filter(kind => {
+  const kinds = (band() === 'preschool' ? ['facts', 'shapes', 'colors'] : ['words', 'facts', 'shapes', 'colors']).filter(kind => {
     if (kind === 'words') return wordList().length >= 2;
     if (kind === 'shapes') return pools(skillLevel('shapes')).ss.length >= 2;
     if (kind === 'colors') return pools(skillLevel('colors')).cs.length >= 2;
@@ -1737,7 +1769,9 @@ function rallyPrefs(profile) {
   const stage = stageOf(profile, Math.max(0, data.profiles.indexOf(profile)));
   const fallback = stage === 'grade4'
     ? { spell: true, match: false, math: true, span: 'twelves' }
-    : { spell: true, match: true, math: false, span: 'twelves' };
+    : stage === 'preschool'
+      ? { spell: false, match: true, math: true, span: 'twelves' }
+      : { spell: true, match: true, math: false, span: 'twelves' };
   const saved = profile?.rally && typeof profile.rally === 'object' ? profile.rally : {};
   const prefs = {
     spell: 'spell' in saved ? !!saved.spell : fallback.spell,
@@ -1745,7 +1779,11 @@ function rallyPrefs(profile) {
     math: 'math' in saved ? !!saved.math : fallback.math,
     span: ['single', 'twelves', 'wide'].includes(saved.span) ? saved.span : fallback.span
   };
-  if (!prefs.spell && !prefs.match && !prefs.math) prefs.spell = true;
+  if (stage === 'preschool') prefs.spell = false;
+  if (!prefs.spell && !prefs.match && !prefs.math) {
+    if (stage === 'preschool') prefs.math = true;
+    else prefs.spell = true;
+  }
   return prefs;
 }
 function rallySpell(g, words) {
@@ -1814,11 +1852,11 @@ function rallyMath(g, want, span) {
 }
 function rallyMatch(g, want) {
   const kinds = ['words', 'shapes', 'colors'].filter(kind => {
-    if (kind === 'words') return wordList().length >= 2;
+    if (kind === 'words') return band() !== 'preschool' && wordList().length >= 2;
     if (kind === 'shapes') return pools(skillLevel('shapes')).ss.length >= 2;
     return pools(skillLevel('colors')).cs.length >= 2;
   });
-  const kind = kinds[Math.max(0, g.index) % Math.max(1, kinds.length)] || 'words';
+  const kind = kinds[Math.max(0, g.index) % Math.max(1, kinds.length)] || (band() === 'preschool' ? 'shapes' : 'words');
   g.rallyKind = 'match';
   g.math = null;
   g.show = '';
@@ -1865,12 +1903,12 @@ function rallyMatch(g, want) {
 function rallyAsk(g) {
   const prefs = rallyPrefs(p());
   const want = hopBoard(g.level).choices;
-  const words = candidateWords(wordList(), 'build');
+  const words = spellList(g.level);
   const kinds = [];
   if (prefs.spell && words.length) kinds.push('spell');
   if (prefs.match) kinds.push('match');
   if (prefs.math) kinds.push('math');
-  if (!kinds.length) kinds.push(words.length ? 'spell' : 'match');
+  if (!kinds.length) kinds.push(band() === 'preschool' || !words.length ? 'match' : 'spell');
   const kind = kinds[Math.max(0, g.index) % kinds.length];
   if (kind === 'spell') return rallySpell(g, words);
   if (kind === 'math') return rallyMath(g, want, prefs.span);
@@ -2520,7 +2558,8 @@ function camStage(zones = '') {
   return `<div class="camstage"><video playsinline muted autoplay></video>${zones ? `<div class="choices camzones">${zones}</div>` : ''}<span class="hand" hidden></span><span class="hand" hidden></span><p class="camstatus" id="camstatus"></p></div><p class="hint">Hold one hand on an answer until it fills. Raise both hands to go on.</p>`;
 }
 function raceTopicLine() {
-  return raceKinds(p().race).map(kind => RACE_LABELS[kind]).join(', ');
+  const kinds = raceKinds(p().race).filter(kind => band() !== 'preschool' || kind !== 'words');
+  return (kinds.length ? kinds : ['facts', 'shapes', 'colors']).map(kind => RACE_LABELS[kind]).join(', ');
 }
 function spriteHtml(kind) {
   const eyes = '<i class="eye l"></i><i class="eye r"></i>';
@@ -2571,13 +2610,14 @@ function raceLabels(q, level) {
 function makeRaceGate(g) {
   const level = g.level;
   const kinds = raceKinds(p().race).filter(kind => {
-    if (kind === 'words') return wordList().length >= 2;
+    if (kind === 'words') return band() !== 'preschool' && wordList().length >= 2;
     if (kind === 'shapes') return pools(skillLevel('shapes')).ss.length >= 2;
     if (kind === 'colors') return pools(skillLevel('colors')).cs.length >= 2;
     return true;
   });
-  const pool = kinds.filter(kind => kind !== g.lastKind);
-  const kind = pick(pool.length ? pool : kinds);
+  const usable = kinds.length ? kinds : ['facts', 'shapes', 'colors'];
+  const pool = usable.filter(kind => kind !== g.lastKind);
+  const kind = pick(pool.length ? pool : usable);
   if (kind === 'words') {
     const words = wordList();
     const count = Math.max(2, Math.min(laneCount(level, words.length) || 2, words.length));
@@ -2786,12 +2826,14 @@ function renderGame() {
   const barLabel = rallyDrive ? 'Right answers before the open road' : marble ? 'Points to the next level' : maze ? 'Time left' : rocket ? 'Height toward space' : 'Questions completed';
   const barPct = rallyDrive ? (rallyNeed ? rallyRights / rallyNeed * 100 : 0) : marble ? 0 : maze ? 100 : rocket ? height : (rounds ? g.index / rounds * 100 : 0);
   const bar = race || freePlay ? '' : `<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="${barMax}" aria-valuenow="${barNow}" aria-label="${barLabel}"><div style="width:${barPct}%"></div></div>`;
+  const alone = aloneBar(side);
   const raceEars = race && g.level >= 2 && data.sound && canSpeak() && raceKinds(p().race).includes('words');
   const reveal = race
     ? (raceEars ? '<button class="quiet" id="reveal" hidden aria-label="Show the word"><span aria-hidden="true">👁</span></button>' : '')
     : (wordHidden(g) ? '<button class="quiet" id="reveal" aria-label="Show the word"><span aria-hidden="true">👁</span></button>' : '');
-  $('#app').innerHTML = `<div class="playtop" data-mode="${esc(g.mode)}"><button class="quiet" id="back">← All games</button><b>${esc(g.title)}</b>${tally}</div>${bar}<section class="playarea"><h1>${esc(heading(g))}</h1><button class="speaker" id="listen"><span aria-hidden="true">🔈</span> Hear it again</button>${reveal}${memory}${scene}${body}<p class="feedback" id="feedback" aria-live="polite"></p><button class="primary" id="next" data-camera-go hidden>${g.index + 1 === rounds ? 'See my stars ★' : 'Next adventure →'}</button></section>`;
+  $('#app').innerHTML = `<div class="playtop" data-mode="${esc(g.mode)}"><button class="quiet" id="back">← All games</button><b>${esc(g.title)}</b>${tally}</div>${alone}${bar}<section class="playarea"><h1>${esc(heading(g))}</h1><button class="speaker" id="listen"><span aria-hidden="true">🔈</span> Hear it again</button>${reveal}${memory}${scene}${body}<p class="feedback" id="feedback" aria-live="polite"></p><button class="primary" id="next" data-camera-go hidden>${g.index + 1 === rounds ? 'See my stars ★' : 'Next adventure →'}</button></section>`;
   $('#back').onclick = requestHome;
+  if ($('#playAlone')) $('#playAlone').onclick = openSidecarAlone;
   $('#listen').onclick = () => askBeforePlay(g.prompt);
   if ($('#reveal')) $('#reveal').onclick = () => {
     g.shown = true;
@@ -4729,8 +4771,10 @@ function decks(x = p()) {
     ['shapes', 'Shapes', 'Shape safari & What’s missing?', pools(Math.max(lv('shapes'), lv('missing'))).ss.map(s => [shape(s), s])],
     ['colors', 'Colors', 'Color garden', pools(lv('colors')).cs.map(([c, h]) => [chip(c, h), c])],
     ['mix', 'Colored shapes', 'Jump to it!', mixDeck(lv('mix')).map(m => { const [c, s] = m.split(' '); return [shape(s, colors.find(v => v[0] === c)[1]), m]; })],
-    ['words', 'Sight words', 'Word parking', x.words.map(w => [word(w), 'Word parking'])],
-    ['letters', 'Letters', 'Build a word', Object.entries(counts).sort(([a], [b]) => a.localeCompare(b)).flatMap(([ch, n]) => Array(n).fill([word(ch), 'Build a word']))],
+    ...(hidesReading(stageOf(x, data.profiles.indexOf(x))) ? [] : [
+      ['words', 'Sight words', 'Word parking', x.words.map(w => [word(w), 'Word parking'])],
+      ['letters', 'Letters', 'Build a word', Object.entries(counts).sort(([a], [b]) => a.localeCompare(b)).flatMap(([ch, n]) => Array(n).fill([word(ch), 'Build a word']))]
+    ]),
     ['numbers', 'Numbers', 'Count & clap and Number path', numberDeck(stageOf(x, data.profiles.indexOf(x)), lv('count'), lv('path')).map(n => [`<span class="cardword${n === 6 || n === 9 ? ' under' : ''}" style="--len:${String(n).length}">${n}</span>`, 'Number'])]
   ];
 }
@@ -4781,7 +4825,7 @@ function loadForm() {
   $('#camera').checked = !!data.camera;
   paintSheet();
   $('#error').textContent = '';
-  $('#skillSettings').innerHTML = games.filter(([id]) => !sidecarGame(id)).map(([id, name]) => {
+  $('#skillSettings').innerHTML = games.filter(([id]) => !sidecarGame(id) && !(hidesReading(stageOf(x, +$('#editProfile').value)) && READING_GAMES.has(id))).map(([id, name]) => {
     const lv = x.levels?.[id] || x.level;
     return `<div class="skill-setting"><label>${name}<select data-skill="${id}">${[1, 2, 3].map(n => `<option value="${n}" ${n === +lv ? 'selected' : ''}>Level ${n}</option>`).join('')}</select></label><span data-stat>${esc(skillStatText(x, id, +lv))}</span></div>`;
   }).join('');
@@ -4791,6 +4835,7 @@ function loadForm() {
   const rally = rallyPrefs(x);
   document.querySelectorAll('[data-rally]').forEach(el => { el.checked = !!rally[el.dataset.rally]; });
   $('#rallySpan').value = rally.span;
+  paintStageTopics();
   const sprite = profileSprite(x, +$('#editProfile').value);
   const pick = $('#spritePick');
   if (pick) {
@@ -4811,6 +4856,19 @@ function loadForm() {
   if (add) add.disabled = data.profiles.length >= LEARNER_LIMIT;
   cleanSnapshot = formSnapshot();
   loadingForm = false;
+}
+function paintStageTopics() {
+  const preschool = $('#stage').value === 'preschool';
+  const spell = document.querySelector('[data-rally="spell"]');
+  const words = document.querySelector('[data-race="words"]');
+  if (spell) {
+    spell.disabled = preschool;
+    if (preschool) spell.checked = false;
+  }
+  if (words) {
+    words.disabled = preschool;
+    if (preschool) words.checked = false;
+  }
 }
 function applyForm() {
   const { words } = parseWords($('#words').value);
@@ -4965,6 +5023,7 @@ $('#level').onchange = () => {
   document.querySelectorAll('[data-skill]').forEach(el => { el.value = $('#level').value; });
   paintStats();
 };
+$('#stage').onchange = () => { if (!loadingForm) paintStageTopics(); };
 $('#voice').innerHTML = voices.map(([id, label]) => `<option value="${esc(id)}">${esc(label)}</option>`).join('');
 async function hearWith(button, lines) {
   const label = button.textContent;
@@ -5019,7 +5078,7 @@ async function loadLocalSheet() {
   if (data.sheet?.rows?.length) { paintSheet(); return; }
   let base = { rows: [], note: 'empty' };
   try {
-    const local = await fetch('./sheet.csv?v=word-band', { cache: 'no-store' });
+    const local = await fetch('./sheet.csv?v=levels', { cache: 'no-store' });
     if (local.ok) base = parseSheet(await local.text());
   } catch { /* the default file is missing */ }
   data.sheet = { at: Date.now(), rows: base.rows, note: base.note, games: [], error: '' };
@@ -5031,7 +5090,7 @@ async function loadSheet() {
   if (el) el.textContent = 'Checking the question sheet…';
   let base = { rows: [], note: 'empty' };
   try {
-    const local = await fetch('./sheet.csv?v=word-band', { cache: 'no-store' });
+    const local = await fetch('./sheet.csv?v=levels', { cache: 'no-store' });
     if (local.ok) base = parseSheet(await local.text());
   } catch { /* the default file is missing; the Google Sheet can still supply rows */ }
   let remote = { rows: [], note: 'empty' };
