@@ -138,7 +138,7 @@ export function mountBust(root, { board = {}, reduced, freePlay, nextQuestion, o
   root.replaceChildren();
   const host = document.createElement('div');
   host.className = 'bust-play';
-  host.innerHTML = `<div id="bustShow"></div><div class="bust" role="application" aria-label="Tap the colored ghost with the right answer before it ducks."><canvas></canvas></div>`;
+  host.innerHTML = `<div id="bustShow"></div><div class="bust" role="application" aria-label="Tap the ghost with the right answer before it ducks."><canvas></canvas></div>`;
   root.appendChild(host);
   const stage = host.querySelector('.bust');
   const canvas = stage.querySelector('canvas');
@@ -209,9 +209,8 @@ export function mountBust(root, { board = {}, reduced, freePlay, nextQuestion, o
       ? 0.85 + Math.random() * 2.7
       : spec.bob * (0.72 + Math.random() * 0.55);
     const worth = choice ? !!choice.ok : !!colored;
-    const body = choice?.shape
-      ? (worth ? COLOR : '#fff')
-      : (choice?.fill || (worth ? COLOR : '#fff'));
+    const colorQuestion = !!(choice && choice.fill && !choice.shape);
+    const body = colorQuestion ? choice.fill : (choice ? '#fff' : (colored ? COLOR : '#fff'));
     return {
       slot,
       choice: choice || null,

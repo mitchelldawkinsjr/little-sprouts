@@ -33,14 +33,19 @@ function ink(fill) {
   return r * 0.3 + g * 0.59 + b * 0.11 > 170 ? '#172031' : '#fffaf0';
 }
 
-function fitFont(ctx, text, maxWidth) {
-  let size = 18;
+function fitFont(ctx, text, maxWidth, maxSize = 18) {
+  let size = Math.max(11, maxSize);
   ctx.font = `700 ${size}px Outfit, sans-serif`;
-  while (size > 9 && ctx.measureText(text).width > maxWidth) {
+  while (size > 11 && ctx.measureText(text).width > maxWidth) {
     size -= 1;
     ctx.font = `700 ${size}px Outfit, sans-serif`;
   }
   return size;
+}
+
+function textWidth(ctx, text, size) {
+  ctx.font = `700 ${size}px Outfit, sans-serif`;
+  return ctx.measureText(text).width;
 }
 
 function drawShape(ctx, shape, x, y, s, fill) {
@@ -260,42 +265,70 @@ export function mountStack(root, { board = {}, reduced, freePlay, nextQuestion, 
     begin();
   };
 
+  const labelsNow = () => {
+    const labels = [];
+    const take = blocks => blocks?.forEach(block => { if (block.label) labels.push(block.label); });
+    take(current);
+    placed.forEach(row => take(row.blocks));
+    falls.forEach(block => { if (block.label) labels.push(block.label); });
+    return labels;
+  };
+  const columnSpan = () => {
+    let min = 0;
+    let max = cols - 1;
+    const width = Math.max(1, mover?.width || current.length || 1);
+    if (!freePlay) {
+      stackStops(pedestal, width).forEach(left => {
+        min = Math.min(min, left);
+        max = Math.max(max, left + width - 1);
+      });
+    }
+    return { min, count: max - min + 1 };
+  };
   const layout = (w, h) => {
     const rows = gridRows();
     const lifeBand = 18;
     const margin = 14;
-    const cell = Math.min((w - margin * 2) / cols, (h - margin * 2 - lifeBand) / rows);
-    const gridW = cell * cols;
-    const gridH = cell * rows;
+    const innerW = w - margin * 2;
+    const innerH = h - margin * 2 - lifeBand;
+    const span = columnSpan();
+    const square = Math.min(innerW / cols, innerH / rows);
+    const word = labelsNow().reduce((best, label) => label.length > best.length ? label : best, '');
+    const needed = word ? textWidth(ctx, word, 22) / 0.86 + square * 0.2 : square;
+    const cellW = Math.min(innerW / span.count, Math.max(square, needed));
+    const cellH = square;
+    const gridW = cellW * span.count;
+    const gridH = cellH * rows;
     return {
-      cell,
+      cellW,
+      cellH,
       rows,
+      minCol: span.min,
       ox: (w - gridW) / 2,
       oy: lifeBand + (h - lifeBand - gridH) / 2
     };
   };
   const cellBox = (box, col, row) => {
-    const inset = box.cell * 0.14;
-    const x = box.ox + col * box.cell + inset;
-    const y = box.oy + (box.rows - 1 - row) * box.cell + inset;
-    const size = box.cell - inset * 2;
-    return { x, y, size };
+    const inset = Math.min(box.cellW, box.cellH) * 0.12;
+    const x = box.ox + (col - box.minCol) * box.cellW + inset;
+    const y = box.oy + (box.rows - 1 - row) * box.cellH + inset;
+    return { x, y, w: box.cellW - inset * 2, h: box.cellH - inset * 2 };
   };
   const paintBlock = (box, col, row, block, dy = 0) => {
     const spot = cellBox(box, col, row);
     const y = spot.y + dy;
     ctx.fillStyle = block.fill || ACTIVE;
     ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(spot.x, y, spot.size, spot.size, 4);
-    else ctx.rect(spot.x, y, spot.size, spot.size);
+    if (ctx.roundRect) ctx.roundRect(spot.x, y, spot.w, spot.h, 6);
+    else ctx.rect(spot.x, y, spot.w, spot.h);
     ctx.fill();
-    if (block.shape) drawShape(ctx, block.shape, spot.x + spot.size / 2, y + spot.size / 2, spot.size, ink(block.fill || ACTIVE));
+    if (block.shape) drawShape(ctx, block.shape, spot.x + spot.w / 2, y + spot.h / 2, Math.min(spot.w, spot.h), ink(block.fill || ACTIVE));
     else if (block.label) {
       ctx.fillStyle = ink(block.fill || ACTIVE);
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      fitFont(ctx, block.label, spot.size * 0.82);
-      ctx.fillText(block.label, spot.x + spot.size / 2, y + spot.size / 2);
+      fitFont(ctx, block.label, spot.w * 0.9, Math.min(26, spot.h * 0.58));
+      ctx.fillText(block.label, spot.x + spot.w / 2, y + spot.h / 2);
     }
   };
   const draw = (w, h) => {
@@ -303,13 +336,13 @@ export function mountStack(root, { board = {}, reduced, freePlay, nextQuestion, 
     ctx.clearRect(0, 0, w, h);
     ctx.strokeStyle = EDGE;
     ctx.lineWidth = 6;
-    ctx.strokeRect(box.ox - 8, box.oy - 8, box.cell * cols + 16, box.cell * box.rows + 16);
+    ctx.strokeRect(box.ox - 8, box.oy - 8, box.cellW * columnSpan().count + 16, box.cellH * box.rows + 16);
     for (let r = 0; r < box.rows; r++) {
       for (let c = 0; c < cols; c++) {
         const spot = cellBox(box, c, r);
         const landing = !freePlay && phase === 'play' && c === pedestal && r === moverRow();
         ctx.fillStyle = landing ? MARK : CELL;
-        ctx.fillRect(spot.x, spot.y, spot.size, spot.size);
+        ctx.fillRect(spot.x, spot.y, spot.w, spot.h);
       }
     }
     if (!freePlay) paintBlock(box, pedestal, 0, { fill: '#c9854a' });
@@ -330,7 +363,7 @@ export function mountStack(root, { board = {}, reduced, freePlay, nextQuestion, 
       ctx.font = '700 26px Outfit, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(banner, w / 2, box.oy + box.cell * box.rows / 2);
+      ctx.fillText(banner, w / 2, box.oy + box.cellH * box.rows / 2);
     }
   };
 

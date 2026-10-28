@@ -94,10 +94,10 @@ import { mountToast, stopToast } from './toast.js?v=ask-first';
 import { mountGlide, stopGlide } from './glide.js?v=ask-first';
 import { mountAisle, stopAisle } from './aisle.js?v=market-aisle';
 import { mountLily, stopLily } from './lily.js?v=ask-first';
-import { mountBust, stopBust } from './bust.js?v=ghost-yard';
+import { mountBust, stopBust } from './bust.js?v=ghost-same';
 import { mountMole, stopMole } from './mole.js?v=mole-pop2';
 import { mountCube, stopCube } from './cube.js?v=pad-jump';
-import { mountStack, stopStack } from './stack.js?v=stacker';
+import { mountStack, stopStack } from './stack.js?v=stack-words';
 import { mountLamp, stopLamp } from './lamp.js?v=lamp';
 import { mountTrace, stopTrace } from './trace.js?v=trace-car2';
 import { mountSort, stopSort } from './sort.js?v=sort-roll';
@@ -184,7 +184,7 @@ function saveBoard(list) {
 
 const colors = [['red', '#dc6253'], ['blue', '#538cbf'], ['yellow', '#f5d400'], ['green', '#76a265'], ['orange', '#e99d4d'], ['purple', '#a381c0'], ['pink', '#e5a2bd'], ['brown', '#9a7153'], ['black', '#343c3a'], ['white', '#ffffff']];
 const shapes = ['circle', 'square', 'triangle', 'rectangle', 'oval', 'diamond', 'star', 'hexagon'];
-const games = [['shapes', 'Shape safari', 'Find circles, triangles & more.', '◒', '#edf0df', 'SHAPES'], ['colors', 'Color garden', 'Pick a color. Grow your skills.', '✿', '#f9e6dc', 'COLORS'], ['mix', 'Jump to it!', 'Match a shape and its color.', '◆', '#e4edf4', 'MIX & MATCH'], ['missing', 'What’s missing?', 'A little look. A big memory!', '☁', '#eee7f5', 'MEMORY'], ['words', 'Word parking', 'Drive into a new sight word.', '🚙', '#fcf0d5', 'READING'], ['build', 'Build a word', 'Little letters, big discoveries.', 'abc', '#e3eee7', 'LETTERS'], ['count', 'Count & clap', 'Count it, jump it, clap it.', '🍎', '#fbe9e3', 'COUNTING'], ['path', 'Number path', 'Hop along the numbers.', '🐸', '#e6efe9', 'NUMBERS'], ['catch', 'Catch the answer', 'Grab the right number as it falls.', '🧺', '#fbe9e3', 'MATH'], ['lanes', 'Word lanes', 'Steer into the word you hear.', '🚗', '#fcf0d5', 'READING'], ['rocket', 'Rocket climb', 'Answer in time and fly to space.', '🚀', '#e7f1f6', 'WORDS + MATH'], ['lunar', 'Moon shot', 'Answer, then shoot the freethrow.', '🌙', '#e4eef6', 'SPACE'], ['hoop', 'Shooting hoops', 'Flick the ball through the right hoop.', '🏀', '#f8e6dc', 'HOOPS'], ['light', 'Catch the light', 'Tap when the light hits the green bulb.', '🔆', '#e5f6ea', 'LIGHT'], ['race', 'Gas race', 'Drive to the answer. See who goes furthest.', '⛽', '#f8efd4', 'RACE'], ['hook', 'Hook the fish', 'Steer the hook onto the right fish.', '🎣', '#d7eef5', 'FISHING'], ['sky', 'Sky shot', 'Shoot the rock with the right answer.', '🛸', '#d9e4f2', 'SPACE'], ['planet', 'Planet guard', 'Aim and keep the planet safe.', '🪐', '#d7e6f4', 'SPACE'], ['puzzle', 'Shape puzzle', 'Build the pieces, then tap or say the shape.', '🧩', '#e5f4ef', 'SHAPES'], ['match', 'Pair match', 'Flip cards. Match shapes, colors, numbers, and words.', '🃏', '#f3efe4', 'MEMORY'], ['marble', 'Marble path', 'Shoot one color. Points raise the level.', '🔴', '#fde8e4', 'COLORS'], ['bridge', 'Stick bridge', 'Hold the stick across each gap. Reach the last platform.', '🪵', '#f3ead7', 'WORDS + MATH'], ['maze', 'Tilt maze', 'Tilt to the flag. A right answer adds time.', '🧭', '#e4eef6', 'MAZE'], ['chase', 'Garden chase', 'Eat the berries that match your words, numbers, shapes, and colors.', '🫐', '#e7f0d8', 'MAZE'], ['hop', 'Sprout hop', 'Bounce up the leaves and hop on the right answer.', '🌿', '#e4f2ea', 'JUMP'], ['toast', 'Toast pop', 'Tap the toast with the right answer.', '🍞', '#f8e6c8', 'CATCH'], ['glide', 'Island glide', 'Hold to climb. Let go to dive. Grab the gem with the answer.', '✈', '#d7ebf5', 'FLIGHT'], ['aisle', 'Market walk', 'Tap the arrows to walk the aisles and pick up the right thing.', '🧺', '#f6efe2', 'SHOP'], ['lily', 'Lily cross', 'Hop across the road and the river. Land on the right lily pad.', '🪷', '#d7eef2', 'POND'], ['bust', 'Ghost bust', 'Tap the colored ghost with the right answer.', '👻', '#e4eee6', 'CATCH'], ['mole', 'Mole pop', 'Tap the mole with the right answer.', '🐹', '#efe4cf', 'HOLES'], ['cube', 'Cube dash', 'Dodge the red cubes. Touch the right one.', '🧊', '#d7eef8', 'DODGE'], ['stack', 'Stacker', 'Tap to drop the blocks. Land the right one on the tower.', '🧱', '#e4eaf2', 'STACK'], ['lamp', 'Light the lamp', 'Set the right stone and light the lamp.', '💡', '#f6ead8', 'LAMP'], ['trace', 'Trace drive', 'Trace the path. A car drives it.', '✎', '#e7f0df', 'TRACE'], ['sort', 'Sort bins', 'Tap a tube. Pour the top balls onto a match or into an empty tube.', '🧪', '#f8efd4', 'SORT'], ['merge', 'Merge jar', 'Drop two that match. Make the next one.', '◎', '#e4eef6', 'MERGE'], ['crayon', 'Color by number', 'Paint each number the color in the legend.', '🖍', '#fde8f0', 'COLORS']].concat(sidecarRows());
+const games = [['shapes', 'Shape safari', 'Find circles, triangles & more.', '◒', '#edf0df', 'SHAPES'], ['colors', 'Color garden', 'Pick a color. Grow your skills.', '✿', '#f9e6dc', 'COLORS'], ['mix', 'Jump to it!', 'Match a shape and its color.', '◆', '#e4edf4', 'MIX & MATCH'], ['missing', 'What’s missing?', 'A little look. A big memory!', '☁', '#eee7f5', 'MEMORY'], ['words', 'Word parking', 'Drive into a new sight word.', '🚙', '#fcf0d5', 'READING'], ['build', 'Build a word', 'Little letters, big discoveries.', 'abc', '#e3eee7', 'LETTERS'], ['count', 'Count & clap', 'Count it, jump it, clap it.', '🍎', '#fbe9e3', 'COUNTING'], ['path', 'Number path', 'Hop along the numbers.', '🐸', '#e6efe9', 'NUMBERS'], ['catch', 'Catch the answer', 'Grab the right number as it falls.', '🧺', '#fbe9e3', 'MATH'], ['lanes', 'Word lanes', 'Steer into the word you hear.', '🚗', '#fcf0d5', 'READING'], ['rocket', 'Rocket climb', 'Answer in time and fly to space.', '🚀', '#e7f1f6', 'WORDS + MATH'], ['lunar', 'Moon shot', 'Answer, then shoot the freethrow.', '🌙', '#e4eef6', 'SPACE'], ['hoop', 'Shooting hoops', 'Flick the ball through the right hoop.', '🏀', '#f8e6dc', 'HOOPS'], ['light', 'Catch the light', 'Tap when the light hits the green bulb.', '🔆', '#e5f6ea', 'LIGHT'], ['race', 'Gas race', 'Drive to the answer. See who goes furthest.', '⛽', '#f8efd4', 'RACE'], ['hook', 'Hook the fish', 'Steer the hook onto the right fish.', '🎣', '#d7eef5', 'FISHING'], ['sky', 'Sky shot', 'Shoot the rock with the right answer.', '🛸', '#d9e4f2', 'SPACE'], ['planet', 'Planet guard', 'Aim and keep the planet safe.', '🪐', '#d7e6f4', 'SPACE'], ['puzzle', 'Shape puzzle', 'Build the pieces, then tap or say the shape.', '🧩', '#e5f4ef', 'SHAPES'], ['match', 'Pair match', 'Flip cards. Match shapes, colors, numbers, and words.', '🃏', '#f3efe4', 'MEMORY'], ['marble', 'Marble path', 'Shoot one color. Points raise the level.', '🔴', '#fde8e4', 'COLORS'], ['bridge', 'Stick bridge', 'Hold the stick across each gap. Reach the last platform.', '🪵', '#f3ead7', 'WORDS + MATH'], ['maze', 'Tilt maze', 'Tilt to the flag. A right answer adds time.', '🧭', '#e4eef6', 'MAZE'], ['chase', 'Garden chase', 'Eat the berries that match your words, numbers, shapes, and colors.', '🫐', '#e7f0d8', 'MAZE'], ['hop', 'Sprout hop', 'Bounce up the leaves and hop on the right answer.', '🌿', '#e4f2ea', 'JUMP'], ['toast', 'Toast pop', 'Tap the toast with the right answer.', '🍞', '#f8e6c8', 'CATCH'], ['glide', 'Island glide', 'Hold to climb. Let go to dive. Grab the gem with the answer.', '✈', '#d7ebf5', 'FLIGHT'], ['aisle', 'Market walk', 'Tap the arrows to walk the aisles and pick up the right thing.', '🧺', '#f6efe2', 'SHOP'], ['lily', 'Lily cross', 'Hop across the road and the river. Land on the right lily pad.', '🪷', '#d7eef2', 'POND'], ['bust', 'Ghost bust', 'Tap the ghost with the right answer.', '👻', '#e4eee6', 'CATCH'], ['mole', 'Mole pop', 'Tap the mole with the right answer.', '🐹', '#efe4cf', 'HOLES'], ['cube', 'Cube dash', 'Dodge the red cubes. Touch the right one.', '🧊', '#d7eef8', 'DODGE'], ['stack', 'Stacker', 'Tap to drop the blocks. Land the right one on the tower.', '🧱', '#e4eaf2', 'STACK'], ['lamp', 'Light the lamp', 'Set the right stone and light the lamp.', '💡', '#f6ead8', 'LAMP'], ['trace', 'Trace drive', 'Trace the path. A car drives it.', '✎', '#e7f0df', 'TRACE'], ['sort', 'Sort bins', 'Tap a tube. Pour the top balls onto a match or into an empty tube.', '🧪', '#f8efd4', 'SORT'], ['merge', 'Merge jar', 'Drop two that match. Make the next one.', '◎', '#e4eef6', 'MERGE'], ['crayon', 'Color by number', 'Paint each number the color in the legend.', '🖍', '#fde8f0', 'COLORS']].concat(sidecarRows());
 const countItems = [['🍎', 'apples'], ['⭐', 'stars'], ['🐞', 'ladybugs'], ['🌼', 'flowers'], ['🐟', 'fish'], ['🎈', 'balloons']];
 const huntThings = [['sock', 'socks'], ['spoon', 'spoons'], ['toy', 'toys'], ['book', 'books'], ['block', 'blocks'], ['crayon', 'crayons']];
 const styles = [['tap', '👆', 'Tap', 'Tap the answer on the screen.'], ['move', '🦘', 'Move', 'Spread floor cards out. The game calls the moves and a grown-up taps ✓.'], ['hunt', '🔎', 'Hunt', 'Find real things around you. A grown-up taps ✓. What’s missing? plays as Move.'], ['reach', '📷', 'Reach', 'Stand back so the camera sees shoulders and hands. Hold one hand on an answer until it fills. Video stays on this device and is never recorded.']];
@@ -211,7 +211,7 @@ const listen = {
   glide: { tap: 'Listen, then grab the right gem.' },
   aisle: { tap: 'Listen, then find it in the market.', move: 'Listen, then find it in the market.', hunt: 'Listen, then find it in the market.', reach: 'Listen, then find it in the market.' },
   lily: { tap: 'Listen, then hop to the right pad.', move: 'Listen, then hop to the right pad.', hunt: 'Listen, then hop to the right pad.', reach: 'Listen, then hop to the right pad.' },
-  bust: { tap: 'Listen, then bust the colored ghost.', move: 'Listen, then bust the colored ghost.', hunt: 'Listen, then bust the colored ghost.', reach: 'Listen, then bust the colored ghost.' },
+  bust: { tap: 'Listen, then bust the ghost with the right answer.', move: 'Listen, then bust the ghost with the right answer.', hunt: 'Listen, then bust the ghost with the right answer.', reach: 'Listen, then bust the ghost with the right answer.' },
   mole: { tap: 'Listen, then whack the right mole.', move: 'Listen, then whack the right mole.', hunt: 'Listen, then whack the right mole.', reach: 'Listen, then whack the right mole.' },
   cube: { tap: 'Listen, then touch the right cube.', move: 'Listen, then touch the right cube.', hunt: 'Listen, then touch the right cube.', reach: 'Listen, then touch the right cube.' },
   stack: { tap: 'Listen, then drop the right block.', move: 'Listen, then drop the right block.', hunt: 'Listen, then drop the right block.', reach: 'Listen, then drop the right block.' },
@@ -1513,7 +1513,9 @@ function question() {
     g.board = bustBoard(l);
     g.howTo = g.freePlay
       ? 'Bust the ghosts before time runs out. Colored ghosts score more.'
-      : 'Bust the colored ghost with the right answer before time runs out. A white ghost misses. Colored ghosts score more.';
+      : band() === 'grade4'
+        ? 'Bust the ghost with the right answer before time runs out. The ghosts match, so use the answer.'
+        : 'Bust the ghost with the right answer before time runs out. The ghosts match, so use the answer. A color question uses the ghost’s color.';
     g.phase = g.started ? 'play' : 'ready';
     if (!g.started) {
       g.prompt = g.howTo;
@@ -1701,10 +1703,10 @@ function tokenList(options, target) {
 function profileAsk(g, place) {
   const board = place === 'lamp' ? lampBoard(g.level) : place === 'stack' ? stackBoard(g.level) : place === 'bust' ? bustBoard(g.level) : place === 'lily' ? lilyBoard(g.level) : place === 'cube' ? cubeBoard(g.level) : place === 'mole' ? moleBoard(g.level) : place === 'hop' || place === 'glide' || place === 'rally' || place === 'walk' ? hopBoard(g.level) : place === 'toast' ? toastBoard(g.level) : place === 'aisle' ? aisleBoard(g.level) : chaseBoard(g.level);
   const want = board.choices;
-  const kinds = (band() === 'preschool' ? ['facts', 'shapes', 'colors'] : ['words', 'facts', 'shapes', 'colors']).filter(kind => {
+  const kinds = (band() === 'preschool' ? ['facts', 'shapes', 'colors'] : band() === 'grade4' ? ['words', 'facts', 'shapes'] : ['words', 'facts', 'shapes', 'colors']).filter(kind => {
     if (kind === 'words') return wordList().length >= 2;
     if (kind === 'shapes') return pools(skillLevel('shapes')).ss.length >= 2;
-    if (kind === 'colors') return pools(skillLevel('colors')).cs.length >= 2;
+    if (kind === 'colors') return band() !== 'grade4' && pools(skillLevel('colors')).cs.length >= 2;
     return true;
   });
   const kind = kinds[Math.max(0, g.index) % kinds.length];
@@ -1854,7 +1856,7 @@ function rallyMatch(g, want) {
   const kinds = ['words', 'shapes', 'colors'].filter(kind => {
     if (kind === 'words') return band() !== 'preschool' && wordList().length >= 2;
     if (kind === 'shapes') return pools(skillLevel('shapes')).ss.length >= 2;
-    return pools(skillLevel('colors')).cs.length >= 2;
+    return band() !== 'grade4' && pools(skillLevel('colors')).cs.length >= 2;
   });
   const kind = kinds[Math.max(0, g.index) % Math.max(1, kinds.length)] || (band() === 'preschool' ? 'shapes' : 'words');
   g.rallyKind = 'match';
@@ -2558,8 +2560,9 @@ function camStage(zones = '') {
   return `<div class="camstage"><video playsinline muted autoplay></video>${zones ? `<div class="choices camzones">${zones}</div>` : ''}<span class="hand" hidden></span><span class="hand" hidden></span><p class="camstatus" id="camstatus"></p></div><p class="hint">Hold one hand on an answer until it fills. Raise both hands to go on.</p>`;
 }
 function raceTopicLine() {
-  const kinds = raceKinds(p().race).filter(kind => band() !== 'preschool' || kind !== 'words');
-  return (kinds.length ? kinds : ['facts', 'shapes', 'colors']).map(kind => RACE_LABELS[kind]).join(', ');
+  const kinds = raceKinds(p().race).filter(kind => (band() !== 'preschool' || kind !== 'words') && (band() !== 'grade4' || kind !== 'colors'));
+  const fallback = band() === 'grade4' ? ['facts', 'shapes'] : ['facts', 'shapes', 'colors'];
+  return (kinds.length ? kinds : fallback).map(kind => RACE_LABELS[kind]).join(', ');
 }
 function spriteHtml(kind) {
   const eyes = '<i class="eye l"></i><i class="eye r"></i>';
@@ -2612,10 +2615,10 @@ function makeRaceGate(g) {
   const kinds = raceKinds(p().race).filter(kind => {
     if (kind === 'words') return band() !== 'preschool' && wordList().length >= 2;
     if (kind === 'shapes') return pools(skillLevel('shapes')).ss.length >= 2;
-    if (kind === 'colors') return pools(skillLevel('colors')).cs.length >= 2;
+    if (kind === 'colors') return band() !== 'grade4' && pools(skillLevel('colors')).cs.length >= 2;
     return true;
   });
-  const usable = kinds.length ? kinds : ['facts', 'shapes', 'colors'];
+  const usable = kinds.length ? kinds : (band() === 'grade4' ? ['facts', 'shapes'] : ['facts', 'shapes', 'colors']);
   const pool = usable.filter(kind => kind !== g.lastKind);
   const kind = pick(pool.length ? pool : usable);
   if (kind === 'words') {
@@ -3694,7 +3697,7 @@ function renderGame() {
       onMiss(kind) {
         if (game !== g || g.finished) return;
         g.missed = true;
-        const line = kind === 'time' ? 'Time is up. The colored ghost is waiting.' : 'That ghost is not the one.';
+        const line = kind === 'time' ? 'Time is up. The right ghost is waiting.' : 'That ghost is not the one.';
         const feedback = $('#feedback');
         if (feedback && feedback.textContent !== line) {
           feedback.textContent = line;
@@ -4858,9 +4861,12 @@ function loadForm() {
   loadingForm = false;
 }
 function paintStageTopics() {
-  const preschool = $('#stage').value === 'preschool';
+  const stage = $('#stage').value;
+  const preschool = stage === 'preschool';
+  const grade4 = stage === 'grade4';
   const spell = document.querySelector('[data-rally="spell"]');
   const words = document.querySelector('[data-race="words"]');
+  const colors = document.querySelector('[data-race="colors"]');
   if (spell) {
     spell.disabled = preschool;
     if (preschool) spell.checked = false;
@@ -4868,6 +4874,10 @@ function paintStageTopics() {
   if (words) {
     words.disabled = preschool;
     if (preschool) words.checked = false;
+  }
+  if (colors) {
+    colors.disabled = grade4;
+    if (grade4) colors.checked = false;
   }
 }
 function applyForm() {
