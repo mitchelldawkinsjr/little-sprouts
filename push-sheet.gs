@@ -2,6 +2,7 @@
  * Copies question rows into this spreadsheet.
  * Ignores the website when it returns the Little Sprouts page instead of the CSV.
  * If the first cell is not "learner", the sheet is replaced. Otherwise only new rows are added.
+ * Word rows are never added. The sheet is the word list.
  */
 var DEFAULT_SHEET_URL = 'https://grow.360web.cloud/sheet.csv';
 
@@ -167,6 +168,7 @@ function pullDefaults() {
   var seen = {};
   values.forEach(function (row) { seen[key(row)] = true; });
   var add = incoming.slice(1).filter(function (row) {
+    if (String(row[1] || '').trim().toLowerCase() === 'words') return false;
     return String(row[2] || '').trim() && !seen[key(row)];
   });
   if (!add.length) return;

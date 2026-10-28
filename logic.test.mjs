@@ -844,7 +844,7 @@ test('question sheet reads learner rows', () => {
     { rows: [{ learner: '*', game: 'words', item: 'cat', extra: '' }, { learner: 'kindergarten', game: 'words', item: 'away', extra: '' }] },
     { rows: [{ learner: '*', game: 'words', item: 'dog', extra: '' }, { learner: 'kindergarten', game: 'words', item: 'a', extra: '' }] }
   );
-  assert.deepEqual(band.rows.map(row => [row.learner, row.item]), [['*', 'dog'], ['kindergarten', 'a'], ['kindergarten', 'away']]);
+  assert.deepEqual(band.rows.map(row => [row.learner, row.item]), [['*', 'dog'], ['kindergarten', 'a']]);
 });
 
 test('4th grade times tables follow the sheet numbers', () => {

@@ -75,7 +75,7 @@ import {
   crayonLegend,
   kindergartenWords,
   spellingWords
-} from './logic.mjs?v=levels';
+} from './logic.mjs?v=sheet-words';
 import { canSpeak, commonLines, contextFor, getSpeechStatus, knownVoice, onSpeechStatus, prefetchSpeech, prepareSpeech, profiles, sampleLine, speak, speakAndWait, stop, voiceFor, voices, warm } from './speech.js?v=wait-2s';
 import './pad.js?v=pad-all';
 import './tilt.js?v=ask-first';
@@ -422,11 +422,15 @@ function sheetRows(game) {
 }
 function wordList() {
   const fromSheet = wordsFromSheet(data.sheet?.rows, p().name, band());
-  const base = fromSheet.length ? fromSheet : p().words;
+  if (fromSheet.length) return fromSheet;
+  const base = p().words;
   return band() === 'kindergarten' ? kindergartenWords(base, p().words) : base;
 }
 function spellList(level) {
-  return candidateWords(spellingWords(wordList(), band(), p().words, level), 'build');
+  const fromSheet = wordsFromSheet(data.sheet?.rows, p().name, band());
+  const words = wordList();
+  const manual = fromSheet.length ? fromSheet : p().words;
+  return candidateWords(spellingWords(words, band(), manual, level), 'build');
 }
 function playSubject(index) {
   if (band() === 'preschool') return 'math';

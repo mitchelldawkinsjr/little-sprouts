@@ -1630,21 +1630,10 @@ function withNewFacts(defaults, extra) {
   return added.length ? [...extra, ...added] : extra;
 }
 
-function withNewBandWords(defaults, extra) {
-  const bands = new Set(['preschool', 'kindergarten', 'grade4']);
-  const seen = new Set(extra.filter(row => row.game === 'words').map(row => `${String(row.learner || '').trim().toLowerCase()}|${String(row.item).trim().toLowerCase()}`));
-  const added = defaults.filter(row => {
-    if (row.game !== 'words') return false;
-    const who = String(row.learner || '').trim().toLowerCase();
-    return bands.has(who) && !seen.has(`${who}|${String(row.item).trim().toLowerCase()}`);
-  });
-  return added.length ? [...extra, ...added] : extra;
-}
-
 export function mergeSheets(base, overlay) {
   const defaults = base?.rows || [];
   const extra = overlay?.rows || [];
   const games = [...new Set(extra.map(row => row.game))];
-  const rows = withNewBandWords(defaults, withNewFacts(defaults, [...defaults.filter(row => !games.includes(row.game)), ...extra]));
+  const rows = withNewFacts(defaults, [...defaults.filter(row => !games.includes(row.game)), ...extra]);
   return { rows, note: rows.length ? 'ok' : (base?.note || 'empty'), games };
 }
