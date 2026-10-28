@@ -1,3 +1,10 @@
+FROM node:24-alpine AS link
+WORKDIR /app
+COPY server/paint-link.mjs /app/paint-link.mjs
+ENV PORT=5180
+EXPOSE 5180
+CMD ["node", "paint-link.mjs"]
+
 FROM node:24-bookworm AS sidecars
 RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /build

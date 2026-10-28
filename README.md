@@ -11,10 +11,10 @@ Three learners start on this device: Malik in preschool, Micah in kindergarten, 
 From this folder:
 
 ```
-python3 -m http.server 8000
+node server/serve.mjs
 ```
 
-Open http://localhost:8000. There is no build step.
+Open http://localhost:8000. There is no build step. This server also opens Paint Sphere’s friend room. If the site is already running from `python3 -m http.server`, start `node server/paint-link.mjs` beside it. Play with a friend uses that room.
 
 ## How a round works
 

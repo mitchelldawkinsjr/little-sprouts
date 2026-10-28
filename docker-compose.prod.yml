@@ -7,14 +7,25 @@
 name: little-sprouts
 
 services:
+  link:
+    build:
+      context: .
+      target: link
+    container_name: little-sprouts-link
+    restart: unless-stopped
+    networks:
+      - paint
   app:
     build: .
     container_name: little-sprouts-app
     restart: unless-stopped
+    depends_on:
+      - link
     ports:
       - "127.0.0.1:${APP_PUBLISH_PORT:-8032}:80"
     networks:
       - proxy
+      - paint
     labels:
       - "com.360ws.type=docker-app"
       - "com.360ws.app=little-sprouts"
@@ -29,3 +40,4 @@ networks:
   proxy:
     external: true
     name: 360ws-network
+  paint:
