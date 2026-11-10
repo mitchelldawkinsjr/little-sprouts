@@ -23,6 +23,7 @@ export const SIDECARS = [
     icon: '🏎',
     tint: '#efe6d4',
     tag: 'DRIVE',
+    shelf: 'adventures',
     src: 'sidecars/rally/index.html?v=tilt-steer',
     alone: 'Pick a car and a road on that page.',
     howTo: 'Pick a car and a road. Questions are spread along the stage. Five right answers, and you can drive the rest of the way to the finish. A longer round asks up to eight.'
@@ -34,6 +35,7 @@ export const SIDECARS = [
     icon: '✈',
     tint: '#d7ebf5',
     tag: 'FLY',
+    shelf: 'adventures',
     src: 'sidecars/flight/index.html?v=ask-first',
     alone: 'The plane flies on its own, through sample gates.',
     howTo: 'The plane holds its height. Steer left or right through the gate with the right answer. A wrong gate slows the plane and turns it back. Those same gates stay until you fly through the right one. After five right answers, you get two minutes of free flight. The plane keeps flying where you look. Forward flies faster, back flies backward, and the side buttons slide. Hitting the ground ends the flight.'
@@ -45,6 +47,7 @@ export const SIDECARS = [
     icon: '🏍',
     tint: '#f3e2c4',
     tag: 'RIDE',
+    shelf: 'adventures',
     src: 'sidecars/bike/index.html?v=ask-first',
     alone: 'A level menu, four trails, and stars are on that page.',
     howTo: 'Hold the gas and the bike pulls away. Lean back to lift the front wheel, and lean forward to bring the nose down. Ride the hills and land on both wheels. A question comes after a longer stretch of trail. A right answer says good, and the ride continues. A wrong answer speeds the bike up. Level 1 stays upright. Level 3 lets you tilt in the air.'
@@ -56,6 +59,7 @@ export const SIDECARS = [
     icon: '🌱',
     tint: '#e4f2df',
     tag: 'WALK',
+    shelf: 'adventures',
     src: 'sidecars/walk/index.html?v=ask-first',
     alone: 'The meadow is on that page, and the sprout can walk.',
     howTo: 'Hold left or right and walk past the other pictures. Let go on the one that matches, or tap it and the sprout walks to it. The right picture finishes the question. A wrong picture sends the sprout back. Words, numbers, shapes, and colors take turns.'
@@ -67,6 +71,7 @@ export const SIDECARS = [
     icon: '🎨',
     tint: '#f8e2d4',
     tag: 'PAINT',
+    shelf: 'adventures',
     src: 'sidecars/paint/index.html?v=paint-shell2',
     alone: 'Play, a friend, and room mode are on that page.',
     howTo: 'A math question from this learner’s profile appears, and the two answers float on either half of the shell. Look for five seconds, then paint for ten. Only paint on the right answer counts. Click the picture to look around. The train on the middle circle sets you down beside the track.'
@@ -78,6 +83,7 @@ export const SIDECARS = [
     icon: '⚡',
     tint: '#e8eefc',
     tag: 'MATH',
+    shelf: 'numbers',
     src: 'sidecars/quick-math/index.html?v=1',
     alone: 'Pick a mission and race the clock on that page.',
     howTo: 'Pick a mission. Answer as many as you can in three minutes. Four choices each time. Finish early or wait for the timer.'
