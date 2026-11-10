@@ -1,7 +1,9 @@
 /**
- * Catch the light — a bulb runs around a ring. Tap when it lands on the green one.
+ * Catch the light — a bulb runs around a ring. Tap when it lands on the right spot.
  * Stroll, Bike, Car, Jet, and Rocket keep one speed.
  * Rush starts slow and gets faster after every catch, until the light is too quick.
+ * With questions on, answer bulbs light up on the wheel and all look the same.
+ * Catch the moving light on the right answer, not a wrong one.
  * The ring, the chase, and the one-bulb window follow Catch That Light.
  * This ring and the questions are drawn here.
  */
@@ -12,13 +14,30 @@ export const RUSH_START = 5;
 export const RUSH_FLOOR = 0.34;
 export const RUSH_STEP = 0.85;
 
+/** Even spots around the ring for answer lights. */
+export function lightMarkSlots(count) {
+  const n = Math.max(1, Math.min(LIGHT_BULBS, count | 0));
+  if (n === 1) return [0];
+  const slots = [];
+  for (let k = 0; k < n; k++) {
+    const i = Math.round((k * LIGHT_BULBS) / n) % LIGHT_BULBS;
+    if (!slots.includes(i)) slots.push(i);
+  }
+  while (slots.length < n) {
+    const i = slots.length % LIGHT_BULBS;
+    if (!slots.includes(i)) slots.push(i);
+    else break;
+  }
+  return slots;
+}
+
 const PACE_NAMES = [
-  ['stroll', 'Stroll'],
-  ['bike', 'Bike'],
-  ['car', 'Car'],
-  ['jet', 'Jet'],
-  ['rocket', 'Rocket'],
-  ['rush', 'Rush']
+  ['stroll', 'Stroll', '🚶'],
+  ['bike', 'Bike', '🚲'],
+  ['car', 'Car', '🚗'],
+  ['jet', 'Jet', '✈️'],
+  ['rocket', 'Rocket', '🚀'],
+  ['rush', 'Rush', '⚡']
 ];
 
 let active = null;
@@ -29,14 +48,47 @@ export function lightWindow(level) {
 }
 
 export function lightGap(phase) {
-  const p = ((phase % 1) + 1) % 1;
-  return Math.min(p, 1 - p);
+  return lightGapTo(phase, 0);
 }
 
-export function lightVerdict(phase, level) {
-  const gap = lightGap(phase);
+export function lightGapTo(phase, targetIndex = 0) {
+  const target = (((targetIndex % LIGHT_BULBS) + LIGHT_BULBS) % LIGHT_BULBS) / LIGHT_BULBS;
+  const p = ((phase % 1) + 1) % 1;
+  const d = ((p - target) % 1 + 1) % 1;
+  return Math.min(d, 1 - d);
+}
+
+export function lightNearestMark(phase, marks) {
+  if (!marks?.length) return null;
+  let best = null;
+  let bestGap = Infinity;
+  for (const mark of marks) {
+    const gap = lightGapTo(phase, mark.i);
+    if (gap < bestGap) {
+      bestGap = gap;
+      best = mark;
+    }
+  }
+  return best ? { mark: best, gap: bestGap } : null;
+}
+
+export function lightVerdict(phase, level, targetIndex = 0) {
+  const gap = lightGapTo(phase, targetIndex);
   if (gap <= lightWindow(level)) return 'catch';
   if (gap <= 3 / LIGHT_BULBS) return 'almost';
+  return 'miss';
+}
+
+/** With answer lights on the wheel, a tap near the right one catches; near a wrong one fails. */
+export function lightVerdictAt(phase, level, marks) {
+  if (!marks?.length) return lightVerdict(phase, level, 0);
+  const hit = lightNearestMark(phase, marks);
+  if (!hit) return 'miss';
+  const window = lightWindow(level);
+  const almost = 3 / LIGHT_BULBS;
+  if (hit.gap <= window) return hit.mark.ok ? 'catch' : 'wrong';
+  if (hit.mark.ok && hit.gap <= almost) return 'almost';
+  if (!hit.mark.ok && hit.gap <= almost) return 'wrong';
   return 'miss';
 }
 
@@ -57,7 +109,7 @@ function call(fn, arg) {
 
 export function mountLight(root, { level = 1, reduced = false, onPick, onCatch, onMiss } = {}) {
   stopLight();
-  if (!root) return { setLabel() {} };
+  if (!root) return { setLabel() {}, setMarks() {} };
   const session = {
     dead: false,
     raf: 0,
@@ -75,6 +127,7 @@ export function mountLight(root, { level = 1, reduced = false, onPick, onCatch, 
   let pace = 'car';
   let seconds = LIGHT_PACES.car;
   let label = '';
+  let marks = [];
   let phase = 'menu';
   let angle = 0.08;
   let last = 0;
@@ -91,7 +144,7 @@ export function mountLight(root, { level = 1, reduced = false, onPick, onCatch, 
     <button type="button" class="light-catch" hidden>Tap</button>
     <div class="light-menu">
       <p class="light-kicker">Select speed</p>
-      <div class="light-speeds" role="group" aria-label="Light speed">${PACE_NAMES.map(([id, name]) => `<button type="button" data-pace="${id}" aria-pressed="${id === 'car'}">${name}</button>`).join('')}</div>
+      <div class="light-speeds" role="group" aria-label="Light speed">${PACE_NAMES.map(([id, name, icon]) => `<button type="button" data-pace="${id}" aria-pressed="${id === 'car'}" aria-label="${name}"><span class="light-pace-icon" aria-hidden="true">${icon}</span><span class="light-pace-name">${name}</span></button>`).join('')}</div>
       <p class="light-note" id="lightNote">The light keeps this speed.</p>
       <button type="button" class="primary light-start">Start</button>
     </div>
@@ -112,6 +165,8 @@ export function mountLight(root, { level = 1, reduced = false, onPick, onCatch, 
   const again = over.querySelector('button');
   const paceButtons = [...root.querySelectorAll('[data-pace]')];
 
+  const targetIndex = () => marks.find(mark => mark.ok)?.i ?? 0;
+
   const paintPaces = () => {
     paceButtons.forEach(button => {
       const on = button.dataset.pace === pace;
@@ -119,7 +174,7 @@ export function mountLight(root, { level = 1, reduced = false, onPick, onCatch, 
     });
     note.textContent = pace === 'rush'
       ? 'Rush starts slow. Every catch makes it faster, until you cannot time it.'
-      : 'The light keeps this speed. Tap when it hits the green bulb.';
+      : 'The light keeps this speed. Tap when it hits the right answer, not a wrong one.';
   };
 
   const layout = () => {
@@ -150,7 +205,7 @@ export function mountLight(root, { level = 1, reduced = false, onPick, onCatch, 
   };
 
   const beginRun = () => {
-    angle = 0.08;
+    angle = Math.random() * 0.85 + 0.08;
     locked = false;
     phase = 'run';
     catchBtn.hidden = false;
@@ -179,6 +234,39 @@ export function mountLight(root, { level = 1, reduced = false, onPick, onCatch, 
     ctx.restore();
   };
 
+  const drawPill = (x, y, text) => {
+    let size = Math.max(12, Math.min(17, 18));
+    ctx.font = `700 ${size}px Outfit, sans-serif`;
+    while (size > 10 && ctx.measureText(text).width > 72) {
+      size -= 1;
+      ctx.font = `700 ${size}px Outfit, sans-serif`;
+    }
+    const padX = 9;
+    const padY = 5;
+    const tw = ctx.measureText(text).width;
+    const bx = x - tw / 2 - padX;
+    const by = y - size / 2 - padY;
+    const bw = tw + padX * 2;
+    const bh = size + padY * 2;
+    const br = bh / 2;
+    ctx.fillStyle = '#2a2210cc';
+    ctx.beginPath();
+    ctx.moveTo(bx + br, by);
+    ctx.arcTo(bx + bw, by, bx + bw, by + bh, br);
+    ctx.arcTo(bx + bw, by + bh, bx, by + bh, br);
+    ctx.arcTo(bx, by + bh, bx, by, br);
+    ctx.arcTo(bx, by, bx + bw, by, br);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#c9a86a';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = '#fff8e8';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, x, y);
+  };
+
   const draw = now => {
     ctx.clearRect(0, 0, width, height);
     const cx = width / 2;
@@ -197,47 +285,90 @@ export function mountLight(root, { level = 1, reduced = false, onPick, onCatch, 
     const spinning = phase === 'run' || phase === 'flash' || phase === 'hold';
     const lit = spinning ? Math.floor(angle * LIGHT_BULBS) % LIGHT_BULBS : -1;
     const twinkle = Math.floor(now / 180) % 4;
+    const byIndex = new Map(marks.map(mark => [((mark.i % LIGHT_BULBS) + LIGHT_BULBS) % LIGHT_BULBS, mark]));
+    const goal = targetIndex();
+    const choosing = marks.length > 0;
+
     for (let i = 0; i < LIGHT_BULBS; i++) {
       const theta = Math.PI / 2 + (i / LIGHT_BULBS) * Math.PI * 2;
       const x = cx + Math.cos(theta) * radius;
       const y = cy + Math.sin(theta) * radius;
-      const target = i === 0;
-      const neighbor = i === 1 || i === LIGHT_BULBS - 1;
+      const mark = byIndex.get(i);
+      const target = !choosing && i === goal;
+      const neighbor = !choosing && (i === (goal + 1) % LIGHT_BULBS || i === (goal + LIGHT_BULBS - 1) % LIGHT_BULBS);
       let color = '#2a2208';
       let glow = false;
+      let size = radius * 0.04;
       if (phase === 'intro' && i % 4 === twinkle) {
         color = '#ffe14a';
         glow = true;
       } else if (i === lit) {
-        color = target ? '#d6ff6a' : '#ffe14a';
+        color = mark ? '#ffe14a' : target ? '#d6ff6a' : '#ffe14a';
         glow = true;
-      } else if (target) color = '#1ec75a';
-      else if (neighbor) color = '#8fbf2a';
-      drawBulb(x, y, i === lit ? radius * 0.055 : radius * 0.04, color, glow);
+        size = radius * (mark ? 0.08 : 0.055);
+      } else if (mark) {
+        // Same amber as every other answer — no green tip-off.
+        color = '#8a7020';
+        glow = true;
+        size = radius * 0.07;
+      } else if (target) {
+        color = '#1ec75a';
+        glow = true;
+        size = radius * 0.045;
+      } else if (neighbor) color = '#8fbf2a';
+      drawBulb(x, y, size, color, glow);
     }
 
     if (spinning && !reduced) {
       const pulse = 0.85 + Math.sin(now / 140) * 0.15;
-      const x = cx + Math.cos(Math.PI / 2) * radius;
-      const y = cy + Math.sin(Math.PI / 2) * radius;
-      ctx.strokeStyle = '#7dffb2';
-      ctx.globalAlpha = 0.45 + pulse * 0.2;
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(x, y, radius * 0.11 * pulse, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.globalAlpha = 1;
+      if (choosing) {
+        for (const mark of marks) {
+          const i = ((mark.i % LIGHT_BULBS) + LIGHT_BULBS) % LIGHT_BULBS;
+          const theta = Math.PI / 2 + (i / LIGHT_BULBS) * Math.PI * 2;
+          const x = cx + Math.cos(theta) * radius;
+          const y = cy + Math.sin(theta) * radius;
+          ctx.strokeStyle = '#c9a86a';
+          ctx.globalAlpha = 0.35 + pulse * 0.15;
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.arc(x, y, radius * 0.14 * pulse, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+      } else {
+        const theta = Math.PI / 2 + (goal / LIGHT_BULBS) * Math.PI * 2;
+        const x = cx + Math.cos(theta) * radius;
+        const y = cy + Math.sin(theta) * radius;
+        ctx.strokeStyle = '#7dffb2';
+        ctx.globalAlpha = 0.45 + pulse * 0.2;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(x, y, radius * 0.11 * pulse, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
     }
 
     const btnR = radius * 0.38;
-    for (let ring = 8; ring >= 1; ring--) {
-      ctx.fillStyle = `hsl(174, 72%, ${18 + ring * 6}%)`;
+    for (let ringNo = 8; ringNo >= 1; ringNo--) {
+      ctx.fillStyle = `hsl(174, 72%, ${18 + ringNo * 6}%)`;
       ctx.beginPath();
-      ctx.arc(cx, cy, btnR * (0.55 + ring * 0.06), 0, Math.PI * 2);
+      ctx.arc(cx, cy, btnR * (0.55 + ringNo * 0.06), 0, Math.PI * 2);
       ctx.fill();
     }
 
-    if (label && phase !== 'menu') {
+    if (marks.length && phase !== 'menu') {
+      const outer = radius * 1.28;
+      for (const mark of marks) {
+        const text = String(mark.text ?? '');
+        if (!text) continue;
+        const i = ((mark.i % LIGHT_BULBS) + LIGHT_BULBS) % LIGHT_BULBS;
+        const theta = Math.PI / 2 + (i / LIGHT_BULBS) * Math.PI * 2;
+        const x = cx + Math.cos(theta) * outer;
+        const y = cy + Math.sin(theta) * outer;
+        drawPill(x, y, text);
+      }
+    } else if (label && phase !== 'menu') {
       const text = String(label);
       let size = Math.max(16, Math.min(28, radius * 0.16));
       ctx.font = `700 ${size}px Outfit, sans-serif`;
@@ -300,10 +431,16 @@ export function mountLight(root, { level = 1, reduced = false, onPick, onCatch, 
   const tap = () => {
     if (phase !== 'run' || locked) return;
     locked = true;
-    verdict = lightVerdict(angle, level);
+    verdict = lightVerdictAt(angle, level, marks);
     phase = 'flash';
     flashUntil = performance.now() + (reduced ? 520 : 880);
-    catchBtn.textContent = verdict === 'catch' ? 'Amazing!' : verdict === 'almost' ? 'Almost' : 'Missed';
+    catchBtn.textContent = verdict === 'catch'
+      ? 'Amazing!'
+      : verdict === 'almost'
+        ? 'Almost'
+        : verdict === 'wrong'
+          ? 'Wrong one'
+          : 'Missed';
   };
 
   const onPointer = event => {
@@ -338,6 +475,7 @@ export function mountLight(root, { level = 1, reduced = false, onPick, onCatch, 
   again.onclick = () => {
     streak = 0;
     label = '';
+    marks = [];
     showMenu();
   };
   catchBtn.onclick = tap;
@@ -358,6 +496,16 @@ export function mountLight(root, { level = 1, reduced = false, onPick, onCatch, 
     setLabel(text) {
       if (session.dead) return;
       label = String(text ?? '');
+      if (text) marks = [];
+    },
+    setMarks(list) {
+      if (session.dead) return;
+      marks = Array.isArray(list) ? list.map(row => ({
+        i: row?.i | 0,
+        text: String(row?.text ?? ''),
+        ok: !!row?.ok
+      })).filter(row => row.text) : [];
+      if (marks.length) label = '';
     }
   };
 }
