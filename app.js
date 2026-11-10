@@ -106,7 +106,7 @@ import { mountCrayon, stopCrayon } from './crayon.js?v=color-num';
 import { mountMarble, stopMarble } from './marble.js?v=ask-first';
 import { mountBridge, stopBridge } from './bridge.js?v=ask-first';
 import { mountMaze, stopMaze } from './maze.js?v=ask-first';
-import { findBuiltSidecars, mountSidecar, postSidecar, sidecarAlone, sidecarGame, sidecarIsBuilt, sidecarRows, stopSidecar } from './sidecar.js?v=alone';
+import { findBuiltSidecars, mountSidecar, postSidecar, sidecarAlone, sidecarGame, sidecarIsBuilt, sidecarRows, stopSidecar } from './sidecar.js?v=quickmath';
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -1119,7 +1119,7 @@ function start(mode) {
   lampTimer = 0;
   rallyTimer = 0;
   const style = styleOf(mode);
-  game = { mode, style, key: keyFor(style, skillLevel(mode)), index: 0, firstCorrect: 0, missed: false, done: false, finished: false, freePlay: !!p().arcade && ARCADE_PLAY.has(mode) };
+  game = { mode, style, key: keyFor(style, skillLevel(mode)), index: 0, firstCorrect: 0, missed: false, done: false, finished: false, freePlay: mode === 'quickmath' || (!!p().arcade && ARCADE_PLAY.has(mode)) };
   question();
   if (game?.mode === mode) prefetchRound(game);
 }
@@ -1599,7 +1599,12 @@ function question() {
     g.started = true;
     g.phase = 'play';
     if (g.mode === 'rally') g.rallyStops = g.rallyStops || rallyQuestionCount(questionCount());
-    if (g.freePlay && (g.mode === 'flight' || g.mode === 'walk' || g.mode === 'bike')) {
+    if (g.mode === 'quickmath') {
+      g.prompt = 'Pick a mission.';
+      g.tokens = [];
+      g.options = [];
+      g.show = '';
+    } else if (g.freePlay && (g.mode === 'flight' || g.mode === 'walk' || g.mode === 'bike')) {
       g.prompt = g.mode === 'flight' ? 'Fly the plane.' : g.mode === 'walk' ? 'Walk the meadow.' : 'Ride the dirt bike.';
       g.tokens = [];
       g.options = [];
@@ -1611,8 +1616,9 @@ function question() {
       if (g.mode === 'flight') flightAsk(g);
     }
     // The card opens a few seconds later, when the ride reaches it. Make the line now so it plays the moment it shows.
-    if (data.sound && g.prompt) prefetchSpeech([{ text: g.prompt, voiceId: voiceNow(g.mode) }], { priority: 'next' });
+    if (data.sound && g.prompt && g.mode !== 'quickmath') prefetchSpeech([{ text: g.prompt, voiceId: voiceNow(g.mode) }], { priority: 'next' });
     if (document.querySelector('iframe.sidecar-frame')) {
+      if (g.mode === 'quickmath') return;
       paintRallyChrome(g);
       postSidecar(rallyMessage(g));
     } else renderGame();
@@ -2487,6 +2493,7 @@ function foundLine(g) {
   return `Yes. ${t}.`;
 }
 function strategyHint(g) {
+  if (g.mode === 'quickmath') return 'Pick a mission. Answer as many as you can in three minutes.';
   if (g.mode === 'paint') return 'Paint the half with the right answer.';
   if (g.mode === 'walk') return g.subject === 'words' ? 'Listen for the word, then walk to it.' : 'Walk to the one that matches.';
   if (g.mode === 'flight') return g.rallyKind === 'spell' ? 'Listen for the word, then fly through each letter or type it.' : 'Steer through the gate that matches.';
@@ -2827,12 +2834,12 @@ function renderGame() {
   const scene = rocket || race || chase || hop || toast || glide || aisle || lily || mole || cube || bust || stack || lamp || light || side ? '' : g.show;
   const height = Math.round(Math.min(1, Math.max(0, g.altitude || 0)) * 100);
   const paceMark = g.mode === 'lanes' && g.started && g.style !== 'reach' ? `${lanePaceName(g)} · ` : '';
-  const tally = light ? '<span id="lightTally">Pick a speed</span>' : freePlay ? '<span>Arcade</span>' : rallyDrive ? `<span id="rallyTally">${rallyRights >= rallyNeed ? 'Finish the stage' : `${g.rallyRights || 0} / ${rallyNeed}`}</span>` : side ? `<span id="rallyTally">${g.index + 1} / ${rounds}</span>` : race ? '<span>Full tank</span>' : glide ? `<span id="glideTally">${g.index + 1} / ${rounds}</span>` : marble ? '<span id="runTally">Level 1 · 0</span>' : maze ? `<span id="runTally">${g.clock?.seconds || 0}s · 1 / ${rounds}</span>` : hop ? `<span id="hopTally">${g.index + 1} / ${rounds}</span>` : toast ? `<span id="toastTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 5} left</span>` : aisle ? `<span id="aisleTally">${g.index + 1} / ${rounds} · ${g.board?.seconds || 32}s</span>` : lily ? `<span id="lilyTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : cube ? `<span id="cubeTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : mole ? `<span id="moleTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 5} left</span>` : bust ? `<span id="bustTally">${g.index + 1} / ${rounds} · ${g.board?.seconds || 15}s</span>` : stack ? `<span id="stackTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : lamp ? `<span id="lampTally">${g.index + 1} / ${rounds}</span>` : bridge ? `<span id="bridgeTally">${g.index + 1} / ${rounds} · ${g.lives || 1} ${(g.lives || 1) === 1 ? 'life' : 'lives'}</span>` : rocket ? `<span id="rocketTally">${esc(rocketZone(g.altitude || 0.32))}</span>` : `<span>${paceMark}${g.index + 1} / ${rounds}</span>`;
+  const tally = light ? '<span id="lightTally">Pick a speed</span>' : g.mode === 'quickmath' ? '<span>Missions</span>' : freePlay ? '<span>Arcade</span>' : rallyDrive ? `<span id="rallyTally">${rallyRights >= rallyNeed ? 'Finish the stage' : `${g.rallyRights || 0} / ${rallyNeed}`}</span>` : side ? `<span id="rallyTally">${g.index + 1} / ${rounds}</span>` : race ? '<span>Full tank</span>' : glide ? `<span id="glideTally">${g.index + 1} / ${rounds}</span>` : marble ? '<span id="runTally">Level 1 · 0</span>' : maze ? `<span id="runTally">${g.clock?.seconds || 0}s · 1 / ${rounds}</span>` : hop ? `<span id="hopTally">${g.index + 1} / ${rounds}</span>` : toast ? `<span id="toastTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 5} left</span>` : aisle ? `<span id="aisleTally">${g.index + 1} / ${rounds} · ${g.board?.seconds || 32}s</span>` : lily ? `<span id="lilyTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : cube ? `<span id="cubeTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : mole ? `<span id="moleTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 5} left</span>` : bust ? `<span id="bustTally">${g.index + 1} / ${rounds} · ${g.board?.seconds || 15}s</span>` : stack ? `<span id="stackTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : lamp ? `<span id="lampTally">${g.index + 1} / ${rounds}</span>` : bridge ? `<span id="bridgeTally">${g.index + 1} / ${rounds} · ${g.lives || 1} ${(g.lives || 1) === 1 ? 'life' : 'lives'}</span>` : rocket ? `<span id="rocketTally">${esc(rocketZone(g.altitude || 0.32))}</span>` : `<span>${paceMark}${g.index + 1} / ${rounds}</span>`;
   const barMax = rallyDrive ? rallyNeed : marble ? (g.track?.step || 8) : maze ? (g.clock?.seconds || 50) : rocket ? 100 : rounds;
   const barNow = rallyDrive ? rallyRights : marble ? 0 : maze ? barMax : rocket ? height : g.index;
   const barLabel = rallyDrive ? 'Right answers before the open road' : marble ? 'Points to the next level' : maze ? 'Time left' : rocket ? 'Height toward space' : 'Questions completed';
   const barPct = rallyDrive ? (rallyNeed ? rallyRights / rallyNeed * 100 : 0) : marble ? 0 : maze ? 100 : rocket ? height : (rounds ? g.index / rounds * 100 : 0);
-  const bar = race || freePlay ? '' : `<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="${barMax}" aria-valuenow="${barNow}" aria-label="${barLabel}"><div style="width:${barPct}%"></div></div>`;
+  const bar = race || freePlay || g.mode === 'quickmath' ? '' : `<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="${barMax}" aria-valuenow="${barNow}" aria-label="${barLabel}"><div style="width:${barPct}%"></div></div>`;
   const alone = aloneBar(side);
   const raceEars = race && g.level >= 2 && data.sound && canSpeak() && raceKinds(p().race).includes('words');
   const reveal = race
@@ -2995,6 +3002,7 @@ function renderGame() {
         const frame = document.querySelector('iframe.sidecar-frame');
         frame?.focus();
         if (game?.mode === 'bike') postSidecar(bikeConfig(game));
+        if (game?.mode === 'quickmath') return;
         if (game?.freePlay && (game.mode === 'flight' || game.mode === 'walk')) postSidecar({ type: 'arcade' });
         else if (game) postSidecar(rallyMessage(game));
       },

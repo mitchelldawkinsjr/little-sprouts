@@ -70,6 +70,17 @@ export const SIDECARS = [
     src: 'sidecars/paint/index.html?v=paint-shell2',
     alone: 'Play, a friend, and room mode are on that page.',
     howTo: 'A math question from this learner’s profile appears, and the two answers float on either half of the shell. Look for five seconds, then paint for ten. Only paint on the right answer counts. Click the picture to look around. The train on the middle circle sets you down beside the track.'
+  },
+  {
+    id: 'quickmath',
+    title: 'Quick Math',
+    blurb: 'Three-minute multiplication, division, and word-problem missions.',
+    icon: '⚡',
+    tint: '#e8eefc',
+    tag: 'MATH',
+    src: 'sidecars/quick-math/index.html?v=1',
+    alone: 'Pick a mission and race the clock on that page.',
+    howTo: 'Pick a mission. Answer as many as you can in three minutes. Four choices each time. Finish early or wait for the timer.'
   }
 ];
 
