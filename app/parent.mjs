@@ -5,6 +5,7 @@ import {
   mergeSheets,
   parseSheet,
   parseWords,
+  parseVerseScript,
   resetProgress,
   raceKinds,
   roundCount,
@@ -14,7 +15,7 @@ import {
   nextSprite,
   blankLearner,
   SPRITES
-} from '../logic.mjs?v=structure4';
+} from '../logic.mjs?v=verse1';
 import {
   getSpeechStatus,
   knownVoice,
@@ -27,7 +28,7 @@ import {
   voices
 } from '../lib/speech.js?v=wait-2s';
 import { sidecarGame, sidecarIsBuilt } from '../lib/sidecar.js?v=hills-free1';
-import { spriteHtml } from '../lib/home-ui.mjs?v=structure2';
+import { spriteHtml } from '../lib/home-ui.mjs?v=verse1';
 import { voiceStatusText } from '../lib/parent-ui.mjs?v=structure2';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 
@@ -78,6 +79,7 @@ export function registerParent(rt) {
       arcade: $('#arcade').checked,
       upNext: $('#upNext')?.value || '',
       words: $('#words').value,
+      verse: $('#verse')?.value || '',
       sound: $('#sound').checked,
       voice: $('#voice').value,
       characterVoices: $('#characterVoices').checked,
@@ -104,6 +106,7 @@ export function registerParent(rt) {
     $('#rounds').value = x.rounds;
     $('#arcade').checked = !!x.arcade;
     $('#words').value = x.words.join(', ');
+    if ($('#verse')) $('#verse').value = x.verse || '';
     $('#sound').checked = rt.data.sound;
     $('#voice').value = knownVoice(rt.data.voice);
     $('#characterVoices').checked = !!rt.data.characterVoices;
@@ -193,6 +196,7 @@ export function registerParent(rt) {
       arcade: $('#arcade').checked,
       upNext: $('#upNext')?.value || '',
       words,
+      verse: $('#verse')?.value || '',
       sprite: profileSprite({ sprite }, +$('#editProfile').value)
     });
     x.levels = Object.fromEntries([...document.querySelectorAll('[data-skill]')].map(el => [el.dataset.skill, +el.value]));
@@ -494,6 +498,11 @@ export function registerParent(rt) {
     }
     if (!parsed.ok) {
       $('#error').textContent = 'Add at least 3 different words, or leave the box blank for this grade’s list. Use letters only, with at most one apostrophe, up to 12 letters.';
+      return;
+    }
+    const verseText = $('#verse')?.value || '';
+    if (verseText.trim() && !parseVerseScript(verseText)) {
+      $('#error').textContent = 'Memory verse needs a circle, fill, clue, or verse line. Leave the box blank to use the question sheet.';
       return;
     }
     if (![...document.querySelectorAll('[data-race]')].some(el => el.checked)) {

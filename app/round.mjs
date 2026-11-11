@@ -34,7 +34,7 @@ import {
   stackBoard,
   lampBoard,
   bustBoard
-} from '../logic.mjs?v=structure4';
+} from '../logic.mjs?v=verse1';
 import { canSpeak, commonLines, prefetchSpeech } from '../lib/speech.js?v=wait-2s';
 import { stopArcade } from '../games/arcade.js?v=ask-first2-r2';
 import { stopHoop } from '../games/hoop.js?v=hoop-trio-r2';
@@ -686,6 +686,35 @@ export function registerRound(rt) {
       g.pageIndex = null;
       rt.prepareCrayon(g, l);
     }
+    if (g.mode === 'verse') {
+      g.render = x => String(x);
+      if (!g.deck) {
+        g.pack = rt.versePack();
+        // shortcut: a verse round is the whole script, not the 5/10/15 setting. Split passages in the sheet when a script gets long.
+        g.deck = g.pack.steps;
+      }
+      const step = g.deck[g.index];
+      if (step) {
+        g.step = step;
+        g.verseKind = step.kind;
+        g.filled = [];
+        g.answers = step.answers;
+        g.passage = [g.pack.ref, g.pack.title].filter(Boolean).join(' · ');
+        g.target = step.kind === 'bonus' ? (g.pack.remember || '') : step.answers[0] || '';
+        g.prompt = step.say;
+        g.phase = 'answer';
+        g.options = step.kind === 'clue' && l >= 3 ? [] : step.choices.slice();
+        if (step.kind === 'write') {
+          if (l >= 3) {
+            g.phase = 'hidden';
+            g.prompt = 'Cover the verse and write what you remember.';
+          } else if (l >= 2) {
+            g.phase = 'peek';
+            g.prompt = `${g.pack.verse} Read it, then cover it.`;
+          } else g.prompt = `${g.pack.verse} Write the verse. You can look at the words.`;
+        }
+      } else g.options = [];
+    }
     const sideSpec = sidecarGame(g.mode);
     if (sideSpec) {
       g.sidecar = sideSpec;
@@ -731,7 +760,12 @@ export function registerRound(rt) {
       return;
     }
     const gatesPlay = g.phase !== 'ready' && !['glide', 'city', 'marble', 'hop', 'toast', 'aisle', 'lily', 'mole', 'bust', 'stack', 'lamp', 'cube'].includes(g.mode);
-    if (gatesPlay) rt.askBeforePlay(g.prompt);
+    if (g.mode === 'verse') {
+      if (!g.heardVerse) {
+        g.heardVerse = true;
+        rt.askBeforePlay(g.pack?.verse || g.prompt);
+      }
+    } else if (gatesPlay) rt.askBeforePlay(g.prompt);
     rt.renderGame();
     if (g.mode === 'lanes' && g.phase === 'ready') rt.say(g.style === 'reach' ? 'Step into the word. You have 10 seconds to get there.' : 'Drive to the word.');
     else if ((g.mode === 'hook' || g.mode === 'sky' || g.mode === 'planet' || g.mode === 'marble' || g.mode === 'bridge' || g.mode === 'maze' || g.mode === 'chase' || g.mode === 'hop' || g.mode === 'toast' || g.mode === 'aisle' || g.mode === 'lily' || g.mode === 'mole' || g.mode === 'bust' || g.mode === 'stack' || g.mode === 'lamp' || g.mode === 'cube') && g.phase === 'ready') rt.say(g.howTo);
@@ -1113,7 +1147,7 @@ export function registerRound(rt) {
   }
   function hybrid(g) {
     if (sidecarGame(g.mode)) return;
-    if (g.mode === 'catch' || g.mode === 'lanes' || g.mode === 'rocket' || g.mode === 'lunar' || g.mode === 'hoop' || g.mode === 'light' || g.mode === 'race' || g.mode === 'hook' || g.mode === 'sky' || g.mode === 'planet' || g.mode === 'puzzle' || g.mode === 'match' || g.mode === 'marble' || g.mode === 'bridge' || g.mode === 'maze' || g.mode === 'chase' || g.mode === 'hop' || g.mode === 'toast' || g.mode === 'glide' || g.mode === 'city' || g.mode === 'aisle' || g.mode === 'lily' || g.mode === 'mole' || g.mode === 'bust' || g.mode === 'stack' || g.mode === 'lamp' || g.mode === 'cube' || g.mode === 'trace' || g.mode === 'sort' || g.mode === 'merge' || g.mode === 'crayon') return;
+    if (g.mode === 'catch' || g.mode === 'lanes' || g.mode === 'rocket' || g.mode === 'lunar' || g.mode === 'hoop' || g.mode === 'light' || g.mode === 'race' || g.mode === 'hook' || g.mode === 'sky' || g.mode === 'planet' || g.mode === 'puzzle' || g.mode === 'match' || g.mode === 'marble' || g.mode === 'bridge' || g.mode === 'maze' || g.mode === 'chase' || g.mode === 'hop' || g.mode === 'toast' || g.mode === 'glide' || g.mode === 'city' || g.mode === 'aisle' || g.mode === 'lily' || g.mode === 'mole' || g.mode === 'bust' || g.mode === 'stack' || g.mode === 'lamp' || g.mode === 'cube' || g.mode === 'trace' || g.mode === 'sort' || g.mode === 'merge' || g.mode === 'crayon' || g.mode === 'verse') return;
     const t = g.target, [verb, icon] = rt.pick(rt.moves);
     g.icon = icon;
     if (g.mode === 'count' || g.mode === 'path') { mathHybrid(g, verb); return; }
@@ -1185,6 +1219,11 @@ export function registerRound(rt) {
     return !!rt.listen[g.mode];
   }
   const heading = g => {
+    if (g?.mode === 'verse' && g.verseKind === 'write') {
+      if (g.phase === 'hidden') return 'Write what you remember.';
+      if (g.phase === 'peek') return 'Read the verse. Then cover it.';
+      return 'Write the verse. You can look at the words.';
+    }
     if ((g?.mode === 'rally' || g?.mode === 'flight' || g?.mode === 'bike') && g.rallyKind === 'spell') {
       if (rt.data.sound && canSpeak()) return g.mode === 'flight' ? 'Fly through the letters in order.' : 'Spell the word.';
       return g.prompt;
@@ -1193,6 +1232,12 @@ export function registerRound(rt) {
     return rt.listenBy[g.mode]?.[g.style] || rt.listen[g.mode];
   };
   function foundLine(g) {
+    if (g.mode === 'verse') {
+      if (g.verseKind === 'write') return g.peeked ? 'Here is the verse. Read it once more.' : 'You remembered the verse.';
+      if (g.verseKind === 'bonus') return g.pack?.remember || 'Thank you for thinking about that.';
+      if (g.verseKind === 'fill') return 'Yes. Those are the words.';
+      return `Yes. ${g.target}.`;
+    }
     if (g.mode === 'lunar' || g.mode === 'hoop') return g.streak >= 3 ? `Swish! ${g.streak} in a row.` : 'Swish!';
     if (g.mode === 'light') return g.streak >= 3 ? `Amazing! ${g.streak} in a row.` : 'Amazing!';
     if (g.mode === 'hook') return `You hooked ${g.target}.`;
@@ -1230,6 +1275,13 @@ export function registerRound(rt) {
     return `Yes. ${t}.`;
   }
   function strategyHint(g) {
+    if (g.mode === 'verse') {
+      if (g.verseKind === 'circle') return 'Read the sentence. Tap the word that fits.';
+      if (g.verseKind === 'fill') return 'Tap the word bank in order.';
+      if (g.verseKind === 'clue') return `It starts with ${String(g.target || 'a')[0]}.`;
+      if (g.verseKind === 'write') return 'Write the words you remember.';
+      return 'Tell what this verse teaches you about God.';
+    }
     if (g.mode === 'quickmath') return 'Pick a mission. Answer as many as you can in three minutes.';
     if (g.mode === 'paint') return 'Paint the half with the right answer.';
     if (g.mode === 'walk') return g.subject === 'words' ? 'Listen for the word, then walk to it.' : 'Walk to the one that matches.';
@@ -1453,6 +1505,12 @@ export function registerRound(rt) {
     if (!g.missed) g.firstCorrect++;
     const found = foundLine(g);
     $('#feedback').textContent = found;
+    if (g.mode === 'verse') {
+      if (b?.classList.contains('choice')) b.classList.add('correct');
+      document.querySelectorAll('.choice,#verseDone,#verseShow,#verseType').forEach(x => { x.disabled = true; });
+      rt.advanceVerse(g);
+      return;
+    }
     rt.say(found);
     if (g.mode === 'lanes') {
       g.laneClears = (g.laneClears || 0) + 1;
@@ -1547,14 +1605,14 @@ export function registerRound(rt) {
     stopMerge();
     stopCrayon();
     stopSidecar();
-    rt.clearTimers('learn', 'chase', 'hop', 'toast', 'glide', 'city', 'aisle', 'lily', 'bust', 'mole', 'cube', 'stack', 'lamp', 'rally');
+    rt.clearTimers('learn', 'chase', 'hop', 'toast', 'glide', 'city', 'aisle', 'lily', 'bust', 'mole', 'cube', 'stack', 'lamp', 'rally', 'verse');
     rt.stopEars();
     const g = rt.game;
     g.finished = true;
     rt.camOff();
     const flightEnd = g.mode === 'flight' && (detail === 'crash' || detail === 'flew');
     const stageEnd = g.mode === 'rally' && detail === 'stage';
-    const rounds = flightEnd ? (g.flightRights || 5) : stageEnd ? Math.max(1, g.index || g.rallyRights || 1) : rt.questionCount();
+    const rounds = g.mode === 'verse' && g.deck?.length ? g.deck.length : flightEnd ? (g.flightRights || 5) : stageEnd ? Math.max(1, g.index || g.rallyRights || 1) : rt.questionCount();
     Object.assign(rt.p(), applyRound(rt.p(), g.mode, g.key, rounds, g.firstCorrect));
     rt.save();
     const dots = Array.from({ length: rounds }, (_, i) => `<span class="${i < g.firstCorrect ? 'on' : ''}"></span>`).join('');

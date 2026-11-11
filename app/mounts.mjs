@@ -33,8 +33,11 @@ import {
   crayonPicture,
   crayonLegend,
   progressKey,
-  nextUpGame
-} from '../logic.mjs?v=structure4';
+  nextUpGame,
+  clueMatch,
+  parseVerseScript,
+  verseRecall
+} from '../logic.mjs?v=verse1';
 import { canSpeak, warm } from '../lib/speech.js?v=wait-2s';
 import { mountCatch, mountLanes, mountRace, mountRocket, pokeRocket, stopArcade } from '../games/arcade.js?v=ask-first2-r2';
 import { mountLunar } from '../games/lunar.js?v=moon-board2';
@@ -82,7 +85,7 @@ import {
   shelfPanelHtml,
   starGardenHtml as gardenHtml,
   homePageHtml
-} from '../lib/home-ui.mjs?v=structure2';
+} from '../lib/home-ui.mjs?v=verse1';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=city-glide';
 
@@ -114,6 +117,7 @@ export function registerMounts(rt) {
     clearTimers,
     laneDriveSpeed,
     continueAfter,
+    advanceVerse,
     paintRallyChrome,
     home,
     requestHome,
@@ -420,6 +424,29 @@ export function registerMounts(rt) {
     if (g.pace === 'fast') return 'Fast';
     return 'Steady';
   }
+  function advanceVerse(g) {
+    clearTimers('verse');
+    rt.verseTimer = setTimeout(() => {
+      rt.verseTimer = 0;
+      if (rt.game !== g || g.finished) return;
+      if (document.querySelector('dialog[open]')) { advanceVerse(g); return; }
+      g.index++;
+      if (g.index >= (g.deck?.length || 0)) showCompletedVerse(g);
+      else rt.question();
+    }, 700);
+  }
+  function showCompletedVerse(g) {
+    rt.releaseListen();
+    rt.stopSpeech();
+    const verse = g.pack?.verse || '';
+    const passage = [g.pack?.ref, g.pack?.title].filter(Boolean).join(' · ');
+    const remember = g.pack?.remember ? `<p class="hint">${esc(g.pack.remember)}</p>` : '';
+    $('#app').innerHTML = `<div class="playtop" data-mode="verse"><button class="quiet" id="back">← All games</button><b>${esc(g.title || 'Memory verse')}</b></div><section class="playarea"><h1>Read the whole verse.</h1>${passage ? `<p class="hint">${esc(passage)}</p>` : ''}<p class="verse-done">${esc(verse)}</p>${remember}<button class="speaker" id="listen"><span aria-hidden="true">🔈</span> Hear it again</button><button class="primary" id="verseRead">I read it</button></section>`;
+    $('#back').onclick = requestHome;
+    $('#listen').onclick = () => { rt.stopSpeech(); rt.say(verse); };
+    $('#verseRead').onclick = () => rt.finish();
+    rt.focusHeading();
+  }
   function continueAfter(name, g, soundMs, quietMs, retryMs, wait) {
     clearTimers(name);
     const rounds = rt.questionCount();
@@ -485,7 +512,7 @@ export function registerMounts(rt) {
     $('#settings')?.close();
     if ($('#gate')?.open) $('#gate').close();
     rt.releaseListen();
-    clearTimers('cover', 'rocket', 'lane', 'hook', 'sky', 'planet', 'match');
+    clearTimers('cover', 'rocket', 'lane', 'hook', 'sky', 'planet', 'match', 'verse');
     stopArcade();
     stopLunar();
     stopHoop();
@@ -589,7 +616,7 @@ export function registerMounts(rt) {
   function start(mode, { syncHash = true } = {}) {
     rt.releaseListen();
     rt.stopSpeech();
-    clearTimers('rocket', 'lane', 'hook', 'sky', 'planet', 'match', 'learn', 'bridge', 'chase', 'hop', 'toast', 'glide', 'city', 'lily', 'bust', 'mole', 'cube', 'stack', 'lamp', 'rally');
+    clearTimers('rocket', 'lane', 'hook', 'sky', 'planet', 'match', 'learn', 'bridge', 'chase', 'hop', 'toast', 'glide', 'city', 'lily', 'bust', 'mole', 'cube', 'stack', 'lamp', 'rally', 'verse');
     const learner = rt.p();
     learner.lastPlayed = mode;
     rt.save();
@@ -730,6 +757,129 @@ export function registerMounts(rt) {
     if (show) show.innerHTML = g.show || '';
     rt.askBeforePlay(g.prompt);
   }
+  function verseLine(step, filled) {
+    return (step?.parts || []).map(part => {
+      if (part.type !== 'blank') return esc(part.text);
+      const word = filled?.[part.index];
+      return word ? `<b class="blank filled">${esc(word)}</b>` : `<b class="blank">${esc(part.mark || '____')}</b>`;
+    }).join('');
+  }
+  function verseEditor() {
+    return `<details class="verse-edit"><summary>Grown-up: use a different verse</summary><p class="hint">This replaces the question sheet for this learner. Leave it blank to use the sheet. One line each: title, remember, verse, bonus, bank, circle, fill, clue. The answer comes first inside braces, like {Joseph|David|Moses}.</p><textarea id="verseScript" rows="8">${esc(rt.p().verse || '')}</textarea><p id="verseEditError" class="hint"></p><button type="button" class="quiet" id="verseSave">Use this verse</button></details>`;
+  }
+  function verseBody(g) {
+    const step = g.step;
+    const editor = verseEditor();
+    const where = g.passage ? `<p class="hint">${esc(g.passage)}</p>` : '';
+    if (!step) return `${where}${editor}`;
+    if (step.kind === 'write' && g.phase === 'peek') {
+      return `${where}<p class="verse-line">${esc(g.pack?.verse || '')}</p><button class="primary" id="verseCover">Cover the verse</button>${editor}`;
+    }
+    if (step.kind === 'write') {
+      const shown = g.phase === 'answer' ? `<p class="verse-line">${esc(g.pack?.verse || '')}</p>` : '';
+      return `${where}${shown}<label class="spell-type">Write the verse<textarea id="verseWrite" class="verse-write"></textarea></label><button class="primary" id="verseDone">I’m done</button> <button type="button" class="quiet" id="verseShow">Show the verse</button>${editor}`;
+    }
+    if (step.kind === 'bonus') {
+      const note = g.pack?.remember ? `<p class="hint">${esc(g.pack.remember)}</p>` : '';
+      return `${where}<label class="spell-type">Your answer<textarea id="verseWrite" class="verse-write"></textarea></label><button class="primary" id="verseDone">That’s my answer</button>${note}${editor}`;
+    }
+    const picks = (g.options || []).map((word, i) => `<button class="choice" data-option="${i}" aria-label="${esc(String(word))}">${esc(String(word))}</button>`).join('');
+    const typed = step.kind === 'clue' ? `<label class="spell-type">${g.options.length ? 'Or type the word' : 'Type the word'} <input id="verseType" class="spell-key" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Type the word"></label>` : '';
+    return `${where}<p class="verse-line">${verseLine(step, g.filled)}</p><div class="choices verse-choices">${picks}</div>${typed}${editor}`;
+  }
+  function onVerseChoice(g, button) {
+    if (!g || g.done) return;
+    const word = String(g.options[+button.dataset.option] ?? '');
+    if (g.verseKind === 'circle' || g.verseKind === 'clue') {
+      rt.answer(word.toLowerCase() === String(g.target).toLowerCase(), button);
+      return;
+    }
+    const next = g.answers[g.filled.length];
+    if (word.toLowerCase() !== String(next).toLowerCase()) {
+      g.missed = true;
+      button.classList.add('wrong');
+      $('#feedback').textContent = 'Keep exploring. Try another word.';
+      rt.say('Try another word.');
+      showHint();
+      setTimeout(() => button.classList.remove('wrong'), 700);
+      return;
+    }
+    g.filled.push(next);
+    button.disabled = true;
+    const line = document.querySelector('.verse-line');
+    if (line) line.innerHTML = verseLine(g.step, g.filled);
+    if (g.filled.length === g.answers.length) rt.answer(true, button);
+    else $('#feedback').textContent = 'Nice! Find the next word.';
+  }
+  function wireVerse(g) {
+    const save = $('#verseSave');
+    if (save) save.onclick = () => {
+      const text = $('#verseScript')?.value || '';
+      if (text.trim() && !parseVerseScript(text)) {
+        const err = $('#verseEditError');
+        if (err) err.textContent = 'Add a circle, fill, clue, or verse line.';
+        return;
+      }
+      rt.p().verse = text;
+      rt.save();
+      g.deck = null;
+      g.pack = null;
+      g.heardVerse = false;
+      g.index = 0;
+      g.firstCorrect = 0;
+      rt.question();
+    };
+    const cover = $('#verseCover');
+    if (cover) cover.onclick = () => {
+      g.phase = 'hidden';
+      g.prompt = 'Write what you remember.';
+      renderGame();
+    };
+    const done = $('#verseDone');
+    if (done) done.onclick = () => {
+      if (g.done) return;
+      const typed = $('#verseWrite')?.value || '';
+      if (g.verseKind === 'bonus') {
+        if (!typed.trim()) {
+          $('#feedback').textContent = 'Tell a grown-up what you think.';
+          return;
+        }
+        rt.answer(true, done);
+        return;
+      }
+      const score = verseRecall(g.pack?.verse || g.target, typed);
+      if (!score.ok) {
+        g.missed = true;
+        $('#feedback').textContent = `You have ${score.hit} of ${score.total} words. Add more if you can.`;
+        rt.say('Add more words you remember.');
+        showHint();
+        return;
+      }
+      rt.answer(true, done);
+    };
+    const reveal = $('#verseShow');
+    if (reveal) reveal.onclick = () => {
+      if (g.done) return;
+      g.peeked = true;
+      g.missed = true;
+      const box = $('#verseWrite');
+      if (box) box.value = g.pack?.verse || '';
+      rt.answer(true, reveal);
+    };
+    const field = $('#verseType');
+    if (field) field.addEventListener('keydown', event => {
+      if (event.key !== 'Enter' || g.done) return;
+      event.preventDefault();
+      if (clueMatch(g.target, field.value)) rt.answer(true, field);
+      else {
+        g.missed = true;
+        field.classList.add('wrong');
+        $('#feedback').textContent = 'Not yet. Look at the first letter.';
+        rt.say('Try again.');
+        showHint();
+      }
+    });
+  }
   function renderGame() {
     stopArcade();
     stopLunar();
@@ -804,6 +954,7 @@ export function registerMounts(rt) {
     }
     else if (screen && g.phase === 'ready') body = `<p>${howTo}</p><button class="primary" id="arm">I’m ready! →</button>`;
     else if (IN_ARENA.has(g.mode)) body = `${SHOW[g.mode] ? `<div id="${SHOW[g.mode]}"></div>` : ''}<div id="arcade"></div>`;
+    else if (g.mode === 'verse') body = verseBody(g);
     else if (g.phase === 'cover') body = '<p>One shape will be missing.</p>';
     else if (g.phase === 'remember') body = `<p>Take your time. Ready to spot what disappears?</p>${reach ? camStage() : ''}<button class="primary" id="hide" data-camera-go>I’m ready! →</button>`;
     else if (g.phase === 'away') body = `<div class="bigmove" aria-hidden="true">🏃</div><p class="hint">Grown-up: tap when they’re back.</p><button class="primary" id="backIn">We’re back! →</button>`;
@@ -824,7 +975,7 @@ export function registerMounts(rt) {
         return g.phase === 'remember' || s !== g.target ? rt.shape(s, '#8fac73', true) : '<span class="shape missing" role="img" aria-label="Missing shape">?</span>';
       }).join('')}</div>`
       : '';
-    const rounds = rt.questionCount();
+    const rounds = g.mode === 'verse' && g.deck?.length ? g.deck.length : rt.questionCount();
     const rallyDrive = g.mode === 'rally';
     const freePlay = !!g.freePlay;
     const rallyNeed = rallyClearCount(rounds);
@@ -847,7 +998,11 @@ export function registerMounts(rt) {
     $('#back').onclick = requestHome;
     if ($('#playAlone')) $('#playAlone').onclick = openSidecarAlone;
     $('#listen').onclick = () => {
-      if (ARCADE[g.mode]?.fly) {
+      if (g.mode === 'verse' && g.pack?.verse) {
+        rt.releaseListen();
+        rt.stopSpeech();
+        rt.say(g.pack.verse);
+      } else if (ARCADE[g.mode]?.fly) {
         rt.releaseListen();
         rt.say(g.prompt);
       } else rt.askBeforePlay(g.prompt);
@@ -959,10 +1114,12 @@ export function registerMounts(rt) {
       $('#showAnswer').hidden = true;
     });
     document.querySelectorAll('[data-option]').forEach(b => b.onclick = () => {
+      if (g.mode === 'verse') { onVerseChoice(g, b); return; }
       if (g.mode !== 'lunar') { rt.answer(g.options[+b.dataset.option] === g.target, b); return; }
       if (g.options[+b.dataset.option] === g.target) armShot(b);
       else rt.answer(false, b);
     });
+    if (g.mode === 'verse') wireVerse(g);
     document.querySelectorAll('[data-letter]').forEach(b => b.onclick = () => {
       if (g.done) return;
       const letter = g.letters[+b.dataset.letter];

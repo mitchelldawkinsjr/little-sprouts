@@ -136,7 +136,23 @@ var DEFAULT_ROWS = [
   ['*', 'facts', '60s', 'off'],
   ['*', 'facts', '70s', 'off'],
   ['*', 'facts', '80s', 'off'],
-  ['*', 'facts', '90s', 'off']
+  ['*', 'facts', '90s', 'off'],
+  ['*', 'verse', 'title', 'Genesis 39:22-23 | Joseph in Prison'],
+  ['*', 'verse', 'remember', 'God was with Joseph, even in a difficult place.'],
+  ['*', 'verse', 'verse', 'So the warden put Joseph in charge of all those held in the prison. The warden paid no attention to anything under Joseph\'s care, because the Lord was with Joseph and gave him success in whatever he did.'],
+  ['*', 'verse', 'bonus', 'What does this verse teach you about God?'],
+  ['*', 'verse', 'bank', 'Joseph | prison | warden | Lord | success'],
+  ['*', 'verse', 'circle', 'The warden put {Joseph|David|Moses} in charge.'],
+  ['*', 'verse', 'circle', 'Joseph was held in the {prison|palace|garden}.'],
+  ['*', 'verse', 'circle', 'The warden paid no {attention|money|visits}.'],
+  ['*', 'verse', 'circle', 'The {Lord|guard|king} was with Joseph.'],
+  ['*', 'verse', 'fill', 'So the {warden} put {Joseph} in charge.'],
+  ['*', 'verse', 'fill', 'Of all those held in the {prison}.'],
+  ['*', 'verse', 'fill', 'Because the {Lord} was with Joseph.'],
+  ['*', 'verse', 'fill', 'And gave him {success} in whatever he did.'],
+  ['*', 'verse', 'clue', 'The warden paid no {attention|money|visits} to anything under Joseph\'s care.'],
+  ['*', 'verse', 'clue', 'The Lord was {with|before|after} Joseph.'],
+  ['*', 'verse', 'clue', 'God gave Joseph {success|money|time} in whatever he did.']
 ];
 
 function installHourly() {

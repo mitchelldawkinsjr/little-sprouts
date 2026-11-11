@@ -109,7 +109,11 @@ import {
   nextSprite,
   blankLearner,
   nextUpGame,
-  starChip
+  starChip,
+  parseVerseScript,
+  versePack,
+  clueMatch,
+  verseRecall
 } from '../logic.mjs';
 
 test('grown-up check uses a new addition in the teens', () => {
@@ -1282,4 +1286,43 @@ test('five right answers open two minutes of free flight, and a crash or the clo
   assert.equal(clock.over, true);
   assert.equal(clock.gates.length, 0);
   assert.equal(clock.ask?.prompt, undefined);
+});
+
+test('memory verse plays every worksheet activity', () => {
+  const pack = versePack({});
+  assert.equal(pack.source, 'builtin');
+  assert.equal(pack.ref, 'Genesis 39:22-23');
+  assert.deepEqual(pack.steps.map(step => step.kind), [
+    'circle', 'circle', 'circle', 'circle',
+    'fill', 'fill', 'fill', 'fill',
+    'clue', 'clue', 'clue',
+    'write', 'bonus'
+  ]);
+  assert.equal(pack.steps[0].answers[0], 'Joseph');
+  assert.deepEqual(pack.steps[0].choices, ['Joseph', 'David', 'Moses']);
+  assert.deepEqual(pack.steps[4].answers, ['warden', 'Joseph']);
+  assert.ok(pack.steps[4].choices.includes('success'));
+  assert.equal(clueMatch('attention', 'ttention'), true);
+  assert.equal(clueMatch('attention', 'money'), false);
+  assert.equal(verseRecall(pack.verse, 'warden Joseph prison attention Lord success').ok, true);
+  assert.equal(verseRecall(pack.verse, 'hello there').ok, false);
+  assert.equal(parseVerseScript('hello'), null);
+});
+
+test('a learner verse replaces the sheet', () => {
+  const rows = [
+    { learner: '*', game: 'verse', item: 'circle', extra: 'See {one|two}.' },
+    { learner: 'Ava', game: 'verse', item: 'circle', extra: 'See {Ava|Sam}.' }
+  ];
+  assert.equal(versePack({ rows, name: 'Ava' }).steps[0].answers[0], 'Ava');
+  assert.equal(versePack({ rows, name: 'Ava' }).source, 'sheet');
+  assert.equal(versePack({ rows, name: 'Bea' }).steps[0].answers[0], 'one');
+  const own = versePack({
+    script: 'fill: God gave him {success}.\nbank: success | prison',
+    rows,
+    name: 'Ava'
+  });
+  assert.equal(own.source, 'learner');
+  assert.equal(own.steps[0].kind, 'fill');
+  assert.equal(parseSheet('learner,game,item,extra\n*,verse,circle,"See {one|two}."\n').rows[0].game, 'verse');
 });

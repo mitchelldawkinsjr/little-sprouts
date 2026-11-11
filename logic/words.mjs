@@ -116,7 +116,7 @@ export function candidateWords(words, mode) {
 }
 
 
-const SHEET_GAMES = { words: 'words', word: 'words', count: 'count', hunt: 'hunt', facts: 'facts', fact: 'facts' };
+const SHEET_GAMES = { words: 'words', word: 'words', count: 'count', hunt: 'hunt', facts: 'facts', fact: 'facts', verse: 'verse' };
 
 function parseCsv(text) {
   const rows = [];
