@@ -10,8 +10,8 @@ import { CRUISE_ALT, METERS, groundMeters } from './terrain.mjs';
 
 const AHEAD = 70;
 const RECOVER_S = 2;
-export const FREE_EVERY = 5;
-export const FREE_S = 120;
+const FREE_EVERY = 5;
+const FREE_S = 120;
 const FREE_CEILING = 4500;
 const PITCH_LIMIT = Math.PI / 2 - 0.02;
 

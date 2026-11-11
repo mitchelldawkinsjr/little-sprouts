@@ -2,9 +2,17 @@
 
 Early-learning games for young children. A learner picks a picture, hears the question, and answers. Grown-ups can set the level, the sight words, and how the child plays.
 
-Three learners start on this device: Malik in preschool, Micah in kindergarten, and Mitch in 4th grade. Each one keeps a name, a garden buddy, a math band, and stars. Progress stays in this browser.
+A new browser asks a grown-up for the child’s name, math band, and garden buddy before play. Words and math facts stay empty, so games use the included list for that grade. Each learner keeps a name, a garden buddy, a math band, and stars on this browser.
 
 ![Home screen, with a hello for Malik and the star garden](docs/screenshots/home.jpg)
+
+## Layout
+
+- `games/` — per-game play modules
+- `tests/` — Node tests (`node --test tests`)
+- `logic/crayon-pages.mjs` — Color by number outlines
+- `lib/home-ui.mjs` / `lib/parent-ui.mjs` — home and Parent corner HTML helpers
+- `sidecars/`, `server/`, `voice/`, `tools/` — sidecars, local server, baked speech, build helpers
 
 ## How to run
 
@@ -14,7 +22,7 @@ From this folder:
 node server/serve.mjs
 ```
 
-Open http://localhost:8000. There is no build step. This server also opens Paint Sphere’s friend room. If the site is already running from `python3 -m http.server`, start `node server/paint-link.mjs` beside it. Play with a friend uses that room.
+Open http://localhost:8000. There is no build step. From that address the browser can install Little Sprouts, and the pages already opened keep working if the network drops. This server also opens Paint Sphere’s friend room. If the site is already running from `python3 -m http.server`, start `node server/paint-link.mjs` beside it. Play with a friend uses that room.
 
 ## How a round works
 
@@ -25,7 +33,7 @@ On the home screen, under **How are we playing?**:
 - **Hunt** — the child finds a real thing that matches, and a grown-up confirms.
 - **Reach** — after a grown-up allows it, the camera watches the child’s hands. Holding a hand on an answer picks it. Video is never recorded or uploaded.
 
-Parent corner is the gear at the top. The grown-up check is a small addition problem. Inside, you can rename learners, set the math band, set each game’s level, change the sight words, and turn read-aloud on or off. It is a grown-up check, not a lock.
+The first visit starts with a small addition problem, then a short setup for the child’s name, math band, and garden buddy. Parent corner is the gear at the top, behind that same check. Inside, you can rename learners, set the math band, set each game’s level, and type sight words. Leave the word list blank and the games use the included list for that grade. It is a grown-up check, not a lock.
 
 ![Parent corner, where a grown-up sets the learner, buddy, and levels](docs/screenshots/parents.jpg)
 
@@ -87,7 +95,6 @@ Most of the pictures, questions, and games are Little Sprouts’ own. These crea
 - [Jerry Low — Pure CSS Stacker](https://codepen.io/jerrylow/pen/WMNdzr). Stacker follows that sliding row. Blocks that miss the row below fall away. The blocks and the questions are drawn here.
 - [Ben Evans — You Must Build a Lighthouse](https://codepen.io/ivorjetski/pen/OJXbvdL). Light the lamp follows that shore, the tower, and the lamp at night. The stones and the questions are drawn here.
 - [William Malone — canvas drawing](https://www.williammalone.com/articles/create-html5-canvas-javascript-drawing-app/). Color by number follows his brush. The pictures are new.
-- [William Malone — BlocksJS](https://www.williammalone.com/) 0.5.32 (MIT). Garden walk uses it for the canvas and the walk.
 - [JS Planet Defense](https://freefrontend.com/javascript-games/#2025-11-02-js-planet-defense-game-l) on FreeFrontend. Planet guard follows that aim. It is drawn here.
 - [Glass Physics 3D Jigsaw](https://freefrontend.com/javascript-games/#2026-01-01-glass-physics-3d-jigsaw-puzzle-l) on FreeFrontend. Shape puzzle follows that glass-piece idea.
 - [Animated emoji memory game](https://freefrontend.com/javascript-games/#2025-09-09-emoji-memory-match-l) on FreeFrontend. Pair match follows that flip. The cards are new.
@@ -100,4 +107,4 @@ Most of the pictures, questions, and games are Little Sprouts’ own. These crea
 
 ## Notes
 
-Settings and stars stay in this browser. They do not sync to another device. Clearing site data clears them. `node --test logic.test.mjs camera.test.mjs speech.test.mjs pad.test.mjs touch.test.mjs` checks the learning rules, Reach, read-aloud, the controller, and tilt.
+Settings and stars stay in this browser. They do not sync to another device. Clearing site data clears them. `node --test tests` checks the learning rules, Reach, read-aloud, the controller, and tilt.

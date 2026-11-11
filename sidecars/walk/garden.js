@@ -1,5 +1,5 @@
-/* Garden walk. The meadow, the sprout, and the questions are drawn here.
-   The canvas, sprite slices, and walk motors are BlocksJS (MIT). */
+/* Garden walk. The meadow, the sprout, and the questions are drawn here
+   on one plain canvas. */
 (function () {
   var SOURCE = 'sprouts-sidecar';
   var WORLD_W = 960;
@@ -7,20 +7,23 @@
   var BUDDY_W = 96;
   var SIGN_W = 150;
   var SIGN_H = 190;
-  var spec = {
-    width: WORLD_W,
-    height: WORLD_H,
-    meadow: { src: 'art/meadow.png' },
-    standRight: { src: 'art/sprout-stand-right.png' },
-    standLeft: { src: 'art/sprout-stand-left.png' },
-    walkRight: { src: 'art/sprout-walk-right.png', numberOfFrames: 4, frameDelay: 5, loop: true },
-    walkLeft: { src: 'art/sprout-walk-left.png', numberOfFrames: 4, frameDelay: 5, loop: true }
+  var ART = {
+    meadow: 'art/meadow.png',
+    standRight: 'art/sprout-stand-right.png',
+    standLeft: 'art/sprout-stand-left.png',
+    walkRight: 'art/sprout-walk-right.png',
+    walkLeft: 'art/sprout-walk-left.png'
   };
-  var game = BLOCKS.game(spec);
-  game.addEventListener('loaded', boot);
-  var layer;
-  var meadow;
+  var FRAMES = { walkRight: 4, walkLeft: 4 };
+  var FRAME_DELAY = 5;
+  var BUDDY_H = 128;
+  var canvas = document.getElementById('stage');
+  var ctx = canvas.getContext('2d');
+  var art = {};
+  var motions = [];
   var buddy;
+  var frame = 0;
+  var ticks = 0;
   var signs = [];
   var pose = '';
   var held = { left: false, right: false };
@@ -47,7 +50,36 @@
     if (reduced && name.indexOf('walk') === 0) name = name.indexOf('Left') > 0 ? 'standLeft' : 'standRight';
     if (pose === name) return;
     pose = name;
-    buddy.setSlice(name);
+    frame = 0;
+    ticks = 0;
+  }
+  var EASE = {
+    easeIn: function (t) { return t * t; },
+    easeOut: function (t) { return t * (2 - t); },
+    easeInOut: function (t) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; }
+  };
+  function addMotion(m) {
+    m.start = performance.now();
+    m.from = { x: m.object.x, y: m.object.y };
+    motions.push(m);
+  }
+  function stopMotion(object) {
+    motions = motions.filter(function (m) { return m.object !== object; });
+  }
+  function stepMotions(now) {
+    var finished = [];
+    motions.slice().forEach(function (m) {
+      var t = Math.min(1, (now - m.start) / m.duration);
+      if (m.shake) m.object.shake = t < 1 ? Math.sin(t * Math.PI * 2 * m.amount) * m.amplitude * (1 - t) : 0;
+      else {
+        var e = (EASE[m.easing] || function (n) { return n; })(t);
+        m.object.x = m.from.x + m.x * e;
+        m.object.y = m.from.y + m.y * e;
+      }
+      if (t >= 1) finished.push(m);
+    });
+    motions = motions.filter(function (m) { return finished.indexOf(m) < 0; });
+    finished.forEach(function (m) { if (m.callback) m.callback(); });
   }
   function overlaps(view) {
     var center = buddy.x + BUDDY_W / 2;
@@ -57,11 +89,7 @@
     return pos.x >= view.x && pos.y >= view.y && pos.x <= view.x + view.width && pos.y <= view.y + view.height;
   }
   function clearSigns() {
-    signs.forEach(function (sign) {
-      sign.view.removeMotors();
-      game.stage.removeView(sign.view);
-      sign.view.destroy();
-    });
+    signs.forEach(function (sign) { stopMotion(sign.view); });
     signs = [];
   }
   function moving() {
@@ -74,15 +102,9 @@
     send('slip');
     var away = buddy.x + BUDDY_W / 2 < sign.view.x + sign.view.width / 2 ? -56 : 56;
     face(away < 0 ? 'standLeft' : 'standRight');
-    game.addMotor('vibrate', {
-      object: sign.view,
-      amount: 2,
-      duration: reduced ? 180 : 340,
-      amplitude: reduced ? 4 : 12,
-      angle: 0
-    });
-    buddy.removeMotors();
-    game.addMotor('move', {
+    addMotion({ object: sign.view, shake: true, amount: 2, duration: reduced ? 180 : 340, amplitude: reduced ? 4 : 12 });
+    stopMotion(buddy);
+    addMotion({
       object: buddy,
       x: away,
       y: 0,
@@ -105,14 +127,14 @@
     send('pick', { index: index });
     if (reduced) return;
     var ground = buddy.y;
-    game.addMotor('move', {
+    addMotion({
       object: buddy,
       x: 0,
       y: -22,
       duration: 160,
       easing: 'easeOut',
       callback: function () {
-        game.addMotor('move', {
+        addMotion({
           object: buddy,
           x: 0,
           y: 22,
@@ -151,8 +173,8 @@
     }
     busy = true;
     face(dx < 0 ? 'walkLeft' : 'walkRight');
-    buddy.removeMotors();
-    game.addMotor('move', {
+    stopMotion(buddy);
+    addMotion({
       object: buddy,
       x: dx,
       y: 0,
@@ -216,7 +238,7 @@
     ctx.fill();
     ctx.restore();
   }
-  function paintSign(choice, done) {
+  function paintSign(choice) {
     var canvas = document.createElement('canvas');
     canvas.width = SIGN_W;
     canvas.height = SIGN_H;
@@ -252,9 +274,7 @@
       }
       ctx.fillText(choice.label, 75, 68);
     }
-    var img = new Image();
-    img.onload = function () { done(img); };
-    img.src = canvas.toDataURL('image/png');
+    return canvas;
   }
   function place(data) {
     clearSigns();
@@ -267,76 +287,90 @@
     document.getElementById('prompt').textContent = data.prompt || 'Walk to the picture that matches.';
     document.getElementById('show').innerHTML = data.show || '';
     if (buddy) {
-      buddy.removeMotors();
+      stopMotion(buddy);
       buddy.x = 18;
       buddy.y = 392;
       face('standRight');
       pose = 'standRight';
     }
     var choices = data.choices;
-    var pending = choices.length;
+    var x0 = 200;
+    var x1 = WORLD_W - 20 - SIGN_W;
     choices.forEach(function (choice, index) {
-      paintSign(choice, function (img) {
-        if (question !== data) return;
-        var x0 = 200;
-        var x1 = WORLD_W - 20 - SIGN_W;
-        var view = BLOCKS.block({
-          layer: layer,
+      signs.push({
+        view: {
+          img: paintSign(choice),
           x: choices.length === 1 ? (x0 + x1) / 2 : x0 + (x1 - x0) * index / (choices.length - 1),
           y: 318,
-          slices: [{ name: 'sign', image: img }]
-        });
-        game.stage.addView(view);
-        signs.push({ view: view, ok: !!choice.ok, index: index, skip: false });
-        pending -= 1;
-        if (!pending) send('show');
+          width: SIGN_W,
+          height: SIGN_H,
+          shake: 0
+        },
+        ok: !!choice.ok,
+        index: index,
+        skip: false
       });
     });
+    if (choices.length) send('show');
+  }
+  function update() {
+    if (!booted || busy || settled || !buddy) return;
+    try {
+      if (window.parent !== window && window.parent.document.body.classList.contains('listen-first')) return;
+    } catch (e) { /* another origin */ }
+    var dir = (held.right ? 1 : 0) - (held.left ? 1 : 0);
+    if (!dir) {
+      if (pose.indexOf('walk') === 0) face(pose.indexOf('Left') > 0 ? 'standLeft' : 'standRight');
+      checkHits();
+      return;
+    }
+    face(dir < 0 ? 'walkLeft' : 'walkRight');
+    buddy.x = clamp(buddy.x + dir * speed, 8, WORLD_W - BUDDY_W - 8);
+  }
+  function draw() {
+    ctx.clearRect(0, 0, WORLD_W, WORLD_H);
+    ctx.drawImage(art.meadow, 0, 0);
+    ctx.drawImage(art[pose], frame * BUDDY_W, 0, BUDDY_W, BUDDY_H, buddy.x, buddy.y, BUDDY_W, BUDDY_H);
+    signs.forEach(function (sign) {
+      ctx.drawImage(sign.view.img, sign.view.x + sign.view.shake, sign.view.y);
+    });
+  }
+  function loop(now) {
+    stepMotions(now);
+    if (FRAMES[pose] && ++ticks >= FRAME_DELAY) {
+      ticks = 0;
+      frame = (frame + 1) % FRAMES[pose];
+    }
+    update();
+    draw();
+    requestAnimationFrame(loop);
   }
   function boot() {
-    layer = game.addLayer('scene');
-    meadow = BLOCKS.slice({ layer: layer, image: spec.meadow.image });
-    game.stage.addView(meadow);
-    buddy = BLOCKS.block({
-      layer: layer,
-      x: 18,
-      y: 392,
-      slices: [
-        { name: 'standRight', image: spec.standRight.image },
-        { name: 'standLeft', image: spec.standLeft.image },
-        { name: 'walkRight', image: spec.walkRight.image, numberOfFrames: 4, frameDelay: 5, loop: true },
-        { name: 'walkLeft', image: spec.walkLeft.image, numberOfFrames: 4, frameDelay: 5, loop: true }
-      ]
-    });
-    game.stage.addView(buddy);
+    buddy = { x: 18, y: 392 };
     face('standRight');
     booted = true;
     if (question) place(question);
-    game.addEventListener('postUpdate', function () {
-      if (!booted || busy || settled || !buddy) return;
-      try {
-        if (window.parent !== window && window.parent.document.body.classList.contains('listen-first')) return;
-      } catch (e) { /* another origin */ }
-      var dir = (held.right ? 1 : 0) - (held.left ? 1 : 0);
-      if (!dir) {
-        if (pose.indexOf('walk') === 0) face(pose.indexOf('Left') > 0 ? 'standLeft' : 'standRight');
-        checkHits();
-        return;
-      }
-      face(dir < 0 ? 'walkLeft' : 'walkRight');
-      buddy.x = clamp(buddy.x + dir * speed, 8, WORLD_W - BUDDY_W - 8);
-      buddy.dirty = true;
-    });
-    game.tap = function (pos) {
+    canvas.addEventListener('pointerdown', function (event) {
       if (busy || settled) return;
+      var box = canvas.getBoundingClientRect();
+      var pos = { x: (event.clientX - box.left) * WORLD_W / box.width, y: (event.clientY - box.top) * WORLD_H / box.height };
       for (var i = 0; i < signs.length; i++) {
         if (hit(signs[i].view, pos)) {
           walkTo(signs[i]);
           return;
         }
       }
-    };
+    });
+    requestAnimationFrame(loop);
   }
+  Promise.all(Object.keys(ART).map(function (name) {
+    return new Promise(function (resolve, reject) {
+      var img = new Image();
+      img.onload = function () { art[name] = img; resolve(); };
+      img.onerror = reject;
+      img.src = ART[name];
+    });
+  })).then(boot);
 
   function hold(id, key) {
     var el = document.getElementById(id);

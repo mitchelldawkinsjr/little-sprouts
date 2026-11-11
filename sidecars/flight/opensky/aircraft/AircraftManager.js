@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import Logger from '../utils/Logger.js';
 import {
   AIRCRAFT_TARGET_LENGTH,
   VISUAL_ROLL_FACTOR,
@@ -93,10 +92,6 @@ export default class AircraftManager {
 
     this.scene.add(this.group);
     this.ready = true;
-    Logger.info(
-      'Aircraft',
-      `Rafale loaded — scaled ${scaleFactor.toFixed(2)}x (${size.x.toFixed(1)}×${size.y.toFixed(1)}×${size.z.toFixed(1)} → ${AIRCRAFT_TARGET_LENGTH}m)`,
-    );
   }
 
   update(state, dt) {

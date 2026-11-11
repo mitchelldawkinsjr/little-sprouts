@@ -1,18 +1,18 @@
 # Read-aloud voice
 
-All speech goes through `speech.js`. Games never talk to Kokoro or `speechSynthesis` directly. `app.js` calls `say()`, which calls `speak()`.
+All speech goes through `lib/speech.js`. Games never talk to Kokoro or `speechSynthesis` directly. `app.js` calls `say()`, which calls `speak()`.
 
 | File | Job |
 |---|---|
-| `speech.js` | Public interface. One line at a time, playback, fallback choice, status, and timing logs. |
-| `speech-worker.js` | Loads Kokoro (kokoro-js 1.2.1, Kokoro-82M ONNX, `q8` on WASM), generates lines, and keeps the memory and IndexedDB caches. |
-| `speech-core.mjs` | Pure logic shared by both, plus the tests: cache keys, PCM checks, engine choice, queue, retries, text clean-up, and voice roles. |
-| `speech.test.mjs` | Node tests. They run the real `speech.js` and `speech-worker.js` against stand-in Worker, Web Audio, and speech objects. |
+| `lib/speech.js` | Public interface. One line at a time, playback, fallback choice, status, and timing logs. |
+| `lib/speech-worker.js` | Loads Kokoro (kokoro-js 1.2.1, Kokoro-82M ONNX, `q8` on WASM), generates lines, and keeps the memory and IndexedDB caches. |
+| `lib/speech-core.mjs` | Pure logic shared by both, plus the tests: cache keys, PCM checks, engine choice, queue, retries, text clean-up, and voice roles. |
+| `tests/speech.test.mjs` | Node tests. They run the real `lib/speech.js` and `lib/speech-worker.js` against stand-in Worker, Web Audio, and speech objects. |
 
 ## Using it
 
 ```js
-import { speak, speakAndWait, stop, prefetchSpeech, prepareSpeech, getSpeechStatus, onSpeechStatus } from './speech.js?v=voice-life';
+import { speak, speakAndWait, stop, prefetchSpeech, prepareSpeech, getSpeechStatus, onSpeechStatus } from './lib/speech.js?v=voice-life';
 
 speak('Find the circle.', voiceId);                    // older call shape; resolves like speakAndWait
 const { status, engine } = await speakAndWait('What is 7 × 8?', { voiceId, context: 'mathCoach' });
@@ -93,7 +93,7 @@ Text is cleaned before speaking and before building keys:
 
 ## Voice roles
 
-`narrator`, `readingCoach`, and `mathCoach` always use the grown-up's voice. `sportsHost` (`am_michael`) and `gameHost` (`bf_emma`) use their own voices only when **Give game hosts their own voices** is on. Game modes map to roles in `speech-core.mjs`. Within a round, every Kokoro line uses the same voice.
+`narrator`, `readingCoach`, and `mathCoach` always use the grown-up's voice. `sportsHost` (`am_michael`) and `gameHost` (`bf_emma`) use their own voices only when **Give game hosts their own voices** is on. Game modes map to roles in `lib/speech-core.mjs`. Within a round, every Kokoro line uses the same voice.
 
 ## Debugging
 

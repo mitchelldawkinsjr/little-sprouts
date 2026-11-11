@@ -7,7 +7,7 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BAKE_VERSION, DTYPE, MODEL, SPEED, bakedPath, bakedTexts, usable, voiceIds } from '../speech-core.mjs';
+import { BAKE_VERSION, DTYPE, MODEL, SPEED, bakedPath, bakedTexts, usable, voiceIds } from '../lib/speech-core.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(new URL('./voice-bake/package.json', import.meta.url));

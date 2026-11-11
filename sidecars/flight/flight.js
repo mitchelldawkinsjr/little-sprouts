@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { questionHolding } from '../../hold.js?v=ask-first';
+import { questionHolding } from '../../lib/hold.js?v=hold2';
 import { assignAsk, beginArcade, createFlight, markFlight, pitchFlight, steerFlight, stepFlight, strafeFlight, thrustFlight, typeSpell } from './sim.mjs?v=arcade-play';
 import { CRUISE_ALT, groundMeters, landColor } from './terrain.mjs';
 import AircraftManager from './opensky/aircraft/AircraftManager.js';

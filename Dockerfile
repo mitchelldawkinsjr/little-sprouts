@@ -20,7 +20,12 @@ COPY sidecars/bike /usr/share/nginx/html/sidecars/bike
 COPY sidecars/walk /usr/share/nginx/html/sidecars/walk
 COPY sidecars/paint /usr/share/nginx/html/sidecars/paint
 COPY sidecars/quick-math /usr/share/nginx/html/sidecars/quick-math
-COPY index.html style.css app.js arcade.js lunar.js hoop.js light.js hook.js sky.js planet.js puzzle.js match.js marble.js bridge.js maze.js chase.js hop.js toast.js glide.js aisle.js lily.js mole.js bust.js cube.js stack.js lamp.js trace.js sort.js merge.js crayon.js sidecar.js sidecar-guest.js camera.js logic.mjs speech.js speech-core.mjs speech-worker.js pad.js pad-core.mjs tilt.js touch-core.mjs hold.js sheet.csv /usr/share/nginx/html/
+COPY index.html style.css app.js logic.mjs sheet.csv manifest.webmanifest sw.js /usr/share/nginx/html/
+COPY icons /usr/share/nginx/html/icons
+COPY app /usr/share/nginx/html/app
+COPY logic /usr/share/nginx/html/logic
+COPY lib /usr/share/nginx/html/lib
+COPY games /usr/share/nginx/html/games
 COPY voice /usr/share/nginx/html/voice
 
 EXPOSE 80
