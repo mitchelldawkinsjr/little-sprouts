@@ -2,12 +2,12 @@ import './lib/pad.js?v=pad-all';
 import './lib/tilt.js?v=ask-first';
 import { roundCount, stageOf, profileSprite, SPRITES } from './logic.mjs?v=structure4';
 import { knownVoice } from './lib/speech.js?v=wait-2s';
-import { findBuiltSidecars } from './lib/sidecar.js?v=wood-leaf';
+import { findBuiltSidecars } from './lib/sidecar.js?v=more-adventures';
 import { rt } from './app/runtime.mjs?v=lean-r2';
-import { registerHelpers } from './app/helpers.mjs?v=city-glide';
-import { registerRound } from './app/round.mjs?v=city-glide';
-import { registerMounts } from './app/mounts.mjs?v=city-glide';
-import { registerParent } from './app/parent.mjs?v=up-next';
+import { registerHelpers } from './app/helpers.mjs?v=more-adventures';
+import { registerRound } from './app/round.mjs?v=more-adventures';
+import { registerMounts } from './app/mounts.mjs?v=more-adventures';
+import { registerParent } from './app/parent.mjs?v=more-adventures';
 
 // Live state. Every module reads and writes it through rt.
 Object.assign(rt, {

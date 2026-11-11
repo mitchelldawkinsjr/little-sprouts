@@ -52,7 +52,7 @@
     }
     askEl.innerHTML = '<div class="card"><p class="prompt">' + esc(question.prompt || '') + '</p><div class="show">' + (question.show || '') + '</div><div class="choices">' + question.choices.map(function (choice, index) {
       return '<button type="button" data-i="' + index + '">' + face(choice) + '</button>';
-    }).join('') + '</div><p class="note">A right answer says good and the ride continues. A wrong one speeds the bike up.</p></div>';
+    }).join('') + '</div><p class="note">A right answer says good and the ride continues. A wrong one throws the bike. Lean fast to save it.</p></div>';
     askEl.querySelectorAll('button').forEach(function (button) {
       button.onclick = function () { choose(+button.dataset.i); };
     });

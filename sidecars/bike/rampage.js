@@ -168,14 +168,25 @@ const cam = { x: 0, y: 0, shake: 0 };
 function addShake(v) { cam.shake = Math.min(28, cam.shake + v); }
 
 const GRAV = 0.34, SUB = 4, WHEEL_R = 16, WHEEL_BASE = 50, WHEEL_OFF_Y = 14;
-const SPRING = 0.22, DAMP = 0.28, ENGINE = 0.48, TOP = 21, FRICTION = 0.78, AIR_CTRL = 0.02, MAX_AV = 0.06;
+const SPRING = 0.22, DAMP = 0.28, ENGINE = 0.72, TOP = 34, FRICTION = 0.78, AIR_CTRL = 0.02, MAX_AV = 0.06;
 
 let bike, level, levelIdx, prevGround, peakFall, airTime, flipAccum, frameAngStart;
 let lastCheckpoint, totalFlips, comboScore, elapsed, crashFreeze, finished, finishStars;
 let planted = true, airScale = 0, learnerLevel = 1, learnerReduced = false;
-let rideTime = 0, askAfter = 9, sproutsPaused = false, boostUntil = 0;
+let rideTime = 0, askAfter = 9, sproutsPaused = false, boostUntil = 0, scareUntil = 0, scareSafeUntil = 0;
 let onAsk = function () {};
 let rewardScale = { boost: 1, slow: 1 };
+
+function inScare(now = performance.now()) {
+  return now < scareUntil;
+}
+function canLean(now = performance.now()) {
+  return !planted || inScare(now);
+}
+function leanScale(now = performance.now()) {
+  if (inScare(now)) return Math.max(airScale, 1.15);
+  return airScale;
+}
 
 function rot(ox, oy, a) { const c = Math.cos(a), s = Math.sin(a); return { x: ox * c - oy * s, y: ox * s + oy * c }; }
 
@@ -243,28 +254,32 @@ function physicsStep(scale) {
     else if (b.vx < 0) b.vx = Math.min(0, b.vx + drag);
   }
 
+  const now = performance.now();
+  const leaning = canLean(now);
+  const air = leanScale(now);
+  const avCap = inScare(now) ? MAX_AV * 1.55 : MAX_AV;
   if (!onGround) {
-    if (!planted && airScale > 0) {
-      if (input.back()) b.av -= AIR_CTRL * airScale * scale;
-      if (input.fwd()) b.av += AIR_CTRL * airScale * scale;
+    if (leaning && air > 0) {
+      if (input.back()) b.av -= AIR_CTRL * air * scale;
+      if (input.fwd()) b.av += AIR_CTRL * air * scale;
     } else {
       const want = Math.atan(terrainSlope(b.x, level));
       b.av += (want - b.ang) * 0.05 * scale;
     }
-  } else if (planted) {
+  } else if (!leaning) {
     const want = Math.atan(terrainSlope(b.x, level));
     b.ang += (want - b.ang) * (1 - Math.pow(0.4, scale));
     b.av *= Math.pow(0.2, scale);
   } else {
     b.av *= Math.pow(0.72, scale);
   }
-  if (b.av > MAX_AV) b.av = MAX_AV;
-  if (b.av < -MAX_AV) b.av = -MAX_AV;
+  if (b.av > avCap) b.av = avCap;
+  if (b.av < -avCap) b.av = -avCap;
 
   b.x += b.vx * scale;
   b.y += b.vy * scale;
   b.ang += b.av * scale;
-  if (onGround && !planted) {
+  if (onGround && leaning) {
     const want = Math.atan(terrainSlope(b.x, level));
     let lean = 0;
     if (input.back() && b.vx > 0.35) lean -= 0.95;
@@ -274,7 +289,7 @@ function physicsStep(scale) {
   }
   b.wheelSpin += b.vx * 0.15 * scale;
 
-  if (!planted) {
+  if (leaning && now >= scareSafeUntil) {
     const head = rot(0, -36, b.ang);
     if (b.y + head.y > terrainY(b.x + head.x, level) + 4) return { onGround, crash: true };
   }
@@ -321,7 +336,8 @@ function updatePlay(dt) {
   if (crashed) { doCrash(); return; }
 
   const nowMs = performance.now();
-  if (nowMs < boostUntil && bike.vx < TOP * 1.45) bike.vx += 0.22;
+  const boostCap = inScare(nowMs) ? TOP * 1.55 : TOP * 1.25;
+  if (nowMs < boostUntil && bike.vx < boostCap) bike.vx += inScare(nowMs) ? 0.28 : 0.14;
 
   if (!grounded) {
     airTime++;
@@ -337,7 +353,7 @@ function updatePlay(dt) {
         spawn(bike.x, bike.y + 18, (Math.random() - 0.5) * 4, -Math.random() * 3,
           24 + Math.random() * 16, 2 + Math.random() * 3, level.pal.dust, 0.18);
     }
-    if (!planted) {
+    if (canLean()) {
       const want = Math.atan(terrainSlope(bike.x, level));
       const off = Math.atan2(Math.sin(bike.ang - want), Math.cos(bike.ang - want));
       if (Math.abs(off) < 1.05) {
@@ -345,7 +361,7 @@ function updatePlay(dt) {
         bike.av *= 0.25;
       }
     }
-    if (airTime > 8 && !planted) {
+    if (airTime > 8 && canLean()) {
       const n = Math.floor(Math.abs(flipAccum) / (Math.PI * 2));
       if (n > 0) { totalFlips += n; comboScore += n * 250; audio.flip(n); flashFlip = { n, t: 90 }; }
     }
@@ -518,9 +534,9 @@ function limb(x1, y1, x2, y2, w, color) {
   ctx.fill();
 }
 function drawRider() {
-  const air = !prevGround && !planted;
-  const back = !air && !planted && input.back();
-  const fwd = !air && !planted && input.fwd();
+  const air = !prevGround && canLean();
+  const back = !air && canLean() && input.back();
+  const fwd = !air && canLean() && input.fwd();
   const breath = air ? 0 : Math.sin(performance.now() / 320) * 1.1;
   const crouch = input.gas() && !air ? 1.6 : 0;
   let hip = { x: -7, y: -1 + crouch };
@@ -743,7 +759,7 @@ const tc = {
 function drawTouchControls() {
   if (!TOUCH && !embedded) return;
   for (const key in tc) {
-    if (planted && (key === 'back' || key === 'fwd')) continue;
+    if (!canLean() && (key === 'back' || key === 'fwd')) continue;
     const b = tc[key];
     ctx.globalAlpha = input._tc[key] ? 0.55 : 0.3;
     ctx.fillStyle = '#fff'; roundRect(b.x, b.y, b.w, b.h, 16); ctx.fill();
@@ -910,7 +926,7 @@ canvas.addEventListener('pointerdown', e => {
   const p = canvasPos(e);
   if (state === 'play' && (TOUCH || embedded) && !sproutsPaused) {
     for (const key in tc) {
-      if (planted && (key === 'back' || key === 'fwd')) continue;
+      if (!canLean() && (key === 'back' || key === 'fwd')) continue;
       if (inRect(p, tc[key])) { input._tc[key] = true; pointerBtn.set(e.pointerId, key); }
     }
   }
@@ -994,8 +1010,28 @@ window.DirtRampage = {
   },
   arm() { rideTime = 0; },
   grant(ok) {
-    if (ok) return;
-    boostUntil = performance.now() + 1600 * (rewardScale.boost || 1);
+    const now = performance.now();
+    if (ok) {
+      scareUntil = 0;
+      scareSafeUntil = 0;
+      boostUntil = now + 700 * (rewardScale.boost || 1);
+      return;
+    }
+    // Miss: surge + hard tip. Player has a beat to lean and save the crash.
+    const tip = Math.random() < 0.5 ? -1 : 1;
+    scareUntil = now + 2200 * (rewardScale.slow || 1);
+    scareSafeUntil = now + 280;
+    boostUntil = now + 1700 * (rewardScale.boost || 1);
+    if (bike) {
+      const want = level ? Math.atan(terrainSlope(bike.x, level)) : 0;
+      bike.vx = Math.max(bike.vx, TOP * 1.2);
+      bike.vy = tip < 0 ? -6.2 : -2.4;
+      bike.y -= tip < 0 ? 22 : 10;
+      bike.ang = want + tip * 0.95;
+      bike.av = tip * 0.09;
+    }
+    addShake(16);
+    audio.thud(8);
   },
   setDifficulty(partial = {}) { applyLearner(partial.level ?? learnerLevel, typeof partial.reduced === 'boolean' ? partial.reduced : learnerReduced); },
   setReward(partial = {}) {

@@ -34,11 +34,7 @@ function edgePoint(side, width, height, pad) {
   return { x: -pad, y: height * along };
 }
 
-function drawRock(ctx, rock) {
-  ctx.save();
-  ctx.translate(rock.x, rock.y);
-  ctx.rotate(rock.spin);
-  ctx.beginPath();
+function rockPath(ctx, rock) {
   rock.pts.forEach((p, i) => {
     const a = (i / rock.pts.length) * Math.PI * 2;
     const x = Math.cos(a) * rock.r * p;
@@ -47,34 +43,200 @@ function drawRock(ctx, rock) {
     else ctx.moveTo(x, y);
   });
   ctx.closePath();
-  ctx.fillStyle = '#9aa0a8';
-  ctx.strokeStyle = '#3c4148';
-  ctx.lineWidth = 3;
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = 'rgba(255,255,255,.18)';
-  ctx.beginPath();
-  ctx.ellipse(-rock.r * 0.2, -rock.r * 0.25, rock.r * 0.28, rock.r * 0.18, -0.4, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
+}
+
+function drawRock(ctx, rock) {
+  const lit = rock.lit || '#b7bcc4';
+  const mid = rock.mid || '#7d848e';
+  const shade = rock.shade || '#3f454d';
   ctx.save();
   ctx.translate(rock.x, rock.y);
-  ctx.fillStyle = '#faf9f5';
+
+  // Soft space shadow so the rock sits in depth, not flat on the sky.
+  ctx.fillStyle = 'rgba(0,0,0,.42)';
+  ctx.beginPath();
+  ctx.ellipse(rock.r * 0.18, rock.r * 0.24, rock.r * 0.95, rock.r * 0.72, 0.4, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Thin cool rim so the silhouette pops off dark nebula.
+  ctx.save();
+  ctx.rotate(rock.spin);
+  ctx.beginPath();
+  rockPath(ctx, rock);
+  ctx.strokeStyle = 'rgba(170, 210, 255, .22)';
+  ctx.lineWidth = 6;
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.rotate(rock.spin);
+  ctx.beginPath();
+  rockPath(ctx, rock);
+  const body = ctx.createRadialGradient(-rock.r * 0.42, -rock.r * 0.48, rock.r * 0.05, rock.r * 0.2, rock.r * 0.28, rock.r * 1.1);
+  body.addColorStop(0, lit);
+  body.addColorStop(0.35, mid);
+  body.addColorStop(0.75, shade);
+  body.addColorStop(1, '#1c2026');
+  ctx.fillStyle = body;
+  ctx.fill();
+  ctx.strokeStyle = '#1a1e24';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // Clip surface detail to the asteroid silhouette.
+  ctx.save();
+  ctx.beginPath();
+  rockPath(ctx, rock);
+  ctx.clip();
+  ctx.fillStyle = 'rgba(255,255,255,.2)';
+  ctx.beginPath();
+  ctx.ellipse(-rock.r * 0.3, -rock.r * 0.36, rock.r * 0.38, rock.r * 0.24, -0.5, 0, Math.PI * 2);
+  ctx.fill();
+  // Fracture lines for rocky material.
+  ctx.strokeStyle = 'rgba(20,24,30,.35)';
+  ctx.lineWidth = 1.5;
+  (rock.cracks || []).forEach(line => {
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(line.a) * rock.r * line.d0, Math.sin(line.a) * rock.r * line.d0);
+    ctx.lineTo(Math.cos(line.a + line.bend) * rock.r * line.d1, Math.sin(line.a + line.bend) * rock.r * line.d1);
+    ctx.stroke();
+  });
+  (rock.craters || []).forEach(c => {
+    const cx = Math.cos(c.a) * rock.r * c.d;
+    const cy = Math.sin(c.a) * rock.r * c.d;
+    const rx = rock.r * c.s;
+    const ry = rock.r * c.s * 0.78;
+    ctx.fillStyle = 'rgba(12,14,18,.55)';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rx, ry, c.a, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.16)';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.ellipse(cx - rx * 0.18, cy - ry * 0.22, rx * 0.72, ry * 0.5, c.a, Math.PI * 1.05, Math.PI * 1.95);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,.08)';
+    ctx.beginPath();
+    ctx.ellipse(cx - rx * 0.25, cy - ry * 0.3, rx * 0.35, ry * 0.22, c.a, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.restore();
+  ctx.restore();
+
+  ctx.save();
+  ctx.translate(rock.x, rock.y);
+  ctx.fillStyle = 'rgba(250,249,245,.95)';
   ctx.strokeStyle = '#24332c';
   ctx.lineWidth = 2;
   ctx.font = `700 ${fitLabel(ctx, rock.label, rock.r * 1.6)}px Outfit, sans-serif`;
   const w = ctx.measureText(rock.label).width + 12;
   const h = 20;
+  ctx.shadowColor = 'rgba(0,0,0,.4)';
+  ctx.shadowBlur = 10;
+  ctx.shadowOffsetY = 2;
   ctx.beginPath();
   if (ctx.roundRect) ctx.roundRect(-w / 2, -h / 2, w, h, 8);
   else ctx.rect(-w / 2, -h / 2, w, h);
   ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
   ctx.stroke();
   ctx.fillStyle = '#1b2430';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(rock.label, 0, 1);
   ctx.restore();
+}
+
+function drawSky(ctx, width, height, stars, t) {
+  const deep = ctx.createLinearGradient(0, 0, width * 0.15, height);
+  deep.addColorStop(0, '#03050a');
+  deep.addColorStop(0.4, '#08101c');
+  deep.addColorStop(0.75, '#0b1526');
+  deep.addColorStop(1, '#0a121c');
+  ctx.fillStyle = deep;
+  ctx.fillRect(0, 0, width, height);
+
+  const nebula = (x, y, radius, r, gch, b, a) => {
+    const g = ctx.createRadialGradient(x, y, radius * 0.05, x, y, radius);
+    g.addColorStop(0, `rgba(${r},${gch},${b},${a})`);
+    g.addColorStop(0.55, `rgba(${r},${gch},${b},${a * 0.45})`);
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, width, height);
+  };
+  // Slow drift so the field feels alive without changing gameplay.
+  const driftX = Math.sin(t * 0.12) * width * 0.02;
+  const driftY = Math.cos(t * 0.09) * height * 0.015;
+  nebula(width * 0.8 + driftX, height * 0.16 + driftY, width * 0.55, 112, 68, 168, 0.42);
+  nebula(width * 0.14 - driftX * 0.6, height * 0.82 - driftY, width * 0.48, 24, 110, 128, 0.34);
+  nebula(width * 0.58 + driftX * 0.4, height * 0.58, width * 0.32, 196, 92, 58, 0.14);
+  nebula(width * 0.32 - driftY, height * 0.24 + driftX * 0.3, width * 0.26, 64, 118, 196, 0.18);
+
+  // Distant world for scale.
+  ctx.save();
+  ctx.globalAlpha = 0.55;
+  const farX = width * 0.88;
+  const farY = height * 0.72;
+  const farR = Math.min(width, height) * 0.09;
+  const far = ctx.createRadialGradient(farX - farR * 0.3, farY - farR * 0.35, farR * 0.1, farX, farY, farR);
+  far.addColorStop(0, '#6a8aa8');
+  far.addColorStop(0.65, '#2a4058');
+  far.addColorStop(1, 'rgba(20,30,45,0)');
+  ctx.fillStyle = far;
+  ctx.beginPath();
+  ctx.arc(farX, farY, farR, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(180,210,240,.18)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.ellipse(farX, farY, farR * 1.55, farR * 0.28, -0.4, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+
+  // Soft dust lane across the field.
+  ctx.save();
+  ctx.translate(width * 0.5 + driftX * 0.5, height * 0.48 + driftY);
+  ctx.rotate(-0.35);
+  const dust = ctx.createLinearGradient(0, -height * 0.1, 0, height * 0.1);
+  dust.addColorStop(0, 'rgba(190,210,240,0)');
+  dust.addColorStop(0.5, 'rgba(190,210,240,.09)');
+  dust.addColorStop(1, 'rgba(190,210,240,0)');
+  ctx.fillStyle = dust;
+  ctx.fillRect(-width, -height * 0.12, width * 2, height * 0.24);
+  ctx.restore();
+
+  stars.forEach(star => {
+    const layer = star.layer || 1;
+    const twinkle = star.pulse ? 0.6 + 0.4 * Math.sin(t * star.pulse + star.phase) : 1;
+    const x = ((star.x + t * 0.003 * layer) % 1) * width;
+    const y = star.y * height + Math.sin(t * 0.2 + star.phase) * layer * 0.6;
+    ctx.globalAlpha = star.a * twinkle;
+    if (star.r >= 1.45) {
+      ctx.strokeStyle = star.warm ? '#ffe0b8' : '#eef4ff';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x - star.r * 2.4, y);
+      ctx.lineTo(x + star.r * 2.4, y);
+      ctx.moveTo(x, y - star.r * 2.4);
+      ctx.lineTo(x, y + star.r * 2.4);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,.18)';
+      ctx.beginPath();
+      ctx.arc(x, y, star.r * 2.8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = star.warm ? '#ffe8c8' : '#eef4ff';
+    ctx.beginPath();
+    ctx.arc(x, y, star.r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+
+  const vignette = ctx.createRadialGradient(width * 0.5, height * 0.52, Math.min(width, height) * 0.22, width * 0.5, height * 0.5, Math.max(width, height) * 0.78);
+  vignette.addColorStop(0, 'rgba(0,0,0,0)');
+  vignette.addColorStop(1, 'rgba(0,0,0,.45)');
+  ctx.fillStyle = vignette;
+  ctx.fillRect(0, 0, width, height);
 }
 
 function drawBurst(ctx, boom) {
@@ -103,94 +265,126 @@ function drawBurst(ctx, boom) {
 
 /** Muzzle distance from planet center; shots spawn at this offset. */
 function turretReach(r) {
-  return r + clamp(r * 0.42, 28, 44);
+  const cupola = clamp(r * 0.28, 18, 28);
+  const barrelLen = clamp(r * 0.55, 36, 58);
+  return r + cupola * 0.15 + barrelLen + 6;
 }
 
 function drawTurret(ctx, r, flash) {
-  const base = r * 0.92;
-  const cupola = clamp(r * 0.22, 14, 22);
-  const barrelLen = clamp(r * 0.42, 28, 44);
-  const barrelHalf = clamp(r * 0.055, 3.5, 5.5);
-  const housing = clamp(r * 0.14, 9, 14);
-  const metal = flash ? '#f2f5f8' : '#c9d2de';
-  const shade = flash ? '#d7e0ea' : '#8a97a8';
-  const ink = '#243040';
+  // Sit the mount on the rim so the silhouette reads as a turret, not a buried wedge.
+  const rim = r;
+  const cupola = clamp(r * 0.28, 18, 28);
+  const hubX = rim + cupola * 0.15;
+  const barrelLen = clamp(r * 0.55, 36, 58);
+  const barrelHalf = clamp(r * 0.09, 6, 10);
+  const cheek = clamp(r * 0.2, 12, 20);
+  const metal = flash ? '#e8edf3' : '#5c6a7c';
+  const shade = flash ? '#cfd7e2' : '#3d4756';
+  const highlight = flash ? '#f7f9fb' : '#8b98a8';
+  const ink = '#1a222e';
   const accent = '#c45c3a';
+  const tip = hubX + barrelLen;
 
-  // Fixed collar bolted to the planet surface.
-  ctx.fillStyle = shade;
   ctx.strokeStyle = ink;
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2.5;
+  ctx.lineJoin = 'round';
+
+  // Bolted collar on the planet rim.
+  ctx.fillStyle = shade;
   ctx.beginPath();
-  ctx.arc(0, 0, base + 6, -0.72, 0.72);
-  ctx.arc(0, 0, base - 2, 0.72, -0.72, true);
+  ctx.arc(0, 0, rim + 8, -0.9, 0.9);
+  ctx.arc(0, 0, rim - 3, 0.9, -0.9, true);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
-  for (const a of [-0.48, -0.16, 0.16, 0.48]) {
+  for (const a of [-0.62, -0.28, 0.28, 0.62]) {
     ctx.beginPath();
-    ctx.arc(Math.cos(a) * (base + 2), Math.sin(a) * (base + 2), 2.2, 0, Math.PI * 2);
-    ctx.fillStyle = ink;
+    ctx.arc(Math.cos(a) * (rim + 2.5), Math.sin(a) * (rim + 2.5), 2.6, 0, Math.PI * 2);
+    ctx.fillStyle = highlight;
     ctx.fill();
+    ctx.stroke();
   }
 
-  // Rotating cupola + cannon (caller already rotated to aim).
-  ctx.fillStyle = metal;
-  ctx.strokeStyle = ink;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(base, 0, cupola, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-
-  // Side cheeks so the mount reads as a turret, not a ball.
+  // Turret cheeks / trunnion block.
   ctx.fillStyle = shade;
   ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(base - housing * 0.2, -housing, housing * 1.1, housing * 2, 4);
-  else ctx.rect(base - housing * 0.2, -housing, housing * 1.1, housing * 2);
+  if (ctx.roundRect) ctx.roundRect(hubX - cheek * 0.55, -cheek, cheek * 1.15, cheek * 2, 5);
+  else ctx.rect(hubX - cheek * 0.55, -cheek, cheek * 1.15, cheek * 2);
   ctx.fill();
   ctx.stroke();
 
-  // Main barrel.
-  const tip = base + barrelLen;
+  // Domed cupola.
   ctx.fillStyle = metal;
   ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(base + cupola * 0.35, -barrelHalf, barrelLen - cupola * 0.2, barrelHalf * 2, 2);
-  else ctx.rect(base + cupola * 0.35, -barrelHalf, barrelLen - cupola * 0.2, barrelHalf * 2);
-  ctx.fill();
-  ctx.stroke();
-
-  // Recoil sleeve / band near the muzzle.
-  ctx.fillStyle = shade;
-  ctx.beginPath();
-  ctx.rect(tip - 10, -barrelHalf - 1.5, 7, barrelHalf * 2 + 3);
-  ctx.fill();
-  ctx.stroke();
-
-  // Muzzle tip.
-  ctx.fillStyle = accent;
-  ctx.beginPath();
-  ctx.moveTo(tip - 2, -barrelHalf - 1);
-  ctx.lineTo(tip + 5, -barrelHalf * 0.55);
-  ctx.lineTo(tip + 5, barrelHalf * 0.55);
-  ctx.lineTo(tip - 2, barrelHalf + 1);
+  ctx.arc(hubX, 0, cupola, Math.PI * 0.55, Math.PI * 1.45, true);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
-  ctx.fillStyle = '#1b2430';
   ctx.beginPath();
-  ctx.arc(tip + 1, 0, barrelHalf * 0.55, 0, Math.PI * 2);
+  ctx.arc(hubX, 0, cupola, 0, Math.PI * 2);
   ctx.fill();
+  ctx.stroke();
 
-  // Sight ring on the cupola.
-  ctx.strokeStyle = accent;
+  // Barrel shroud (wider rear) into the tube.
+  ctx.fillStyle = metal;
+  ctx.beginPath();
+  ctx.moveTo(hubX + cupola * 0.35, -barrelHalf * 1.35);
+  ctx.lineTo(hubX + cupola * 0.85, -barrelHalf);
+  ctx.lineTo(tip - 12, -barrelHalf);
+  ctx.lineTo(tip - 12, barrelHalf);
+  ctx.lineTo(hubX + cupola * 0.85, barrelHalf);
+  ctx.lineTo(hubX + cupola * 0.35, barrelHalf * 1.35);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Top rail / sight groove so the tube reads as a cannon.
+  ctx.strokeStyle = highlight;
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.arc(base, 0, cupola * 0.38, 0, Math.PI * 2);
+  ctx.moveTo(hubX + cupola * 0.9, -barrelHalf * 0.35);
+  ctx.lineTo(tip - 14, -barrelHalf * 0.35);
   ctx.stroke();
-  ctx.fillStyle = ink;
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = 2.5;
+
+  // Muzzle brake.
+  ctx.fillStyle = shade;
   ctx.beginPath();
-  ctx.arc(base, 0, 2.2, 0, Math.PI * 2);
+  if (ctx.roundRect) ctx.roundRect(tip - 14, -barrelHalf - 3, 10, barrelHalf * 2 + 6, 2);
+  else ctx.rect(tip - 14, -barrelHalf - 3, 10, barrelHalf * 2 + 6);
+  ctx.fill();
+  ctx.stroke();
+
+  // Glowing muzzle.
+  ctx.fillStyle = accent;
+  ctx.beginPath();
+  ctx.moveTo(tip - 5, -barrelHalf - 2);
+  ctx.lineTo(tip + 6, -barrelHalf * 0.65);
+  ctx.lineTo(tip + 6, barrelHalf * 0.65);
+  ctx.lineTo(tip - 5, barrelHalf + 2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#0e131a';
+  ctx.beginPath();
+  ctx.ellipse(tip + 1, 0, 3.2, barrelHalf * 0.55, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Cupola hatch + optic.
+  ctx.fillStyle = shade;
+  ctx.beginPath();
+  ctx.arc(hubX - cupola * 0.15, -cupola * 0.2, cupola * 0.42, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.strokeStyle = accent;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.arc(hubX - cupola * 0.15, -cupola * 0.2, cupola * 0.22, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.fillStyle = '#9ad0e8';
+  ctx.beginPath();
+  ctx.arc(hubX - cupola * 0.15, -cupola * 0.2, cupola * 0.12, 0, Math.PI * 2);
   ctx.fill();
 }
 
@@ -252,12 +446,20 @@ export function mountPlanet(root, { prompt, choices, target, wave, reduced, onDo
   const rocks = [];
   const shots = [];
   const bursts = [];
-  const stars = Array.from({ length: 48 }, (_, i) => ({
-    x: ((i * 53) % 100) / 100,
-    y: ((i * 29) % 100) / 100,
-    r: i % 7 === 0 ? 1.6 : 0.9,
-    a: 0.35 + (i % 5) * 0.12
-  }));
+  const stars = Array.from({ length: 86 }, (_, i) => {
+    const bright = i % 11 === 0;
+    const mid = i % 5 === 0;
+    return {
+      x: ((i * 53 + 17) % 100) / 100,
+      y: ((i * 29 + 41) % 100) / 100,
+      r: bright ? 1.8 : mid ? 1.2 : 0.65 + (i % 3) * 0.08,
+      a: bright ? 0.9 : mid ? 0.58 : 0.22 + (i % 4) * 0.07,
+      warm: i % 9 === 0,
+      pulse: bright || mid ? 1.2 + (i % 4) * 0.35 : 0,
+      phase: (i * 0.7) % (Math.PI * 2),
+      layer: bright ? 1.4 : mid ? 1 : 0.55
+    };
+  });
   let width = 640;
   let height = 360;
   let spawned = false;
@@ -265,6 +467,7 @@ export function mountPlanet(root, { prompt, choices, target, wave, reduced, onDo
   let wrecked = false;
   let aim = -Math.PI / 2;
   let spin = 0;
+  let skyT = 0;
   let cool = 0;
   let missed = false;
   let phase = 'play';
@@ -273,7 +476,7 @@ export function mountPlanet(root, { prompt, choices, target, wave, reduced, onDo
   let downLeft = 0;
   let last = 0;
   const held = { left: false, right: false };
-  const planetR = () => clamp(Math.min(width, height) * 0.16, 46, 92);
+  const planetR = () => clamp(Math.min(width, height) * 0.12, 36, 70);
 
   const paintShields = () => {
     if (!meter) return;
@@ -348,8 +551,14 @@ export function mountPlanet(root, { prompt, choices, target, wave, reduced, onDo
       const dy = cy - spot.y;
       const dist = Math.hypot(dx, dy) || 1;
       const travel = Math.max(48, dist - core - r * 0.72);
-      const pace = [1.12, 1, 0.86][size];
+      const pace = [1.02, 0.92, 0.8][size];
       const speed = travel / ((tuning.seconds || 8) / calm) * pace;
+      const tone = i % 3;
+      const palette = [
+        { lit: '#c4c0b8', mid: '#8a857c', shade: '#45423c' },
+        { lit: '#b8c0c9', mid: '#7a8490', shade: '#3c444e' },
+        { lit: '#c2b4a4', mid: '#8a7a68', shade: '#4a4036' }
+      ][tone];
       rocks.push({
         label: text,
         ok,
@@ -360,7 +569,24 @@ export function mountPlanet(root, { prompt, choices, target, wave, reduced, onDo
         vy: dy / dist * speed,
         spin: Math.atan2(dy, dx),
         spinV: (Math.random() - 0.5) * 0.35,
-        pts: Array.from({ length: 9 }, () => 0.72 + Math.random() * 0.34),
+        pts: Array.from({ length: 11 + (i % 4) }, (_, p) => {
+          const notch = p % 4 === 0 ? 0.58 : 0.72;
+          return notch + Math.random() * 0.36;
+        }),
+        craters: Array.from({ length: 3 + (i % 3) }, (_, c) => ({
+          a: (c * 2.15 + i * 0.7) % (Math.PI * 2),
+          d: 0.18 + (c % 3) * 0.2,
+          s: 0.14 + (c % 2) * 0.1
+        })),
+        cracks: Array.from({ length: 2 + (i % 2) }, (_, c) => ({
+          a: (c * 1.7 + i) % (Math.PI * 2),
+          bend: 0.35 + (c % 2) * 0.25,
+          d0: 0.15,
+          d1: 0.55 + (c % 2) * 0.2
+        })),
+        lit: palette.lit,
+        mid: palette.mid,
+        shade: palette.shade,
         wait: 0.25 + i * (reduced ? 0.7 : 0.45)
       });
     });
@@ -459,27 +685,14 @@ export function mountPlanet(root, { prompt, choices, target, wave, reduced, onDo
   };
 
   const draw = () => {
-    ctx.fillStyle = '#070b12';
-    ctx.fillRect(0, 0, width, height);
-    const haze = ctx.createRadialGradient(width * 0.72, height * 0.2, 10, width * 0.72, height * 0.2, width * 0.45);
-    haze.addColorStop(0, 'rgba(92, 64, 140, .28)');
-    haze.addColorStop(1, 'rgba(92, 64, 140, 0)');
-    ctx.fillStyle = haze;
-    ctx.fillRect(0, 0, width, height);
-    const teal = ctx.createRadialGradient(width * 0.2, height * 0.8, 10, width * 0.2, height * 0.8, width * 0.4);
-    teal.addColorStop(0, 'rgba(32, 92, 110, .22)');
-    teal.addColorStop(1, 'rgba(32, 92, 110, 0)');
-    ctx.fillStyle = teal;
-    ctx.fillRect(0, 0, width, height);
-    stars.forEach(star => {
-      ctx.globalAlpha = star.a;
-      ctx.fillStyle = '#fff';
-      ctx.beginPath();
-      ctx.arc(star.x * width, star.y * height, star.r, 0, Math.PI * 2);
-      ctx.fill();
+    drawSky(ctx, width, height, stars, skyT);
+    rocks.forEach(rock => {
+      // Show inbound rocks at the rim while they wait, fading up as they start drifting.
+      const enter = rock.wait > 0 ? Math.max(0.4, 1 - rock.wait / 1.4) : 1;
+      ctx.globalAlpha = enter;
+      drawRock(ctx, rock);
+      ctx.globalAlpha = 1;
     });
-    ctx.globalAlpha = 1;
-    rocks.forEach(rock => { if (rock.wait <= 0) drawRock(ctx, rock); });
     bursts.forEach(item => drawBurst(ctx, item));
     shots.forEach(shot => {
       ctx.save();
@@ -507,6 +720,7 @@ export function mountPlanet(root, { prompt, choices, target, wave, reduced, onDo
     fit();
     if (!spawned && width > 40) spawn();
     const paused = gamePaused();
+    if (!paused) skyT += dt;
     if (!paused && spawned && phase === 'play') step(dt);
     else if (!paused && phase === 'down') {
       downLeft -= dt;

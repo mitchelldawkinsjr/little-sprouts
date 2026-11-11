@@ -71,7 +71,7 @@ import {
   sidecarGame,
   sidecarIsBuilt,
   stopSidecar
-} from '../lib/sidecar.js?v=more-speed2';
+} from '../lib/sidecar.js?v=more-adventures';
 import {
   SHELF_META,
   shelfOf as shelfIdOf,

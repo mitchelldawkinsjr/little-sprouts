@@ -3,8 +3,8 @@ import { Sky } from 'three/addons/objects/Sky.js';
 import { questionHolding } from '../../lib/hold.js?v=hold2';
 import { assignAsk, beginArcade, createFlight, markFlight, pitchFlight, steerFlight, stepFlight, strafeFlight, thrustFlight, typeSpell } from './sim.mjs?v=arcade-play';
 import { CRUISE_ALT } from './terrain.mjs';
-import { createCraft } from './craft.mjs?v=wood-leaf';
-import { createGlobe } from './globe.mjs?v=wood-leaf';
+import { createCraft } from './craft.mjs?v=bush-blue5';
+import { createGlobe } from './globe.mjs?v=bush-blue';
 import {
   DEFAULT_FOV,
   DEFAULT_NEAR,
@@ -49,8 +49,8 @@ view.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0x9ec8e6, 0.000045);
 const camera = new THREE.PerspectiveCamera(DEFAULT_FOV, view.clientWidth / Math.max(1, view.clientHeight), DEFAULT_NEAR, 2000000);
-const ambient = new THREE.AmbientLight(0xffffff, 0.45);
-const sunLight = new THREE.DirectionalLight(0xfff4dd, 1.35);
+const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+const sunLight = new THREE.DirectionalLight(0xfff4dd, 1.15);
 scene.add(ambient, sunLight);
 
 const sky = new Sky();

@@ -47,9 +47,9 @@ export function skyWave(level) {
 }
 
 const PLANET_WAVES = [
-  { rocks: 3, seconds: 8 },
-  { rocks: 4, seconds: 6 },
-  { rocks: 5, seconds: 4.5 }
+  { rocks: 3, seconds: 10 },
+  { rocks: 4, seconds: 8 },
+  { rocks: 5, seconds: 6 }
 ];
 
 export function planetWave(level) {

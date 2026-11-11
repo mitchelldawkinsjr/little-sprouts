@@ -390,7 +390,7 @@ test('planet guard sends more rocks, and less time, as the level rises', () => {
   assert.ok(planetWave(2).seconds > planetWave(3).seconds);
   assert.equal(planetWave(0).rocks, 3);
   assert.equal(planetWave(9).rocks, 5);
-  assert.equal(planetWave(9).seconds, 4.5);
+  assert.equal(planetWave(9).seconds, 6);
 });
 
 test('shape puzzle builds a shape, then checks the spoken name', () => {

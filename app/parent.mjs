@@ -26,7 +26,7 @@ import {
   voiceFor,
   voices
 } from '../lib/speech.js?v=wait-2s';
-import { sidecarGame, sidecarIsBuilt } from '../lib/sidecar.js?v=wood-leaf';
+import { sidecarGame, sidecarIsBuilt } from '../lib/sidecar.js?v=more-adventures';
 import { spriteHtml } from '../lib/home-ui.mjs?v=structure2';
 import { voiceStatusText } from '../lib/parent-ui.mjs?v=structure2';
 import { $, esc } from './runtime.mjs?v=lean-r2';
