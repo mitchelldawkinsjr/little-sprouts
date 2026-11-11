@@ -1,12 +1,12 @@
 /* Cruise model: hold a steady height and steer the nose.
    A question is a row of gates. The right gate finishes it.
-   A wrong gate slows the plane and turns it back toward that same row.
+   A wrong gate slows the glider and turns it back toward that same row.
    A short round opens free flight after that many right answers.
    A usual round opens it after five. Free flight lasts two minutes.
-   The plane keeps flying where the nose points. Forward goes faster,
+   The glider keeps flying where the nose points. Forward goes faster,
    back flies backward, and slide moves sideways. */
 
-import { CRUISE_ALT, METERS, groundMeters } from './terrain.mjs';
+import { CRUISE_ALT, METERS } from './terrain.mjs';
 
 const AHEAD = 70;
 const RECOVER_S = 2;
@@ -214,18 +214,14 @@ export function assignAsk(state, ask) {
   return true;
 }
 
-function worldOf(state) {
-  return { x: state.x * METERS, z: -state.z * METERS };
-}
-
 export function beginArcade(state) {
   beginFree(state);
   state.arcade = true;
 }
 
 function beginFree(state) {
-  const where = worldOf(state);
-  const clear = groundMeters(where.x, where.z) + 160;
+  // Free flight uses the Cesium ellipsoid (sea level = 0). Climb to a clear height.
+  const clear = 900;
   state.free = FREE_S;
   state.over = false;
   state.crashed = false;
@@ -324,10 +320,9 @@ function stepOpen(state, dt, events) {
     state.alt += rise;
     state.lift -= rise;
   }
-  const where = worldOf(state);
-  const ground = groundMeters(where.x, where.z);
-  if (state.lift <= 0 && state.alt <= ground + 8) {
-    state.alt = ground + 8;
+  const ground = 0;
+  if (state.lift <= 0 && state.alt <= ground + 40) {
+    state.alt = ground + 40;
     state.crashed = true;
     state.over = true;
     state.free = 0;

@@ -554,6 +554,7 @@ test('garden chase and sprout hop get harder as the level rises', () => {
   assert.equal(hopBoard(1).drift, 0);
   assert.ok(hopBoard(3).drift > 0);
   assert.equal(hopBoard(0).choices, 3);
+  assert.ok(hopBoard(1).lives > hopBoard(3).lives);
 });
 
 test('lily cross adds pads and lanes, and shortens the hops, as the level rises', () => {
@@ -1058,7 +1059,7 @@ test('4th grade Move turns multiplying into skip-count movement', () => {
   assert.match(grade4Prompt(prime, 'hunt', [15, 7, 9, 21]), /^Which number is prime: 15, 7, 9, or 21\? Say the answer/);
 });
 
-test('a wrong sky-flight gate turns the plane back and keeps the question', () => {
+test('a wrong sky-flight gate turns the glider back and keeps the question', () => {
   const state = createFlight();
   const ask = {
     round: 0,

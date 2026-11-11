@@ -83,16 +83,16 @@ export function registerHelpers(rt) {
     bridge: 'Answer, then hold to grow the stick.',
     maze: 'Listen, then pick the word to add time.',
     chase: 'Listen, then eat the right berries.',
-    hop: 'Bounce up the leaves, then hop on the right one.',
+    hop: 'Bounce up the leaves, then hop on the right one. Falls and wrong landings cost a life.',
     toast: 'Listen, then pop the right toast.',
     glide: 'Listen, then grab the right gem.',
     aisle: 'Listen, then find it in the market.',
-    lily: 'Listen, then hop to the right pad.',
+    lily: 'Listen, then hop to the right flower pot.',
     bust: 'Listen, then bust the ghost with the right answer.',
     mole: 'Listen, then whack the right mole.',
     cube: 'Listen, then touch the right cube.',
     stack: 'Listen, then drop the right block.',
-    lamp: 'Listen, then set the right stone.',
+    lamp: 'Listen, then catch the right glow bug.',
     rally: 'Listen, then tap the right answer.',
     bike: 'Listen, then tap the right answer.',
     flight: 'Listen, then fly through the word.',
@@ -225,7 +225,7 @@ export function registerHelpers(rt) {
   const sidecarLines = {
     bike: ['Good.', 'Not yet. The bike speeds up.'],
     rally: ['Yes! Turbo!', 'Not yet. The car slows down.'],
-    flight: ['Yes! Through the gate.', 'Not yet. The plane turns back.'],
+    flight: ['Yes! Through the gate.', 'Not yet. The glider turns back.'],
     walk: ['You found it.', 'Not yet. Walk to another one.']
   };
   function focusHeading() {

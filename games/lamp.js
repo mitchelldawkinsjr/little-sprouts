@@ -1,13 +1,12 @@
 /**
- * Light the lamp — stones wait on the shore. The right one rises into the tower.
- * A wrong stone splashes. Night falls when the round is done, and the lamp turns on.
- * The island, the water, and the lamp follow the pure CSS lighthouse.
- * These stones and the questions are drawn here.
+ * Light the lamp — glow bugs wait on the grass. The right one rises into
+ * the firefly jar on the stump. A wrong bug flutters away. When the round
+ * is done, the jar glows. Little Sprouts original garden scene.
  */
 import { questionHolding } from '../lib/hold.js?v=hold2';
 import { lampPick, lampSky, lampStones } from '../logic.mjs?v=lamp';
 
-const ROCK = ['#e7d3b0', '#d7b48a', '#c4a574', '#b08968', '#efe0c4'];
+const ROCK = ['#f4e8a0', '#e8d070', '#d4c45a', '#c8b84a', '#fff2b0'];
 
 let active = null;
 
@@ -102,7 +101,7 @@ export function mountLamp(root, { board = {}, reduced, freePlay, rounds = 5, nex
   };
   const host = document.createElement('div');
   host.className = 'arcade lamp-play';
-  host.innerHTML = `<div class="lamp" role="application" aria-label="Tap the stone with the right answer. It rises into the lighthouse."><canvas></canvas></div>`;
+  host.innerHTML = `<div class="lamp" role="application" aria-label="Tap the glow bug with the right answer. It rises into the firefly jar."><canvas></canvas></div>`;
   root.replaceChildren(host);
   const stage = host.querySelector('.lamp');
   const canvas = stage.querySelector('canvas');
@@ -222,145 +221,127 @@ export function mountLamp(root, { board = {}, reduced, freePlay, rounds = 5, nex
   const paintStone = (stone, x, y, r) => {
     ctx.save();
     ctx.translate(x, y + Math.sin((stone.splash || 0) * Math.PI) * r * 0.45);
-    ctx.fillStyle = 'rgba(20, 40, 48, 0.18)';
+    const glow = stone.fill || ROCK[0];
+    ctx.fillStyle = 'rgba(255, 230, 120, 0.28)';
     ctx.beginPath();
-    ctx.ellipse(0, r * 0.72, r * 0.7, r * 0.22, 0, 0, Math.PI * 2);
+    ctx.arc(0, 0, r * 1.35, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = stone.fill || ROCK[0];
+    ctx.fillStyle = glow;
     ctx.beginPath();
-    ctx.ellipse(0, 0, r, r * 0.82, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 0, r * 0.72, r * 0.55, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = 'rgba(255, 250, 240, 0.35)';
+    ctx.fillStyle = '#2a3020';
     ctx.beginPath();
-    ctx.ellipse(-r * 0.28, -r * 0.22, r * 0.28, r * 0.16, -0.4, 0, Math.PI * 2);
+    ctx.arc(-r * 0.18, -r * 0.08, r * 0.1, 0, Math.PI * 2);
+    ctx.arc(r * 0.18, -r * 0.08, r * 0.1, 0, Math.PI * 2);
     ctx.fill();
-    if (stone.shape) drawMark(ctx, stone.shape, 0, 0, r * 2.1, ink(stone.fill || ROCK[0]));
+    ctx.strokeStyle = 'rgba(40, 50, 30, 0.45)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.55, r * 0.1);
+    ctx.quadraticCurveTo(-r * 0.9, -r * 0.2, -r * 0.7, -r * 0.55);
+    ctx.moveTo(r * 0.55, r * 0.1);
+    ctx.quadraticCurveTo(r * 0.9, -r * 0.2, r * 0.7, -r * 0.55);
+    ctx.stroke();
+    if (stone.shape) drawMark(ctx, stone.shape, 0, r * 0.55, r * 1.6, '#244b3d');
     else if (stone.label) {
-      ctx.fillStyle = ink(stone.fill || ROCK[0]);
+      ctx.fillStyle = '#244b3d';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      fitFont(ctx, stone.label, r * 1.5, Math.max(12, r * 0.55));
-      ctx.fillText(stone.label, 0, 2);
+      fitFont(ctx, stone.label, r * 1.7, Math.max(11, r * 0.5));
+      ctx.fillText(stone.label, 0, r * 0.95);
     }
     ctx.restore();
   };
   const paintCourse = (choice, box) => {
-    ctx.fillStyle = choice.fill || ROCK[0];
-    roundBox(ctx, box.x, box.y, box.w, box.h, 4);
+    ctx.fillStyle = 'rgba(255, 230, 120, 0.35)';
+    ctx.beginPath();
+    ctx.ellipse(box.x + box.w / 2, box.y + box.h / 2, box.w * 0.55, box.h * 0.55, 0, 0, Math.PI * 2);
     ctx.fill();
-    if (choice.shape) drawMark(ctx, choice.shape, box.x + box.w / 2, box.y + box.h / 2, Math.min(box.w, box.h) * 1.6, ink(choice.fill || ROCK[0]));
+    ctx.fillStyle = choice.fill || ROCK[0];
+    ctx.beginPath();
+    ctx.ellipse(box.x + box.w / 2, box.y + box.h / 2, box.w * 0.32, box.h * 0.32, 0, 0, Math.PI * 2);
+    ctx.fill();
+    if (choice.shape) drawMark(ctx, choice.shape, box.x + box.w / 2, box.y + box.h / 2, Math.min(box.w, box.h) * 1.2, '#244b3d');
     else if (choice.label) {
-      ctx.fillStyle = ink(choice.fill || ROCK[0]);
+      ctx.fillStyle = '#244b3d';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      fitFont(ctx, choice.label, box.w * 0.84, Math.min(16, box.h * 0.7));
+      fitFont(ctx, choice.label, box.w * 0.9, Math.min(14, box.h * 0.65));
       ctx.fillText(choice.label, box.x + box.w / 2, box.y + box.h / 2);
     }
-  };
-  const paintTree = (x, y, scale) => {
-    ctx.fillStyle = mix('#5c3a4a', '#2a1c28', sky);
-    roundBox(ctx, x - 7 * scale, y - 70 * scale, 14 * scale, 78 * scale, 6);
-    ctx.fill();
-    ctx.fillStyle = mix('#7ea34a', '#243024', sky);
-    ctx.beginPath();
-    ctx.arc(x - 16 * scale, y - 62 * scale, 22 * scale, 0, Math.PI * 2);
-    ctx.arc(x + 14 * scale, y - 70 * scale, 20 * scale, 0, Math.PI * 2);
-    ctx.arc(x, y - 86 * scale, 18 * scale, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = mix('#e0a24a', '#3a2a18', sky);
-    ctx.beginPath();
-    ctx.arc(x + 8 * scale, y - 78 * scale, 8 * scale, 0, Math.PI * 2);
-    ctx.fill();
   };
   const draw = (w, h) => {
     view = { w, h };
     const layout = tower();
-    const dayTop = mix('#f6c9a0', '#141b33', sky);
-    const dayBottom = mix('#f7efe4', '#1a2744', sky);
+    const dayTop = mix('#9ec8e0', '#1a2040', sky);
+    const dayBottom = mix('#d8e8c8', '#243048', sky);
     const wash = ctx.createLinearGradient(0, 0, 0, h);
     wash.addColorStop(0, dayTop);
-    wash.addColorStop(0.62, dayBottom);
+    wash.addColorStop(0.55, dayBottom);
     ctx.fillStyle = wash;
     ctx.fillRect(0, 0, w, h);
-    if (sky > 0.35) {
-      ctx.fillStyle = `rgba(255, 250, 240, ${0.15 + sky * 0.7})`;
-      for (let i = 0; i < 18; i++) {
+    if (sky > 0.3) {
+      ctx.fillStyle = `rgba(255, 245, 180, ${0.2 + sky * 0.55})`;
+      for (let i = 0; i < 22; i++) {
         const sx = ((i * 97) % 100) / 100 * w;
-        const sy = ((i * 53) % 40) / 100 * h * 0.42;
-        ctx.fillRect(sx, sy, 2, 2);
+        const sy = ((i * 53) % 45) / 100 * h * 0.5;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 1.5 + (i % 3) * 0.6, 0, Math.PI * 2);
+        ctx.fill();
       }
     }
-    const sunX = w * (0.72 - sky * 0.38);
-    const sunY = h * (0.2 + sky * 0.38);
-    ctx.fillStyle = sky > 0.72 ? '#f4f0e4' : '#ffd27a';
+    ctx.fillStyle = mix('#7f9f62', '#2a3c28', sky);
+    ctx.fillRect(0, h * 0.68, w, h * 0.32);
+    ctx.fillStyle = mix('#8eae62', '#324830', sky);
     ctx.beginPath();
-    ctx.arc(sunX, sunY, sky > 0.72 ? 16 : 28, 0, Math.PI * 2);
+    ctx.ellipse(w * 0.5, h * 0.78, w * 0.42, h * 0.1, 0, 0, Math.PI * 2);
     ctx.fill();
-    const sea = mix('#8ec6d4', '#163044', sky);
-    ctx.fillStyle = sea;
-    ctx.fillRect(0, h * 0.7, w, h * 0.3);
-    ctx.fillStyle = mix('#c9e4ea', '#20485c', sky);
-    ctx.globalAlpha = 0.45;
+    const stumpX = w / 2;
+    const stumpY = layout.baseY + 8;
+    ctx.fillStyle = mix('#8b6540', '#4a3220', sky * 0.3);
+    roundBox(ctx, stumpX - 36, stumpY, 72, 28, 8);
+    ctx.fill();
+    ctx.fillStyle = mix('#a07848', '#5a3c28', sky * 0.25);
     ctx.beginPath();
-    ctx.moveTo(0, h * 0.74);
-    for (let x = 0; x <= w; x += 16) ctx.lineTo(x, h * 0.74 + Math.sin(x * 0.04 + spin * 2) * 3);
-    ctx.lineTo(w, h);
-    ctx.lineTo(0, h);
+    ctx.ellipse(stumpX, stumpY + 4, 40, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+    const jarX = stumpX;
+    const jarBottom = layout.baseY;
+    const jarTop = courses.length ? courseBox(courses.length - 1, layout).y - 18 : jarBottom - 40;
+    const jarH = Math.max(48, jarBottom - jarTop);
+    const jarW = Math.min(88, w * 0.2);
+    ctx.fillStyle = mix('#d8ece8', '#6a8a88', sky * 0.25);
+    ctx.globalAlpha = 0.55 + sky * 0.2;
+    roundBox(ctx, jarX - jarW / 2, jarTop, jarW, jarH, 18);
     ctx.fill();
     ctx.globalAlpha = 1;
-    ctx.fillStyle = mix('#8eae62', '#243428', sky);
-    ctx.beginPath();
-    ctx.ellipse(w / 2, h * 0.78, w * 0.34, h * 0.1, 0, 0, Math.PI * 2);
-    ctx.fill();
-    paintTree(w * 0.24, h * 0.7, Math.min(1.15, w / 520));
-    paintTree(w * 0.76, h * 0.72, Math.min(1, w / 560));
-    const lampTop = courses.length ? courseBox(courses.length - 1, layout).y : layout.baseY;
-    ctx.fillStyle = mix('#c4a574', '#6d5438', sky * 0.35);
-    roundBox(ctx, layout.x - 8, layout.baseY, layout.cw + 16, 16, 3);
+    ctx.strokeStyle = mix('#6a8a82', '#3a5050', sky * 0.3);
+    ctx.lineWidth = 3;
+    roundBox(ctx, jarX - jarW / 2, jarTop, jarW, jarH, 18);
+    ctx.stroke();
+    ctx.fillStyle = mix('#c4a070', '#6a5030', sky * 0.2);
+    roundBox(ctx, jarX - jarW * 0.28, jarTop - 10, jarW * 0.56, 14, 4);
     ctx.fill();
     courses.forEach((choice, i) => paintCourse(choice, courseBox(i, layout)));
-    const roomY = lampTop - 34;
-    const roomX = layout.x + layout.cw / 2;
-    ctx.fillStyle = mix('#f4efe6', '#d7c7a4', sky * 0.2);
-    roundBox(ctx, roomX - 16, roomY, 32, 26, 3);
-    ctx.fill();
-    const glow = sky > 0.55 ? mix('#ffb15a', '#ffe08a', Math.min(1, (sky - 0.55) / 0.35)) : '#c9bba6';
-    ctx.fillStyle = glow;
-    ctx.fillRect(roomX - 10, roomY + 6, 20, 12);
-    ctx.fillStyle = mix('#e15b4a', '#8a3030', sky * 0.2);
-    ctx.beginPath();
-    ctx.moveTo(roomX - 20, roomY);
-    ctx.lineTo(roomX, roomY - 16);
-    ctx.lineTo(roomX + 20, roomY);
-    ctx.fill();
-    if (sky > 0.62) {
+    if (sky > 0.5) {
       ctx.save();
-      ctx.translate(roomX, roomY + 12);
-      ctx.rotate(Math.sin(spin) * 0.55);
-      ctx.globalAlpha = 0.28 + (sky - 0.62) * 0.5;
-      ctx.fillStyle = '#ffe7a8';
+      ctx.globalAlpha = 0.25 + (sky - 0.5) * 0.55;
+      ctx.fillStyle = '#ffe08a';
       ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.lineTo(150, -36);
-      ctx.lineTo(150, 36);
-      ctx.fill();
-      ctx.rotate(Math.PI);
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.lineTo(120, -28);
-      ctx.lineTo(120, 28);
+      ctx.ellipse(jarX, jarTop + jarH * 0.45, jarW * 0.7, jarH * 0.55, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
     if (flyer) {
-      const r = 28;
+      const r = 26;
       paintStone(flyer.choice, flyer.x, flyer.y, r);
     }
     const spots = shore();
     choices.forEach((stone, i) => {
       const spot = spots[i];
       if (!spot) return;
-      const bob = reduced ? 0 : Math.sin(spin * 2 + i) * 2;
+      const bob = reduced ? 0 : Math.sin(spin * 2.4 + i) * 3;
       paintStone(stone, spot.x, spot.y + bob, spot.r);
     });
   };

@@ -1,45 +1,42 @@
 /**
- * Garden chase — the maze, the continuous steering, the yellow chomper,
- * and the ghosts follow the HTML5 Pac-Man pen. The berries are the
- * learning pieces: eat only the ones that match.
+ * Garden chase — steer a beetle through hedge paths. Eat only the berries
+ * that match. Stay clear of the snails. Little Sprouts original maze and art.
  */
 import { questionHolding } from '../lib/hold.js?v=hold2';
 import { esc, shuffle } from '../logic.mjs?v=structure3';
 
 const UNIT = 10;
 const STEP = 2;
-const TUNNEL_Y = 100;
 const WALL = 0;
-const BISCUIT = 1;
+const PATH = 1;
 const EMPTY = 2;
-const PILL = 4;
+/* Garden hedge maze: beds of hedges with winding dirt paths. No wrap tunnels. */
 const MAP = [
   [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  [0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-  [0, 4, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 4, 0],
-  [0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0],
+  [0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0],
+  [0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0],
+  [0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0],
+  [0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0],
+  [0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 0],
+  [0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0],
+  [0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0],
+  [0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0],
   [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-  [0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0],
-  [0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0],
-  [0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0],
-  [2, 2, 2, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 2, 2, 2],
-  [0, 0, 0, 0, 1, 0, 1, 0, 0, 3, 0, 0, 1, 0, 1, 0, 0, 0, 0],
-  [2, 2, 2, 2, 1, 1, 1, 0, 3, 3, 3, 0, 1, 1, 1, 2, 2, 2, 2],
-  [0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0],
-  [2, 2, 2, 0, 1, 0, 1, 1, 1, 2, 1, 1, 1, 0, 1, 0, 2, 2, 2],
-  [0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0],
-  [0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-  [0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0],
-  [0, 4, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 4, 0],
-  [0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0],
-  [0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0],
-  [0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0],
-  [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+  [0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0],
+  [0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0],
+  [0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0],
+  [0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0],
+  [0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0],
+  [0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0],
+  [0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0],
+  [0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0],
+  [0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0],
+  [0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0],
   [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 ];
 const ROWS = MAP.length;
 const COLS = MAP[0].length;
-const GHOST_COLORS = ['#00ffde', '#ff0000', '#ffb8de', '#ffb847'];
+const SNAIL_COLORS = ['#8b6b4a', '#6a8f5a', '#a67c52', '#5c7a6e'];
 const DIRS = ['left', 'right', 'up', 'down'];
 
 let active = null;
@@ -105,13 +102,7 @@ function isWall(map, c, r) {
 
 function isFloor(map, c, r) {
   const kind = tile(map, c, r);
-  return kind === BISCUIT || kind === EMPTY || kind === PILL;
-}
-
-function wrap(body, dir) {
-  if (body.y !== TUNNEL_Y) return;
-  if (body.x >= 190 && dir === 'right') body.x = -10;
-  if (body.x <= -12 && dir === 'left') body.x = 190;
+  return kind === PATH || kind === EMPTY;
 }
 
 function perpendicular(dir) {
@@ -174,111 +165,91 @@ function drawMark(ctx, choice, x, y, s) {
   ctx.restore();
 }
 
-function mouth(dir, pos) {
-  const open = dir === 'right' ? rem(pos.x) < 5
-    : dir === 'left' ? rem(pos.x) < 5
-    : dir === 'down' || dir === 'up' ? rem(pos.y) < 5
-    : false;
-  if (!open) return { start: 0, end: 2, ccw: false };
-  if (dir === 'right') return { start: 0.25, end: 1.75, ccw: false };
-  if (dir === 'down') return { start: 0.75, end: 2.25, ccw: false };
-  if (dir === 'up') return { start: 1.25, end: 1.75, ccw: true };
-  return { start: 0.75, end: 1.25, ccw: true };
-}
-
-function drawChomper(ctx, x, y, s, dir, unit, dying) {
+function drawBeetle(ctx, x, y, s, dir, dying) {
   const cx = x + s / 2;
   const cy = y + s / 2;
-  ctx.fillStyle = '#ffff00';
+  const r = s * 0.38;
+  ctx.save();
+  ctx.translate(cx, cy);
+  const angle = dir === 'right' ? 0 : dir === 'left' ? Math.PI : dir === 'up' ? -Math.PI / 2 : dir === 'down' ? Math.PI / 2 : 0;
+  ctx.rotate(angle);
+  if (dying > 0) ctx.globalAlpha = Math.max(0.15, 1 - dying);
+  ctx.fillStyle = '#2f5c3a';
   ctx.beginPath();
-  ctx.moveTo(cx, cy);
-  if (dying > 0) ctx.arc(cx, cy, s / 2, 0, Math.PI * 2 * (1 - dying), true);
-  else {
-    const angle = mouth(dir, unit);
-    ctx.arc(cx, cy, s / 2, Math.PI * angle.start, Math.PI * angle.end, angle.ccw);
-  }
-  ctx.closePath();
+  ctx.ellipse(0, 0, r * 1.05, r * 0.78, 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.fillStyle = '#4a8a58';
+  ctx.beginPath();
+  ctx.ellipse(-r * 0.15, 0, r * 0.55, r * 0.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#1d3b28';
+  ctx.lineWidth = Math.max(1.5, s * 0.06);
+  ctx.beginPath();
+  ctx.moveTo(0, -r * 0.7);
+  ctx.lineTo(0, r * 0.7);
+  ctx.stroke();
+  ctx.fillStyle = '#244b3d';
+  ctx.beginPath();
+  ctx.arc(r * 0.55, -r * 0.18, r * 0.14, 0, Math.PI * 2);
+  ctx.arc(r * 0.55, r * 0.18, r * 0.14, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#1d3b28';
+  ctx.beginPath();
+  ctx.moveTo(r * 0.85, -r * 0.35);
+  ctx.quadraticCurveTo(r * 1.25, -r * 0.55, r * 1.35, -r * 0.2);
+  ctx.moveTo(r * 0.85, r * 0.35);
+  ctx.quadraticCurveTo(r * 1.25, r * 0.55, r * 1.35, r * 0.2);
+  ctx.stroke();
+  ctx.restore();
 }
 
-function drawGhost(ctx, x, y, s, color, dir, tick) {
-  const left = x;
-  const top = y;
-  const base = top + s - 3;
-  const inc = s / 10;
-  const high = tick % 10 > 5 ? 3 : -3;
-  const low = tick % 10 > 5 ? -3 : 3;
+function drawSnail(ctx, x, y, s, color, dir, tick) {
+  const cx = x + s / 2;
+  const cy = y + s / 2;
+  const bob = Math.sin(tick / 8) * s * 0.04;
+  ctx.save();
+  ctx.translate(cx, cy + bob);
+  const face = dir === 'left' ? -1 : 1;
+  ctx.scale(face, 1);
+  ctx.fillStyle = '#c4a882';
+  ctx.beginPath();
+  ctx.ellipse(s * 0.08, s * 0.18, s * 0.32, s * 0.16, 0, 0, Math.PI * 2);
+  ctx.fill();
   ctx.fillStyle = color;
   ctx.beginPath();
-  ctx.moveTo(left, base);
-  ctx.quadraticCurveTo(left, top, left + s / 2, top);
-  ctx.quadraticCurveTo(left + s, top, left + s, base);
-  ctx.quadraticCurveTo(left + s - inc, base + high, left + s - inc * 2, base);
-  ctx.quadraticCurveTo(left + s - inc * 3, base + low, left + s - inc * 4, base);
-  ctx.quadraticCurveTo(left + s - inc * 5, base + high, left + s - inc * 6, base);
-  ctx.quadraticCurveTo(left + s - inc * 7, base + low, left + s - inc * 8, base);
-  ctx.quadraticCurveTo(left + s - inc * 9, base + high, left, base);
-  ctx.closePath();
+  ctx.arc(-s * 0.05, 0, s * 0.28, 0, Math.PI * 2);
   ctx.fill();
-  const look = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] }[dir] || [0, 0];
-  const shift = s / 12;
-  ctx.fillStyle = '#fff';
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+  ctx.lineWidth = Math.max(1.5, s * 0.05);
   ctx.beginPath();
-  ctx.arc(left + s * 0.32, top + s * 0.32, s / 6, 0, Math.PI * 2);
-  ctx.arc(left + s * 0.72, top + s * 0.32, s / 6, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#000';
+  ctx.arc(-s * 0.05, 0, s * 0.16, 0.4, Math.PI * 1.6);
+  ctx.stroke();
+  ctx.strokeStyle = '#5a4632';
   ctx.beginPath();
-  ctx.arc(left + s * 0.32 + look[0] * shift, top + s * 0.32 + look[1] * shift, s / 15, 0, Math.PI * 2);
-  ctx.arc(left + s * 0.72 + look[0] * shift, top + s * 0.32 + look[1] * shift, s / 15, 0, Math.PI * 2);
+  ctx.moveTo(s * 0.28, s * 0.02);
+  ctx.quadraticCurveTo(s * 0.4, -s * 0.22, s * 0.34, -s * 0.32);
+  ctx.moveTo(s * 0.22, s * 0.06);
+  ctx.quadraticCurveTo(s * 0.32, -s * 0.12, s * 0.28, -s * 0.24);
+  ctx.stroke();
+  ctx.fillStyle = '#24332c';
+  ctx.beginPath();
+  ctx.arc(s * 0.3, s * 0.1, s * 0.04, 0, Math.PI * 2);
   ctx.fill();
+  ctx.restore();
 }
 
-function outlineWalls(ctx, map, s, ox, oy) {
-  const solid = (c, r) => {
-    if (r === TUNNEL_Y / UNIT && (c < 0 || c >= COLS)) return false;
-    if (r < 0 || c < 0 || r >= ROWS || c >= COLS) return true;
-    return map[r][c] === WALL;
-  };
-  const segs = [];
+function drawHedges(ctx, map, cell, ox, oy) {
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
-      if (!solid(c, r)) continue;
-      if (!solid(c, r - 1)) segs.push([c, r, c + 1, r]);
-      if (!solid(c + 1, r)) segs.push([c + 1, r, c + 1, r + 1]);
-      if (!solid(c, r + 1)) segs.push([c + 1, r + 1, c, r + 1]);
-      if (!solid(c - 1, r)) segs.push([c, r + 1, c, r]);
+      if (map[r][c] !== WALL) continue;
+      const x = ox + c * cell;
+      const y = oy + r * cell;
+      ctx.fillStyle = (c + r) % 2 ? '#3d6b45' : '#355f3d';
+      ctx.fillRect(x, y, cell + 0.5, cell + 0.5);
+      ctx.fillStyle = 'rgba(180, 220, 140, 0.18)';
+      ctx.fillRect(x + cell * 0.15, y + cell * 0.12, cell * 0.35, cell * 0.28);
     }
   }
-  const from = new Map();
-  segs.forEach((seg, index) => {
-    const key = `${seg[0]},${seg[1]}`;
-    if (!from.has(key)) from.set(key, []);
-    from.get(key).push(index);
-  });
-  const used = new Array(segs.length).fill(false);
-  ctx.beginPath();
-  segs.forEach((seg, index) => {
-    if (used[index]) return;
-    used[index] = true;
-    ctx.moveTo(ox + seg[0] * s, oy + seg[1] * s);
-    let x = seg[2];
-    let y = seg[3];
-    ctx.lineTo(ox + x * s, oy + y * s);
-    for (let guard = 0; guard < segs.length; guard++) {
-      const next = (from.get(`${x},${y}`) || []).find(id => !used[id]);
-      if (next == null) break;
-      used[next] = true;
-      x = segs[next][2];
-      y = segs[next][3];
-      ctx.lineTo(ox + x * s, oy + y * s);
-    }
-  });
-  ctx.strokeStyle = '#0000ff';
-  ctx.lineWidth = Math.max(2, s * 0.16);
-  ctx.lineJoin = 'round';
-  ctx.lineCap = 'round';
-  ctx.stroke();
 }
 
 export function mountChase(root, { prompt, choices = [], copies = 2, playerSpeed = 3.4, bugSpeed = 2.15, bugs = 1, reduced, onDone, onMiss }) {
@@ -297,23 +268,19 @@ export function mountChase(root, { prompt, choices = [], copies = 2, playerSpeed
   };
   active = session;
   const calm = reduced ? 0.62 : 1;
-  const playerRate = (6 * playerSpeed / 3.4) * calm;
-  const bugRate = (6 * bugSpeed / 2.15) * calm;
-  root.innerHTML = `<div class="chase-play"><div class="chase" role="application" aria-label="${esc(prompt)}. Steer through the maze. Eat only the matching berries. Stay away from the ghosts."><canvas></canvas></div><div class="steer pad"><button type="button" class="steer-btn" data-dir="left" aria-label="Move left">←</button><button type="button" class="steer-btn" data-dir="up" aria-label="Move up">↑</button><button type="button" class="steer-btn" data-dir="down" aria-label="Move down">↓</button><button type="button" class="steer-btn" data-dir="right" aria-label="Move right">→</button></div></div>`;
+  const playerRate = (5.2 * playerSpeed / 3.4) * calm;
+  const bugRate = (4.4 * bugSpeed / 2.15) * calm;
+  root.innerHTML = `<div class="chase-play"><div class="chase" role="application" aria-label="${esc(prompt)}. Steer through the garden paths. Eat only the matching berries. Stay away from the snails."><canvas></canvas></div><div class="steer pad"><button type="button" class="steer-btn" data-dir="left" aria-label="Move left">←</button><button type="button" class="steer-btn" data-dir="up" aria-label="Move up">↑</button><button type="button" class="steer-btn" data-dir="down" aria-label="Move down">↓</button><button type="button" class="steer-btn" data-dir="right" aria-label="Move right">→</button></div></div>`;
   const stage = root.querySelector('.chase');
   const canvas = stage.querySelector('canvas');
   const ctx = canvas.getContext('2d');
   const map = MAP.map(row => row.slice());
-  const blocked = new Set(['9,12', '7,8', '9,8', '11,8']);
   const openSpots = [];
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
-      if (blocked.has(`${c},${r}`)) continue;
-      if (MAP[r][c] === PILL || MAP[r][c] === BISCUIT) openSpots.push([c, r, MAP[r][c] === PILL ? 0 : 1]);
+      if (MAP[r][c] === PATH) openSpots.push([c, r]);
     }
   }
-  const pills = shuffle(openSpots.filter(spot => spot[2] === 0));
-  const dots = shuffle(openSpots.filter(spot => spot[2] === 1));
   const list = choices.length ? choices : [{ label: '?', ok: true }];
   const berries = [];
   list.forEach(choice => {
@@ -321,7 +288,7 @@ export function mountChase(root, { prompt, choices = [], copies = 2, playerSpeed
     for (let i = 0; i < n; i++) berries.push({ label: String(choice.label), ok: !!choice.ok, fill: choice.fill || '', shape: choice.shape || '', c: 1, r: 1, gone: false, flash: 0 });
   });
   const spots = [];
-  const pool = [...pills, ...dots];
+  const pool = shuffle(openSpots.slice());
   for (const min of [6, 4, 3, 2, 1, 0]) {
     pool.forEach(cell => {
       if (spots.length >= berries.length) return;
@@ -334,16 +301,20 @@ export function mountChase(root, { prompt, choices = [], copies = 2, playerSpeed
     const spot = spots[i] || pool[i % pool.length] || [1, 1];
     berry.c = spot[0];
     berry.r = spot[1];
-    if (map[berry.r][berry.c] === BISCUIT) map[berry.r][berry.c] = EMPTY;
+    if (map[berry.r][berry.c] === PATH) map[berry.r][berry.c] = EMPTY;
   });
-  const critters = Array.from({ length: Math.max(1, Math.min(4, bugs)) }, (_, i) => ({
-    x: [70, 90, 110, 50][i],
-    y: 80,
-    dir: perpendicular('left'),
-    due: perpendicular('up'),
-    color: GHOST_COLORS[i]
-  }));
-  const player = { x: 90, y: 120, dir: 'none', due: '' };
+  const startCells = [[9, 9], [3, 5], [15, 5], [9, 15]];
+  const critters = Array.from({ length: Math.max(1, Math.min(4, bugs)) }, (_, i) => {
+    const cell = startCells[i] || startCells[0];
+    return {
+      x: cell[0] * UNIT,
+      y: cell[1] * UNIT,
+      dir: perpendicular('left'),
+      due: perpendicular('up'),
+      color: SNAIL_COLORS[i]
+    };
+  });
+  const player = { x: 9 * UNIT, y: 19 * UNIT, dir: 'none', due: '' };
   let missed = false;
   let finished = false;
   let dying = 0;
@@ -362,15 +333,15 @@ export function mountChase(root, { prompt, choices = [], copies = 2, playerSpeed
     session.cleanups.push(() => clearTimeout(timer));
   };
   const resetPlayer = () => {
-    player.x = 90;
-    player.y = 120;
+    player.x = 9 * UNIT;
+    player.y = 19 * UNIT;
     player.dir = 'none';
     player.due = '';
     dying = 0;
   };
-  const gap = ghost => Math.hypot(ghost.x - player.x, ghost.y - player.y);
-  const touching = () => critters.some(ghost => gap(ghost) < 10);
-  const passed = () => critters.every(ghost => gap(ghost) >= 24);
+  const gap = snail => Math.hypot(snail.x - player.x, snail.y - player.y);
+  const touching = () => critters.some(snail => gap(snail) < 10);
+  const passed = () => critters.every(snail => gap(snail) >= 24);
   const caught = () => {
     if (finished || dying > 0 || !armed) return;
     missed = true;
@@ -395,9 +366,6 @@ export function mountChase(root, { prompt, choices = [], copies = 2, playerSpeed
     }
   };
   const eatHere = () => {
-    const c = Math.round(player.x / UNIT);
-    const r = Math.round(player.y / UNIT);
-    if (tile(map, c, r) === BISCUIT) map[r][c] = EMPTY;
     berries.forEach(berry => {
       if (berry.gone) return;
       const dx = player.x - berry.c * UNIT;
@@ -422,33 +390,31 @@ export function mountChase(root, { prompt, choices = [], copies = 2, playerSpeed
     }
     player.x = ahead.x;
     player.y = ahead.y;
-    wrap(player, player.dir);
     eatHere();
   };
-  const stepGhost = ghost => {
+  const stepSnail = snail => {
     let tries = 0;
     const go = () => {
       if (tries++ > 6) return;
       let next = null;
-      if (ghost.due !== ghost.dir) {
-        const trial = moved(ghost, ghost.due);
-        const cell = nextCell(trial, ghost.due);
-        if (onGrid(ghost) && isFloor(map, cell.c, cell.r)) {
-          ghost.dir = ghost.due;
+      if (snail.due !== snail.dir) {
+        const trial = moved(snail, snail.due);
+        const cell = nextCell(trial, snail.due);
+        if (onGrid(snail) && isFloor(map, cell.c, cell.r)) {
+          snail.dir = snail.due;
           next = trial;
         }
       }
-      if (!next) next = moved(ghost, ghost.dir);
-      const cell = nextCell(next, ghost.dir);
-      if (onGrid(ghost) && isWall(map, cell.c, cell.r)) {
-        ghost.due = perpendicular(ghost.dir);
+      if (!next) next = moved(snail, snail.dir);
+      const cell = nextCell(next, snail.dir);
+      if (onGrid(snail) && isWall(map, cell.c, cell.r)) {
+        snail.due = perpendicular(snail.dir);
         go();
         return;
       }
-      ghost.x = next.x;
-      ghost.y = next.y;
-      wrap(ghost, ghost.dir);
-      ghost.due = perpendicular(ghost.dir);
+      snail.x = next.x;
+      snail.y = next.y;
+      snail.due = perpendicular(snail.dir);
     };
     go();
   };
@@ -471,23 +437,22 @@ export function mountChase(root, { prompt, choices = [], copies = 2, playerSpeed
     const ox = (width - cell * COLS) / 2;
     const oy = (height - cell * ROWS) / 2;
     const at = (x, y) => [ox + (x / UNIT) * cell, oy + (y / UNIT) * cell];
-    ctx.fillStyle = '#000';
+    ctx.fillStyle = '#c9b896';
     ctx.fillRect(0, 0, width, height);
-    outlineWalls(ctx, map, cell, ox, oy);
     for (let r = 0; r < ROWS; r++) {
       for (let c = 0; c < COLS; c++) {
-        if (map[r][c] !== BISCUIT) continue;
-        if (berries.some(berry => !berry.gone && berry.c === c && berry.r === r)) continue;
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(ox + c * cell + cell / 2.5, oy + r * cell + cell / 2.5, Math.max(2, cell / 6), Math.max(2, cell / 6));
+        if (map[r][c] === WALL) continue;
+        ctx.fillStyle = (c + r) % 2 ? '#e4d4a8' : '#ddcca0';
+        ctx.fillRect(ox + c * cell, oy + r * cell, cell + 0.5, cell + 0.5);
       }
     }
-    critters.forEach(ghost => {
-      const [x, y] = at(ghost.x, ghost.y);
-      drawGhost(ctx, x, y, cell, ghost.color, ghost.dir, tick);
+    drawHedges(ctx, map, cell, ox, oy);
+    critters.forEach(snail => {
+      const [x, y] = at(snail.x, snail.y);
+      drawSnail(ctx, x, y, cell, snail.color, snail.dir, tick);
     });
     const [px, py] = at(player.x, player.y);
-    drawChomper(ctx, px, py, cell, player.dir === 'none' ? 'left' : player.dir, player, dying);
+    drawBeetle(ctx, px, py, cell, player.dir === 'none' ? 'up' : player.dir, dying);
     berries.forEach(berry => {
       if (berry.gone && berry.flash <= 0) return;
       const [x, y] = at(berry.c * UNIT, berry.r * UNIT);
@@ -555,14 +520,14 @@ export function mountChase(root, { prompt, choices = [], copies = 2, playerSpeed
       if (dying === 0) resetPlayer();
     } else if (!finished && !questionHolding()) {
       let playerSteps = 0;
-      let ghostSteps = 0;
+      let snailSteps = 0;
       [playerAcc, playerSteps] = takeSteps(playerAcc, playerRate, dt);
-      [ghostAcc, ghostSteps] = takeSteps(ghostAcc, bugRate, dt);
-      const cycles = Math.max(playerSteps, ghostSteps);
+      [ghostAcc, snailSteps] = takeSteps(ghostAcc, bugRate, dt);
+      const cycles = Math.max(playerSteps, snailSteps);
       for (let i = 0; i < cycles; i++) {
         if (i < playerSteps) stepPlayer();
         if (dying > 0) break;
-        if (i < ghostSteps) critters.forEach(stepGhost);
+        if (i < snailSteps) critters.forEach(stepSnail);
         if (touching()) {
           if (armed) {
             caught();

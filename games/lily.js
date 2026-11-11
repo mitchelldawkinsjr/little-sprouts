@@ -1,8 +1,7 @@
 /**
- * Lily cross — hop one square at a time across the road and the river,
- * then land on the lily pad with the right answer.
- * The lanes follow a Frogger-style grid. The frog, logs, cars, and
- * questions are drawn here.
+ * Lily cross — hop a turtle across garden beds and a creek, then land on
+ * the flower pot with the right answer. Rolling apples and creek mist are
+ * the hazards. Ride the floating pots. Little Sprouts original scene.
  */
 import { questionHolding } from '../lib/hold.js?v=hold2';
 import { lilyPads, lilyRide, lilyOverlap } from '../logic.mjs?v=lily-cross';
@@ -24,31 +23,33 @@ function call(fn, arg) {
 function rowsFor(board) {
   const rows = [{ kind: 'home' }];
   for (let i = 0; i < board.rivers; i++) {
-    rows.push({ kind: 'river', dir: i % 2 === 0 ? 1 : -1, rate: board.speed * (0.62 + (i % 2) * 0.14) });
+    rows.push({ kind: 'creek', dir: i % 2 === 0 ? 1 : -1, rate: board.speed * (0.55 + (i % 2) * 0.12) });
   }
   rows.push({ kind: 'safe' });
   for (let i = 0; i < board.roads; i++) {
-    rows.push({ kind: 'road', dir: i % 2 === 0 ? -1 : 1, rate: board.speed * (0.92 + (i % 3) * 0.18) });
+    rows.push({ kind: 'path', dir: i % 2 === 0 ? -1 : 1, rate: board.speed * (0.78 + (i % 3) * 0.16) });
   }
   rows.push({ kind: 'start' });
   return rows;
 }
 
 function fillLane(row, index) {
-  if (row.kind !== 'road' && row.kind !== 'river') return;
-  const river = row.kind === 'river';
+  if (row.kind !== 'path' && row.kind !== 'creek') return;
+  const creek = row.kind === 'creek';
   const count = 2;
-  const base = river ? 1.85 : 0.95;
+  const base = creek ? 1.7 : 0.88;
   const gap = (COLS + base) / count;
   row.movers = [];
   for (let i = 0; i < count; i++) {
-    const w = base + (i % 2) * (river ? 0.45 : 0.28);
+    const w = base + (i % 2) * (creek ? 0.4 : 0.22);
     const x = row.dir > 0 ? -w * 0.3 + i * gap : COLS - i * gap;
     row.movers.push({
       x,
       w,
       speed: row.rate * row.dir,
-      hue: ['#e07a5f', '#3d6f8f', '#e0b15a', '#c46b8a'][(index + i) % 4]
+      hue: creek
+        ? ['#d98b4a', '#c45c6a', '#7a9e5c', '#e0b15a'][(index + i) % 4]
+        : ['#c4534a', '#e07a3f', '#d4a017', '#b85c38'][(index + i) % 4]
     });
   }
 }
@@ -94,30 +95,37 @@ function drawShape(ctx, shape, x, y, s, fill) {
   ctx.restore();
 }
 
-function drawFrog(ctx, x, y, s, face, squash) {
+function drawTurtle(ctx, x, y, s, face, squash) {
   ctx.save();
   ctx.translate(x, y);
   if (face === 'left') ctx.rotate(-Math.PI / 2);
   else if (face === 'right') ctx.rotate(Math.PI / 2);
   else if (face === 'down') ctx.rotate(Math.PI);
-  const belly = squash ? 0.22 : 0.34;
-  ctx.fillStyle = '#3e9a45';
+  const belly = squash ? 0.2 : 0.3;
+  ctx.fillStyle = '#5d8f4a';
   ctx.beginPath();
-  ctx.ellipse(0, s * 0.06, s * 0.4, s * belly, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, s * 0.08, s * 0.38, s * belly, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = '#b6e38a';
+  ctx.fillStyle = '#3f6b38';
   ctx.beginPath();
-  ctx.ellipse(0, s * 0.12, s * 0.2, s * belly * 0.55, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, s * 0.02, s * 0.32, s * belly * 0.85, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = '#f4fff2';
+  ctx.strokeStyle = '#2d4f28';
+  ctx.lineWidth = Math.max(1.5, s * 0.04);
   ctx.beginPath();
-  ctx.arc(-s * 0.16, -s * 0.2, s * 0.12, 0, Math.PI * 2);
-  ctx.arc(s * 0.16, -s * 0.2, s * 0.12, 0, Math.PI * 2);
+  ctx.moveTo(-s * 0.18, -s * 0.08);
+  ctx.lineTo(s * 0.18, s * 0.12);
+  ctx.moveTo(s * 0.18, -s * 0.08);
+  ctx.lineTo(-s * 0.18, s * 0.12);
+  ctx.stroke();
+  ctx.fillStyle = '#7f9f62';
+  ctx.beginPath();
+  ctx.ellipse(0, -s * 0.28, s * 0.16, s * 0.12, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = '#1d3324';
   ctx.beginPath();
-  ctx.arc(-s * 0.16, -s * 0.2, s * 0.055, 0, Math.PI * 2);
-  ctx.arc(s * 0.16, -s * 0.2, s * 0.055, 0, Math.PI * 2);
+  ctx.arc(-s * 0.06, -s * 0.3, s * 0.035, 0, Math.PI * 2);
+  ctx.arc(s * 0.06, -s * 0.3, s * 0.035, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }
@@ -152,7 +160,7 @@ export function mountLily(root, { board = {}, reduced, nextQuestion, onPrompt, o
   rows.forEach((row, index) => fillLane(row, index));
   const host = document.createElement('div');
   host.className = 'arcade lily-play';
-  host.innerHTML = `<div class="lily" role="application" aria-label="Hop across the road and the river. Land on the lily pad with the right answer."><canvas></canvas></div><div class="steer market-pad" aria-label="Hop"><button type="button" class="steer-btn" data-dir="up" aria-label="Hop up">↑</button><button type="button" class="steer-btn" data-dir="left" aria-label="Hop left">←</button><button type="button" class="steer-btn" data-dir="down" aria-label="Hop down">↓</button><button type="button" class="steer-btn" data-dir="right" aria-label="Hop right">→</button></div>`;
+  host.innerHTML = `<div class="lily" role="application" aria-label="Hop across the garden beds and the creek. Land on the flower pot with the right answer."><canvas></canvas></div><div class="steer market-pad" aria-label="Hop"><button type="button" class="steer-btn" data-dir="up" aria-label="Hop up">↑</button><button type="button" class="steer-btn" data-dir="left" aria-label="Hop left">←</button><button type="button" class="steer-btn" data-dir="down" aria-label="Hop down">↓</button><button type="button" class="steer-btn" data-dir="right" aria-label="Hop right">→</button></div>`;
   root.replaceChildren(host);
   const stage = host.querySelector('.lily');
   const canvas = stage.querySelector('canvas');
@@ -222,8 +230,8 @@ export function mountLily(root, { board = {}, reduced, nextQuestion, onPrompt, o
       call(onClear, !slipped);
       return;
     }
-    if (row.kind === 'river' && !lilyRide(frog.x, FROG, row.movers)) hurt('water');
-    if (row.kind === 'road' && row.movers.some(car => lilyOverlap(frog.x, FROG, car.x, car.w))) hurt('car');
+    if (row.kind === 'creek' && !lilyRide(frog.x, FROG, row.movers)) hurt('water');
+    if (row.kind === 'path' && row.movers.some(apple => lilyOverlap(frog.x, FROG, apple.x, apple.w))) hurt('car');
   };
   const tryHop = dir => {
     if (phase !== 'play' || hop || pause > 0) return;
@@ -253,53 +261,51 @@ export function mountLily(root, { board = {}, reduced, nextQuestion, onPrompt, o
     const ox = (w - cell * COLS) / 2;
     const oy = (h - cell * rows.length) / 2;
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = '#c5e4b4';
+    ctx.fillStyle = '#d7e8c8';
     ctx.fillRect(0, 0, w, h);
     rows.forEach((row, r) => {
       const y = oy + r * cell;
-      ctx.fillStyle = row.kind === 'road' ? '#d8c4a4' : row.kind === 'river' || row.kind === 'home' ? '#3f8fb8' : '#8fbf73';
+      ctx.fillStyle = row.kind === 'path' ? '#cbb892'
+        : row.kind === 'creek' || row.kind === 'home' ? '#6aa8c4'
+        : row.kind === 'start' ? '#a8c984'
+        : '#8fbf73';
       ctx.fillRect(ox, y, cell * COLS, cell + 0.5);
-      if (row.kind === 'road') {
-        ctx.strokeStyle = 'rgba(255,255,255,.7)';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([cell * 0.22, cell * 0.18]);
-        ctx.beginPath();
-        ctx.moveTo(ox + 6, y + cell / 2);
-        ctx.lineTo(ox + cell * COLS - 6, y + cell / 2);
-        ctx.stroke();
-        ctx.setLineDash([]);
+      if (row.kind === 'path') {
+        ctx.fillStyle = 'rgba(120, 90, 50, 0.18)';
+        for (let i = 0; i < COLS; i++) {
+          ctx.beginPath();
+          ctx.ellipse(ox + (i + 0.5) * cell, y + cell * 0.55, cell * 0.28, cell * 0.12, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
-      if (row.kind === 'river' || row.kind === 'home') {
-        ctx.strokeStyle = 'rgba(255,255,255,.28)';
+      if (row.kind === 'creek' || row.kind === 'home') {
+        ctx.strokeStyle = 'rgba(255,255,255,.35)';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(ox, y + cell * 0.35);
-        ctx.bezierCurveTo(ox + cell, y + cell * 0.15, ox + cell * 2, y + cell * 0.55, ox + cell * COLS, y + cell * 0.3);
+        ctx.moveTo(ox, y + cell * 0.4);
+        ctx.bezierCurveTo(ox + cell, y + cell * 0.2, ox + cell * 2.5, y + cell * 0.6, ox + cell * COLS, y + cell * 0.35);
         ctx.stroke();
       }
     });
     pads.forEach(pad => {
       const cx = ox + (pad.col + 0.5) * cell;
       const cy = oy + cell * 0.52;
+      ctx.fillStyle = '#8b5a3c';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(cx - cell * 0.28, cy - cell * 0.08, cell * 0.56, cell * 0.42, cell * 0.08);
+      else ctx.rect(cx - cell * 0.28, cy - cell * 0.08, cell * 0.56, cell * 0.42);
+      ctx.fill();
       ctx.fillStyle = pad.shape ? '#7fba6c' : (pad.fill || '#7fba6c');
       ctx.beginPath();
-      ctx.ellipse(cx, cy, cell * 0.42, cell * 0.3, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, cy - cell * 0.08, cell * 0.3, cell * 0.14, 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = '#2d6a38';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.fillStyle = '#2f7a3a';
-      ctx.beginPath();
-      ctx.ellipse(cx - cell * 0.22, cy + cell * 0.02, cell * 0.1, cell * 0.06, -0.6, 0, Math.PI * 2);
-      ctx.ellipse(cx + cell * 0.22, cy + cell * 0.02, cell * 0.1, cell * 0.06, 0.6, 0, Math.PI * 2);
-      ctx.fill();
-      if (pad.shape) drawShape(ctx, pad.shape, cx, cy - cell * 0.02, cell, '#244b3d');
+      if (pad.shape) drawShape(ctx, pad.shape, cx, cy + cell * 0.08, cell * 0.9, '#244b3d');
       else {
         ctx.fillStyle = ink(pad.fill || '#7fba6c');
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        fitFont(ctx, String(pad.label), cell * 0.72);
-        ctx.fillText(String(pad.label), cx, cy - cell * 0.02);
+        fitFont(ctx, String(pad.label), cell * 0.62);
+        ctx.fillText(String(pad.label), cx, cy + cell * 0.1);
       }
     });
     rows.forEach((row, r) => {
@@ -307,34 +313,31 @@ export function mountLily(root, { board = {}, reduced, nextQuestion, onPrompt, o
       row.movers.forEach(mover => {
         const x = ox + mover.x * cell;
         const y = oy + r * cell;
-        if (row.kind === 'river') {
-          ctx.fillStyle = '#8d5a3c';
+        if (row.kind === 'creek') {
+          const pw = mover.w * cell;
+          const px = x;
+          const py = y + cell * 0.22;
+          ctx.fillStyle = '#c47a4a';
           ctx.beginPath();
-          if (ctx.roundRect) ctx.roundRect(x, y + cell * 0.28, mover.w * cell, cell * 0.42, cell * 0.12);
-          else ctx.rect(x, y + cell * 0.28, mover.w * cell, cell * 0.42);
+          if (ctx.roundRect) ctx.roundRect(px, py, pw, cell * 0.48, cell * 0.1);
+          else ctx.rect(px, py, pw, cell * 0.48);
           ctx.fill();
-          ctx.strokeStyle = '#6a4128';
-          ctx.lineWidth = 2;
-          ctx.stroke();
-          ctx.strokeStyle = 'rgba(255,220,170,.45)';
+          ctx.fillStyle = mover.hue;
           ctx.beginPath();
-          ctx.arc(x + mover.w * cell * 0.3, y + cell * 0.48, cell * 0.08, 0, Math.PI * 2);
-          ctx.stroke();
+          ctx.ellipse(px + pw * 0.5, py + cell * 0.08, pw * 0.28, cell * 0.12, 0, 0, Math.PI * 2);
+          ctx.fill();
           return;
         }
-        const body = y + cell * 0.22;
+        const cx = x + mover.w * cell * 0.5;
+        const cy = y + cell * 0.5;
+        const rApple = Math.min(cell * 0.28, mover.w * cell * 0.42);
         ctx.fillStyle = mover.hue;
         ctx.beginPath();
-        if (ctx.roundRect) ctx.roundRect(x, body, mover.w * cell, cell * 0.48, cell * 0.1);
-        else ctx.rect(x, body, mover.w * cell, cell * 0.48);
+        ctx.arc(cx, cy, rApple, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,.75)';
-        const cab = mover.speed > 0 ? x + mover.w * cell * 0.55 : x + cell * 0.08;
-        ctx.fillRect(cab, body + cell * 0.06, mover.w * cell * 0.28, cell * 0.16);
-        ctx.fillStyle = '#2a3038';
+        ctx.fillStyle = '#5d7a45';
         ctx.beginPath();
-        ctx.arc(x + cell * 0.18, body + cell * 0.48, cell * 0.07, 0, Math.PI * 2);
-        ctx.arc(x + mover.w * cell - cell * 0.18, body + cell * 0.48, cell * 0.07, 0, Math.PI * 2);
+        ctx.ellipse(cx + rApple * 0.2, cy - rApple * 0.7, rApple * 0.28, rApple * 0.14, -0.5, 0, Math.PI * 2);
         ctx.fill();
       });
     });
@@ -342,7 +345,7 @@ export function mountLily(root, { board = {}, reduced, nextQuestion, onPrompt, o
       const lift = hop ? Math.sin(Math.min(1, hop.t) * Math.PI) * cell * 0.16 : 0;
       const px = ox + (frog.x + FROG / 2) * cell;
       const py = oy + (frog.y + FROG / 2) * cell - lift;
-      drawFrog(ctx, px, py, cell * 0.72, face, false);
+      drawTurtle(ctx, px, py, cell * 0.72, face, false);
     } else if (hurtKind === 'water') {
       const px = ox + (frog.x + FROG / 2) * cell;
       const py = oy + (frog.y + FROG / 2) * cell;
@@ -354,7 +357,7 @@ export function mountLily(root, { board = {}, reduced, nextQuestion, onPrompt, o
     } else {
       const px = ox + (frog.x + FROG / 2) * cell;
       const py = oy + (frog.y + FROG * 0.8) * cell;
-      drawFrog(ctx, px, py, cell * 0.72, face, true);
+      drawTurtle(ctx, px, py, cell * 0.72, face, true);
     }
     for (let i = 0; i < Math.max(0, lives); i++) {
       ctx.fillStyle = '#2f7a3a';
@@ -388,7 +391,7 @@ export function mountLily(root, { board = {}, reduced, nextQuestion, onPrompt, o
       }
     } else if (phase === 'play' && !questionHolding()) {
       const standing = rows[frog.row];
-      const ride = !hop && standing?.kind === 'river' ? lilyRide(frog.x, FROG, standing.movers) : null;
+      const ride = !hop && standing?.kind === 'creek' ? lilyRide(frog.x, FROG, standing.movers) : null;
       rows.forEach(row => {
         row.movers?.forEach(mover => { mover.x += mover.speed * dt; });
       });
@@ -406,7 +409,7 @@ export function mountLily(root, { board = {}, reduced, nextQuestion, onPrompt, o
         frog.x = hop.x0 + (hop.x1 - hop.x0) * e;
         frog.y = hop.y0 + (hop.y1 - hop.y0) * e;
         const lane = rows[u > 0.55 ? hop.row : hop.from];
-        if (lane?.kind === 'road' && lane.movers.some(car => lilyOverlap(frog.x, FROG, car.x, car.w))) hurt('car');
+        if (lane?.kind === 'path' && lane.movers.some(apple => lilyOverlap(frog.x, FROG, apple.x, apple.w))) hurt('car');
         if (hop && u >= 1) {
           frog.x = hop.x1;
           frog.y = hop.y1;
@@ -416,9 +419,9 @@ export function mountLily(root, { board = {}, reduced, nextQuestion, onPrompt, o
         }
       } else {
         const row = rows[frog.row];
-        if (row?.kind === 'river') {
+        if (row?.kind === 'creek') {
           if (!ride || frog.x < -0.04 || frog.x + FROG > COLS + 0.04 || !lilyRide(frog.x, FROG, row.movers)) hurt('water');
-        } else if (row?.kind === 'road' && row.movers.some(car => lilyOverlap(frog.x, FROG, car.x, car.w))) hurt('car');
+        } else if (row?.kind === 'path' && row.movers.some(apple => lilyOverlap(frog.x, FROG, apple.x, apple.w))) hurt('car');
       }
     }
     const rect = canvas.getBoundingClientRect();

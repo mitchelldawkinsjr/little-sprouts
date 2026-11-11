@@ -180,7 +180,7 @@ export function registerRound(rt) {
     const line = g.mode === 'paint'
       ? (ok ? `Yes. ${g.target} was right.` : `Not yet. ${g.target} was right.`)
       : g.mode === 'flight'
-      ? (ok ? (g.rallyKind === 'spell' ? `You spelled ${g.target}.` : 'Yes! Through the gate.') : 'Not yet. The plane turns back.')
+      ? (ok ? (g.rallyKind === 'spell' ? `You spelled ${g.target}.` : 'Yes! Through the gate.') : 'Not yet. The glider turns back.')
       : g.mode === 'bike'
         ? (ok ? 'Good.' : 'Not yet. The bike speeds up.')
         : g.mode === 'walk'
@@ -508,10 +508,10 @@ export function registerRound(rt) {
     if (g.mode === 'chase') {
       g.board = chaseBoard(l);
       g.howTo = g.freePlay
-        ? 'Steer through the maze. Eat the berries. Stay away from the ghosts.'
-        : 'Steer through the maze. Eat only the berries that match. Questions follow this learner’s words, math, shapes, and colors. Stay away from the ghosts.';
+        ? 'Steer through the garden paths. Eat the berries. Stay away from the snails.'
+        : 'Steer through the garden paths. Eat only the berries that match. Questions follow this learner’s words, math, shapes, and colors. Stay away from the snails.';
       g.phase = g.started ? 'play' : 'ready';
-      if (g.started) arcadePack(profileAsk(g, 'chase'), 'Eat the berries. Stay away from the ghosts.');
+      if (g.started) arcadePack(profileAsk(g, 'chase'), 'Eat the berries. Stay away from the snails.');
       else {
         g.prompt = g.howTo;
         g.options = [];
@@ -522,9 +522,10 @@ export function registerRound(rt) {
     }
     if (g.mode === 'hop') {
       g.board = hopBoard(l);
+      g.lives = g.board.lives;
       g.howTo = g.freePlay
-        ? 'Keep bouncing higher. The leaves hold you up.'
-        : 'Keep bouncing higher. Hop on the right answer and the climb continues. A wrong one breaks.';
+        ? 'Keep bouncing higher. The leaves hold you up. A fall costs a life.'
+        : 'Keep bouncing higher. Hop on the right answer and the climb continues. A wrong one breaks and costs a life. A fall costs a life.';
       g.phase = g.started ? 'play' : 'ready';
       if (!g.started) {
         g.prompt = g.howTo;
@@ -578,8 +579,8 @@ export function registerRound(rt) {
       g.board = lilyBoard(l);
       g.lives = g.board.lives;
       g.howTo = g.freePlay
-        ? 'Hop across the road and the river. Ride the logs and reach a lily pad.'
-        : 'Hop across the road and the river. Ride the logs. Land on the lily pad with the right answer. A wrong pad sends you back. A car or the water costs a hop.';
+        ? 'Hop across the garden beds and the creek. Ride the floating pots and reach a flower pot.'
+        : 'Hop across the garden beds and the creek. Ride the floating pots. Land on the flower pot with the right answer. A wrong pot sends you back. A rolling apple or the creek costs a hop.';
       g.phase = g.started ? 'play' : 'ready';
       if (!g.started) {
         g.prompt = g.howTo;
@@ -653,8 +654,8 @@ export function registerRound(rt) {
     if (g.mode === 'lamp') {
       g.board = lampBoard(l);
       g.howTo = g.freePlay
-        ? 'Tap the stones to build the lighthouse. When it is tall, the lamp turns on.'
-        : 'Tap the stone with the right answer. It rises into the tower. A wrong stone splashes. When the questions are done, the lamp turns on.';
+        ? 'Tap the glow bugs to fill the firefly jar. When it is full, the jar glows.'
+        : 'Tap the glow bug with the right answer. It rises into the jar. A wrong bug flutters away. When the questions are done, the jar glows.';
       g.phase = g.started ? 'play' : 'ready';
       if (!g.started) {
         g.prompt = g.howTo;
@@ -684,7 +685,7 @@ export function registerRound(rt) {
         g.options = [];
         g.show = '';
       } else if (g.freePlay && (g.mode === 'flight' || g.mode === 'walk' || g.mode === 'bike')) {
-        g.prompt = g.mode === 'flight' ? 'Fly the plane.' : g.mode === 'walk' ? 'Walk the meadow.' : 'Ride the dirt bike.';
+        g.prompt = g.mode === 'flight' ? 'Fly the glider.' : g.mode === 'walk' ? 'Walk the meadow.' : 'Ride the dirt bike.';
         g.tokens = [];
         g.options = [];
         g.show = '';
@@ -808,7 +809,7 @@ export function registerRound(rt) {
       const n = Math.max(1, Math.min(want, words.length));
       g.target = rt.pick(words);
       g.options = rt.shuffle(words.filter(word => word !== g.target)).slice(0, n - 1).concat(g.target);
-      g.prompt = place === 'lamp' ? `Set the stone that says ${g.target}.` : place === 'stack' ? `Drop the block that says ${g.target}.` : place === 'bust' ? `Bust the ghost that says ${g.target}.` : place === 'lily' ? `Hop to the pad that says ${g.target}.` : place === 'cube' ? `Touch the cube that says ${g.target}.` : place === 'mole' ? `Whack the mole that says ${g.target}.` : place === 'hop' ? `Hop on the word ${g.target}.` : place === 'toast' ? `Pop the toast that says ${g.target}.` : place === 'aisle' ? `Find the word ${g.target} in the market.` : place === 'glide' ? `Grab the gem that says ${g.target}.` : place === 'rally' ? `Which one says ${g.target}?` : place === 'walk' ? `Walk to the word ${g.target}.` : `Eat the berries that say ${g.target}.`;
+      g.prompt = place === 'lamp' ? `Catch the glow bug that says ${g.target}.` : place === 'stack' ? `Drop the block that says ${g.target}.` : place === 'bust' ? `Bust the ghost that says ${g.target}.` : place === 'lily' ? `Hop to the pot that says ${g.target}.` : place === 'cube' ? `Touch the cube that says ${g.target}.` : place === 'mole' ? `Whack the mole that says ${g.target}.` : place === 'hop' ? `Hop on the word ${g.target}.` : place === 'toast' ? `Pop the toast that says ${g.target}.` : place === 'aisle' ? `Find the word ${g.target} in the market.` : place === 'glide' ? `Grab the gem that says ${g.target}.` : place === 'rally' ? `Which one says ${g.target}?` : place === 'walk' ? `Walk to the word ${g.target}.` : `Eat the berries that say ${g.target}.`;
       g.render = x => esc(x);
       g.tokens = tokenList(rt.shuffle(g.options), g.target);
       return { choices: g.tokens };
@@ -819,7 +820,7 @@ export function registerRound(rt) {
       const n = Math.max(2, Math.min(want, ss.length));
       g.target = rt.pick(ss);
       g.options = rt.shuffle(ss.filter(name => name !== g.target)).slice(0, n - 1).concat(g.target);
-      g.prompt = place === 'lamp' ? `Set the ${g.target} stone.` : place === 'stack' ? `Drop the ${g.target} block.` : place === 'bust' ? `Bust the ${g.target} ghost.` : place === 'lily' ? `Hop to the ${g.target}.` : place === 'cube' ? `Touch the ${g.target} cube.` : place === 'mole' ? `Whack the ${g.target} mole.` : place === 'hop' ? `Hop on the ${g.target}.` : place === 'toast' ? `Pop the ${g.target} toast.` : place === 'aisle' ? `Find the ${g.target} in the market.` : place === 'glide' ? `Grab the ${g.target} gem.` : place === 'rally' ? `Which one is the ${g.target}?` : place === 'walk' ? `Walk to the ${g.target}.` : `Eat the ${g.target} berries.`;
+      g.prompt = place === 'lamp' ? `Catch the ${g.target} glow bug.` : place === 'stack' ? `Drop the ${g.target} block.` : place === 'bust' ? `Bust the ${g.target} ghost.` : place === 'lily' ? `Hop to the ${g.target}.` : place === 'cube' ? `Touch the ${g.target} cube.` : place === 'mole' ? `Whack the ${g.target} mole.` : place === 'hop' ? `Hop on the ${g.target}.` : place === 'toast' ? `Pop the ${g.target} toast.` : place === 'aisle' ? `Find the ${g.target} in the market.` : place === 'glide' ? `Grab the ${g.target} gem.` : place === 'rally' ? `Which one is the ${g.target}?` : place === 'walk' ? `Walk to the ${g.target}.` : `Eat the ${g.target} berries.`;
       g.render = x => rt.shape(x);
       g.tokens = tokenList(rt.shuffle(g.options), g.target).map(token => ({ ...token, shape: token.label, fill: '#5d7a45' }));
       return { choices: g.tokens };
@@ -832,7 +833,7 @@ export function registerRound(rt) {
       g.target = target[0];
       const mixed = rt.shuffle(rt.shuffle(cs.filter(color => color[0] !== target[0])).slice(0, n - 1).concat([target]));
       g.options = mixed.map(color => color[0]);
-      g.prompt = place === 'lamp' ? `Set the ${g.target} stone.` : place === 'stack' ? `Drop the ${g.target} block.` : place === 'bust' ? `Bust the ${g.target} ghost.` : place === 'lily' ? `Hop to ${g.target}.` : place === 'cube' ? `Touch the ${g.target} cube.` : place === 'mole' ? `Whack the ${g.target} mole.` : place === 'hop' ? `Hop on ${g.target}.` : place === 'toast' ? `Pop the ${g.target} toast.` : place === 'aisle' ? `Find ${g.target} in the market.` : place === 'glide' ? `Grab the ${g.target} gem.` : place === 'rally' ? `Which one is ${g.target}?` : place === 'walk' ? `Walk to ${g.target}.` : `Eat the ${g.target} berries.`;
+      g.prompt = place === 'lamp' ? `Catch the ${g.target} glow bug.` : place === 'stack' ? `Drop the ${g.target} block.` : place === 'bust' ? `Bust the ${g.target} ghost.` : place === 'lily' ? `Hop to ${g.target}.` : place === 'cube' ? `Touch the ${g.target} cube.` : place === 'mole' ? `Whack the ${g.target} mole.` : place === 'hop' ? `Hop on ${g.target}.` : place === 'toast' ? `Pop the ${g.target} toast.` : place === 'aisle' ? `Find ${g.target} in the market.` : place === 'glide' ? `Grab the ${g.target} gem.` : place === 'rally' ? `Which one is ${g.target}?` : place === 'walk' ? `Walk to ${g.target}.` : `Eat the ${g.target} berries.`;
       g.render = x => esc(x);
       let marked = false;
       g.tokens = mixed.map(([label, fill]) => {
@@ -848,11 +849,11 @@ export function registerRound(rt) {
     g.options = [...rest.slice(0, Math.max(0, want - 1)), g.target];
     g.tokens = tokenList(rt.shuffle(g.options), g.target);
     if (place === 'glide') g.prompt = `${g.prompt} Grab that gem.`;
-    if (place === 'lily') g.prompt = `${g.prompt} Hop to that pad.`;
+    if (place === 'lily') g.prompt = `${g.prompt} Hop to that flower pot.`;
     if (place === 'mole') g.prompt = `${g.prompt} Whack that mole.`;
     if (place === 'cube') g.prompt = `${g.prompt} Touch that cube.`;
     if (place === 'stack') g.prompt = `${g.prompt} Drop that block.`;
-    if (place === 'lamp') g.prompt = `${g.prompt} Set that stone.`;
+    if (place === 'lamp') g.prompt = `${g.prompt} Catch that glow bug.`;
     if (place === 'bust') g.prompt = `${g.prompt} Bust that ghost.`;
     return { choices: g.tokens };
   }
@@ -1194,7 +1195,7 @@ export function registerRound(rt) {
     if (g.mode === 'cube') return g.subject === 'words' ? `You touched the cube that says ${g.target}.` : g.subject === 'shapes' || g.subject === 'colors' ? `You touched the ${g.target} cube.` : `You touched ${g.target}.`;
     if (g.mode === 'bust') return g.subject === 'shapes' || g.subject === 'colors' ? `You busted the ${g.target} ghost.` : `You busted ${g.target}.`;
     if (g.mode === 'stack') return g.subject === 'shapes' || g.subject === 'colors' ? `You stacked the ${g.target}.` : `You stacked ${g.target}.`;
-    if (g.mode === 'lamp') return g.subject === 'shapes' || g.subject === 'colors' ? `You set the ${g.target} stone.` : `You set ${g.target}.`;
+    if (g.mode === 'lamp') return g.subject === 'shapes' || g.subject === 'colors' ? `You caught the ${g.target} glow bug.` : `You caught ${g.target}.`;
     if (g.mode === 'glide') return g.subject === 'words' ? `You grabbed the gem that says ${g.target}.` : g.subject === 'shapes' || g.subject === 'colors' ? `You grabbed the ${g.target} gem.` : `You grabbed ${g.target}.`;
     if (g.mode === 'paint') return `You painted ${g.target}.`;
     if (g.mode === 'walk') return g.subject === 'shapes' || g.subject === 'colors' ? `You walked to the ${g.target}.` : `You walked to ${g.target}.`;
@@ -1221,12 +1222,12 @@ export function registerRound(rt) {
         if (g.mode === 'chase') return 'Listen for the word, then eat those berries.';
         if (g.mode === 'toast') return 'Listen for the word, then pop that toast.';
         if (g.mode === 'aisle') return 'Listen for the word, then tap the arrows and pick it up.';
-        if (g.mode === 'lily') return 'Listen for the word, then hop to that pad.';
+        if (g.mode === 'lily') return 'Listen for the word, then hop to that flower pot.';
         if (g.mode === 'mole') return 'Listen for the word, then whack that mole.';
         if (g.mode === 'cube') return 'Listen for the word, then touch that cube.';
         if (g.mode === 'bust') return 'Listen for the word, then bust that ghost.';
         if (g.mode === 'stack') return 'Listen for the word, then drop that block.';
-        if (g.mode === 'lamp') return 'Listen for the word, then set that stone.';
+        if (g.mode === 'lamp') return 'Listen for the word, then catch that glow bug.';
         if (g.mode === 'glide') return 'Listen for the word, then grab that gem.';
         if (g.mode === 'rally') return g.rallyKind === 'spell' ? 'Listen for the word, then tap or type the letters in order.' : 'Tap the one that matches. A right answer turbos the car.';
         if (g.mode === 'bike') return g.rallyKind === 'spell' ? 'Listen for the word, then tap or type the letters in order.' : 'Tap the one that matches. A right answer says good, and the ride continues.';
@@ -1241,12 +1242,12 @@ export function registerRound(rt) {
       if (g.mode === 'chase') return 'Eat the berry with the right number.';
       if (g.mode === 'toast') return 'Pop the toast with the right number.';
       if (g.mode === 'aisle') return 'Tap the arrows. Pick up the right number before time runs out.';
-      if (g.mode === 'lily') return 'Hop to the pad with the right number.';
+      if (g.mode === 'lily') return 'Hop to the flower pot with the right number.';
       if (g.mode === 'mole') return 'Whack the mole with the right number.';
       if (g.mode === 'cube') return 'Touch the cube with the right number.';
       if (g.mode === 'bust') return 'Bust the ghost with the right number.';
       if (g.mode === 'stack') return 'Drop the block with the right number.';
-      if (g.mode === 'lamp') return 'Set the stone with the right number.';
+      if (g.mode === 'lamp') return 'Catch the glow bug with the right number.';
       if (g.mode === 'glide') return 'Grab the gem with the right number.';
       if (g.mode === 'rally') return g.rallyKind === 'math' ? 'Work out the fact, then tap that number.' : 'Tap the one that matches. A right answer turbos the car.';
       if (g.mode === 'bike') return g.rallyKind === 'math' ? 'Work out the fact, then tap that number.' : 'Tap the one that matches. A right answer says good, and the ride continues.';
@@ -1539,8 +1540,8 @@ export function registerRound(rt) {
     const dots = Array.from({ length: rounds }, (_, i) => `<span class="${i < g.firstCorrect ? 'on' : ''}"></span>`).join('');
     const played = rounds === 1 ? 'You played 1 question.' : `You played ${rounds}.`;
     const heading = flightEnd ? (detail === 'crash' ? 'Game over.' : 'You flew for 2 minutes.') : stageEnd ? 'You finished the stage.' : played;
-    const note = flightEnd && detail === 'crash' ? 'The plane hit the ground.' : stageEnd ? `${g.rallyRights || 0} right along the road` : 'First try';
-    const spoken = flightEnd ? (detail === 'crash' ? 'Game over. The plane hit the ground.' : 'You flew for 2 minutes.') : stageEnd ? 'You finished the stage.' : played;
+    const note = flightEnd && detail === 'crash' ? 'The glider hit the ground.' : stageEnd ? `${g.rallyRights || 0} right along the road` : 'First try';
+    const spoken = flightEnd ? (detail === 'crash' ? 'Game over. The glider hit the ground.' : 'You flew for 2 minutes.') : stageEnd ? 'You finished the stage.' : played;
     const stars = rounds === 1 ? '+1 learning star' : `+${rounds} learning stars`;
     $('#app').innerHTML = `<section class="playarea"><div class="result-star" aria-hidden="true">${flightEnd && detail === 'crash' ? '✈' : '🌟'}</div><h1>${heading}</h1><p>${note}</p><div class="dots" aria-label="${g.firstCorrect} of ${rounds} first tries">${dots}</div><p class="hint">${stars}</p>${rt.starGardenHtml()}<button class="primary" id="again">Play again</button> <button class="quiet" id="all">Choose a game</button></section>`;
     $('#again').onclick = () => rt.start(g.mode);

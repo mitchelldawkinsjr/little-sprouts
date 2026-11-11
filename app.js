@@ -6,7 +6,7 @@ import { findBuiltSidecars } from './lib/sidecar.js?v=quickmath';
 import { rt } from './app/runtime.mjs?v=lean-r2';
 import { registerHelpers } from './app/helpers.mjs?v=up-next';
 import { registerRound } from './app/round.mjs?v=up-next';
-import { registerMounts } from './app/mounts.mjs?v=up-next';
+import { registerMounts } from './app/mounts.mjs?v=hop-lives-r1';
 import { registerParent } from './app/parent.mjs?v=up-next';
 
 // Live state. Every module reads and writes it through rt.

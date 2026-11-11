@@ -131,9 +131,9 @@ export function chaseBoard(level) {
 }
 
 const HOP_BOARDS = [
-  { choices: 3, gap: 86, width: 96, gravity: 480, drift: 0 },
-  { choices: 4, gap: 98, width: 84, gravity: 600, drift: 0 },
-  { choices: 5, gap: 110, width: 74, gravity: 720, drift: 36 }
+  { choices: 3, gap: 78, width: 102, gravity: 420, drift: 0, lives: 4 },
+  { choices: 4, gap: 90, width: 90, gravity: 500, drift: 0, lives: 3 },
+  { choices: 5, gap: 102, width: 80, gravity: 580, drift: 28, lives: 2 }
 ];
 
 export function hopBoard(level) {

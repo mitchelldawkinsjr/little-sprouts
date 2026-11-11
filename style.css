@@ -249,8 +249,8 @@ body:has(.playtop) #arcade>.puzzle-stage{display:grid;flex-direction:unset;overf
 .maze-pad .steer-btn{touch-action:none}
 .chase-play,.hop-play{max-width:720px;margin:8px auto 0;touch-action:none;user-select:none}
 .chase,.hop{position:relative;height:320px;border-radius:20px;overflow:hidden;border:1px solid #d3dccb}
-.chase{background:#000}
-.hop{background:#d7ebf5}
+.chase{background:#c9b896}
+.hop{background:linear-gradient(#cfe6d4,#e8f0d8)}
 .chase canvas,.hop canvas{width:100%;height:100%;display:block;touch-action:none}
 .chase.shake,.hop.shake,.toast.shake,.mole.shake,.bust.shake{animation:arcadeshake .28s ease}
 .toast-play{max-width:720px;margin:8px auto 0;touch-action:none;user-select:none;display:flex;flex-direction:column;min-height:0}

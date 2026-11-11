@@ -1,11 +1,7 @@
 /**
- * Sprout hop — bounce up the leaves and land on the answer.
- * The hop matches the doodle-jump pen (400×600, 60fps): a fixed
- * bounce of 10px/frame, gravity of 0.2px/frame², a steady 4px/frame
- * sideways while a direction is held, and wrap at the sides. Once the
- * sprout is above the pen's line, leaves scroll down at 3px/frame and
- * gravity picks up by 0.25. Wrong answers break. Springs and sliding
- * leaves show up on higher levels. This sprout and these leaves are drawn here.
+ * Sprout hop — climb a garden trellis of stepping stones and land on
+ * the answer. Soft gravity, edge bounce (no wrap), and stones that
+ * rise toward the learner. Wrong answers crumble. Little Sprouts original.
  */
 import { questionHolding } from '../lib/hold.js?v=hold2';
 
@@ -82,7 +78,7 @@ function drawMark(ctx, plat, x, y, s) {
   ctx.restore();
 }
 
-export function mountHop(root, { board = {}, reduced, nextQuestion, onPrompt, onMiss, onClear, onFinished }) {
+export function mountHop(root, { board = {}, reduced, nextQuestion, onPrompt, onMiss, onClear, onLives, onOver, onFinished }) {
   stopHop();
   const session = {
     dead: false,
@@ -99,7 +95,7 @@ export function mountHop(root, { board = {}, reduced, nextQuestion, onPrompt, on
   active = session;
 
   const calm = reduced ? 0.78 : 1;
-  root.innerHTML = `<div class="hop-play"><div class="hop" role="application" aria-label="Bounce up the leaves. Hop on the right answer."><canvas></canvas></div><div class="steer"><button type="button" class="steer-btn" data-dir="left" aria-label="Move left">←</button><button type="button" class="steer-btn" data-dir="right" aria-label="Move right">→</button></div></div>`;
+  root.innerHTML = `<div class="hop-play"><div class="hop" role="application" aria-label="Climb the trellis stones. Hop on the right answer. Falls and wrong landings cost a life."><canvas></canvas></div><div class="steer"><button type="button" class="steer-btn" data-dir="left" aria-label="Move left">←</button><button type="button" class="steer-btn" data-dir="right" aria-label="Move right">→</button></div></div>`;
   const stage = root.querySelector('.hop');
   const canvas = stage.querySelector('canvas');
   const ctx = canvas.getContext('2d');
@@ -110,13 +106,13 @@ export function mountHop(root, { board = {}, reduced, nextQuestion, onPrompt, on
   const player = { x: 0, y: 0, w: 42, h: 32, vx: 0, vy: 0, face: 'right' };
   let play = null;
   let gap = 120;
-  let gravity = 720;
-  let jumpV = 600;
-  let springV = 1200;
-  let springH = 26;
-  let scrollV = 180;
-  let boostG = 900;
-  let xSpeed = 240;
+  let gravity = 560;
+  let jumpV = 480;
+  let springV = 820;
+  let springH = 22;
+  let scrollV = 140;
+  let boostG = 620;
+  let xSpeed = 200;
   let scrolling = false;
   let width = 360;
   let height = 420;
@@ -132,25 +128,40 @@ export function mountHop(root, { board = {}, reduced, nextQuestion, onPrompt, on
   let prompted = false;
   let promptIn = 0;
   let last = 0;
+  let lives = Math.max(1, Math.round(+board.lives) || 4);
   const call = (fn, arg) => {
     try { return fn?.(arg); }
     catch { return undefined; }
   };
+  const loseLife = kind => {
+    if (ending || lives <= 0) return false;
+    lives -= 1;
+    slipped = true;
+    call(onLives, lives);
+    call(onMiss, kind);
+    if (lives <= 0) {
+      ending = true;
+      pause = reduced ? 0.25 : 0.55;
+      call(onOver);
+      return false;
+    }
+    return true;
+  };
 
   const tune = () => {
-    const unit = play.h / 600;
-    const unitX = play.w / 400;
-    gap = play.h / 5;
-    gravity = 720 * unit * calm;
-    jumpV = 600 * unit * calm;
-    springV = jumpV * 2;
-    springH = 28 * unit;
-    scrollV = 180 * unit * calm;
-    boostG = 900 * unit * calm;
-    xSpeed = 240 * unitX * calm;
+    const unit = play.h / 520;
+    const unitX = play.w / 360;
+    gap = play.h / 4.4;
+    gravity = 560 * unit * calm;
+    jumpV = 480 * unit * calm;
+    springV = jumpV * 1.55;
+    springH = 22 * unit;
+    scrollV = 140 * unit * calm;
+    boostG = 620 * unit * calm;
+    xSpeed = 200 * unitX * calm;
   };
-  const leafW = () => Math.max(48 * play.scale, (board.width || 86) * (play.w / 422));
-  const leafH = () => Math.max(11, 15 * play.scale);
+  const leafW = () => Math.max(52 * play.scale, (board.width || 86) * (play.w / 400));
+  const leafH = () => Math.max(14, 18 * play.scale);
   const highest = () => {
     let top = play.h;
     platforms.forEach(plat => { if (!plat.dead && plat.y < top) top = plat.y; });
@@ -177,7 +188,7 @@ export function mountHop(root, { board = {}, reduced, nextQuestion, onPrompt, on
     if (!livePack?.choices?.length) return false;
     if (fresh) slipped = false;
     const list = livePack.choices;
-    const h = Math.max(leafH(), 28 * (play.h / 600));
+    const h = Math.max(leafH(), 30 * (play.h / 520));
     const hole = player.w + 36 * play.scale;
     const leftCount = Math.ceil(list.length / 2);
     const rightCount = list.length - leftCount;
@@ -214,27 +225,26 @@ export function mountHop(root, { board = {}, reduced, nextQuestion, onPrompt, on
   const spawnFiller = y => {
     const w = leafW();
     const h = leafH();
-    const pad = Math.max(8, 15 * (play.w / 400));
+    const pad = Math.max(10, 18 * (play.w / 360));
     const x = pad + Math.random() * Math.max(0, play.w - w - pad * 2);
     const near = !questionLive && cooldown <= 2;
-    const slideSpeed = (52 + ((board.choices || 3) - 3) * 16) * play.scale * calm;
+    const slideSpeed = (38 + ((board.choices || 3) - 3) * 12) * play.scale * calm;
     let kind = 'leaf';
     let vx = 0;
-    if ((board.choices || 3) >= 4 && !near && Math.random() < 0.45) {
+    if ((board.choices || 3) >= 4 && !near && Math.random() < 0.35) {
       kind = 'slide';
       vx = Math.random() < 0.5 ? -slideSpeed : slideSpeed;
     }
-    if ((board.drift || 0) > 0 && !near && !lastBrittle && Math.random() < 0.22) {
+    if ((board.drift || 0) > 0 && !near && !lastBrittle && Math.random() < 0.28) {
       kind = 'brittle';
       vx = 0;
     }
     lastBrittle = kind === 'brittle';
-    const spring = kind === 'leaf' && (board.drift || 0) > 0 && !near && Math.random() < 0.2;
     platforms.push({
       kind, x, y, w, h,
       minX: 6, maxX: play.w - w - 6,
       vx, label: '', ok: false, fill: '', shape: '',
-      spring, sprung: false, dead: false
+      spring: false, sprung: false, dead: false
     });
   };
   const spawnOne = y => {
@@ -296,7 +306,7 @@ export function mountHop(root, { board = {}, reduced, nextQuestion, onPrompt, on
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     width = cssW;
     height = cssH;
-    return { x: 0, y: 0, w: cssW, h: cssH, scale: cssH / 600 };
+    return { x: 0, y: 0, w: cssW, h: cssH, scale: cssH / 520 };
   };
   const begin = () => {
     platforms.length = 0;
@@ -307,8 +317,8 @@ export function mountHop(root, { board = {}, reduced, nextQuestion, onPrompt, on
     lastBrittle = false;
     scrolling = false;
     tune();
-    player.w = 60 * (play.h / 600);
-    player.h = 60 * (play.h / 600);
+    player.w = 52 * (play.h / 520);
+    player.h = 52 * (play.h / 520);
     const h = Math.max(10, 12 * play.scale);
     platforms.push({
       kind: 'base', x: 0, y: play.h - h, w: play.w, h,
@@ -320,15 +330,11 @@ export function mountHop(root, { board = {}, reduced, nextQuestion, onPrompt, on
     player.x = play.w / 2 - player.w / 2;
     player.y = (base?.y || play.h) - player.h - 1;
     player.vx = 0;
-    player.vy = 6 * (play.h / 600);
+    player.vy = 5 * (play.h / 520);
     player.face = 'right';
+    call(onLives, lives);
   };
-  const rescue = () => {
-    if (ending || pause > 0) return;
-    slipped = true;
-    pause = reduced ? 0.3 : 0.45;
-    shake();
-    call(onMiss, 'fall');
+  const softPad = () => {
     if (session.dead || ending || !play) return;
     const w = leafW();
     const h = leafH();
@@ -340,14 +346,21 @@ export function mountHop(root, { board = {}, reduced, nextQuestion, onPrompt, on
       vx: 0, label: '', ok: false, fill: '', shape: '',
       spring: false, sprung: false, dead: false
     });
-    player.w = 60 * (play.h / 600);
-    player.h = 60 * (play.h / 600);
+    player.w = 52 * (play.h / 520);
+    player.h = 52 * (play.h / 520);
     player.x = x + (w - player.w) / 2;
     player.y = y - player.h;
     player.vx = 0;
     player.vy = -jumpV;
     scrolling = false;
     if (!questionLive) ensure();
+  };
+  const rescue = () => {
+    if (ending || pause > 0) return;
+    pause = reduced ? 0.3 : 0.45;
+    shake();
+    if (!loseLife('fall')) return;
+    softPad();
   };
 
   const drawLeaf = (plat, x, y) => {
@@ -442,6 +455,12 @@ export function mountHop(root, { board = {}, reduced, nextQuestion, onPrompt, on
     });
     const rising = player.vy < -jumpV * 0.45;
     drawSprout(ctx, play.x + player.x, play.y + player.y, player.w, player.h, player.face, rising);
+    for (let i = 0; i < Math.max(0, lives); i++) {
+      ctx.fillStyle = '#2f7a3a';
+      ctx.beginPath();
+      ctx.arc(play.x + 14 + i * 14, play.y + play.h - 14, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
   };
 
   const frame = now => {
@@ -476,8 +495,15 @@ export function mountHop(root, { board = {}, reduced, nextQuestion, onPrompt, on
       if (axis < 0) player.face = 'left';
       else if (axis > 0) player.face = 'right';
       player.x += player.vx * dt;
-      if (player.x > play.w) player.x = -player.w;
-      else if (player.x < -player.w) player.x = play.w;
+      if (player.x < 0) {
+        player.x = 0;
+        player.vx = Math.abs(player.vx) * 0.35;
+        player.face = 'right';
+      } else if (player.x + player.w > play.w) {
+        player.x = play.w - player.w;
+        player.vx = -Math.abs(player.vx) * 0.35;
+        player.face = 'left';
+      }
       platforms.forEach(plat => {
         if (!plat.vx || plat.dead) return;
         plat.x += plat.vx * dt;
@@ -501,7 +527,6 @@ export function mountHop(root, { board = {}, reduced, nextQuestion, onPrompt, on
         const feet = player.y + player.h;
         const prev = beforeY + player.h;
         const inset = 0;
-        const springW = 24 * play.scale;
         const overlap = plat => Math.min(player.x + player.w - inset, plat.x + plat.w) - Math.max(player.x + inset, plat.x);
         const hits = platforms.filter(plat => {
           if (plat.dead || overlap(plat) <= 0) return false;
@@ -513,23 +538,15 @@ export function mountHop(root, { board = {}, reduced, nextQuestion, onPrompt, on
           const row = Math.round(plat.y);
           if (seen.has(row)) continue;
           seen.add(row);
-          if (plat.spring && !plat.sprung) {
-            const sx = plat.x + plat.w / 2 - springW / 2;
-            const springHit = player.x + inset < sx + springW && player.x + player.w - inset > sx && feet >= plat.y - springH;
-            if (springHit) {
-              plat.sprung = true;
-              player.vy = -springV;
-              player.y = plat.y - springH - player.h;
-              break;
-            }
-          }
           if (plat.kind === 'brittle' || (plat.kind === 'choice' && !plat.ok)) {
             const wrong = plat.kind === 'choice';
             shatter(plat);
             if (wrong) {
-              slipped = true;
               shake();
-              call(onMiss, 'break');
+              pause = reduced ? 0.25 : 0.4;
+              if (!loseLife('break')) return;
+              softPad();
+              break;
             }
             continue;
           }
@@ -547,7 +564,7 @@ export function mountHop(root, { board = {}, reduced, nextQuestion, onPrompt, on
       });
       for (let i = bits.length - 1; i >= 0; i--) if (bits[i].y > play.h + 40) bits.splice(i, 1);
       if (!ending && player.y > play.h + player.h * 0.2) rescue();
-      if (player.y < play.h * (250 / 600)) {
+      if (player.y < play.h * 0.38) {
         player.vy += boostG * dt;
         scrolling = true;
       } else scrolling = false;

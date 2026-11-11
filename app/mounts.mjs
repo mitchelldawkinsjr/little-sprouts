@@ -46,7 +46,7 @@ import { mountPlanet, stopPlanet } from '../games/planet.js?v=ask-first2-r2';
 import { mountPuzzle, stopPuzzle } from '../games/puzzle.js?v=puzzle-glass';
 import { mountMatch, stopMatch } from '../games/match.js?v=pair-match2';
 import { mountChase, stopChase } from '../games/chase.js?v=ask-first2-r2';
-import { mountHop, stopHop } from '../games/hop.js?v=ask-first-r2';
+import { mountHop, stopHop } from '../games/hop.js?v=hop-lives-r1';
 import { mountToast, stopToast } from '../games/toast.js?v=ask-first-r2';
 import { mountGlide, stopGlide } from '../games/glide.js?v=ask-first-r2';
 import { mountAisle, stopAisle } from '../games/aisle.js?v=market-aisle2-r2';
@@ -83,7 +83,7 @@ import {
   homePageHtml
 } from '../lib/home-ui.mjs?v=structure2';
 import { $, esc } from './runtime.mjs?v=lean-r2';
-import { ARCADE } from './arcade-modes.mjs?v=arcade';
+import { ARCADE } from './arcade-modes.mjs?v=hop-lives-r1';
 
 const words = list => new Set(list.split(' '));
 const SCREEN = words('catch lanes');
@@ -806,7 +806,7 @@ export function registerMounts(rt) {
     const scene = NO_SCENE.has(g.mode) || side ? '' : g.show;
     const height = Math.round(Math.min(1, Math.max(0, g.altitude || 0)) * 100);
     const paceMark = g.mode === 'lanes' && g.started && g.style !== 'reach' ? `${lanePaceName(g)} · ` : '';
-    const tally = light ? '<span id="lightTally">Pick a speed</span>' : g.mode === 'quickmath' ? '<span>Missions</span>' : freePlay ? '<span>Arcade</span>' : rallyDrive ? `<span id="rallyTally">${rallyRights >= rallyNeed ? 'Finish the stage' : `${g.rallyRights || 0} / ${rallyNeed}`}</span>` : side ? `<span id="rallyTally">${g.index + 1} / ${rounds}</span>` : race ? '<span>Full tank</span>' : glide ? `<span id="glideTally">${g.index + 1} / ${rounds}</span>` : marble ? '<span id="runTally">Level 1 · 0</span>' : maze ? `<span id="runTally">${g.clock?.seconds || 0}s · 1 / ${rounds}</span>` : hop ? `<span id="hopTally">${g.index + 1} / ${rounds}</span>` : toast ? `<span id="toastTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 5} left</span>` : aisle ? `<span id="aisleTally">${g.index + 1} / ${rounds} · ${g.board?.seconds || 32}s</span>` : lily ? `<span id="lilyTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : cube ? `<span id="cubeTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : mole ? `<span id="moleTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 5} left</span>` : bust ? `<span id="bustTally">${g.index + 1} / ${rounds} · ${g.board?.seconds || 15}s</span>` : stack ? `<span id="stackTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : lamp ? `<span id="lampTally">${g.index + 1} / ${rounds}</span>` : bridge ? `<span id="bridgeTally">${g.index + 1} / ${rounds} · ${g.lives || 1} ${(g.lives || 1) === 1 ? 'life' : 'lives'}</span>` : rocket ? `<span id="rocketTally">${esc(rocketZone(g.altitude || 0.32))}</span>` : `<span>${paceMark}${g.index + 1} / ${rounds}</span>`;
+    const tally = light ? '<span id="lightTally">Pick a speed</span>' : g.mode === 'quickmath' ? '<span>Missions</span>' : freePlay ? '<span>Arcade</span>' : rallyDrive ? `<span id="rallyTally">${rallyRights >= rallyNeed ? 'Finish the stage' : `${g.rallyRights || 0} / ${rallyNeed}`}</span>` : side ? `<span id="rallyTally">${g.index + 1} / ${rounds}</span>` : race ? '<span>Full tank</span>' : glide ? `<span id="glideTally">${g.index + 1} / ${rounds}</span>` : marble ? '<span id="runTally">Level 1 · 0</span>' : maze ? `<span id="runTally">${g.clock?.seconds || 0}s · 1 / ${rounds}</span>` : hop ? `<span id="hopTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : toast ? `<span id="toastTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 5} left</span>` : aisle ? `<span id="aisleTally">${g.index + 1} / ${rounds} · ${g.board?.seconds || 32}s</span>` : lily ? `<span id="lilyTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : cube ? `<span id="cubeTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : mole ? `<span id="moleTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 5} left</span>` : bust ? `<span id="bustTally">${g.index + 1} / ${rounds} · ${g.board?.seconds || 15}s</span>` : stack ? `<span id="stackTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : lamp ? `<span id="lampTally">${g.index + 1} / ${rounds}</span>` : bridge ? `<span id="bridgeTally">${g.index + 1} / ${rounds} · ${g.lives || 1} ${(g.lives || 1) === 1 ? 'life' : 'lives'}</span>` : rocket ? `<span id="rocketTally">${esc(rocketZone(g.altitude || 0.32))}</span>` : `<span>${paceMark}${g.index + 1} / ${rounds}</span>`;
     const barMax = rallyDrive ? rallyNeed : marble ? (g.track?.step || 8) : maze ? (g.clock?.seconds || 50) : rocket ? 100 : rounds;
     const barNow = rallyDrive ? rallyRights : marble ? 0 : maze ? barMax : rocket ? height : g.index;
     const barLabel = rallyDrive ? 'Right answers before the open road' : marble ? 'Points to the next level' : maze ? 'Time left' : rocket ? 'Height toward space' : 'Questions completed';
@@ -1013,7 +1013,7 @@ export function registerMounts(rt) {
           if (round.rallyKind !== 'spell') return;
           const first = !round.missed;
           round.missed = true;
-          const line = round.mode === 'flight' ? 'Not yet. The plane turns back.' : 'Not that letter. Keep spelling.';
+          const line = round.mode === 'flight' ? 'Not yet. The glider turns back.' : 'Not that letter. Keep spelling.';
           const feedback = $('#feedback');
           if (feedback) feedback.textContent = line;
           if (round.mode === 'flight' && first) rt.say(line);
@@ -1032,7 +1032,7 @@ export function registerMounts(rt) {
             return;
           }
           if (round.mode !== 'flight') return;
-          const line = detail === 'crash' ? 'Game over. The plane hit the ground.' : 'You flew for 2 minutes.';
+          const line = detail === 'crash' ? 'Game over. The glider hit the ground.' : 'You flew for 2 minutes.';
           const feedback = $('#feedback');
           if (feedback) feedback.textContent = line;
           const title = $('#app h1');
@@ -1476,7 +1476,7 @@ export function registerMounts(rt) {
         onMiss(kind) {
           if (rt.game !== g || g.done) return;
           g.missed = true;
-          const line = kind === 'bug' ? 'A ghost got you. Keep going.' : 'That berry is not the one.';
+          const line = kind === 'bug' ? 'A snail got you. Keep going.' : 'That berry is not the one.';
           const feedback = $('#feedback');
           if (feedback && feedback.textContent !== line) {
             feedback.textContent = line;
@@ -1497,10 +1497,14 @@ export function registerMounts(rt) {
         reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
         nextQuestion: () => rt.arcadeQuestion('hop'),
         onPrompt: () => paintArcadePrompt('hop'),
+        onLives(lives) {
+          g.lives = lives;
+          paintArcadeProgress('hop', lives);
+        },
         onMiss(kind) {
           if (rt.game !== g || g.finished) return;
           g.missed = true;
-          const line = kind === 'fall' ? 'You fell. Bounce back up the leaves.' : 'That one breaks. Hop on the right answer.';
+          const line = kind === 'fall' ? 'You fell. You have one less life.' : 'That one breaks. You have one less life.';
           const feedback = $('#feedback');
           if (feedback && feedback.textContent !== line) {
             feedback.textContent = line;
@@ -1520,8 +1524,13 @@ export function registerMounts(rt) {
           g.index++;
           g.missed = false;
           $('#help')?.remove();
-          paintArcadeProgress('hop');
+          paintArcadeProgress('hop', g.lives);
           if (g.index >= rt.questionCount()) g.hopDone = true;
+        },
+        onOver() {
+          if (rt.game !== g || g.finished) return;
+          g.asked = g.index;
+          rt.finishRun(g, 'The hops ran out.', 'Bounce on the leaves and hop on the right answer.');
         },
         onFinished() {
           clearTimers('hop');
@@ -1807,7 +1816,7 @@ export function registerMounts(rt) {
         onMiss() {
           if (rt.game !== g || g.finished) return;
           g.missed = true;
-          const line = 'That stone splashes back. Set the right one.';
+          const line = 'That glow bug flutters away. Catch the right one.';
           const feedback = $('#feedback');
           if (feedback && feedback.textContent !== line) {
             feedback.textContent = line;
@@ -1947,7 +1956,7 @@ export function registerMounts(rt) {
         onMiss(kind) {
           if (rt.game !== g || g.finished) return;
           g.missed = true;
-          const line = kind === 'car' ? 'A car got there first. Hop when the road is clear.' : kind === 'water' ? 'That hop missed the log. Ride one across.' : 'That pad is not the one.';
+          const line = kind === 'car' ? 'An apple rolled by. Hop when the path is clear.' : kind === 'water' ? 'That hop missed the pot. Ride one across the creek.' : 'That flower pot is not the one.';
           const feedback = $('#feedback');
           if (feedback && feedback.textContent !== line) {
             feedback.textContent = line;
@@ -1973,7 +1982,7 @@ export function registerMounts(rt) {
         onOver() {
           if (rt.game !== g || g.finished) return;
           g.asked = g.index;
-          rt.finishRun(g, 'The hops ran out.', 'Ride the logs and land on the right lily pad.');
+          rt.finishRun(g, 'The hops ran out.', 'Ride the floating pots and land on the right flower pot.');
         },
         onFinished() {
           clearTimers('lily');

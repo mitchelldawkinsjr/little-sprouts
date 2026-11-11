@@ -2,20 +2,22 @@ import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { questionHolding } from '../../lib/hold.js?v=hold2';
 import { assignAsk, beginArcade, createFlight, markFlight, pitchFlight, steerFlight, stepFlight, strafeFlight, thrustFlight, typeSpell } from './sim.mjs?v=arcade-play';
-import { CRUISE_ALT, groundMeters, landColor } from './terrain.mjs';
-import AircraftManager from './opensky/aircraft/AircraftManager.js';
-import ChaseCameraController from './opensky/camera/ChaseCameraController.js';
+import { CRUISE_ALT } from './terrain.mjs';
+import { createCraft } from './craft.mjs?v=seed-pod';
+import { createGlobe } from './globe.mjs?v=cesium-globe';
 import {
   DEFAULT_FOV,
   DEFAULT_NEAR,
   MAX_ROLL,
   ROLL_DAMP_SPEED,
-  ROLL_SENSITIVITY
-} from './opensky/constants/camera.js';
+  ROLL_SENSITIVITY,
+  createChaseCamera
+} from './camera.mjs?v=seed-pod';
 
 const SOURCE = 'sprouts-sidecar';
 const WORLD = 6;
 const view = document.getElementById('view');
+const cesiumHost = document.getElementById('cesium');
 const promptEl = document.getElementById('prompt');
 const showEl = document.getElementById('show');
 const slotsEl = document.getElementById('slots');
@@ -71,48 +73,12 @@ const ground = new THREE.Mesh(
 ground.rotation.x = -Math.PI / 2;
 scene.add(ground);
 
-const SEG = 80;
-const SPAN = 7200;
-const terrainGeo = new THREE.PlaneGeometry(SPAN, SPAN, SEG, SEG);
-terrainGeo.rotateX(-Math.PI / 2);
-terrainGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(terrainGeo.attributes.position.count * 3), 3));
-const terrainMesh = new THREE.Mesh(terrainGeo, new THREE.MeshLambertMaterial({ vertexColors: true }));
-terrainMesh.visible = false;
-terrainMesh.frustumCulled = false;
-const water = new THREE.Mesh(
-  new THREE.CircleGeometry(SPAN * 1.6, 40),
-  new THREE.MeshLambertMaterial({ color: 0x3c86b0 })
-);
-water.rotation.x = -Math.PI / 2;
-water.position.y = 12;
-water.visible = false;
-scene.add(terrainMesh, water);
-const terrain = { originX: null, originZ: null };
-
-function placeTerrain(worldX, worldZ) {
-  const snap = (SPAN / SEG) * 6;
-  const ox = Math.round(worldX / snap) * snap;
-  const oz = Math.round(worldZ / snap) * snap;
-  if (ox === terrain.originX && oz === terrain.originZ) return;
-  terrain.originX = ox;
-  terrain.originZ = oz;
-  terrainMesh.position.set(ox, 0, oz);
-  water.position.x = ox;
-  water.position.z = oz;
-  const pos = terrainGeo.attributes.position;
-  const col = terrainGeo.attributes.color;
-  for (let index = 0; index < pos.count; index++) {
-    const x = ox + pos.getX(index);
-    const z = oz + pos.getZ(index);
-    const height = groundMeters(x, z);
-    pos.setY(index, height);
-    const rgb = landColor(height, x, z);
-    col.setXYZ(index, rgb[0], rgb[1], rgb[2]);
-  }
-  pos.needsUpdate = true;
-  col.needsUpdate = true;
-  terrainGeo.computeVertexNormals();
-}
+let globe = null;
+createGlobe(cesiumHost).then(next => {
+  globe = next;
+}).catch(() => {
+  globe = null;
+});
 
 const cloudTexture = cloudSprite();
 const clouds = Array.from({ length: 14 }, (_, index) => {
@@ -125,18 +91,13 @@ const clouds = Array.from({ length: 14 }, (_, index) => {
   return sprite;
 });
 
-const aircraft = new AircraftManager(scene);
-const chase = new ChaseCameraController();
-const aircraftPosition = new THREE.Vector3();
-const aircraftQuat = new THREE.Quaternion();
-const aircraftEuler = new THREE.Euler(0, 0, 0, 'YXZ');
+const craft = createCraft(scene);
+const chase = createChaseCamera();
+const craftPosition = new THREE.Vector3();
+const craftQuat = new THREE.Quaternion();
+const craftEuler = new THREE.Euler(0, 0, 0, 'YXZ');
 const gateRoot = new THREE.Group();
 scene.add(gateRoot);
-
-aircraft.load(new URL('./models/rafale/Rafale.gltf', import.meta.url).href).catch(() => {
-  noteEl.hidden = false;
-  noteEl.textContent = 'The plane could not load.';
-});
 
 function send(type, extra) {
   if (window.parent === window) return;
@@ -351,7 +312,7 @@ function paintHud() {
   quizSteer.hidden = open || state.over;
   flypad.hidden = !open;
   if (state.over) {
-    promptEl.textContent = state.crashed ? 'Game over. The plane hit the ground.' : 'You flew for 2 minutes.';
+    promptEl.textContent = state.crashed ? 'Game over. The glider hit the ground.' : 'You flew for 2 minutes.';
     if (showEl.dataset.html) {
       showEl.dataset.html = '';
       showEl.innerHTML = '';
@@ -363,7 +324,7 @@ function paintHud() {
     return;
   }
   if (open) {
-    promptEl.textContent = 'Free flight. The plane flies where you look.';
+    promptEl.textContent = 'Free flight over the globe. The glider flies where you look.';
     if (showEl.dataset.html) {
       showEl.dataset.html = '';
       showEl.innerHTML = '';
@@ -371,7 +332,7 @@ function paintHud() {
     slotsEl.hidden = true;
     spellTypeEl.hidden = true;
     noteEl.hidden = false;
-    noteEl.textContent = `${clock(state.free)} left`;
+    noteEl.textContent = state.arcade ? 'Arcade · CesiumJS globe' : `${clock(state.free)} left · CesiumJS`;
     view.setAttribute('aria-label', promptEl.textContent);
     return;
   }
@@ -388,10 +349,8 @@ function paintHud() {
     slotsEl.textContent = ask.word.split('').map((letter, index) => (index < state.built.length ? letter : '_')).join(' ');
   }
   const turning = state.recover > 0;
-  if (noteEl.textContent !== 'The plane could not load.') {
-    noteEl.hidden = !turning;
-    noteEl.textContent = turning ? 'Turning back' : '';
-  }
+  noteEl.hidden = !turning;
+  noteEl.textContent = turning ? 'Turning back' : '';
   const labels = state.gates.map(gate => gate.label).join(', ');
   view.setAttribute('aria-label', labels ? `${promptEl.textContent} Gates: ${labels}` : promptEl.textContent);
 }
@@ -403,36 +362,42 @@ function fly(dt) {
   const targetRoll = Math.max(-MAX_ROLL, Math.min(MAX_ROLL, -yawRate * ROLL_SENSITIVITY));
   bankRoll += (targetRoll - bankRoll) * Math.min(1, ROLL_DAMP_SPEED * dt);
   const nose = state.free > 0 || state.over ? state.nose : -0.08;
-  aircraftPosition.set(state.x * WORLD, state.alt, -state.z * WORLD);
-  aircraftEuler.set(nose, threeYaw, 0);
-  aircraftQuat.setFromEuler(aircraftEuler);
-  const aircraftState = {
-    position: aircraftPosition,
+  craftPosition.set(state.x * WORLD, state.alt, -state.z * WORLD);
+  craftEuler.set(nose, threeYaw, 0);
+  craftQuat.setFromEuler(craftEuler);
+  const craftState = {
+    position: craftPosition,
     yaw: threeYaw,
     pitch: nose,
     yawRate: -yawRate,
     pitchRate: 0,
-    quaternion: aircraftQuat,
+    quaternion: craftQuat,
     roll: bankRoll
   };
-  aircraft.update(aircraftState, dt);
-  chase.update(aircraftState, camera, dt);
   const open = state.free > 0 || state.over;
-  ground.visible = !open;
-  terrainMesh.visible = open;
-  water.visible = open;
-  scene.fog.density = open ? 0.000028 : 0.000045;
-  if (open) placeTerrain(aircraftPosition.x, aircraftPosition.z);
-  else {
-    ground.position.x = aircraftPosition.x;
-    ground.position.z = aircraftPosition.z;
+  if (open && globe) {
+    if (!globe.visible) globe.show();
+    globe.update(state);
+    view.hidden = true;
+    craft.setVisible(false);
+    return;
   }
+  if (globe?.visible) globe.hide();
+  view.hidden = false;
+  craft.setVisible(true);
+  craft.update(craftState, dt);
+  chase.update(craftState, camera, dt);
+  ground.visible = true;
+  ground.position.x = craftPosition.x;
+  ground.position.z = craftPosition.z;
+  ground.material.color.setHex(open ? 0x3c86b0 : 0x6d9354);
+  scene.fog.density = open ? 0.000028 : 0.000045;
   clouds.forEach((sprite, index) => {
     const span = open ? 6400 : 2800;
-    const base = ((index - 7) * (open ? 520 : 260) - aircraftPosition.x) % span;
-    sprite.position.x = aircraftPosition.x + base;
+    const base = ((index - 7) * (open ? 520 : 260) - craftPosition.x) % span;
+    sprite.position.x = craftPosition.x + base;
     sprite.position.y = open ? 640 + (index % 5) * 220 : CRUISE_ALT + 140 + (index % 4) * 40;
-    sprite.position.z = aircraftPosition.z + ((index % 6) * (open ? 480 : 240) - (open ? 1200 : 600));
+    sprite.position.z = craftPosition.z + ((index % 6) * (open ? 480 : 240) - (open ? 1200 : 600));
   });
 }
 
@@ -459,7 +424,7 @@ function frame(now) {
   const dt = last ? Math.min(0.05, (now - last) / 1000) : 0;
   last = now;
   if (questionHolding()) {
-    renderer.render(scene, camera);
+    if (!view.hidden) renderer.render(scene, camera);
     requestAnimationFrame(frame);
     return;
   }
@@ -485,7 +450,7 @@ function frame(now) {
   syncGates();
   fly(dt);
   paintHud();
-  renderer.render(scene, camera);
+  if (!view.hidden) renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
 
