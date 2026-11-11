@@ -40,13 +40,14 @@ import { stopArcade } from '../games/arcade.js?v=ask-first2-r2';
 import { stopHoop } from '../games/hoop.js?v=hoop-trio-r2';
 import { stopHook } from '../games/hook.js?v=ask-first2-r2';
 import { stopSky } from '../games/sky.js?v=ask-first2-r2';
-import { stopPlanet } from '../games/planet.js?v=turret1';
+import { stopPlanet } from '../games/planet.js?v=sky-rocks2';
 import { stopPuzzle } from '../games/puzzle.js?v=puzzle-glass';
 import { stopMatch } from '../games/match.js?v=pair-match2';
 import { stopChase } from '../games/chase.js?v=ask-first2-r2';
 import { stopHop } from '../games/hop.js?v=ask-first-r2';
 import { stopToast } from '../games/toast.js?v=ask-first-r2';
 import { stopGlide } from '../games/glide.js?v=ask-first-r2';
+import { stopCity } from '../games/city.js?v=city-glide';
 import { stopAisle } from '../games/aisle.js?v=market-aisle2-r2';
 import { stopLily } from '../games/lily.js?v=ask-first-r2';
 import { stopBust } from '../games/bust.js?v=ghost-same2-r2';
@@ -61,12 +62,12 @@ import { stopCrayon } from '../games/crayon.js?v=crayon-more';
 import { stopMarble } from '../games/marble.js?v=ask-first2-r2';
 import { stopBridge } from '../games/bridge.js?v=ask-first-r2';
 import { stopMaze } from '../games/maze.js?v=ask-first-r2';
-import { postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=wood-leaf';
+import { postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=more-speed2';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=arcade';
 
 const NO_WORD = new Set(['trace', 'sort', 'merge']);
-const SUBJECT_WORDS = new Set('rally flight bike walk glide rocket lunar hoop light hook sky planet bridge maze chase hop toast aisle lily mole bust stack lamp cube'.split(' '));
+const SUBJECT_WORDS = new Set('rally flight bike walk glide city rocket lunar hoop light hook sky planet bridge maze chase hop toast aisle lily mole bust stack lamp cube'.split(' '));
 
 export function registerRound(rt) {
   Object.assign(rt, {
@@ -182,7 +183,7 @@ export function registerRound(rt) {
       : g.mode === 'flight'
       ? (ok ? (g.rallyKind === 'spell' ? `You spelled ${g.target}.` : 'Yes! Through the gate.') : 'Not yet. The glider turns back.')
       : g.mode === 'bike'
-        ? (ok ? 'Good.' : 'Not yet. The bike speeds up.')
+        ? (ok ? 'Good.' : 'Not yet. Hang on!')
         : g.mode === 'walk'
           ? (ok ? 'You found it.' : 'Not yet. Walk to another one.')
           : (ok ? 'Yes! Turbo!' : 'Not yet. The car slows down.');
@@ -561,6 +562,19 @@ export function registerRound(rt) {
       g.subject = '';
       g.render = x => esc(String(x));
     }
+    if (g.mode === 'city') {
+      g.board = hopBoard(l);
+      g.howTo = g.freePlay
+        ? 'Steer the paper plane through the downtown rings. The arrows, the pad, or a controller bank and climb. The ground or a building ends the flight.'
+        : 'Steer the paper plane through downtown. Fly through the ring with the right answer. A wrong ring misses. The arrows, the pad, or a controller bank and climb. The ground or a building ends the flight.';
+      g.started = true;
+      g.phase = 'play';
+      g.prompt = g.howTo;
+      g.options = [];
+      g.tokens = [];
+      g.subject = '';
+      g.render = x => esc(String(x));
+    }
     if (g.mode === 'aisle') {
       g.board = aisleBoard(l);
       g.howTo = g.freePlay
@@ -716,7 +730,7 @@ export function registerRound(rt) {
       rt.askBeforePlay(g.prompt);
       return;
     }
-    const gatesPlay = g.phase !== 'ready' && !['glide', 'marble', 'hop', 'toast', 'aisle', 'lily', 'mole', 'bust', 'stack', 'lamp', 'cube'].includes(g.mode);
+    const gatesPlay = g.phase !== 'ready' && !['glide', 'city', 'marble', 'hop', 'toast', 'aisle', 'lily', 'mole', 'bust', 'stack', 'lamp', 'cube'].includes(g.mode);
     if (gatesPlay) rt.askBeforePlay(g.prompt);
     rt.renderGame();
     if (g.mode === 'lanes' && g.phase === 'ready') rt.say(g.style === 'reach' ? 'Step into the word. You have 10 seconds to get there.' : 'Drive to the word.');
@@ -731,7 +745,7 @@ export function registerRound(rt) {
     else if (g.mode === 'stack' && g.phase === 'play') { /* stacker speaks each drop */ }
     else if (g.mode === 'lamp' && g.phase === 'play') { /* light the lamp speaks each stone */ }
     else if (g.mode === 'cube' && g.phase === 'play') { /* cube dash speaks each cube */ }
-    else if (g.mode === 'glide') rt.say(g.howTo);
+    else if (g.mode === 'glide' || g.mode === 'city') rt.say(g.howTo);
     else if (g.mode === 'catch' && g.phase === 'ready') rt.say(g.style === 'reach' ? 'Reach up and catch the number with your hand.' : 'Slide the basket under the number.');
     else if (!gatesPlay) rt.say(g.prompt);
   }
@@ -791,7 +805,7 @@ export function registerRound(rt) {
     });
   }
   function profileAsk(g, place) {
-    const board = place === 'lamp' ? lampBoard(g.level) : place === 'stack' ? stackBoard(g.level) : place === 'bust' ? bustBoard(g.level) : place === 'lily' ? lilyBoard(g.level) : place === 'cube' ? cubeBoard(g.level) : place === 'mole' ? moleBoard(g.level) : place === 'hop' || place === 'glide' || place === 'rally' || place === 'walk' ? hopBoard(g.level) : place === 'toast' ? toastBoard(g.level) : place === 'aisle' ? aisleBoard(g.level) : chaseBoard(g.level);
+    const board = place === 'lamp' ? lampBoard(g.level) : place === 'stack' ? stackBoard(g.level) : place === 'bust' ? bustBoard(g.level) : place === 'lily' ? lilyBoard(g.level) : place === 'cube' ? cubeBoard(g.level) : place === 'mole' ? moleBoard(g.level) : place === 'hop' || place === 'glide' || place === 'city' || place === 'rally' || place === 'walk' ? hopBoard(g.level) : place === 'toast' ? toastBoard(g.level) : place === 'aisle' ? aisleBoard(g.level) : chaseBoard(g.level);
     const want = board.choices;
     const kinds = (rt.band() === 'preschool' ? ['facts', 'shapes', 'colors'] : rt.band() === 'grade4' ? ['words', 'facts', 'shapes'] : ['words', 'facts', 'shapes', 'colors']).filter(kind => {
       if (kind === 'words') return rt.wordList().length >= 2;
@@ -809,7 +823,7 @@ export function registerRound(rt) {
       const n = Math.max(1, Math.min(want, words.length));
       g.target = rt.pick(words);
       g.options = rt.shuffle(words.filter(word => word !== g.target)).slice(0, n - 1).concat(g.target);
-      g.prompt = place === 'lamp' ? `Catch the glow bug that says ${g.target}.` : place === 'stack' ? `Drop the block that says ${g.target}.` : place === 'bust' ? `Bust the ghost that says ${g.target}.` : place === 'lily' ? `Hop to the pot that says ${g.target}.` : place === 'cube' ? `Touch the cube that says ${g.target}.` : place === 'mole' ? `Whack the mole that says ${g.target}.` : place === 'hop' ? `Hop on the word ${g.target}.` : place === 'toast' ? `Pop the toast that says ${g.target}.` : place === 'aisle' ? `Find the word ${g.target} in the market.` : place === 'glide' ? `Grab the gem that says ${g.target}.` : place === 'rally' ? `Which one says ${g.target}?` : place === 'walk' ? `Walk to the word ${g.target}.` : `Eat the berries that say ${g.target}.`;
+      g.prompt = place === 'lamp' ? `Catch the glow bug that says ${g.target}.` : place === 'stack' ? `Drop the block that says ${g.target}.` : place === 'bust' ? `Bust the ghost that says ${g.target}.` : place === 'lily' ? `Hop to the pot that says ${g.target}.` : place === 'cube' ? `Touch the cube that says ${g.target}.` : place === 'mole' ? `Whack the mole that says ${g.target}.` : place === 'hop' ? `Hop on the word ${g.target}.` : place === 'toast' ? `Pop the toast that says ${g.target}.` : place === 'aisle' ? `Find the word ${g.target} in the market.` : place === 'glide' ? `Grab the gem that says ${g.target}.` : place === 'city' ? `Fly through the ring that says ${g.target}.` : place === 'rally' ? `Which one says ${g.target}?` : place === 'walk' ? `Walk to the word ${g.target}.` : `Eat the berries that say ${g.target}.`;
       g.render = x => esc(x);
       g.tokens = tokenList(rt.shuffle(g.options), g.target);
       return { choices: g.tokens };
@@ -820,7 +834,7 @@ export function registerRound(rt) {
       const n = Math.max(2, Math.min(want, ss.length));
       g.target = rt.pick(ss);
       g.options = rt.shuffle(ss.filter(name => name !== g.target)).slice(0, n - 1).concat(g.target);
-      g.prompt = place === 'lamp' ? `Catch the ${g.target} glow bug.` : place === 'stack' ? `Drop the ${g.target} block.` : place === 'bust' ? `Bust the ${g.target} ghost.` : place === 'lily' ? `Hop to the ${g.target}.` : place === 'cube' ? `Touch the ${g.target} cube.` : place === 'mole' ? `Whack the ${g.target} mole.` : place === 'hop' ? `Hop on the ${g.target}.` : place === 'toast' ? `Pop the ${g.target} toast.` : place === 'aisle' ? `Find the ${g.target} in the market.` : place === 'glide' ? `Grab the ${g.target} gem.` : place === 'rally' ? `Which one is the ${g.target}?` : place === 'walk' ? `Walk to the ${g.target}.` : `Eat the ${g.target} berries.`;
+      g.prompt = place === 'lamp' ? `Catch the ${g.target} glow bug.` : place === 'stack' ? `Drop the ${g.target} block.` : place === 'bust' ? `Bust the ${g.target} ghost.` : place === 'lily' ? `Hop to the ${g.target}.` : place === 'cube' ? `Touch the ${g.target} cube.` : place === 'mole' ? `Whack the ${g.target} mole.` : place === 'hop' ? `Hop on the ${g.target}.` : place === 'toast' ? `Pop the ${g.target} toast.` : place === 'aisle' ? `Find the ${g.target} in the market.` : place === 'glide' ? `Grab the ${g.target} gem.` : place === 'city' ? `Fly through the ${g.target} ring.` : place === 'rally' ? `Which one is the ${g.target}?` : place === 'walk' ? `Walk to the ${g.target}.` : `Eat the ${g.target} berries.`;
       g.render = x => rt.shape(x);
       g.tokens = tokenList(rt.shuffle(g.options), g.target).map(token => ({ ...token, shape: token.label, fill: '#5d7a45' }));
       return { choices: g.tokens };
@@ -833,7 +847,7 @@ export function registerRound(rt) {
       g.target = target[0];
       const mixed = rt.shuffle(rt.shuffle(cs.filter(color => color[0] !== target[0])).slice(0, n - 1).concat([target]));
       g.options = mixed.map(color => color[0]);
-      g.prompt = place === 'lamp' ? `Catch the ${g.target} glow bug.` : place === 'stack' ? `Drop the ${g.target} block.` : place === 'bust' ? `Bust the ${g.target} ghost.` : place === 'lily' ? `Hop to ${g.target}.` : place === 'cube' ? `Touch the ${g.target} cube.` : place === 'mole' ? `Whack the ${g.target} mole.` : place === 'hop' ? `Hop on ${g.target}.` : place === 'toast' ? `Pop the ${g.target} toast.` : place === 'aisle' ? `Find ${g.target} in the market.` : place === 'glide' ? `Grab the ${g.target} gem.` : place === 'rally' ? `Which one is ${g.target}?` : place === 'walk' ? `Walk to ${g.target}.` : `Eat the ${g.target} berries.`;
+      g.prompt = place === 'lamp' ? `Catch the ${g.target} glow bug.` : place === 'stack' ? `Drop the ${g.target} block.` : place === 'bust' ? `Bust the ${g.target} ghost.` : place === 'lily' ? `Hop to ${g.target}.` : place === 'cube' ? `Touch the ${g.target} cube.` : place === 'mole' ? `Whack the ${g.target} mole.` : place === 'hop' ? `Hop on ${g.target}.` : place === 'toast' ? `Pop the ${g.target} toast.` : place === 'aisle' ? `Find ${g.target} in the market.` : place === 'glide' ? `Grab the ${g.target} gem.` : place === 'city' ? `Fly through the ${g.target} ring.` : place === 'rally' ? `Which one is ${g.target}?` : place === 'walk' ? `Walk to ${g.target}.` : `Eat the ${g.target} berries.`;
       g.render = x => esc(x);
       let marked = false;
       g.tokens = mixed.map(([label, fill]) => {
@@ -849,6 +863,7 @@ export function registerRound(rt) {
     g.options = [...rest.slice(0, Math.max(0, want - 1)), g.target];
     g.tokens = tokenList(rt.shuffle(g.options), g.target);
     if (place === 'glide') g.prompt = `${g.prompt} Grab that gem.`;
+    if (place === 'city') g.prompt = `${g.prompt} Fly through that ring.`;
     if (place === 'lily') g.prompt = `${g.prompt} Hop to that flower pot.`;
     if (place === 'mole') g.prompt = `${g.prompt} Whack that mole.`;
     if (place === 'cube') g.prompt = `${g.prompt} Touch that cube.`;
@@ -1068,6 +1083,7 @@ export function registerRound(rt) {
     stopHop();
     stopToast();
     stopGlide();
+    stopCity();
     stopAisle();
     stopLily();
     stopBust();
@@ -1097,7 +1113,7 @@ export function registerRound(rt) {
   }
   function hybrid(g) {
     if (sidecarGame(g.mode)) return;
-    if (g.mode === 'catch' || g.mode === 'lanes' || g.mode === 'rocket' || g.mode === 'lunar' || g.mode === 'hoop' || g.mode === 'light' || g.mode === 'race' || g.mode === 'hook' || g.mode === 'sky' || g.mode === 'planet' || g.mode === 'puzzle' || g.mode === 'match' || g.mode === 'marble' || g.mode === 'bridge' || g.mode === 'maze' || g.mode === 'chase' || g.mode === 'hop' || g.mode === 'toast' || g.mode === 'glide' || g.mode === 'aisle' || g.mode === 'lily' || g.mode === 'mole' || g.mode === 'bust' || g.mode === 'stack' || g.mode === 'lamp' || g.mode === 'cube' || g.mode === 'trace' || g.mode === 'sort' || g.mode === 'merge' || g.mode === 'crayon') return;
+    if (g.mode === 'catch' || g.mode === 'lanes' || g.mode === 'rocket' || g.mode === 'lunar' || g.mode === 'hoop' || g.mode === 'light' || g.mode === 'race' || g.mode === 'hook' || g.mode === 'sky' || g.mode === 'planet' || g.mode === 'puzzle' || g.mode === 'match' || g.mode === 'marble' || g.mode === 'bridge' || g.mode === 'maze' || g.mode === 'chase' || g.mode === 'hop' || g.mode === 'toast' || g.mode === 'glide' || g.mode === 'city' || g.mode === 'aisle' || g.mode === 'lily' || g.mode === 'mole' || g.mode === 'bust' || g.mode === 'stack' || g.mode === 'lamp' || g.mode === 'cube' || g.mode === 'trace' || g.mode === 'sort' || g.mode === 'merge' || g.mode === 'crayon') return;
     const t = g.target, [verb, icon] = rt.pick(rt.moves);
     g.icon = icon;
     if (g.mode === 'count' || g.mode === 'path') { mathHybrid(g, verb); return; }
@@ -1197,6 +1213,7 @@ export function registerRound(rt) {
     if (g.mode === 'stack') return g.subject === 'shapes' || g.subject === 'colors' ? `You stacked the ${g.target}.` : `You stacked ${g.target}.`;
     if (g.mode === 'lamp') return g.subject === 'shapes' || g.subject === 'colors' ? `You caught the ${g.target} glow bug.` : `You caught ${g.target}.`;
     if (g.mode === 'glide') return g.subject === 'words' ? `You grabbed the gem that says ${g.target}.` : g.subject === 'shapes' || g.subject === 'colors' ? `You grabbed the ${g.target} gem.` : `You grabbed ${g.target}.`;
+    if (g.mode === 'city') return g.subject === 'words' ? `You flew through the ring that says ${g.target}.` : g.subject === 'shapes' || g.subject === 'colors' ? `You flew through the ${g.target} ring.` : `You flew through ${g.target}.`;
     if (g.mode === 'paint') return `You painted ${g.target}.`;
     if (g.mode === 'walk') return g.subject === 'shapes' || g.subject === 'colors' ? `You walked to the ${g.target}.` : `You walked to ${g.target}.`;
     if (g.mode === 'flight') return g.rallyKind === 'spell' ? `You spelled ${g.target}.` : g.subject === 'shapes' || g.subject === 'colors' ? `You flew through the ${g.target}.` : `You flew through ${g.target}.`;
@@ -1217,7 +1234,7 @@ export function registerRound(rt) {
     if (g.mode === 'paint') return 'Paint the half with the right answer.';
     if (g.mode === 'walk') return g.subject === 'words' ? 'Listen for the word, then walk to it.' : 'Walk to the one that matches.';
     if (g.mode === 'flight') return g.rallyKind === 'spell' ? 'Listen for the word, then fly through each letter or type it.' : 'Steer through the gate that matches.';
-    if (g.mode === 'chase' || g.mode === 'hop' || g.mode === 'toast' || g.mode === 'aisle' || g.mode === 'lily' || g.mode === 'mole' || g.mode === 'bust' || g.mode === 'stack' || g.mode === 'lamp' || g.mode === 'cube' || g.mode === 'glide' || g.mode === 'rally' || g.mode === 'bike') {
+    if (g.mode === 'chase' || g.mode === 'hop' || g.mode === 'toast' || g.mode === 'aisle' || g.mode === 'lily' || g.mode === 'mole' || g.mode === 'bust' || g.mode === 'stack' || g.mode === 'lamp' || g.mode === 'cube' || g.mode === 'glide' || g.mode === 'city' || g.mode === 'rally' || g.mode === 'bike') {
       if (g.subject === 'words') {
         if (g.mode === 'chase') return 'Listen for the word, then eat those berries.';
         if (g.mode === 'toast') return 'Listen for the word, then pop that toast.';
@@ -1229,6 +1246,7 @@ export function registerRound(rt) {
         if (g.mode === 'stack') return 'Listen for the word, then drop that block.';
         if (g.mode === 'lamp') return 'Listen for the word, then catch that glow bug.';
         if (g.mode === 'glide') return 'Listen for the word, then grab that gem.';
+        if (g.mode === 'city') return 'Listen for the word, then fly through that ring.';
         if (g.mode === 'rally') return g.rallyKind === 'spell' ? 'Listen for the word, then tap or type the letters in order.' : 'Tap the one that matches. A right answer turbos the car.';
         if (g.mode === 'bike') return g.rallyKind === 'spell' ? 'Listen for the word, then tap or type the letters in order.' : 'Tap the one that matches. A right answer says good, and the ride continues.';
         return 'Listen for the word, then hop on it.';
@@ -1249,6 +1267,7 @@ export function registerRound(rt) {
       if (g.mode === 'stack') return 'Drop the block with the right number.';
       if (g.mode === 'lamp') return 'Catch the glow bug with the right number.';
       if (g.mode === 'glide') return 'Grab the gem with the right number.';
+      if (g.mode === 'city') return 'Fly through the ring with the right number.';
       if (g.mode === 'rally') return g.rallyKind === 'math' ? 'Work out the fact, then tap that number.' : 'Tap the one that matches. A right answer turbos the car.';
       if (g.mode === 'bike') return g.rallyKind === 'math' ? 'Work out the fact, then tap that number.' : 'Tap the one that matches. A right answer says good, and the ride continues.';
       return 'Hop on the right number.';
@@ -1515,6 +1534,7 @@ export function registerRound(rt) {
     stopHop();
     stopToast();
     stopGlide();
+    stopCity();
     stopAisle();
     stopLily();
     stopBust();
@@ -1527,7 +1547,7 @@ export function registerRound(rt) {
     stopMerge();
     stopCrayon();
     stopSidecar();
-    rt.clearTimers('learn', 'chase', 'hop', 'toast', 'glide', 'aisle', 'lily', 'bust', 'mole', 'cube', 'stack', 'lamp', 'rally');
+    rt.clearTimers('learn', 'chase', 'hop', 'toast', 'glide', 'city', 'aisle', 'lily', 'bust', 'mole', 'cube', 'stack', 'lamp', 'rally');
     rt.stopEars();
     const g = rt.game;
     g.finished = true;

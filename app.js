@@ -4,9 +4,9 @@ import { roundCount, stageOf, profileSprite, SPRITES } from './logic.mjs?v=struc
 import { knownVoice } from './lib/speech.js?v=wait-2s';
 import { findBuiltSidecars } from './lib/sidecar.js?v=wood-leaf';
 import { rt } from './app/runtime.mjs?v=lean-r2';
-import { registerHelpers } from './app/helpers.mjs?v=up-next';
-import { registerRound } from './app/round.mjs?v=up-next';
-import { registerMounts } from './app/mounts.mjs?v=hop-lives-r1';
+import { registerHelpers } from './app/helpers.mjs?v=city-glide';
+import { registerRound } from './app/round.mjs?v=city-glide';
+import { registerMounts } from './app/mounts.mjs?v=city-glide';
 import { registerParent } from './app/parent.mjs?v=up-next';
 
 // Live state. Every module reads and writes it through rt.

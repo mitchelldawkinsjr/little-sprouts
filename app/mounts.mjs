@@ -42,13 +42,14 @@ import { mountHoop, stopHoop } from '../games/hoop.js?v=hoop-trio-r2';
 import { lightMarkSlots, mountLight, stopLight } from '../games/light.js?v=light-pace-icons';
 import { mountHook, stopHook } from '../games/hook.js?v=ask-first2-r2';
 import { mountSky, stopSky } from '../games/sky.js?v=ask-first2-r2';
-import { mountPlanet, stopPlanet } from '../games/planet.js?v=turret1';
+import { mountPlanet, stopPlanet } from '../games/planet.js?v=sky-rocks2';
 import { mountPuzzle, stopPuzzle } from '../games/puzzle.js?v=puzzle-glass';
 import { mountMatch, stopMatch } from '../games/match.js?v=pair-match2';
 import { mountChase, stopChase } from '../games/chase.js?v=ask-first2-r2';
 import { mountHop, stopHop } from '../games/hop.js?v=hop-lives-r1';
 import { mountToast, stopToast } from '../games/toast.js?v=ask-first-r2';
 import { mountGlide, stopGlide } from '../games/glide.js?v=ask-first-r2';
+import { mountCity, stopCity } from '../games/city.js?v=city-glide';
 import { mountAisle, stopAisle } from '../games/aisle.js?v=market-aisle2-r2';
 import { mountLily, stopLily } from '../games/lily.js?v=ask-first-r2';
 import { mountBust, stopBust } from '../games/bust.js?v=ghost-same2-r2';
@@ -70,7 +71,7 @@ import {
   sidecarGame,
   sidecarIsBuilt,
   stopSidecar
-} from '../lib/sidecar.js?v=wood-leaf';
+} from '../lib/sidecar.js?v=more-speed2';
 import {
   SHELF_META,
   shelfOf as shelfIdOf,
@@ -83,15 +84,23 @@ import {
   homePageHtml
 } from '../lib/home-ui.mjs?v=structure2';
 import { $, esc } from './runtime.mjs?v=lean-r2';
-import { ARCADE } from './arcade-modes.mjs?v=hop-lives-r1';
+import { ARCADE } from './arcade-modes.mjs?v=city-glide';
 
 const words = list => new Set(list.split(' '));
 const SCREEN = words('catch lanes');
-const IN_ARENA = words('catch lanes rocket lunar hoop light race hook sky planet puzzle match marble bridge maze chase hop toast glide aisle lily mole cube bust stack lamp trace sort merge crayon');
+const IN_ARENA = words('catch lanes rocket lunar hoop light race hook sky planet puzzle match marble bridge maze chase hop toast glide city aisle lily mole cube bust stack lamp trace sort merge crayon');
 const NO_CHOICES = words('catch lanes race hook sky planet puzzle match marble maze chase hop toast trace sort merge');
 const HAS_READY = words('hook sky planet marble bridge maze chase hop toast aisle lily mole cube bust stack lamp');
-const NO_SCENE = words('rocket race chase hop toast glide aisle lily mole cube bust stack lamp light');
+const NO_SCENE = words('rocket race chase hop toast glide city aisle lily mole cube bust stack lamp light');
 const SHOW = { race: 'raceShow', light: 'lightShow', hop: 'hopShow', aisle: 'aisleShow', lily: 'lilyShow', mole: 'moleShow', cube: 'cubeShow', stack: 'stackShow', lamp: 'lampShow' };
+
+/** Local calendar day key (YYYY-MM-DD) for once-a-day home greeting. */
+function localCalendarDay(now = new Date()) {
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
 
 export function registerMounts(rt) {
   Object.assign(rt, {
@@ -490,6 +499,7 @@ export function registerMounts(rt) {
     stopHop();
     stopToast();
     stopGlide();
+    stopCity();
     stopAisle();
     stopLily();
     stopBust();
@@ -502,7 +512,7 @@ export function registerMounts(rt) {
     stopMerge();
     stopCrayon();
     stopSidecar();
-    clearTimers('learn', 'chase', 'hop', 'toast', 'glide', 'aisle', 'lily', 'bust', 'mole', 'cube', 'stack', 'lamp', 'rally');
+    clearTimers('learn', 'chase', 'hop', 'toast', 'glide', 'city', 'aisle', 'lily', 'bust', 'mole', 'cube', 'stack', 'lamp', 'rally');
     stopEars();
     rt.game = null;
     camOff();
@@ -539,7 +549,15 @@ export function registerMounts(rt) {
     document.querySelectorAll('[data-game]').forEach(b => b.onclick = () => start(b.dataset.game));
     rt.focusHeading();
     if (rt.data.sound) warm(rt.data.voice);
-    if (rt.data.sound && focus !== 'style' && focus !== 'more' && focus !== 'shelf' && focus !== 'how') rt.say(hello);
+    // Speak the Hi greeting once per learner per local calendar day.
+    if (rt.data.sound && focus !== 'style' && focus !== 'more' && focus !== 'shelf' && focus !== 'how') {
+      const day = localCalendarDay();
+      if (learner.helloDay !== day) {
+        learner.helloDay = day;
+        rt.save();
+        rt.say(hello);
+      }
+    }
   }
   function pickLearner(index) {
     if (!Number.isInteger(index) || index === rt.data.active || !rt.data.profiles[index]) return;
@@ -568,7 +586,7 @@ export function registerMounts(rt) {
   function start(mode) {
     rt.releaseListen();
     rt.stopSpeech();
-    clearTimers('rocket', 'lane', 'hook', 'sky', 'planet', 'match', 'learn', 'bridge', 'chase', 'hop', 'toast', 'glide', 'lily', 'bust', 'mole', 'cube', 'stack', 'lamp', 'rally');
+    clearTimers('rocket', 'lane', 'hook', 'sky', 'planet', 'match', 'learn', 'bridge', 'chase', 'hop', 'toast', 'glide', 'city', 'lily', 'bust', 'mole', 'cube', 'stack', 'lamp', 'rally');
     const learner = rt.p();
     learner.lastPlayed = mode;
     rt.save();
@@ -592,7 +610,10 @@ export function registerMounts(rt) {
       if (g[`${mode}Said`] === g.prompt) return;
       g[`${mode}Said`] = g.prompt;
     }
-    rt.askBeforePlay(g.prompt);
+    if (cfg.fly) {
+      rt.releaseListen();
+      rt.say(g.prompt);
+    } else rt.askBeforePlay(g.prompt);
   }
   function paintArcadeProgress(mode, value) {
     const g = rt.game;
@@ -722,6 +743,7 @@ export function registerMounts(rt) {
     stopHop();
     stopToast();
     stopGlide();
+    stopCity();
     stopAisle();
     stopLily();
     stopBust();
@@ -738,7 +760,7 @@ export function registerMounts(rt) {
     const g = rt.game;
     if (!g) return;
     const screen = SCREEN.has(g.mode);
-    const { rocket, lunar, hoop, light, race, hook, sky, planet, puzzle, match, marble, bridge, maze, chase, hop, toast, glide, aisle, lily, mole, cube, bust, stack, lamp, trace, sort, merge, crayon } = Object.fromEntries([...IN_ARENA].map(m => [m, g.mode === m]));
+    const { rocket, lunar, hoop, light, race, hook, sky, planet, puzzle, match, marble, bridge, maze, chase, hop, toast, glide, city, aisle, lily, mole, cube, bust, stack, lamp, trace, sort, merge, crayon } = Object.fromEntries([...IN_ARENA].map(m => [m, g.mode === m]));
     const side = sidecarGame(g.mode);
     const arcade = IN_ARENA.has(g.mode) || !!side;
     const reach = g.style === 'reach', phys = !arcade && (g.style === 'move' || g.style === 'hunt'), zone = reach ? ' data-zone' : '';
@@ -806,7 +828,7 @@ export function registerMounts(rt) {
     const scene = NO_SCENE.has(g.mode) || side ? '' : g.show;
     const height = Math.round(Math.min(1, Math.max(0, g.altitude || 0)) * 100);
     const paceMark = g.mode === 'lanes' && g.started && g.style !== 'reach' ? `${lanePaceName(g)} · ` : '';
-    const tally = light ? '<span id="lightTally">Pick a speed</span>' : g.mode === 'quickmath' ? '<span>Missions</span>' : freePlay ? '<span>Arcade</span>' : rallyDrive ? `<span id="rallyTally">${rallyRights >= rallyNeed ? 'Finish the stage' : `${g.rallyRights || 0} / ${rallyNeed}`}</span>` : side ? `<span id="rallyTally">${g.index + 1} / ${rounds}</span>` : race ? '<span>Full tank</span>' : glide ? `<span id="glideTally">${g.index + 1} / ${rounds}</span>` : marble ? '<span id="runTally">Level 1 · 0</span>' : maze ? `<span id="runTally">${g.clock?.seconds || 0}s · 1 / ${rounds}</span>` : hop ? `<span id="hopTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : toast ? `<span id="toastTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 5} left</span>` : aisle ? `<span id="aisleTally">${g.index + 1} / ${rounds} · ${g.board?.seconds || 32}s</span>` : lily ? `<span id="lilyTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : cube ? `<span id="cubeTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : mole ? `<span id="moleTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 5} left</span>` : bust ? `<span id="bustTally">${g.index + 1} / ${rounds} · ${g.board?.seconds || 15}s</span>` : stack ? `<span id="stackTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : lamp ? `<span id="lampTally">${g.index + 1} / ${rounds}</span>` : bridge ? `<span id="bridgeTally">${g.index + 1} / ${rounds} · ${g.lives || 1} ${(g.lives || 1) === 1 ? 'life' : 'lives'}</span>` : rocket ? `<span id="rocketTally">${esc(rocketZone(g.altitude || 0.32))}</span>` : `<span>${paceMark}${g.index + 1} / ${rounds}</span>`;
+    const tally = light ? '<span id="lightTally">Pick a speed</span>' : g.mode === 'quickmath' ? '<span>Missions</span>' : freePlay ? '<span>Arcade</span>' : rallyDrive ? `<span id="rallyTally">${rallyRights >= rallyNeed ? 'Finish the stage' : `${g.rallyRights || 0} / ${rallyNeed}`}</span>` : side ? `<span id="rallyTally">${g.index + 1} / ${rounds}</span>` : race ? '<span>Full tank</span>' : glide ? `<span id="glideTally">${g.index + 1} / ${rounds}</span>` : city ? `<span id="cityTally">${g.index + 1} / ${rounds}</span>` : marble ? '<span id="runTally">Level 1 · 0</span>' : maze ? `<span id="runTally">${g.clock?.seconds || 0}s · 1 / ${rounds}</span>` : hop ? `<span id="hopTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : toast ? `<span id="toastTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 5} left</span>` : aisle ? `<span id="aisleTally">${g.index + 1} / ${rounds} · ${g.board?.seconds || 32}s</span>` : lily ? `<span id="lilyTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : cube ? `<span id="cubeTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : mole ? `<span id="moleTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 5} left</span>` : bust ? `<span id="bustTally">${g.index + 1} / ${rounds} · ${g.board?.seconds || 15}s</span>` : stack ? `<span id="stackTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : lamp ? `<span id="lampTally">${g.index + 1} / ${rounds}</span>` : bridge ? `<span id="bridgeTally">${g.index + 1} / ${rounds} · ${g.lives || 1} ${(g.lives || 1) === 1 ? 'life' : 'lives'}</span>` : rocket ? `<span id="rocketTally">${esc(rocketZone(g.altitude || 0.32))}</span>` : `<span>${paceMark}${g.index + 1} / ${rounds}</span>`;
     const barMax = rallyDrive ? rallyNeed : marble ? (g.track?.step || 8) : maze ? (g.clock?.seconds || 50) : rocket ? 100 : rounds;
     const barNow = rallyDrive ? rallyRights : marble ? 0 : maze ? barMax : rocket ? height : g.index;
     const barLabel = rallyDrive ? 'Right answers before the open road' : marble ? 'Points to the next level' : maze ? 'Time left' : rocket ? 'Height toward space' : 'Questions completed';
@@ -820,7 +842,12 @@ export function registerMounts(rt) {
     $('#app').innerHTML = `<div class="playtop" data-mode="${esc(g.mode)}"><button class="quiet" id="back">← All games</button><b>${esc(g.title)}</b>${tally}</div>${alone}${bar}<section class="playarea"><h1>${esc(rt.heading(g))}</h1><button class="speaker" id="listen"><span aria-hidden="true">🔈</span> Hear it again</button>${reveal}${memory}${scene}${body}<p class="feedback" id="feedback" aria-live="polite"></p><button class="primary" id="next" data-camera-go hidden>${g.index + 1 === rounds ? 'See my stars ★' : 'Next adventure →'}</button></section>`;
     $('#back').onclick = requestHome;
     if ($('#playAlone')) $('#playAlone').onclick = openSidecarAlone;
-    $('#listen').onclick = () => rt.askBeforePlay(g.prompt);
+    $('#listen').onclick = () => {
+      if (ARCADE[g.mode]?.fly) {
+        rt.releaseListen();
+        rt.say(g.prompt);
+      } else rt.askBeforePlay(g.prompt);
+    };
     if ($('#reveal')) $('#reveal').onclick = () => {
       g.shown = true;
       const title = $('#app h1');
@@ -1891,6 +1918,54 @@ export function registerMounts(rt) {
           clearTimers('glide');
           rt.glideTimer = setTimeout(() => {
             rt.glideTimer = 0;
+            if (rt.game !== g || g.finished) return;
+            rt.finish();
+          }, rt.data.sound ? 500 : 250);
+        }
+      });
+    }
+    if (city && g.phase !== 'ready') {
+      mountCity($('#arcade'), {
+        board: g.board,
+        reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
+        nextQuestion: () => rt.arcadeQuestion('city'),
+        onPrompt: () => paintArcadePrompt('city'),
+        onMiss() {
+          if (rt.game !== g || g.finished) return;
+          g.missed = true;
+          const line = 'That ring is not the answer. Fly through the right one.';
+          const feedback = $('#feedback');
+          if (feedback && feedback.textContent !== line) {
+            feedback.textContent = line;
+            rt.say(line);
+          }
+          showHint();
+        },
+        onClear(clean) {
+          if (rt.game !== g || g.finished) return;
+          if (g.freePlay) return;
+          if (!clean) g.missed = true;
+          if (!g.missed) g.firstCorrect++;
+          const found = rt.foundLine(g);
+          const feedback = $('#feedback');
+          if (feedback) feedback.textContent = found;
+          rt.say(found);
+          g.index++;
+          g.missed = false;
+          $('#help')?.remove();
+          paintArcadeProgress('city');
+          if (g.index >= rt.questionCount()) g.cityDone = true;
+        },
+        onOver() {
+          if (rt.game !== g || g.finished) return;
+          g.asked = g.index;
+          const flown = g.index ? `You flew through ${g.index} ${g.index === 1 ? 'answer' : 'answers'}.` : 'Fly through the ring with the answer.';
+          rt.finishRun(g, 'The plane met the city.', flown);
+        },
+        onFinished() {
+          clearTimers('city');
+          rt.cityTimer = setTimeout(() => {
+            rt.cityTimer = 0;
             if (rt.game !== g || g.finished) return;
             rt.finish();
           }, rt.data.sound ? 500 : 250);
