@@ -40,7 +40,7 @@ import { stopArcade } from '../games/arcade.js?v=ask-first2-r2';
 import { stopHoop } from '../games/hoop.js?v=hoop-trio-r2';
 import { stopHook } from '../games/hook.js?v=ask-first2-r2';
 import { stopSky } from '../games/sky.js?v=ask-first2-r2';
-import { stopPlanet } from '../games/planet.js?v=ask-first2-r2';
+import { stopPlanet } from '../games/planet.js?v=turret1';
 import { stopPuzzle } from '../games/puzzle.js?v=puzzle-glass';
 import { stopMatch } from '../games/match.js?v=pair-match2';
 import { stopChase } from '../games/chase.js?v=ask-first2-r2';
@@ -61,7 +61,7 @@ import { stopCrayon } from '../games/crayon.js?v=crayon-more';
 import { stopMarble } from '../games/marble.js?v=ask-first2-r2';
 import { stopBridge } from '../games/bridge.js?v=ask-first-r2';
 import { stopMaze } from '../games/maze.js?v=ask-first-r2';
-import { postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=quickmath';
+import { postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=wood-leaf';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=arcade';
 

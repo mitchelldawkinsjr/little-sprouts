@@ -3,6 +3,9 @@
  * Apache 2.0 engine. No Cesium ion (ion terrain/imagery needs a paid
  * commercial plan). Natural Earth II ships with CesiumJS. Ellipsoid terrain.
  * Not based on Web Flight Simulator (that project needs a separate commercial license).
+ *
+ * Viewer is created on first show() — building WebGL while #cesium is
+ * display:none leaves a permanently black canvas.
  */
 
 const HOME = { lon: -122.12, lat: 37.48 };
@@ -21,14 +24,12 @@ export function lonLatOf(state) {
   return {
     lon: HOME.lon + dLon,
     lat: HOME.lat + dLat,
-    height: Math.max(40, state.alt)
+    height: Math.max(80, state.alt)
   };
 }
 
-export async function createGlobe(container) {
+async function buildViewer(container) {
   const Cesium = cesium();
-  if (!Cesium || !container) return null;
-
   Cesium.Ion.defaultAccessToken = undefined;
 
   const viewer = new Cesium.Viewer(container, {
@@ -43,66 +44,105 @@ export async function createGlobe(container) {
     infoBox: false,
     selectionIndicator: false,
     creditContainer: document.createElement('div'),
-    terrainProvider: new Cesium.EllipsoidTerrainProvider()
+    baseLayer: false,
+    terrainProvider: new Cesium.EllipsoidTerrainProvider(),
+    requestRenderMode: false
   });
 
-  viewer.imageryLayers.removeAll();
   try {
     const imagery = await Cesium.TileMapServiceImageryProvider.fromUrl(
       Cesium.buildModuleUrl('Assets/Textures/NaturalEarthII')
     );
     viewer.imageryLayers.addImageryProvider(imagery);
   } catch {
-    viewer.imageryLayers.addImageryProvider(new Cesium.SingleTileImageryProvider({
-      url: 'data:image/svg+xml,' + encodeURIComponent(
-        '<svg xmlns="http://www.w3.org/2000/svg" width="2" height="2"><rect width="2" height="2" fill="#6d9354"/></svg>'
-      )
-    }));
+    // shortcut: solid globe if Natural Earth tiles fail; swap in a local TMS later
+    viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString('#6d9354');
   }
 
   viewer.scene.globe.enableLighting = false;
   viewer.scene.fog.enabled = true;
+  viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#87b4d6');
   viewer.scene.screenSpaceCameraController.enableInputs = false;
-  viewer.clock.shouldAnimate = false;
+  viewer.clock.shouldAnimate = true;
 
   const craft = viewer.entities.add({
     name: 'seed-pod',
-    position: Cesium.Cartesian3.fromDegrees(HOME.lon, HOME.lat, 800),
+    position: Cesium.Cartesian3.fromDegrees(HOME.lon, HOME.lat, 900),
     orientation: Cesium.Transforms.headingPitchRollQuaternion(
-      Cesium.Cartesian3.fromDegrees(HOME.lon, HOME.lat, 800),
+      Cesium.Cartesian3.fromDegrees(HOME.lon, HOME.lat, 900),
       new Cesium.HeadingPitchRoll(0, 0, 0)
     ),
     ellipsoid: {
-      radii: new Cesium.Cartesian3(9, 3.2, 3.2),
-      material: Cesium.Color.fromCssColorString('#c8a45a')
+      radii: new Cesium.Cartesian3(11, 3.6, 3.6),
+      material: Cesium.Color.fromCssColorString('#c9a06a')
     },
     box: {
-      dimensions: new Cesium.Cartesian3(3.2, 20, 0.55),
-      material: Cesium.Color.fromCssColorString('#6f9e5c')
+      dimensions: new Cesium.Cartesian3(3.2, 24, 0.55),
+      material: Cesium.Color.fromCssColorString('#6fa84a')
     }
   });
 
+  return { viewer, craft };
+}
+
+export async function createGlobe(container) {
+  const Cesium = cesium();
+  if (!Cesium || !container) return null;
+
+  let viewer = null;
+  let craft = null;
   let visible = false;
+  let ready = null;
   container.hidden = true;
 
+  const ensure = async () => {
+    if (viewer) return true;
+    if (ready) return ready;
+    ready = (async () => {
+      container.hidden = false;
+      const built = await buildViewer(container);
+      viewer = built.viewer;
+      craft = built.craft;
+      viewer.resize();
+      return true;
+    })().catch(err => {
+      ready = null;
+      viewer = null;
+      craft = null;
+      container.hidden = true;
+      throw err;
+    });
+    return ready;
+  };
+
   return {
-    show() {
+    async show() {
       visible = true;
+      try {
+        await ensure();
+      } catch {
+        visible = false;
+        return false;
+      }
       container.hidden = false;
       viewer.resize();
+      viewer.scene.requestRender();
+      return true;
     },
     hide() {
       visible = false;
+      if (viewer) viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
       container.hidden = true;
     },
     get visible() {
-      return visible;
+      return visible && !!viewer;
     },
     update(state) {
-      if (!visible) return;
+      if (!visible || !viewer || !craft) return;
       const { lon, lat, height } = lonLatOf(state);
       const position = Cesium.Cartesian3.fromDegrees(lon, lat, height);
-      const heading = -state.yaw;
+      // Sim yaw 0 = north (+z); Cesium heading 0 = north, + toward east.
+      const heading = state.yaw || 0;
       const pitch = state.nose || 0;
       const roll = -(state.bank || 0);
       const hpr = new Cesium.HeadingPitchRoll(heading, pitch, roll);
@@ -110,22 +150,23 @@ export async function createGlobe(container) {
       craft.orientation = new Cesium.ConstantProperty(
         Cesium.Transforms.headingPitchRollQuaternion(position, hpr)
       );
-
-      const transform = Cesium.Transforms.headingPitchRollToFixedFrame(position, hpr);
-      const back = new Cesium.Cartesian3(0, -96, 32);
-      const cam = Cesium.Matrix4.multiplyByPoint(transform, back, new Cesium.Cartesian3());
-      viewer.camera.setView({
-        destination: cam,
-        orientation: {
-          heading,
-          pitch: pitch - 0.18,
-          roll: 0
-        }
-      });
+      viewer.camera.lookAt(
+        position,
+        new Cesium.HeadingPitchRange(heading, pitch - 0.28, Math.max(90, height * 0.12 + 110))
+      );
     },
     destroy() {
-      viewer.entities.remove(craft);
-      viewer.destroy();
+      visible = false;
+      if (viewer) {
+        try {
+          viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
+          if (craft) viewer.entities.remove(craft);
+          viewer.destroy();
+        } catch { /* already torn down */ }
+      }
+      viewer = null;
+      craft = null;
+      ready = null;
     }
   };
 }

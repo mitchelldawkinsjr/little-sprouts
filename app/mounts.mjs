@@ -42,7 +42,7 @@ import { mountHoop, stopHoop } from '../games/hoop.js?v=hoop-trio-r2';
 import { lightMarkSlots, mountLight, stopLight } from '../games/light.js?v=light-pace-icons';
 import { mountHook, stopHook } from '../games/hook.js?v=ask-first2-r2';
 import { mountSky, stopSky } from '../games/sky.js?v=ask-first2-r2';
-import { mountPlanet, stopPlanet } from '../games/planet.js?v=ask-first2-r2';
+import { mountPlanet, stopPlanet } from '../games/planet.js?v=turret1';
 import { mountPuzzle, stopPuzzle } from '../games/puzzle.js?v=puzzle-glass';
 import { mountMatch, stopMatch } from '../games/match.js?v=pair-match2';
 import { mountChase, stopChase } from '../games/chase.js?v=ask-first2-r2';
@@ -70,7 +70,7 @@ import {
   sidecarGame,
   sidecarIsBuilt,
   stopSidecar
-} from '../lib/sidecar.js?v=quickmath';
+} from '../lib/sidecar.js?v=wood-leaf';
 import {
   SHELF_META,
   shelfOf as shelfIdOf,

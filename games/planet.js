@@ -101,6 +101,99 @@ function drawBurst(ctx, boom) {
   ctx.restore();
 }
 
+/** Muzzle distance from planet center; shots spawn at this offset. */
+function turretReach(r) {
+  return r + clamp(r * 0.42, 28, 44);
+}
+
+function drawTurret(ctx, r, flash) {
+  const base = r * 0.92;
+  const cupola = clamp(r * 0.22, 14, 22);
+  const barrelLen = clamp(r * 0.42, 28, 44);
+  const barrelHalf = clamp(r * 0.055, 3.5, 5.5);
+  const housing = clamp(r * 0.14, 9, 14);
+  const metal = flash ? '#f2f5f8' : '#c9d2de';
+  const shade = flash ? '#d7e0ea' : '#8a97a8';
+  const ink = '#243040';
+  const accent = '#c45c3a';
+
+  // Fixed collar bolted to the planet surface.
+  ctx.fillStyle = shade;
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(0, 0, base + 6, -0.72, 0.72);
+  ctx.arc(0, 0, base - 2, 0.72, -0.72, true);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  for (const a of [-0.48, -0.16, 0.16, 0.48]) {
+    ctx.beginPath();
+    ctx.arc(Math.cos(a) * (base + 2), Math.sin(a) * (base + 2), 2.2, 0, Math.PI * 2);
+    ctx.fillStyle = ink;
+    ctx.fill();
+  }
+
+  // Rotating cupola + cannon (caller already rotated to aim).
+  ctx.fillStyle = metal;
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(base, 0, cupola, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  // Side cheeks so the mount reads as a turret, not a ball.
+  ctx.fillStyle = shade;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(base - housing * 0.2, -housing, housing * 1.1, housing * 2, 4);
+  else ctx.rect(base - housing * 0.2, -housing, housing * 1.1, housing * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  // Main barrel.
+  const tip = base + barrelLen;
+  ctx.fillStyle = metal;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(base + cupola * 0.35, -barrelHalf, barrelLen - cupola * 0.2, barrelHalf * 2, 2);
+  else ctx.rect(base + cupola * 0.35, -barrelHalf, barrelLen - cupola * 0.2, barrelHalf * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  // Recoil sleeve / band near the muzzle.
+  ctx.fillStyle = shade;
+  ctx.beginPath();
+  ctx.rect(tip - 10, -barrelHalf - 1.5, 7, barrelHalf * 2 + 3);
+  ctx.fill();
+  ctx.stroke();
+
+  // Muzzle tip.
+  ctx.fillStyle = accent;
+  ctx.beginPath();
+  ctx.moveTo(tip - 2, -barrelHalf - 1);
+  ctx.lineTo(tip + 5, -barrelHalf * 0.55);
+  ctx.lineTo(tip + 5, barrelHalf * 0.55);
+  ctx.lineTo(tip - 2, barrelHalf + 1);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#1b2430';
+  ctx.beginPath();
+  ctx.arc(tip + 1, 0, barrelHalf * 0.55, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Sight ring on the cupola.
+  ctx.strokeStyle = accent;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(base, 0, cupola * 0.38, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.fillStyle = ink;
+  ctx.beginPath();
+  ctx.arc(base, 0, 2.2, 0, Math.PI * 2);
+  ctx.fill();
+}
+
 function drawPlanet(ctx, x, y, r, aim, spin, flash) {
   ctx.save();
   ctx.translate(x, y);
@@ -129,22 +222,7 @@ function drawPlanet(ctx, x, y, r, aim, spin, flash) {
   ctx.arc(0, 0, r, 0, Math.PI * 2);
   ctx.stroke();
   ctx.rotate(aim);
-  ctx.fillStyle = '#e7edf4';
-  ctx.strokeStyle = '#2c3442';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(r * 0.15, -11);
-  ctx.lineTo(r + 26, -4);
-  ctx.lineTo(r + 30, 0);
-  ctx.lineTo(r + 26, 4);
-  ctx.lineTo(r * 0.15, 11);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = '#c45c3a';
-  ctx.beginPath();
-  ctx.arc(r + 28, 0, 3, 0, Math.PI * 2);
-  ctx.fill();
+  drawTurret(ctx, r, flash);
   ctx.restore();
 }
 
@@ -319,7 +397,7 @@ export function mountPlanet(root, { prompt, choices, target, wave, reduced, onDo
     if (phase !== 'play' || cool > 0 || shots.length >= 8) return;
     cool = reduced ? 0.2 : 0.12;
     const { x, y, r } = center();
-    const muzzle = r + 30;
+    const muzzle = turretReach(r);
     const speed = (reduced ? 640 : 980);
     shots.push({
       x: x + Math.cos(aim) * muzzle,

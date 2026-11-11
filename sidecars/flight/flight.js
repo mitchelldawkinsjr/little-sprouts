@@ -3,8 +3,8 @@ import { Sky } from 'three/addons/objects/Sky.js';
 import { questionHolding } from '../../lib/hold.js?v=hold2';
 import { assignAsk, beginArcade, createFlight, markFlight, pitchFlight, steerFlight, stepFlight, strafeFlight, thrustFlight, typeSpell } from './sim.mjs?v=arcade-play';
 import { CRUISE_ALT } from './terrain.mjs';
-import { createCraft } from './craft.mjs?v=seed-pod';
-import { createGlobe } from './globe.mjs?v=cesium-globe';
+import { createCraft } from './craft.mjs?v=wood-leaf';
+import { createGlobe } from './globe.mjs?v=wood-leaf';
 import {
   DEFAULT_FOV,
   DEFAULT_NEAR,
@@ -74,11 +74,25 @@ ground.rotation.x = -Math.PI / 2;
 scene.add(ground);
 
 let globe = null;
+let globeOpening = false;
 createGlobe(cesiumHost).then(next => {
   globe = next;
 }).catch(() => {
   globe = null;
 });
+
+async function openGlobe() {
+  if (!globe || globe.visible || globeOpening) return;
+  globeOpening = true;
+  try {
+    const ok = await globe.show();
+    if (!ok) globe = null;
+  } catch {
+    globe = null;
+  } finally {
+    globeOpening = false;
+  }
+}
 
 const cloudTexture = cloudSprite();
 const clouds = Array.from({ length: 14 }, (_, index) => {
@@ -376,11 +390,13 @@ function fly(dt) {
   };
   const open = state.free > 0 || state.over;
   if (open && globe) {
-    if (!globe.visible) globe.show();
-    globe.update(state);
-    view.hidden = true;
-    craft.setVisible(false);
-    return;
+    if (!globe.visible) openGlobe();
+    if (globe?.visible) {
+      globe.update(state);
+      view.hidden = true;
+      craft.setVisible(false);
+      return;
+    }
   }
   if (globe?.visible) globe.hide();
   view.hidden = false;
