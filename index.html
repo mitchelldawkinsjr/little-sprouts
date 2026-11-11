@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=verse3">
+  <link rel="stylesheet" href="style.css?v=verse4">
 </head>
 <body>
   <header>
@@ -96,7 +96,7 @@
         <p class="hint">Leave this blank and word games use this grade’s list. Or type at least 3 different words, separated by commas. Letters only, with at most one apostrophe, up to 12 letters. Kindergarten spelling stays on 2, 3, and 4 letter words. A longer word on the question sheet is spelled too. A word typed here is used only when that sheet has no word list. Build a word uses words longer than one letter when it can. Pre-K does not spell. Those games use numbers, shapes, and colors. Words from the question sheet are used instead when that sheet has at least 3 words for this learner. Rows marked preschool, kindergarten, grade1, grade2, grade3, or grade4 are used only for that math band. A word on the 4th grade list stays there, even when the shared list also has it.</p>
         <h3>Memory verse</h3>
         <label>Verse script <textarea id="verse" rows="8" placeholder="Leave blank to use the question sheet"></textarea></label>
-        <p class="hint">Leave this blank and Memory verse uses the question sheet. A script here replaces the sheet for this learner. The same box is in the game, under Grown-up: use a different verse. One line each: title, remember, verse, bonus, bank, circle, fill, clue. The answer comes first inside braces, like {Joseph|David|Moses}. Level 1 shows the verse while they write, and first-letter clues can be tapped. Level 2 reads the verse, then covers it. Level 3 types the first-letter word, and writes with the verse covered.</p>
+        <p class="hint">Leave this blank and both verse games use the question sheet. A script here replaces the sheet for this learner. The same box is in each game, under Grown-up: use a different verse. One line each: title, remember, verse, bonus, bank, circle, fill, clue. The answer comes first inside braces, like {Joseph|David|Moses}. Memory verse uses the circle and fill lines. Finish the word uses the clue lines: the first letter shows, and they type the rest. Level 1 shows the verse while they write. Level 2 reads the verse, then covers it. Level 3 writes with the verse covered.</p>
         <h3>Gas race</h3>
         <p class="hint">Gas race stays on the screen in every play style. The tank starts full. Steering into the right answer fills it again. A wrong lane ends the race, and so does an empty tank. The score is how far the car traveled. Every learner on this device shares one distance board. Math facts follow the math band and the Gas race level. Sight words follow the list above. Shapes and colors follow those skill levels. Level 1 gives a longer tank. Level 3 gives a shorter tank and more lanes.</p>
         <div class="race-kinds">
@@ -248,7 +248,7 @@
     <button type="button" class="quiet" id="listenAgain">Hear it again</button>
     <button type="button" class="quiet" id="listenBack">← All games</button>
   </div>
-  <script type="module" src="app.js?v=verse3"></script>
+  <script type="module" src="app.js?v=verse4"></script>
   <script>
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
   </script>

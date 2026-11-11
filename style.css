@@ -628,6 +628,9 @@ body.listen-first header,body.listen-first .playtop{position:relative;z-index:31
 #setupError{margin:0;min-height:1.2em}
 .verse-line{font:700 22px Outfit,sans-serif;text-align:center;line-height:1.5;margin:8px auto 12px;max-width:40rem}
 .verse-done{font:600 26px/1.55 Outfit,sans-serif;text-align:left;max-width:38rem;margin:12px auto 20px;padding:22px 24px;background:#fff;border:3px solid #d7decc;border-radius:22px;color:#244b3d}
+.verse-finish{display:flex;align-items:center;justify-content:center;gap:8px;margin:8px auto 4px}
+.verse-stem{font:800 32px Outfit,sans-serif;color:#32634e}
+.verse-rest{width:min(220px,60vw);font-size:28px}
 .verse-line .blank{display:inline-block;min-width:4.2em;margin:0 4px;border-bottom:3px solid #8fac73;color:#32634e}
 .choices.verse-choices .choice{min-width:96px;min-height:64px;padding:12px 16px;font-size:22px}
 .verse-write{width:min(520px,100%);min-height:120px;border:3px solid #d7decc;border-radius:16px;padding:12px;font:600 18px Outfit,sans-serif;color:#244b3d;background:#fff}

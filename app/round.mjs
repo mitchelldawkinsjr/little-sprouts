@@ -686,12 +686,13 @@ export function registerRound(rt) {
       g.pageIndex = null;
       rt.prepareCrayon(g, l);
     }
-    if (g.mode === 'verse') {
+    if (g.mode === 'verse' || g.mode === 'clue') {
       g.render = x => String(x);
       if (!g.deck) {
         g.pack = rt.versePack();
         // shortcut: a verse round is the whole script, not the 5/10/15 setting. Split passages in the sheet when a script gets long.
-        g.deck = g.pack.steps;
+        const steps = g.pack.steps;
+        g.deck = g.mode === 'clue' ? steps.filter(step => step.kind === 'clue') : steps.filter(step => step.kind !== 'clue');
       }
       const step = g.deck[g.index];
       if (step) {
@@ -703,7 +704,11 @@ export function registerRound(rt) {
         g.target = step.kind === 'bonus' ? (g.pack.remember || '') : step.answers[0] || '';
         g.prompt = step.say;
         g.phase = 'answer';
-        g.options = step.kind === 'clue' && l >= 3 ? [] : step.choices.slice();
+        g.options = g.mode === 'clue' ? [] : step.choices.slice();
+        if (g.mode === 'clue') {
+          g.prompt = `It starts with ${String(step.answers[0] || 'a')[0]}. Type the rest.`;
+          g.hear = step.say;
+        }
         if (step.kind === 'write') {
           if (l >= 3) {
             g.phase = 'hidden';
@@ -713,7 +718,10 @@ export function registerRound(rt) {
             g.prompt = `${g.pack.verse} Read it, then cover it.`;
           } else g.prompt = `${g.pack.verse} Write the verse. You can look at the words.`;
         }
-      } else g.options = [];
+      } else {
+        g.options = [];
+        if (g.mode === 'clue') g.prompt = 'This verse has no first-letter words.';
+      }
     }
     const sideSpec = sidecarGame(g.mode);
     if (sideSpec) {
@@ -765,7 +773,7 @@ export function registerRound(rt) {
         g.heardVerse = true;
         rt.askBeforePlay(g.pack?.verse || g.prompt);
       }
-    } else if (gatesPlay) rt.askBeforePlay(g.prompt);
+    } else if (g.mode !== 'clue' && gatesPlay) rt.askBeforePlay(g.prompt);
     rt.renderGame();
     if (g.mode === 'lanes' && g.phase === 'ready') rt.say(g.style === 'reach' ? 'Step into the word. You have 10 seconds to get there.' : 'Drive to the word.');
     else if ((g.mode === 'hook' || g.mode === 'sky' || g.mode === 'planet' || g.mode === 'marble' || g.mode === 'bridge' || g.mode === 'maze' || g.mode === 'chase' || g.mode === 'hop' || g.mode === 'toast' || g.mode === 'aisle' || g.mode === 'lily' || g.mode === 'mole' || g.mode === 'bust' || g.mode === 'stack' || g.mode === 'lamp' || g.mode === 'cube') && g.phase === 'ready') rt.say(g.howTo);
@@ -1147,7 +1155,7 @@ export function registerRound(rt) {
   }
   function hybrid(g) {
     if (sidecarGame(g.mode)) return;
-    if (g.mode === 'catch' || g.mode === 'lanes' || g.mode === 'rocket' || g.mode === 'lunar' || g.mode === 'hoop' || g.mode === 'light' || g.mode === 'race' || g.mode === 'hook' || g.mode === 'sky' || g.mode === 'planet' || g.mode === 'puzzle' || g.mode === 'match' || g.mode === 'marble' || g.mode === 'bridge' || g.mode === 'maze' || g.mode === 'chase' || g.mode === 'hop' || g.mode === 'toast' || g.mode === 'glide' || g.mode === 'city' || g.mode === 'aisle' || g.mode === 'lily' || g.mode === 'mole' || g.mode === 'bust' || g.mode === 'stack' || g.mode === 'lamp' || g.mode === 'cube' || g.mode === 'trace' || g.mode === 'sort' || g.mode === 'merge' || g.mode === 'crayon' || g.mode === 'verse') return;
+    if (g.mode === 'catch' || g.mode === 'lanes' || g.mode === 'rocket' || g.mode === 'lunar' || g.mode === 'hoop' || g.mode === 'light' || g.mode === 'race' || g.mode === 'hook' || g.mode === 'sky' || g.mode === 'planet' || g.mode === 'puzzle' || g.mode === 'match' || g.mode === 'marble' || g.mode === 'bridge' || g.mode === 'maze' || g.mode === 'chase' || g.mode === 'hop' || g.mode === 'toast' || g.mode === 'glide' || g.mode === 'city' || g.mode === 'aisle' || g.mode === 'lily' || g.mode === 'mole' || g.mode === 'bust' || g.mode === 'stack' || g.mode === 'lamp' || g.mode === 'cube' || g.mode === 'trace' || g.mode === 'sort' || g.mode === 'merge' || g.mode === 'crayon' || g.mode === 'verse' || g.mode === 'clue') return;
     const t = g.target, [verb, icon] = rt.pick(rt.moves);
     g.icon = icon;
     if (g.mode === 'count' || g.mode === 'path') { mathHybrid(g, verb); return; }
@@ -1232,6 +1240,7 @@ export function registerRound(rt) {
     return rt.listenBy[g.mode]?.[g.style] || rt.listen[g.mode];
   };
   function foundLine(g) {
+    if (g.mode === 'clue') return `Yes. ${g.target}.`;
     if (g.mode === 'verse') {
       if (g.verseKind === 'write') return g.peeked ? 'Here is the verse. Read it once more.' : 'You remembered the verse.';
       if (g.verseKind === 'bonus') return g.pack?.remember || 'Thank you for thinking about that.';
@@ -1275,10 +1284,10 @@ export function registerRound(rt) {
     return `Yes. ${t}.`;
   }
   function strategyHint(g) {
+    if (g.mode === 'clue') return 'The first letter is showing. Type the rest of the word.';
     if (g.mode === 'verse') {
       if (g.verseKind === 'circle') return 'Read the sentence. Tap the word that fits.';
       if (g.verseKind === 'fill') return 'Tap the word bank in order.';
-      if (g.verseKind === 'clue') return `It starts with ${String(g.target || 'a')[0]}.`;
       if (g.verseKind === 'write') return 'Write the words you remember.';
       return 'Tell what this verse teaches you about God.';
     }
@@ -1505,9 +1514,9 @@ export function registerRound(rt) {
     if (!g.missed) g.firstCorrect++;
     const found = foundLine(g);
     $('#feedback').textContent = found;
-    if (g.mode === 'verse') {
+    if (g.mode === 'verse' || g.mode === 'clue') {
       if (b?.classList.contains('choice')) b.classList.add('correct');
-      document.querySelectorAll('.choice,#verseDone,#verseShow,#verseType').forEach(x => { x.disabled = true; });
+      document.querySelectorAll('.choice,#verseDone,#verseShow,#verseType,#verseCheck').forEach(x => { x.disabled = true; });
       rt.advanceVerse(g);
       return;
     }
@@ -1612,7 +1621,7 @@ export function registerRound(rt) {
     rt.camOff();
     const flightEnd = g.mode === 'flight' && (detail === 'crash' || detail === 'flew');
     const stageEnd = g.mode === 'rally' && detail === 'stage';
-    const rounds = g.mode === 'verse' && g.deck?.length ? g.deck.length : flightEnd ? (g.flightRights || 5) : stageEnd ? Math.max(1, g.index || g.rallyRights || 1) : rt.questionCount();
+    const rounds = (g.mode === 'verse' || g.mode === 'clue') && g.deck?.length ? g.deck.length : flightEnd ? (g.flightRights || 5) : stageEnd ? Math.max(1, g.index || g.rallyRights || 1) : rt.questionCount();
     Object.assign(rt.p(), applyRound(rt.p(), g.mode, g.key, rounds, g.firstCorrect));
     rt.save();
     const dots = Array.from({ length: rounds }, (_, i) => `<span class="${i < g.firstCorrect ? 'on' : ''}"></span>`).join('');

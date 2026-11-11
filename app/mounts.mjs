@@ -85,7 +85,7 @@ import {
   shelfPanelHtml,
   starGardenHtml as gardenHtml,
   homePageHtml
-} from '../lib/home-ui.mjs?v=verse1';
+} from '../lib/home-ui.mjs?v=verse4';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=city-glide';
 
@@ -783,9 +783,12 @@ export function registerMounts(rt) {
       const note = g.pack?.remember ? `<p class="hint">${esc(g.pack.remember)}</p>` : '';
       return `${where}<label class="spell-type">Your answer<textarea id="verseWrite" class="verse-write"></textarea></label><button class="primary" id="verseDone">That’s my answer</button>${note}${editor}`;
     }
+    if (g.mode === 'clue') {
+      const first = esc(String(g.target || '').slice(0, 1));
+      return `${where}<p class="verse-line">${verseLine(step, g.filled)}</p><div class="verse-finish"><span class="verse-stem">${first}</span><input id="verseType" class="spell-key verse-rest" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Type the rest of the word"></div><button class="primary" id="verseCheck">That's the word</button>${editor}`;
+    }
     const picks = (g.options || []).map((word, i) => `<button class="choice" data-option="${i}" aria-label="${esc(String(word))}">${esc(String(word))}</button>`).join('');
-    const typed = step.kind === 'clue' ? `<label class="spell-type">${g.options.length ? 'Or type the word' : 'Type the word'} <input id="verseType" class="spell-key" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Type the word"></label>` : '';
-    return `${where}<p class="verse-line">${verseLine(step, g.filled)}</p><div class="choices verse-choices">${picks}</div>${typed}${editor}`;
+    return `${where}<p class="verse-line">${verseLine(step, g.filled)}</p><div class="choices verse-choices">${picks}</div>${editor}`;
   }
   function onVerseChoice(g, button) {
     if (!g || g.done) return;
@@ -866,19 +869,30 @@ export function registerMounts(rt) {
       if (box) box.value = g.pack?.verse || '';
       rt.answer(true, reveal);
     };
-    const field = $('#verseType');
-    if (field) field.addEventListener('keydown', event => {
-      if (event.key !== 'Enter' || g.done) return;
-      event.preventDefault();
-      if (clueMatch(g.target, field.value)) rt.answer(true, field);
+    const checkLetters = () => {
+      if (g.done) return;
+      const field = $('#verseType');
+      const typed = field?.value || '';
+      if (clueMatch(g.target, typed)) rt.answer(true, field);
       else {
         g.missed = true;
-        field.classList.add('wrong');
-        $('#feedback').textContent = 'Not yet. Look at the first letter.';
+        field?.classList.add('wrong');
+        $('#feedback').textContent = 'Not yet. Type the letters after the first one.';
         rt.say('Try again.');
         showHint();
       }
-    });
+    };
+    const check = $('#verseCheck');
+    if (check) check.onclick = checkLetters;
+    const field = $('#verseType');
+    if (field) {
+      field.focus();
+      field.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' || g.done) return;
+        event.preventDefault();
+        checkLetters();
+      });
+    }
   }
   function renderGame() {
     stopArcade();
@@ -954,7 +968,7 @@ export function registerMounts(rt) {
     }
     else if (screen && g.phase === 'ready') body = `<p>${howTo}</p><button class="primary" id="arm">I’m ready! →</button>`;
     else if (IN_ARENA.has(g.mode)) body = `${SHOW[g.mode] ? `<div id="${SHOW[g.mode]}"></div>` : ''}<div id="arcade"></div>`;
-    else if (g.mode === 'verse') body = verseBody(g);
+    else if (g.mode === 'verse' || g.mode === 'clue') body = verseBody(g);
     else if (g.phase === 'cover') body = '<p>One shape will be missing.</p>';
     else if (g.phase === 'remember') body = `<p>Take your time. Ready to spot what disappears?</p>${reach ? camStage() : ''}<button class="primary" id="hide" data-camera-go>I’m ready! →</button>`;
     else if (g.phase === 'away') body = `<div class="bigmove" aria-hidden="true">🏃</div><p class="hint">Grown-up: tap when they’re back.</p><button class="primary" id="backIn">We’re back! →</button>`;
@@ -975,7 +989,7 @@ export function registerMounts(rt) {
         return g.phase === 'remember' || s !== g.target ? rt.shape(s, '#8fac73', true) : '<span class="shape missing" role="img" aria-label="Missing shape">?</span>';
       }).join('')}</div>`
       : '';
-    const rounds = g.mode === 'verse' && g.deck?.length ? g.deck.length : rt.questionCount();
+    const rounds = (g.mode === 'verse' || g.mode === 'clue') && g.deck?.length ? g.deck.length : rt.questionCount();
     const rallyDrive = g.mode === 'rally';
     const freePlay = !!g.freePlay;
     const rallyNeed = rallyClearCount(rounds);
@@ -998,10 +1012,10 @@ export function registerMounts(rt) {
     $('#back').onclick = requestHome;
     if ($('#playAlone')) $('#playAlone').onclick = openSidecarAlone;
     $('#listen').onclick = () => {
-      if (g.mode === 'verse' && g.pack?.verse) {
+      if ((g.mode === 'verse' || g.mode === 'clue') && (g.mode === 'clue' ? (g.hear || g.prompt) : g.pack?.verse)) {
         rt.releaseListen();
         rt.stopSpeech();
-        rt.say(g.pack.verse);
+        rt.say(g.mode === 'clue' ? (g.hear || g.prompt) : g.pack.verse);
       } else if (ARCADE[g.mode]?.fly) {
         rt.releaseListen();
         rt.say(g.prompt);
@@ -1114,12 +1128,12 @@ export function registerMounts(rt) {
       $('#showAnswer').hidden = true;
     });
     document.querySelectorAll('[data-option]').forEach(b => b.onclick = () => {
-      if (g.mode === 'verse') { onVerseChoice(g, b); return; }
+      if (g.mode === 'verse' || g.mode === 'clue') { onVerseChoice(g, b); return; }
       if (g.mode !== 'lunar') { rt.answer(g.options[+b.dataset.option] === g.target, b); return; }
       if (g.options[+b.dataset.option] === g.target) armShot(b);
       else rt.answer(false, b);
     });
-    if (g.mode === 'verse') wireVerse(g);
+    if (g.mode === 'verse' || g.mode === 'clue') wireVerse(g);
     document.querySelectorAll('[data-letter]').forEach(b => b.onclick = () => {
       if (g.done) return;
       const letter = g.letters[+b.dataset.letter];
