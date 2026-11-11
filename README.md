@@ -4,7 +4,7 @@ Early-learning games for young children. A learner picks a picture, hears the qu
 
 A new browser asks a grown-up for the child’s name, math band, and garden buddy before play. Words and math facts stay empty, so games use the included list for that grade. Each learner keeps a name, a garden buddy, a math band, and stars on this browser.
 
-![Home screen, with a hello for Malik and the star garden](docs/screenshots/home.jpg)
+![Home screen, with Up next, game shelves, and the star garden](docs/screenshots/home.jpg)
 
 ## Layout
 
@@ -26,14 +26,14 @@ Open http://localhost:8000. There is no build step. From that address the browse
 
 ## How a round works
 
-On the home screen, under **How are we playing?**:
+Home shows **Up next**, then **What shall we play?** with shelves for shapes and colors, words, numbers, and adventures. **How we play** opens Tap, Move, Hunt, or Reach:
 
 - **Tap** — the child answers on the screen.
 - **Move** — the game calls out a movement, and a grown-up taps when the child lands on the right floor card. Floor cards can be printed from Parent corner.
 - **Hunt** — the child finds a real thing that matches, and a grown-up confirms.
 - **Reach** — after a grown-up allows it, the camera watches the child’s hands. Holding a hand on an answer picks it. Video is never recorded or uploaded.
 
-The first visit starts with a small addition problem, then a short setup for the child’s name, math band, and garden buddy. Parent corner is the gear at the top, behind that same check. Inside, you can rename learners, set the math band, set each game’s level, and type sight words. Leave the word list blank and the games use the included list for that grade. It is a grown-up check, not a lock.
+The first visit starts with a small addition problem, then a short setup for the child’s name, math band, and garden buddy. Parent corner is the gear at the top, behind that same check. Inside, you can rename learners, set the math band, set each game’s level, pin Up next, and type sight words. Leave the word list blank and the games use the included list for that grade. It is a grown-up check, not a lock.
 
 ![Parent corner, where a grown-up sets the learner, buddy, and levels](docs/screenshots/parents.jpg)
 
@@ -47,15 +47,17 @@ In Parent corner, **Hear this voice** shows download progress, then plays a samp
 
 ## The shelf
 
-Every game is a card on the home screen. Shapes, colors, words, and counting sit beside the arcade games.
+Every game is a card on a home shelf. Shapes, colors, words, and counting sit beside the adventure games. **Star garden** shows each learner’s sprout and stars.
 
-![The game shelf](docs/screenshots/library.jpg)
+![The adventure shelf and star garden](docs/screenshots/library.jpg)
 
-Backroad rally’s stage files are not in this repository, so that card stays hidden unless those files are added beside the others.
+Shape safari in motion:
+
+![Shape safari: find the shape, then go on to the next question](docs/screenshots/play.gif)
 
 <p>
-  <img src="docs/screenshots/shapes.jpg" width="49%" alt="Shape safari asking the learner to find the circle">
-  <img src="docs/screenshots/lanes.jpg" width="49%" alt="Word lanes, with a car driving toward the word go">
+  <img src="docs/screenshots/shapes.jpg" width="49%" alt="Shape safari asking the learner to find the oval">
+  <img src="docs/screenshots/lanes.jpg" width="49%" alt="Word lanes, with a car driving toward the word my">
 </p>
 <p>
   <img src="docs/screenshots/hook.jpg" width="49%" alt="Hook the fish over a sunny pond">
@@ -70,12 +72,12 @@ Backroad rally’s stage files are not in this repository, so that card stays hi
   <img src="docs/screenshots/crayon.jpg" width="49%" alt="Color by number, a flower waiting to be painted">
 </p>
 <p>
-  <img src="docs/screenshots/walk.jpg" width="49%" alt="Garden walk, a sprout heading for the word can">
+  <img src="docs/screenshots/walk.jpg" width="49%" alt="Garden walk, a sprout heading for the matching picture">
   <img src="docs/screenshots/bike.jpg" width="49%" alt="Dirt ride, a bike on a sunny trail">
 </p>
 <p>
-  <img src="docs/screenshots/flight.jpg" width="49%" alt="Sky flight, a plane flying toward letter gates">
-  <img src="docs/screenshots/paint.jpg" width="49%" alt="Paint sphere, looking down a painted track">
+  <img src="docs/screenshots/flight.jpg" width="49%" alt="Sky flight, a bush plane over the hills">
+  <img src="docs/screenshots/paint.jpg" width="49%" alt="Paint sphere, how to play inside the shell">
 </p>
 
 ## Credits
@@ -94,9 +96,14 @@ Most of the pictures, questions, and games are Little Sprouts’ own. These crea
 - [JS Planet Defense](https://freefrontend.com/javascript-games/#2025-11-02-js-planet-defense-game-l) on FreeFrontend. Planet guard follows that aim. It is drawn here.
 - [Glass Physics 3D Jigsaw](https://freefrontend.com/javascript-games/#2026-01-01-glass-physics-3d-jigsaw-puzzle-l) on FreeFrontend. Shape puzzle follows that glass-piece idea.
 - [Animated emoji memory game](https://freefrontend.com/javascript-games/#2025-09-09-emoji-memory-match-l) on FreeFrontend. Pair match follows that flip. The cards are new.
-- [Ricardo Cabello and the Three.js authors](https://github.com/mrdoob/three.js) (MIT). Sky flight’s quiz gates and seed-pod glider, Paint sphere, and Cube dash draw with Three.js. The glider and gates are Little Sprouts’ own.
+- [TurdleTips — Paper City Glider](https://codepen.io/TurdleTips/pen/01a00355-5252-7ba3-b92d-90c79c3e616a). City glide follows that paper plane through downtown blocks. The plane, the rings, and the questions are drawn here.
+- [Jens Broecher — Airplane pulling a banner](https://codepen.io/jensbroecher/pen/wvZQdEa). Sky flight’s bush plane follows that blue-and-white utility look. The plane is rebuilt here; no CodePen bitmap is shipped.
+- [Ricardo Cabello and the Three.js authors](https://github.com/mrdoob/three.js) (MIT). Sky flight’s quiz gates and bush plane, Paint sphere, Cube dash, and City glide draw with Three.js. The plane and gates are Little Sprouts’ own.
 - [hexgrad — Kokoro](https://github.com/hexgrad/kokoro) (Apache 2.0). Spoken prompts use Kokoro-82M through [onnx-community’s ONNX build](https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX). If it cannot load, the browser’s own voice speaks.
 - [Google — MediaPipe Pose](https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker). Reach play uses it to find hands. Video stays on the device.
+- [Cassie Evans — CSS / SVG Blobby Background](https://codepen.io/cassie-codes/pen/zWJxXj). Merge jar uses that gooey blur, so matching circles melt together when they touch. The jar, the tokens, and the questions are drawn here.
+- [Pedro Tavares — Shooting Hoops](https://codepen.io/dipscom/pen/amxYvB). Shooting hoops follows that flick: drag the ball, let go, and it arcs at the rim. Three hoops show the answers. The gym, the ball, and the questions are drawn here.
+- [Amit Sheen — Catch That Light!](https://codepen.io/amit_sheen/pen/dyQGQLr). Catch the light follows that ring and the tap when the moving light meets the green bulb. Rush gets faster after every catch. The questions are Little Sprouts’ own.
 - [Outfit](https://fonts.google.com/specimen/Outfit) by Rodrigo Fuenzalida and [DM Sans](https://fonts.google.com/specimen/DM+Sans) by Colophon Foundry, from Google Fonts.
 
 ## Notes
