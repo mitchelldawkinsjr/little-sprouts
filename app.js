@@ -71,11 +71,12 @@ import {
   sortDeal,
   mergeBoard,
   crayonBoard,
+  crayonCatalog,
   crayonPicture,
   crayonLegend,
   kindergartenWords,
   spellingWords
-} from './logic.mjs?v=sheet-words';
+} from './logic.mjs?v=crayon-more';
 import { canSpeak, commonLines, contextFor, getSpeechStatus, knownVoice, onSpeechStatus, prefetchSpeech, prepareSpeech, profiles, sampleLine, speak, speakAndWait, stop, voiceFor, voices, warm } from './speech.js?v=wait-2s';
 import './pad.js?v=pad-all';
 import './tilt.js?v=ask-first';
@@ -102,7 +103,7 @@ import { mountLamp, stopLamp } from './lamp.js?v=lamp';
 import { mountTrace, stopTrace } from './trace.js?v=trace-car2';
 import { mountSort, stopSort } from './sort.js?v=sort-roll';
 import { mountMerge, stopMerge } from './merge.js?v=goo-jar2';
-import { mountCrayon, stopCrayon } from './crayon.js?v=color-num';
+import { mountCrayon, stopCrayon } from './crayon.js?v=crayon-more';
 import { mountMarble, stopMarble } from './marble.js?v=ask-first';
 import { mountBridge, stopBridge } from './bridge.js?v=ask-first';
 import { mountMaze, stopMaze } from './maze.js?v=ask-first';
@@ -189,7 +190,7 @@ const games = [['shapes', 'Shape safari', 'Find circles, triangles & more.', '�
 const countItems = [['🍎', 'apples'], ['⭐', 'stars'], ['🐞', 'ladybugs'], ['🌼', 'flowers'], ['🐟', 'fish'], ['🎈', 'balloons']];
 const huntThings = [['sock', 'socks'], ['spoon', 'spoons'], ['toy', 'toys'], ['book', 'books'], ['block', 'blocks'], ['crayon', 'crayons']];
 const styles = [['tap', '👆', 'Tap', 'Tap the answer on the screen.'], ['move', '🦘', 'Move', 'Spread floor cards out. The game calls the moves and a grown-up taps ✓.'], ['hunt', '🔎', 'Hunt', 'Find real things around you. A grown-up taps ✓. What’s missing? plays as Move.'], ['reach', '📷', 'Reach', 'Stand back so the camera sees shoulders and hands. Hold one hand on an answer until it fills. Video stays on this device and is never recorded.']];
-const ARCADE_PLAY = new Set(['bike', 'flight', 'walk', 'lunar', 'hoop', 'light', 'bridge', 'maze', 'chase', 'hop', 'toast', 'glide', 'aisle', 'lily', 'mole', 'bust', 'stack', 'lamp', 'cube']);
+const ARCADE_PLAY = new Set(['bike', 'flight', 'walk', 'lunar', 'hoop', 'light', 'bridge', 'maze', 'chase', 'hop', 'toast', 'glide', 'aisle', 'lily', 'mole', 'bust', 'stack', 'lamp', 'cube', 'crayon']);
 const moves = [['Hop like a bunny', '🐰'], ['Stomp like an elephant', '🐘'], ['Tiptoe like a mouse', '🐭'], ['Waddle like a penguin', '🐧'], ['Gallop like a horse', '🐴'], ['Crawl like a turtle', '🐢'], ['Leap like a frog', '🐸']];
 const breaks = ['Run to the door and back!', 'Spin around three times!', 'Do five big jumps!', 'March in a circle and come back!'];
 const listen = {
@@ -305,7 +306,23 @@ function prepareTrace(g, l) {
 }
 function prepareCrayon(g, l) {
   const board = crayonBoard(l);
-  const picture = crayonPicture(l, g.index);
+  g.board = board;
+  g.catalog = crayonCatalog(l);
+  g.options = [];
+  g.render = x => esc(String(x));
+  if (g.pageIndex == null) {
+    if (g.freePlay) {
+      g.phase = 'pick';
+      g.picture = null;
+      g.legend = [];
+      g.swatch = null;
+      g.target = 'picture';
+      g.prompt = 'Pick a picture to color.';
+      return;
+    }
+    g.pageIndex = g.catalog.length ? g.index % g.catalog.length : 0;
+  }
+  const picture = crayonPicture(l, g.pageIndex);
   const pool = pools(skillLevel('colors')).cs.filter(([name]) => name !== 'black' && name !== 'white');
   const palette = [];
   const bag = shuffle(pool);
@@ -318,13 +335,11 @@ function prepareCrayon(g, l) {
   const numbers = shuffle(numberRange(1, hi)).slice(0, board.colors);
   const legend = crayonLegend(picture.regions.map(region => region.id), palette, numbers);
   const spoken = [...legend].sort((a, b) => a.number - b.number)[0];
-  g.board = board;
+  g.phase = 'play';
   g.picture = picture;
   g.legend = legend;
   g.swatch = spoken;
   g.target = picture.name;
-  g.options = [];
-  g.render = x => esc(String(x));
   g.prompt = `Paint the ${picture.name}. ${spoken.number} is ${spoken.name}.`;
 }
 function prepareSort(g, l) {
@@ -1649,7 +1664,10 @@ function question() {
   if (g.mode === 'trace') prepareTrace(g, l);
   if (g.mode === 'sort') prepareSort(g, l);
   if (g.mode === 'merge') prepareMerge(g, l);
-  if (g.mode === 'crayon') prepareCrayon(g, l);
+  if (g.mode === 'crayon') {
+    g.pageIndex = null;
+    prepareCrayon(g, l);
+  }
   const sideSpec = sidecarGame(g.mode);
   if (sideSpec) {
     g.sidecar = sideSpec;
@@ -2600,7 +2618,10 @@ function strategyHint(g) {
   if (g.mode === 'trace') return 'Start at the dot and stay on the line.';
   if (g.mode === 'sort') return 'Tap a tube to lift the top balls. Pour them onto the same kind, or into an empty tube.';
   if (g.mode === 'merge') return 'Drop two that are the same so they touch.';
-  if (g.mode === 'crayon') return `${g.swatch?.number} is ${g.swatch?.name}. Paint each spot with that number.`;
+  if (g.mode === 'crayon') {
+    if (g.phase === 'pick') return 'Pick the picture you want to color.';
+    return `${g.swatch?.number} is ${g.swatch?.name}. Tap matching spots to fill them.`;
+  }
   if (g.mode === 'shapes' || g.mode === 'missing' || g.mode === 'mix') return 'Look at the shapes.';
   if (g.math?.kind === 'count') {
     const name = String(g.countName || 'picture').replace(/s$/, '');
@@ -2854,6 +2875,10 @@ function renderGame() {
   else if (bridge) body = `<div id="askShow">${g.show || ''}</div><div id="arcade"></div><div class="choices" id="askChoices">${picks}</div>`;
   else if (maze) body = '<div id="arcade"></div><div id="askShow"></div><div class="choices" id="askChoices" hidden></div>';
   else if (puzzle) body = '<div id="arcade"></div><div id="puzzleSay" hidden></div>';
+  else if (crayon && g.phase === 'pick') {
+    const pages = g.catalog || [];
+    body = `<p>Pick a picture to color.</p><div class="crayon-picks" role="list">${pages.map(page => `<button type="button" class="crayon-pick" role="listitem" data-page="${page.index}" aria-label="Color the ${esc(page.name)}"><span aria-hidden="true">${page.icon}</span><b>${esc(page.name)}</b></button>`).join('')}</div>`;
+  }
   else if (match || trace || sort || merge || crayon) body = '<div id="arcade"></div>';
   else if (side && g.phase === 'ready') body = `<p>${esc(side.howTo)}</p><button class="primary" id="arm">I’m ready! →</button>`;
   else if (side) body = '<div id="arcade" class="sidecar-host"></div>';
@@ -3471,12 +3496,24 @@ function renderGame() {
       }
     });
   }
-  if (crayon) {
+  if (crayon && g.phase === 'pick') {
+    document.querySelectorAll('[data-page]').forEach(button => {
+      button.onclick = () => {
+        if (game !== g || g.done) return;
+        g.pageIndex = +button.dataset.page;
+        prepareCrayon(g, g.level);
+        askBeforePlay(g.prompt);
+        renderGame();
+      };
+    });
+  }
+  if (crayon && g.phase === 'play') {
     mountCrayon($('#arcade'), {
       picture: g.picture,
       legend: g.legend,
       brush: g.board.brush,
       cover: g.board.cover,
+      glow: band() === 'preschool',
       onMiss(spot) {
         if (game !== g || g.done) return;
         g.missed = true;
@@ -3496,6 +3533,19 @@ function renderGame() {
       onDone(clean) {
         if (game !== g || g.done) return;
         if (!clean) g.missed = true;
+        if (g.freePlay) {
+          const found = foundLine(g);
+          const feedback = $('#feedback');
+          if (feedback) feedback.textContent = found;
+          say(found);
+          g.pageIndex = null;
+          g.done = false;
+          g.missed = false;
+          prepareCrayon(g, g.level);
+          askBeforePlay(g.prompt);
+          renderGame();
+          return;
+        }
         answer(true);
       }
     });
@@ -4312,7 +4362,7 @@ function showHint() {
       say(hint);
       return;
     }
-    const hint = grade4 ? mathHint(g.math, hintMode(g)) : (g.math ? mathHint(g.math, hintMode(g)) : (g.mode === 'build' ? `The next letter is ${g.target[g.built.length]}.` : g.mode === 'puzzle' ? `The shape is a ${g.target}.` : g.mode === 'match' ? 'Turn two cards that look the same.' : g.mode === 'crayon' ? 'Paint every number with the color beside it.' : `Look for ${g.target}.`));
+    const hint = grade4 ? mathHint(g.math, hintMode(g)) : (g.math ? mathHint(g.math, hintMode(g)) : (g.mode === 'build' ? `The next letter is ${g.target[g.built.length]}.` : g.mode === 'puzzle' ? `The shape is a ${g.target}.` : g.mode === 'match' ? 'Turn two cards that look the same.' : g.mode === 'crayon' ? (g.phase === 'pick' ? 'Pick a picture.' : 'Tap matching numbers to fill them.') : `Look for ${g.target}.`));
     $('#feedback').textContent = hint;
     say(hint);
     if (g.mode !== 'build' && !grade4) document.querySelectorAll('[data-option]').forEach(el => {

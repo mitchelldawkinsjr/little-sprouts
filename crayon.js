@@ -1,11 +1,11 @@
 /**
  * Color by number — paint each numbered area with the color in the legend.
- * Brush strokes follow the HTML5 canvas drawing app:
- * https://www.williammalone.com/articles/create-html5-canvas-javascript-drawing-app/
- * Each press is stored and stroked with a round join. Paint stays inside the
- * matching number. The pictures here are Little Sprouts’ own.
+ * Tap a matching area to fill it in one go, or drag to brush. For preschool,
+ * matching spots glow when that number is selected. Brush strokes follow the
+ * HTML5 canvas drawing app by William Malone. The pictures here are Little
+ * Sprouts’ own.
  */
-import { crayonCovered, crayonInk, crayonSamples, regionAt } from './logic.mjs?v=color-num';
+import { crayonCovered, crayonInk, crayonSamples, regionAt } from './logic.mjs?v=crayon-more';
 
 let active = null;
 
@@ -14,7 +14,7 @@ export function stopCrayon() {
   active = null;
 }
 
-export function mountCrayon(root, { picture, legend = [], brush = 8, cover = 0.3, onMiss, onFill, onDone } = {}) {
+export function mountCrayon(root, { picture, legend = [], brush = 8, cover = 0.3, glow = false, onMiss, onFill, onDone } = {}) {
   stopCrayon();
   const session = {
     dead: false,
@@ -44,6 +44,8 @@ export function mountCrayon(root, { picture, legend = [], brush = 8, cover = 0.3
   let wrong = false;
   let finished = false;
   let last = null;
+  let down = null;
+  let dragged = false;
   let size = { w: 1, h: 1 };
 
   const host = document.createElement('div');
@@ -55,7 +57,7 @@ export function mountCrayon(root, { picture, legend = [], brush = 8, cover = 0.3
   ink.setAttribute('aria-hidden', 'true');
   const page = document.createElement('canvas');
   page.className = 'crayon-page';
-  page.setAttribute('aria-label', `Coloring page of a ${picture?.name || 'picture'}. Paint each number with the color in the legend.`);
+  page.setAttribute('aria-label', `Coloring page of a ${picture?.name || 'picture'}. Tap a matching number to fill it, or paint with your finger.`);
   board.append(ink, page);
   const list = document.createElement('div');
   list.className = 'crayon-legend';
@@ -90,7 +92,6 @@ export function mountCrayon(root, { picture, legend = [], brush = 8, cover = 0.3
     list.append(button);
     buttons.push(button);
   });
-  if (chips[0]) select(chips[0].number);
 
   const inkCtx = ink.getContext('2d');
   const pageCtx = page.getContext('2d');
@@ -198,6 +199,14 @@ export function mountCrayon(root, { picture, legend = [], brush = 8, cover = 0.3
       trace(pageCtx, region.shape);
       pageCtx.fill();
     });
+    if (glow && chosen) {
+      regions.forEach(region => {
+        if (region.filled || region.number !== chosen.number) return;
+        pageCtx.fillStyle = `${region.hex}55`;
+        trace(pageCtx, region.shape);
+        pageCtx.fill();
+      });
+    }
     pageCtx.strokeStyle = '#3c342c';
     pageCtx.lineWidth = Math.max(1.6, scale() * 0.008);
     pageCtx.lineJoin = 'round';
@@ -206,6 +215,15 @@ export function mountCrayon(root, { picture, legend = [], brush = 8, cover = 0.3
       trace(pageCtx, region.shape);
       pageCtx.stroke();
     });
+    if (glow && chosen) {
+      pageCtx.strokeStyle = chosen.hex;
+      pageCtx.lineWidth = Math.max(2.4, scale() * 0.014);
+      regions.forEach(region => {
+        if (region.filled || region.number !== chosen.number) return;
+        trace(pageCtx, region.shape);
+        pageCtx.stroke();
+      });
+    }
     (picture?.marks || []).forEach(drawMark);
     const fontFor = text => Math.max(13, scale() * (String(text).length > 1 ? 0.042 : 0.055));
     pageCtx.textAlign = 'center';
@@ -280,6 +298,7 @@ export function mountCrayon(root, { picture, legend = [], brush = 8, cover = 0.3
       button.classList.toggle('selected', !!on);
       button.setAttribute('aria-pressed', String(!!on));
     });
+    redrawPage();
   }
 
   const at = event => {
@@ -337,24 +356,41 @@ export function mountCrayon(root, { picture, legend = [], brush = 8, cover = 0.3
     last = click;
   };
 
-  const stopPaint = () => {
+  const stopPaint = event => {
+    if (painting && !dragged && down && chosen && !finished) {
+      const region = regionUnder(down);
+      if (region && !region.filled && region.number === chosen.number) fillRegion(regions.indexOf(region));
+      else if (region && !region.filled && region.number !== chosen.number) miss(region);
+    }
     painting = false;
+    dragged = false;
+    down = null;
     last = null;
+    if (event?.pointerId != null) {
+      try { page.releasePointerCapture?.(event.pointerId); } catch { /* capture may already be gone */ }
+    }
   };
 
   const onDown = event => {
     if (finished || event.button) return;
     event.preventDefault();
     painting = true;
+    dragged = false;
     noted = false;
+    last = null;
     try { page.setPointerCapture?.(event.pointerId); } catch { /* the stroke still follows the pointer */ }
-    const point = at(event);
-    if (point) dab(point, false);
+    down = at(event);
   };
   const onMove = event => {
     if (!painting || finished) return;
     const point = at(event);
-    if (point) dab(point, true);
+    if (!point || !down) return;
+    if (!dragged && ((point.x - down.x) ** 2 + (point.y - down.y) ** 2) <= 1.2) return;
+    if (!dragged) {
+      dragged = true;
+      dab(down, false);
+    }
+    dab(point, true);
   };
   const listen = (target, type, fn, options) => {
     target.addEventListener(type, fn, options);
@@ -370,4 +406,5 @@ export function mountCrayon(root, { picture, legend = [], brush = 8, cover = 0.3
   observer.observe(board);
   session.cleanups.push(() => observer.disconnect());
   fit();
+  if (chips[0]) select(chips[0].number);
 }

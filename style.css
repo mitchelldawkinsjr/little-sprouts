@@ -378,6 +378,11 @@ body:has(.playtop) .trace-play,body:has(.playtop) .sort-play,body:has(.playtop) 
 .crayon-chip i{width:28px;height:28px;border-radius:50%;display:block;border:1px solid #0002}
 .crayon-chip b{font-family:Outfit,sans-serif;font-size:22px;min-width:1.1em;text-align:center}
 .crayon-chip span{font-size:16px}
+.crayon-picks{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;width:min(100%,560px);margin:12px auto 0}
+.crayon-pick{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:120px;padding:16px 12px;border:2px solid #e3e9dc;border-radius:22px;background:#fffdf8;font-family:Outfit,sans-serif}
+.crayon-pick:hover,.crayon-pick:focus-visible{border-color:#97ad7b;background:#f0f4e8}
+.crayon-pick span{font-size:42px;line-height:1}
+.crayon-pick b{font-size:18px;font-weight:700;text-transform:capitalize}
 .trace-board{width:min(100%,420px);height:auto;aspect-ratio:1;margin:0 auto;touch-action:none;background:#f7f3e8;border:1px solid #d3dccb;border-radius:24px}
 .trace-guide{fill:none;stroke:#8fac73;stroke-linecap:round;stroke-linejoin:round;transition:opacity .6s ease}
 .trace-guide.faded{opacity:.14}

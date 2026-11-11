@@ -31,6 +31,7 @@ import {
   sortSolved,
   sortDeal,
   crayonBoard,
+  crayonCatalog,
   crayonLegend,
   crayonPicture,
   crayonSamples,
@@ -451,8 +452,11 @@ test('color by number pairs each number with one color', () => {
   assert.equal(crayonCovered(2, 10, 0.3), false);
   assert.equal(crayonCovered(0, 0, 0.3), false);
   for (const level of [1, 2, 3]) {
-    for (let index = 0; index < 2; index++) {
+    const catalog = crayonCatalog(level);
+    assert.ok(catalog.length >= 4, `level ${level} catalog`);
+    catalog.forEach((entry, index) => {
       const page = crayonPicture(level, index);
+      assert.equal(page.name, entry.name);
       assert.equal(page.regions.length, crayonBoard(level).regions, page.name);
       assert.equal(new Set(page.regions.map(region => region.id)).size, page.regions.length);
       const samples = crayonSamples(page.regions);
@@ -460,9 +464,9 @@ test('color by number pairs each number with one color', () => {
         assert.equal(regionAt(page.regions, region.label[0], region.label[1])?.id, region.id, `${page.name} ${region.id}`);
         assert.ok(samples[slot].length >= 8, `${page.name} ${region.id} ${samples[slot].length}`);
       });
-    }
+    });
+    assert.equal(crayonPicture(level, catalog.length).name, crayonPicture(level, 0).name);
   }
-  assert.equal(crayonPicture(1, 3).name, crayonPicture(1, 1).name);
 });
 
 test('merge jar promotes only an equal pair', () => {

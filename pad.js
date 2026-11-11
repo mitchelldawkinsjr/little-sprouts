@@ -79,7 +79,7 @@ function kindAt(x, y, menu) {
   const el = document.elementFromPoint(x, y);
   if (!el) return 'none';
   if (el.closest('iframe')) return 'frame';
-  if (el.closest('.choice, [data-option], [data-letter], [data-game], .match-card, .sort-tube, .crayon-chip')) return 'choice';
+  if (el.closest('.choice, [data-option], [data-letter], [data-game], .match-card, .sort-tube, .crayon-chip, .crayon-pick')) return 'choice';
   if (el.closest('.shard')) return 'canvas';
   if (el.closest('.sky-view, [data-act="fire"], [data-act="shoot"], [data-act="jump"], .bridge-hold, .pad-space')) return 'sky';
   if (el.closest(CLICK_SURFACE)) return 'canvas';
