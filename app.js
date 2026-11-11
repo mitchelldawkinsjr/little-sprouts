@@ -2,12 +2,13 @@ import './lib/pad.js?v=pad-all';
 import './lib/tilt.js?v=ask-first';
 import { roundCount, stageOf, profileSprite, SPRITES } from './logic.mjs?v=structure4';
 import { knownVoice } from './lib/speech.js?v=wait-2s';
-import { findBuiltSidecars } from './lib/sidecar.js?v=more-adventures';
+import { findBuiltSidecars } from './lib/sidecar.js?v=hills-free1';
 import { rt } from './app/runtime.mjs?v=lean-r2';
 import { registerHelpers } from './app/helpers.mjs?v=more-adventures';
 import { registerRound } from './app/round.mjs?v=more-adventures';
-import { registerMounts } from './app/mounts.mjs?v=more-adventures';
-import { registerParent } from './app/parent.mjs?v=more-adventures';
+import { registerMounts } from './app/mounts.mjs?v=hash-r1';
+import { registerParent } from './app/parent.mjs?v=hash-r1';
+import { registerRouter } from './app/router.mjs?v=hash-r1';
 
 // Live state. Every module reads and writes it through rt.
 Object.assign(rt, {
@@ -70,10 +71,12 @@ registerHelpers(rt);
 registerRound(rt);
 registerMounts(rt);
 registerParent(rt);
+registerRouter(rt);
 
 if (named) rt.save();
 rt.loadSheet();
 findBuiltSidecars().then(() => {
-  if (rt.data.profiles.length) rt.home();
+  if (location.hash && location.hash !== '#') rt.applyHash();
+  else if (rt.data.profiles.length) rt.home();
   else rt.showWelcome();
 });

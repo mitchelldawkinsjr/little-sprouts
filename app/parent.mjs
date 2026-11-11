@@ -26,7 +26,7 @@ import {
   voiceFor,
   voices
 } from '../lib/speech.js?v=wait-2s';
-import { sidecarGame, sidecarIsBuilt } from '../lib/sidecar.js?v=more-adventures';
+import { sidecarGame, sidecarIsBuilt } from '../lib/sidecar.js?v=hills-free1';
 import { spriteHtml } from '../lib/home-ui.mjs?v=structure2';
 import { voiceStatusText } from '../lib/parent-ui.mjs?v=structure2';
 import { $, esc } from './runtime.mjs?v=lean-r2';
@@ -37,7 +37,8 @@ export function registerParent(rt) {
     ask,
     withGrownup,
     loadSheet,
-    showWelcome
+    showWelcome,
+    openParentCorner
   });
   const LEARNER_LIMIT = 8;
   const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQdhKSZBII7leKaxTQ6mRPG0Q6POsFtOrCADtNIFDl6yrlnPoCXLXaUCsGvzzNIZPodTxfOHnAjP5MQ/pub?output=csv';
@@ -247,6 +248,10 @@ export function registerParent(rt) {
     }
     rt.stopSpeech();
     $('#settings').close();
+    if ((location.hash || '') === '#settings') rt.setHash?.('home', { replace: true });
+  }
+  function openParentCorner() {
+    showGate(rt.data.profiles.length ? openSettings : openSetupForm);
   }
   function fillLearners(index = rt.data.active) {
     rt.loadingForm = true;
@@ -260,8 +265,10 @@ export function registerParent(rt) {
     fillLearners(rt.data.active);
     loadForm();
     $('#settings').showModal();
+    rt.setHash?.('settings');
   }
-  function showWelcome() {
+  function showWelcome({ syncHash = true } = {}) {
+    if (syncHash) rt.setHash?.('welcome');
     $('#app').innerHTML = `<section class="welcome"><h1>Welcome</h1><p>A grown-up sets up this browser once. The child’s name, grade, and garden buddy stay on this device.</p><button type="button" class="primary" id="beginSetup">Set up this browser</button></section>`;
     const begin = $('#beginSetup');
     if (begin) begin.onclick = () => openSetup();
@@ -359,15 +366,17 @@ export function registerParent(rt) {
   $('#printClose').onclick = () => $('#printDialog').close();
   $('.brand').onclick = e => { e.preventDefault(); rt.requestHome(); };
   $('#parents').onclick = () => {
-    const open = () => showGate(rt.data.profiles.length ? openSettings : openSetupForm);
-    if (!rt.roundActive()) { rt.clearTimers('rocket'); open(); return; }
+    if (!rt.roundActive()) { rt.clearTimers('rocket'); openParentCorner(); return; }
     ask('Leave this round?', 'This round will not be saved.', 'Leave round', { keep: true }).then(ok => {
       if (!ok) return;
       rt.home();
-      open();
+      openParentCorner();
     });
   };
-  $('#gateCancel').onclick = () => $('#gate').close();
+  $('#gateCancel').onclick = () => {
+    $('#gate').close();
+    if ((location.hash || '') === '#settings') rt.setHash?.('home', { replace: true });
+  };
   $('#setupForm').onsubmit = finishSetup;
   $('#gateForm').onsubmit = e => {
     e.preventDefault();

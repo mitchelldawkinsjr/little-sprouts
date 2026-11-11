@@ -71,7 +71,7 @@ import {
   sidecarGame,
   sidecarIsBuilt,
   stopSidecar
-} from '../lib/sidecar.js?v=more-adventures';
+} from '../lib/sidecar.js?v=hills-free1';
 import {
   SHELF_META,
   shelfOf as shelfIdOf,
@@ -476,11 +476,14 @@ export function registerMounts(rt) {
       meter.setAttribute('aria-valuemax', String(rounds));
     }
   }
-  function home(focus) {
+  function home(focus, { syncHash = true } = {}) {
     if (!rt.data.profiles?.length) {
       rt.showWelcome?.();
       return;
     }
+    if (syncHash) rt.setHash?.('home');
+    $('#settings')?.close();
+    if ($('#gate')?.open) $('#gate').close();
     rt.releaseListen();
     clearTimers('cover', 'rocket', 'lane', 'hook', 'sky', 'planet', 'match');
     stopArcade();
@@ -583,7 +586,7 @@ export function registerMounts(rt) {
     if (!rt.roundActive()) { go(); return; }
     rt.ask(`Play ${alone.title} on its own?`, `This round will not be saved. ${alone.note}`, 'Play on its own', { keep: true }).then(ok => { if (ok) go(); });
   }
-  function start(mode) {
+  function start(mode, { syncHash = true } = {}) {
     rt.releaseListen();
     rt.stopSpeech();
     clearTimers('rocket', 'lane', 'hook', 'sky', 'planet', 'match', 'learn', 'bridge', 'chase', 'hop', 'toast', 'glide', 'city', 'lily', 'bust', 'mole', 'cube', 'stack', 'lamp', 'rally');
@@ -592,6 +595,7 @@ export function registerMounts(rt) {
     rt.save();
     const style = rt.styleOf(mode);
     rt.game = { mode, style, key: progressKey(style, rt.skillLevel(mode)), index: 0, firstCorrect: 0, missed: false, done: false, finished: false, freePlay: mode === 'quickmath' || (!!learner.arcade && rt.ARCADE_PLAY.has(mode)) };
+    if (syncHash) rt.setHash?.(`play/${mode}`);
     rt.question();
     if (rt.game?.mode === mode) rt.prefetchRound(rt.game);
   }

@@ -11,7 +11,7 @@ import {
   wordsFor
 } from '../logic.mjs?v=structure4';
 import { contextFor, onSpeechStatus, prefetchSpeech, speak, stop, voiceFor } from '../lib/speech.js?v=wait-2s';
-import { postSidecar, sidecarRows } from '../lib/sidecar.js?v=more-adventures';
+import { postSidecar, sidecarRows } from '../lib/sidecar.js?v=hills-free1';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 
 export function registerHelpers(rt) {

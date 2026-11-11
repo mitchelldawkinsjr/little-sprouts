@@ -4,7 +4,7 @@
  * “Airplane pulling a banner” — rebuilt here, no CodePen bitmap shipped.
  *
  * Commercial note: this craft is ours. We do not ship Web Flight Simulator
- * or third-party jet models. Free flight globe is CesiumJS (Apache 2.0).
+ * or third-party jet models. Free flight uses the local hill terrain.
  */
 import * as THREE from 'three';
 

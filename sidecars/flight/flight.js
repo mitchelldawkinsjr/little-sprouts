@@ -1,10 +1,9 @@
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { questionHolding } from '../../lib/hold.js?v=hold2';
-import { assignAsk, beginArcade, createFlight, markFlight, pitchFlight, steerFlight, stepFlight, strafeFlight, thrustFlight, typeSpell } from './sim.mjs?v=arcade-play';
-import { CRUISE_ALT } from './terrain.mjs';
+import { assignAsk, beginArcade, createFlight, markFlight, pitchFlight, steerFlight, stepFlight, strafeFlight, thrustFlight, typeSpell } from './sim.mjs?v=hills-free1';
+import { CRUISE_ALT, groundMeters, landColor } from './terrain.mjs';
 import { createCraft } from './craft.mjs?v=bush-blue5';
-import { createGlobe } from './globe.mjs?v=bush-blue';
 import {
   DEFAULT_FOV,
   DEFAULT_NEAR,
@@ -17,7 +16,6 @@ import {
 const SOURCE = 'sprouts-sidecar';
 const WORLD = 6;
 const view = document.getElementById('view');
-const cesiumHost = document.getElementById('cesium');
 const promptEl = document.getElementById('prompt');
 const showEl = document.getElementById('show');
 const slotsEl = document.getElementById('slots');
@@ -73,25 +71,47 @@ const ground = new THREE.Mesh(
 ground.rotation.x = -Math.PI / 2;
 scene.add(ground);
 
-let globe = null;
-let globeOpening = false;
-createGlobe(cesiumHost).then(next => {
-  globe = next;
-}).catch(() => {
-  globe = null;
-});
+const SEG = 80;
+const SPAN = 7200;
+const terrainGeo = new THREE.PlaneGeometry(SPAN, SPAN, SEG, SEG);
+terrainGeo.rotateX(-Math.PI / 2);
+terrainGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(terrainGeo.attributes.position.count * 3), 3));
+const terrainMesh = new THREE.Mesh(terrainGeo, new THREE.MeshLambertMaterial({ vertexColors: true }));
+terrainMesh.visible = false;
+terrainMesh.frustumCulled = false;
+const water = new THREE.Mesh(
+  new THREE.CircleGeometry(SPAN * 1.6, 40),
+  new THREE.MeshLambertMaterial({ color: 0x3c86b0 })
+);
+water.rotation.x = -Math.PI / 2;
+water.position.y = 12;
+water.visible = false;
+scene.add(terrainMesh, water);
+const terrain = { originX: null, originZ: null };
 
-async function openGlobe() {
-  if (!globe || globe.visible || globeOpening) return;
-  globeOpening = true;
-  try {
-    const ok = await globe.show();
-    if (!ok) globe = null;
-  } catch {
-    globe = null;
-  } finally {
-    globeOpening = false;
+function placeTerrain(worldX, worldZ) {
+  const snap = (SPAN / SEG) * 6;
+  const ox = Math.round(worldX / snap) * snap;
+  const oz = Math.round(worldZ / snap) * snap;
+  if (ox === terrain.originX && oz === terrain.originZ) return;
+  terrain.originX = ox;
+  terrain.originZ = oz;
+  terrainMesh.position.set(ox, 0, oz);
+  water.position.x = ox;
+  water.position.z = oz;
+  const pos = terrainGeo.attributes.position;
+  const col = terrainGeo.attributes.color;
+  for (let index = 0; index < pos.count; index++) {
+    const x = ox + pos.getX(index);
+    const z = oz + pos.getZ(index);
+    const height = groundMeters(x, z);
+    pos.setY(index, height);
+    const rgb = landColor(height, x, z);
+    col.setXYZ(index, rgb[0], rgb[1], rgb[2]);
   }
+  pos.needsUpdate = true;
+  col.needsUpdate = true;
+  terrainGeo.computeVertexNormals();
 }
 
 const cloudTexture = cloudSprite();
@@ -338,7 +358,7 @@ function paintHud() {
     return;
   }
   if (open) {
-    promptEl.textContent = 'Free flight over the globe. The glider flies where you look.';
+    promptEl.textContent = 'Free flight over the hills. The plane flies where you look.';
     if (showEl.dataset.html) {
       showEl.dataset.html = '';
       showEl.innerHTML = '';
@@ -346,7 +366,7 @@ function paintHud() {
     slotsEl.hidden = true;
     spellTypeEl.hidden = true;
     noteEl.hidden = false;
-    noteEl.textContent = state.arcade ? 'Arcade · CesiumJS globe' : `${clock(state.free)} left · CesiumJS`;
+    noteEl.textContent = state.arcade ? 'Arcade · free flight' : `${clock(state.free)} left`;
     view.setAttribute('aria-label', promptEl.textContent);
     return;
   }
@@ -388,26 +408,20 @@ function fly(dt) {
     quaternion: craftQuat,
     roll: bankRoll
   };
-  const open = state.free > 0 || state.over;
-  if (open && globe) {
-    if (!globe.visible) openGlobe();
-    if (globe?.visible) {
-      globe.update(state);
-      view.hidden = true;
-      craft.setVisible(false);
-      return;
-    }
-  }
-  if (globe?.visible) globe.hide();
-  view.hidden = false;
   craft.setVisible(true);
   craft.update(craftState, dt);
   chase.update(craftState, camera, dt);
-  ground.visible = true;
-  ground.position.x = craftPosition.x;
-  ground.position.z = craftPosition.z;
-  ground.material.color.setHex(open ? 0x3c86b0 : 0x6d9354);
+  const open = state.free > 0 || state.over;
+  view.hidden = false;
+  ground.visible = !open;
+  terrainMesh.visible = open;
+  water.visible = open;
   scene.fog.density = open ? 0.000028 : 0.000045;
+  if (open) placeTerrain(craftPosition.x, craftPosition.z);
+  else {
+    ground.position.x = craftPosition.x;
+    ground.position.z = craftPosition.z;
+  }
   clouds.forEach((sprite, index) => {
     const span = open ? 6400 : 2800;
     const base = ((index - 7) * (open ? 520 : 260) - craftPosition.x) % span;
@@ -512,6 +526,9 @@ window.addEventListener('message', event => {
   if (data.type === 'mark') markFlight(state, !!data.ok);
 });
 
-if (window.parent === window) loadDemo(0);
+if (window.parent === window) {
+  if (new URLSearchParams(location.search).has('free')) beginArcade(state);
+  else loadDemo(0);
+}
 send('ready');
 requestAnimationFrame(frame);

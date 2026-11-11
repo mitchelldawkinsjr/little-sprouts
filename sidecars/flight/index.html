@@ -4,11 +4,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Sky flight</title>
-  <script>
-    window.CESIUM_BASE_URL = 'https://cesium.com/downloads/cesiumjs/releases/1.125/Build/Cesium/';
-  </script>
-  <link rel="stylesheet" href="https://cesium.com/downloads/cesiumjs/releases/1.125/Build/Cesium/Widgets/widgets.css">
-  <script src="https://cesium.com/downloads/cesiumjs/releases/1.125/Build/Cesium/Cesium.js"></script>
   <script type="importmap">
   {
     "imports": {
@@ -19,9 +14,6 @@
   </script>
   <style>
     html, body { margin: 0; height: 100%; background: #87b4d6; overflow: hidden; font-family: Outfit, "Trebuchet MS", sans-serif; }
-    #cesium { position: fixed; inset: 0; z-index: 0; }
-    #cesium .cesium-viewer, #cesium .cesium-viewer-cesiumWidgetContainer, #cesium .cesium-widget, #cesium .cesium-widget canvas { width: 100%; height: 100%; }
-    #cesium[hidden] { display: none !important; }
     #view { position: fixed; inset: 0; z-index: 1; }
     #view canvas { display: block; width: 100%; height: 100%; touch-action: none; }
     #hud { position: fixed; left: 12px; right: 12px; top: 10px; z-index: 2; margin: 0; text-align: center; color: #16382c; pointer-events: none; }
@@ -47,7 +39,6 @@
   </style>
 </head>
 <body>
-  <div id="cesium" hidden></div>
   <div id="view"></div>
   <div id="hud" aria-live="polite">
     <p class="prompt" id="prompt">Hold the buttons. Steer through a gate.</p>
@@ -82,6 +73,6 @@
       <button type="button" id="back" aria-label="Fly back">▼</button>
     </div>
   </div>
-  <script type="module" src="flight.js?v=bush-blue5"></script>
+  <script type="module" src="flight.js?v=hills-free1"></script>
 </body>
 </html>
