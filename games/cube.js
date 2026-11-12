@@ -6,7 +6,7 @@
  */
 import { cubeLanes, cubeOverlap } from '../logic.mjs?v=cube-dash';
 
-const THREE_URL = 'https://cdn.jsdelivr.net/npm/three@0.183.0/build/three.module.js';
+const THREE_URL = '../vendor/three/build/three.module.js';
 const GROUND_TOP = 0.25;
 const GRAVITY = -7.2;
 const JUMP = 4.8;

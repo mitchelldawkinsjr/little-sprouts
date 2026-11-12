@@ -41,7 +41,7 @@ import {
   verseSheetRows,
   verseRecall,
   verseWithRef
-} from '../logic.mjs?v=verse8';
+} from '../logic.mjs?v=offline1';
 import { canSpeak, warm } from '../lib/speech.js?v=wait-2s';
 import { mountCatch, mountLanes, mountRace, mountRocket, pokeRocket, stopArcade } from '../games/arcade.js?v=ask-first2-r2';
 import { mountLunar } from '../games/lunar.js?v=moon-board2';
@@ -89,7 +89,7 @@ import {
   shelfPanelHtml,
   starGardenHtml as gardenHtml,
   homePageHtml
-} from '../lib/home-ui.mjs?v=verse8';
+} from '../lib/home-ui.mjs?v=offline1';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=city-glide';
 

@@ -19,7 +19,7 @@ import {
   nextSprite,
   blankLearner,
   SPRITES
-} from '../logic.mjs?v=verse8';
+} from '../logic.mjs?v=offline1';
 import {
   getSpeechStatus,
   knownVoice,
@@ -32,7 +32,7 @@ import {
   voices
 } from '../lib/speech.js?v=wait-2s';
 import { sidecarGame, sidecarIsBuilt } from '../lib/sidecar.js?v=hills-free1';
-import { spriteHtml } from '../lib/home-ui.mjs?v=verse8';
+import { spriteHtml } from '../lib/home-ui.mjs?v=offline1';
 import { voiceStatusText } from '../lib/parent-ui.mjs?v=structure2';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 

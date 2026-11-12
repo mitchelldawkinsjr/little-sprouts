@@ -35,7 +35,7 @@ import {
   lampBoard,
   bustBoard,
   verseWithRef
-} from '../logic.mjs?v=verse8';
+} from '../logic.mjs?v=offline1';
 import { canSpeak, commonLines, prefetchSpeech } from '../lib/speech.js?v=wait-2s';
 import { stopArcade } from '../games/arcade.js?v=ask-first2-r2';
 import { stopHoop } from '../games/hoop.js?v=hoop-trio-r2';

@@ -6,7 +6,7 @@
  */
 import { moveDirs, readPad } from '../lib/pad-core.mjs?v=pad-rt';
 
-const THREE_URL = 'https://cdn.jsdelivr.net/npm/three@0.183.0/build/three.module.js';
+const THREE_URL = '../vendor/three/build/three.module.js';
 const RING = 3.4;
 
 let active = null;

@@ -11,10 +11,8 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon-192.png" type="image/png">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=verse8">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=offline1">
+  <link rel="stylesheet" href="style.css?v=offline1">
 </head>
 <body>
   <header>
@@ -240,11 +238,11 @@
         <li><a href="https://codepen.io/jensbroecher/pen/wvZQdEa" target="_blank" rel="noopener">Jens Broecher — Airplane pulling a banner</a><p>Sky flight’s bush plane follows that blue-and-white utility look. The plane is rebuilt here; no CodePen bitmap is shipped.</p></li>
         <li><a href="https://github.com/mrdoob/three.js" target="_blank" rel="noopener">Ricardo Cabello and the Three.js authors</a><p>Sky flight’s quiz gates and bush plane, Paint sphere, Cube dash, and City glide draw with Three.js. MIT, copyright 2010–2024. The plane and gates are Little Sprouts’ own.</p></li>
         <li><a href="https://github.com/hexgrad/kokoro" target="_blank" rel="noopener">hexgrad — Kokoro</a><p>Spoken prompts use Kokoro-82M, Apache 2.0. The browser copy is <a href="https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX" target="_blank" rel="noopener">onnx-community’s ONNX build</a>, run with kokoro-js. If it cannot load, the browser’s own voice is used.</p></li>
-        <li><a href="https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker" target="_blank" rel="noopener">Google — MediaPipe Pose</a><p>Reach play uses Google’s pose model to find hands. Video stays in this browser. It is never recorded or uploaded.</p></li>
+        <li><a href="https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker" target="_blank" rel="noopener">Google — MediaPipe Pose</a><p>Reach play uses Google’s pose model to find hands. The lite model is shipped in vendor/mediapipe for offline PWA play. Video stays in this browser. It is never recorded or uploaded.</p></li>
         <li><a href="https://codepen.io/cassie-codes/pen/zWJxXj" target="_blank" rel="noopener">Cassie Evans — CSS / SVG Blobby Background</a><p>Merge jar uses that gooey blur, so matching circles melt together when they touch. The jar, the tokens, and the questions are drawn here.</p></li>
         <li><a href="https://codepen.io/dipscom/pen/amxYvB" target="_blank" rel="noopener">Pedro Tavares — Shooting Hoops</a><p>Shooting hoops follows that flick: drag the ball, let go, and it arcs at the rim. Three hoops show the answers. The gym, the ball, and the questions are drawn here.</p></li>
         <li><a href="https://codepen.io/amit_sheen/pen/dyQGQLr" target="_blank" rel="noopener">Amit Sheen — Catch That Light!</a><p>Catch the light follows that ring and the tap when the moving light meets the green bulb. Rush gets faster after every catch. The questions are Little Sprouts’ own.</p></li>
-        <li><a href="https://fonts.google.com/specimen/Outfit" target="_blank" rel="noopener">Outfit</a> and <a href="https://fonts.google.com/specimen/DM+Sans" target="_blank" rel="noopener">DM Sans</a><p>The type on this site, from Google Fonts. Outfit is by Rodrigo Fuenzalida. DM Sans is by Colophon Foundry.</p></li>
+        <li><a href="https://fonts.google.com/specimen/Outfit" target="_blank" rel="noopener">Outfit</a> and <a href="https://fonts.google.com/specimen/DM+Sans" target="_blank" rel="noopener">DM Sans</a><p>The type on this site. Outfit is by Rodrigo Fuenzalida. DM Sans is by Colophon Foundry. Copies live in vendor/fonts so the PWA keeps the look offline.</p></li>
       </ul>
     </div>
   </dialog>
@@ -256,9 +254,14 @@
     <button type="button" class="quiet" id="listenAgain">Hear it again</button>
     <button type="button" class="quiet" id="listenBack">← All games</button>
   </div>
-  <script type="module" src="app.js?v=verse8"></script>
-  <script>
-    if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
+  <script type="module" src="app.js?v=offline1"></script>
+  <script type="module">
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js?v=offline1').then(async () => {
+        const { warmOffline } = await import('./lib/offline-warm.mjs?v=offline1');
+        warmOffline();
+      }).catch(() => {});
+    }
   </script>
 </body>
 </html>
