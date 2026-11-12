@@ -413,7 +413,7 @@ export function choicesFor(q, count, rand = Math.random) {
 export function grade4Prompt(q, style, options = q.choices) {
   if (style !== 'move' && style !== 'hunt') return q.question;
   if (q.choices && options) {
-    const list = options.length > 1 ? `${options.slice(0, -1).join(', ')}, or ${options.at(-1)}` : String(options[0]);
+    const list = options.length > 1 ? `${options.slice(0, -1).join(', ')}, or ${options[options.length - 1]}` : String(options[0]);
     q = { ...q, question: `${q.question.replace(/\?$/, '')}: ${list}?` };
   }
   if (style === 'move') {

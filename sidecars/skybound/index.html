@@ -7,12 +7,9 @@
   <meta name="description" content="Skybound Obby — cinematic offline-first 3D adventure with Little Sprouts learning gates" />
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&display=swap" rel="stylesheet" />
   <title>Skybound Obby · Crystal Run</title>
-  <script type="module" crossorigin src="./assets/index-Dz5XKccx.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-CjowvLsz.css">
+  <script type="module" crossorigin src="./assets/index-DvJnpW3o.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-CIFEyrpC.css">
 </head>
 <body>
   <div id="game"></div>
@@ -40,8 +37,17 @@
     <div class="modal-card">
       <div class="eyebrow" id="modal-eyebrow">WORLD 01 — CRYSTAL RUN</div>
       <h1 id="modal-heading">SKYBOUND<br/><em>OBBY</em></h1>
-      <p id="modal-description">Three worlds, each harder than the last. Clear Crystal Run to unlock Storm Ascent, then Void Gauntlet.</p>
+      <p id="modal-description">Three worlds, each harder than the last. Clear Crystal Run to unlock Storm Ascent, Void Gauntlet, and Endless Run.</p>
       <div id="level-select" class="level-select" aria-label="Choose a world"></div>
+      <div id="difficulty-meter" class="difficulty-meter" hidden>
+        <div class="diff-head"><span>Endless difficulty</span><strong id="difficulty-value">Normal</strong></div>
+        <div class="diff-track" role="group" aria-label="Endless difficulty">
+          <button type="button" class="diff-btn" data-diff="1">Easy</button>
+          <button type="button" class="diff-btn" data-diff="2">Normal</button>
+          <button type="button" class="diff-btn" data-diff="3">Hard</button>
+        </div>
+        <p class="diff-hint" id="difficulty-hint">Balanced gaps and a mix of pads.</p>
+      </div>
       <div class="howto"><span>⌨️ WASD / ARROWS</span><span>↥ SPACE TO JUMP</span><span>↺ DRAG TO LOOK</span></div>
       <button id="play-btn">START ADVENTURE <span>→</span></button>
       <p class="micro">Playable in-browser · Installable offline · Local save data</p>

@@ -5,6 +5,9 @@
  * The questions and the on-screen buttons are Little Sprouts' own.
  */
 import { cubeLanes, cubeOverlap } from '../logic.mjs?v=cube-dash';
+import {
+  resolveAutoQuality, pixelRatioCap, rendererOptions, isPerformanceTier
+} from '../lib/device-tier.mjs?v=low-end1';
 
 const THREE_URL = '../vendor/three/build/three.module.js';
 const GROUND_TOP = 0.25;
@@ -131,7 +134,7 @@ export function mountCube(root, { board = {}, reduced, nextQuestion, onPrompt, o
   }).catch(() => {
     if (session.dead) return;
     const wait = stage.querySelector('.cube-wait');
-    if (wait) wait.textContent = 'The cubes could not load. Check the connection and try again.';
+    if (wait) wait.textContent = 'The cubes need WebGL. Update the browser or turn on hardware acceleration.';
   });
 }
 
@@ -140,7 +143,9 @@ function begin(THREE, stage, session, { board, reduced, nextQuestion, onPrompt, 
   if (wait) wait.remove();
   const livesEl = stage.querySelector('.cube-lives');
   const scoreEl = stage.querySelector('.cube-score');
-  const calm = reduced ? 0.72 : 1;
+  const visualTier = resolveAutoQuality();
+  const lowGpu = isPerformanceTier(visualTier);
+  const calm = (reduced || lowGpu) ? 0.72 : 1;
   const spec = {
     lives: board.lives || 4,
     spawn: (board.spawn || 2.8) / calm,
@@ -150,15 +155,23 @@ function begin(THREE, stage, session, { board, reduced, nextQuestion, onPrompt, 
   scene.background = new THREE.Color('#0c4a6e');
   scene.fog = new THREE.Fog('#0c4a6e', 16, 40);
   const camera = new THREE.PerspectiveCamera(68, 1, 0.1, 80);
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.shadowMap.enabled = true;
-  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  let renderer;
+  try {
+    renderer = new THREE.WebGLRenderer(rendererOptions(visualTier));
+    if (!renderer.getContext()) throw new Error('no-webgl');
+  } catch {
+    if (livesEl) livesEl.textContent = 'Needs WebGL';
+    return;
+  }
+  renderer.shadowMap.enabled = !lowGpu;
+  renderer.shadowMap.type = THREE.BasicShadowMap;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, pixelRatioCap(visualTier)));
   renderer.domElement.classList.add('pad-space');
   stage.appendChild(renderer.domElement);
 
   const sun = new THREE.DirectionalLight(0xffffff, 1.15);
-  sun.castShadow = true;
-  sun.shadow.mapSize.set(1024, 1024);
+  sun.castShadow = !lowGpu;
+  sun.shadow.mapSize.set(lowGpu ? 512 : 1024, lowGpu ? 512 : 1024);
   sun.shadow.camera.near = 0.5;
   sun.shadow.camera.far = 40;
   sun.shadow.camera.left = -14;

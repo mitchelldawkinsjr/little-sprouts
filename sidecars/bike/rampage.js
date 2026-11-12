@@ -143,7 +143,13 @@ function terrainY(x, L) {
 function terrainSlope(x, L) { return (terrainY(x + 1.5, L) - terrainY(x - 1.5, L)) / 3; }
 
 const particles = [];
+const PARTICLE_CAP = (navigator.deviceMemory && navigator.deviceMemory <= 4)
+  || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4)
+  || matchMedia('(prefers-reduced-motion: reduce)').matches
+  ? 80
+  : 180;
 function spawn(x, y, vx, vy, life, size, color, grav = 0.12, fade = true) {
+  if (particles.length >= PARTICLE_CAP) particles.shift();
   particles.push({ x, y, vx, vy, life, max: life, size, color, grav, fade });
 }
 function updateParticles() {

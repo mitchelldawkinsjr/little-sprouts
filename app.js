@@ -5,8 +5,8 @@ import { knownVoice } from './lib/speech.js?v=wait-2s';
 import { findBuiltSidecars } from './lib/sidecar.js?v=skybound1';
 import { rt } from './app/runtime.mjs?v=lean-r2';
 import { registerHelpers } from './app/helpers.mjs?v=offline1';
-import { registerRound } from './app/round.mjs?v=offline1';
-import { registerMounts } from './app/mounts.mjs?v=offline1';
+import { registerRound } from './app/round.mjs?v=low-end1';
+import { registerMounts } from './app/mounts.mjs?v=low-end1';
 import { registerParent } from './app/parent.mjs?v=offline1';
 import { registerRouter } from './app/router.mjs?v=hash-r1';
 

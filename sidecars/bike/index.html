@@ -11,7 +11,7 @@
   #stage { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
   canvas { background: #0c0e14; touch-action: none; box-shadow: 0 10px 60px rgba(0,0,0,.7); }
   #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; color: #ffd34d; font-size: 22px; letter-spacing: 2px; }
-  #ask { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; background: rgba(20, 16, 12, .45); font-family: Outfit, Inter, sans-serif; color: #244b3d; }
+  #ask { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; background: rgba(20, 16, 12, .45); font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #244b3d; }
   #ask[hidden] { display: none !important; }
   #ask .card { width: min(720px, 92%); background: #faf9f5; border-radius: 22px; padding: 22px 20px 18px; box-shadow: 0 16px 40px #0005; }
   #ask .prompt { margin: 0 0 12px; text-align: center; font-size: clamp(22px, 3.4vw, 34px); font-weight: 700; line-height: 1.25; }
@@ -19,7 +19,7 @@
   #ask .show .countrow, #ask .show .numpath { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
   #ask .show .here { outline: 3px solid #db8b32; border-radius: 8px; }
   #ask .choices { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
-  #ask button { min-width: 120px; min-height: 92px; padding: 10px 14px; border: 3px solid #d7decc; border-radius: 16px; background: #fff; color: #244b3d; font: 700 clamp(20px, 3vw, 30px)/1.1 Outfit, Inter, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; cursor: pointer; }
+  #ask button { min-width: 120px; min-height: 92px; padding: 10px 14px; border: 3px solid #d7decc; border-radius: 16px; background: #fff; color: #244b3d; font: 700 clamp(20px, 3vw, 30px)/1.1 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; cursor: pointer; }
   #ask button.wrong { border-color: #b42318; background: #fff4e9; }
   #ask button.correct { border-color: #32634e; background: #e7f0df; }
   #ask .shape { display: block; width: 54px; height: 54px; background: var(--shape-color, #5d7a45); }
@@ -44,7 +44,7 @@
 <div id="stage"><canvas id="game" width="1280" height="720"></canvas></div>
 <div id="loading">LOADING…</div>
 <div id="ask" hidden></div>
-<script src="rampage.js?v=more-speed2"></script>
-<script src="sprouts-bridge.js?v=more-speed2"></script>
+<script src="rampage.js?v=low-end1"></script>
+<script src="sprouts-bridge.js?v=low-end1"></script>
 </body>
 </html>

@@ -12,6 +12,9 @@ import {
   ROLL_SENSITIVITY,
   createChaseCamera
 } from './camera.mjs?v=seed-pod';
+import {
+  resolveAutoQuality, pixelRatioCap, rendererOptions, isPerformanceTier
+} from '../../lib/device-tier.mjs?v=low-end1';
 
 const SOURCE = 'sprouts-sidecar';
 const WORLD = 6;
@@ -23,7 +26,9 @@ const spellTypeEl = document.getElementById('spellType');
 const spellInput = document.getElementById('spellInput');
 const noteEl = document.getElementById('note');
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const state = createFlight({ reduced });
+const visualTier = resolveAutoQuality({ embedded: true });
+const lowGpu = isPerformanceTier(visualTier);
+const state = createFlight({ reduced: reduced || lowGpu });
 const keys = new Set();
 const held = { left: false, right: false, drag: 0, lift: 0 };
 const quizSteer = document.getElementById('quizSteer');
@@ -35,8 +40,20 @@ let bankRoll = 0;
 let prevYaw = 0;
 let gateKey = '';
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+function showFlightWebGLFailure() {
+  if (noteEl) noteEl.textContent = 'This device needs WebGL. Update the browser or turn on hardware acceleration.';
+  if (promptEl) promptEl.textContent = 'Sky flight needs a newer browser';
+}
+
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer(rendererOptions(visualTier));
+  if (!renderer.getContext()) throw new Error('no-webgl');
+} catch (err) {
+  showFlightWebGLFailure();
+  throw err;
+}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, pixelRatioCap(visualTier)));
 renderer.setSize(view.clientWidth, view.clientHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -71,8 +88,8 @@ const ground = new THREE.Mesh(
 ground.rotation.x = -Math.PI / 2;
 scene.add(ground);
 
-const SEG = 80;
-const SPAN = 7200;
+const SEG = lowGpu ? 48 : 80;
+const SPAN = lowGpu ? 5600 : 7200;
 const terrainGeo = new THREE.PlaneGeometry(SPAN, SPAN, SEG, SEG);
 terrainGeo.rotateX(-Math.PI / 2);
 terrainGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(terrainGeo.attributes.position.count * 3), 3));
@@ -115,7 +132,7 @@ function placeTerrain(worldX, worldZ) {
 }
 
 const cloudTexture = cloudSprite();
-const clouds = Array.from({ length: 14 }, (_, index) => {
+const clouds = Array.from({ length: lowGpu ? 6 : 14 }, (_, index) => {
   const material = new THREE.SpriteMaterial({ map: cloudTexture, transparent: true, depthWrite: false, opacity: 0.55 });
   const sprite = new THREE.Sprite(material);
   const scale = 180 + (index % 5) * 70;

@@ -49,7 +49,7 @@ export const STAGE_WORDS = {
 
 /** Sheet rows win. An empty learner list uses that grade’s built-in words. */
 export function wordsFor({ words, rows, name, stage } = {}) {
-  const band = Object.hasOwn(STAGE_WORDS, stage) ? stage : 'preschool';
+  const band = Object.prototype.hasOwnProperty.call(STAGE_WORDS, stage) ? stage : 'preschool';
   const fromSheet = wordsFromSheet(rows, name, band);
   if (fromSheet.length) return fromSheet;
   const own = [...new Map(

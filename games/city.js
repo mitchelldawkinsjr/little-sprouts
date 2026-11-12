@@ -5,6 +5,9 @@
  * The flight idea follows TurdleTips' Paper City Glider. The plane, city, and rings are drawn here.
  */
 import { moveDirs, readPad } from '../lib/pad-core.mjs?v=pad-rt';
+import {
+  resolveAutoQuality, pixelRatioCap, rendererOptions, isPerformanceTier
+} from '../lib/device-tier.mjs?v=low-end1';
 
 const THREE_URL = '../vendor/three/build/three.module.js';
 const RING = 3.4;
@@ -154,13 +157,25 @@ export function mountCity(root, { board = {}, reduced, nextQuestion, onPrompt, o
 
 function begin(THREE, stage, host, session, { board, reduced, nextQuestion, onPrompt, onClear, onMiss, onOver, onFinished }) {
   stage.querySelector('.city-wait')?.remove();
-  const calm = reduced ? 0.65 : 1;
+  const visualTier = resolveAutoQuality();
+  const lowGpu = isPerformanceTier(visualTier);
+  const calm = (reduced || lowGpu) ? 0.65 : 1;
   const choices = Math.max(3, Math.min(5, board.choices || 3));
   const canvas = document.createElement('canvas');
   canvas.className = 'city-view';
   stage.append(canvas);
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  let renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas, ...rendererOptions(visualTier) });
+    if (!renderer.getContext()) throw new Error('no-webgl');
+  } catch {
+    canvas.replaceWith(Object.assign(document.createElement('p'), {
+      className: 'city-wait',
+      textContent: 'City glide needs WebGL. Update the browser or turn on hardware acceleration.'
+    }));
+    return;
+  }
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, pixelRatioCap(visualTier)));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   const scene = new THREE.Scene();
   const sky = 0x6a8fb3;
@@ -183,7 +198,7 @@ function begin(THREE, stage, host, session, { board, reduced, nextQuestion, onPr
     draw(c.getContext('2d'));
     const tex = new THREE.CanvasTexture(c);
     tex.colorSpace = THREE.SRGBColorSpace;
-    tex.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy?.() || 1);
+    tex.anisotropy = Math.min(lowGpu ? 1 : 4, (renderer.capabilities.getMaxAnisotropy && renderer.capabilities.getMaxAnisotropy()) || 1);
     return tex;
   };
   const windowTex = paintTex(64, 128, ctx => {

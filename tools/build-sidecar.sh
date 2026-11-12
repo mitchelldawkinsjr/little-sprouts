@@ -20,11 +20,17 @@ node --input-type=module -e '
 import { readFileSync, writeFileSync } from "node:fs";
 const page = "dist/index.html";
 let html = readFileSync(page, "utf8");
-const tag = "<script src=\"/lib/sidecar-guest.js?v=tilt-steer\"></script>";
-if (!html.includes(tag)) {
-  html = html.includes("</body>") ? html.replace("</body>", tag + "</body>") : html + tag;
-  writeFileSync(page, html);
+const tier = "<script src=\"/lib/device-tier-boot.js?v=low-end1\"></script>";
+const guest = "<script src=\"/lib/sidecar-guest.js?v=low-end1\"></script>";
+if (!html.includes("device-tier-boot.js")) {
+  html = html.includes("<head>")
+    ? html.replace("<head>", "<head>\n    " + tier)
+    : tier + html;
 }
+if (!html.includes(guest)) {
+  html = html.includes("</body>") ? html.replace("</body>", guest + "</body>") : html + guest;
+}
+writeFileSync(page, html);
 '
 if [ -f LICENSE ]; then cp LICENSE dist/LICENSE; fi
 rm -rf "$dest"
