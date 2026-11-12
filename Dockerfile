@@ -20,6 +20,7 @@ COPY sidecars/bike /usr/share/nginx/html/sidecars/bike
 COPY sidecars/walk /usr/share/nginx/html/sidecars/walk
 COPY sidecars/paint /usr/share/nginx/html/sidecars/paint
 COPY sidecars/quick-math /usr/share/nginx/html/sidecars/quick-math
+COPY sidecars/skybound /usr/share/nginx/html/sidecars/skybound
 COPY index.html style.css app.js logic.mjs sheet.csv manifest.webmanifest sw.js /usr/share/nginx/html/
 COPY icons /usr/share/nginx/html/icons
 COPY app /usr/share/nginx/html/app

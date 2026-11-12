@@ -78,7 +78,7 @@ import {
   sidecarGame,
   sidecarIsBuilt,
   stopSidecar
-} from '../lib/sidecar.js?v=hills-free1';
+} from '../lib/sidecar.js?v=skybound1';
 import {
   SHELF_META,
   shelfOf as shelfIdOf,
@@ -1235,7 +1235,7 @@ export function registerMounts(rt) {
           frame?.focus();
           if (rt.game?.mode === 'bike') postSidecar(rt.bikeConfig(rt.game));
           if (rt.game?.mode === 'quickmath') return;
-          if (rt.game?.freePlay && (rt.game.mode === 'flight' || rt.game.mode === 'walk')) postSidecar({ type: 'arcade' });
+          if (rt.game?.freePlay && (rt.game.mode === 'flight' || rt.game.mode === 'walk' || rt.game.mode === 'skybound')) postSidecar({ type: 'arcade' });
           else if (rt.game) postSidecar(rt.rallyMessage(rt.game));
         },
         onProgress(info) {
@@ -1289,6 +1289,20 @@ export function registerMounts(rt) {
               if (rt.game !== round || round.finished) return;
               rt.finish('stage');
             }, 800);
+            return;
+          }
+          if (round.mode === 'skybound') {
+            const line = 'Portal reached. Great climb!';
+            const feedback = $('#feedback');
+            if (feedback) feedback.textContent = line;
+            const title = $('#app h1');
+            if (title) title.textContent = line;
+            clearTimers('rally');
+            rt.rallyTimer = setTimeout(() => {
+              rt.rallyTimer = 0;
+              if (rt.game !== round || round.finished) return;
+              rt.finish(detail || 'course');
+            }, 900);
             return;
           }
           if (round.mode !== 'flight') return;

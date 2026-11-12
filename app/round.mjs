@@ -63,7 +63,7 @@ import { stopCrayon } from '../games/crayon.js?v=crayon-more';
 import { stopMarble } from '../games/marble.js?v=ask-first2-r2';
 import { stopBridge } from '../games/bridge.js?v=ask-first-r2';
 import { stopMaze } from '../games/maze.js?v=ask-first-r2';
-import { postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=hills-free1';
+import { postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=skybound1';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=arcade';
 
@@ -187,7 +187,9 @@ export function registerRound(rt) {
         ? (ok ? 'Good.' : 'Not yet. Hang on!')
         : g.mode === 'walk'
           ? (ok ? 'You found it.' : 'Not yet. Walk to another one.')
-          : (ok ? 'Yes! Turbo!' : 'Not yet. The car slows down.');
+          : g.mode === 'skybound'
+            ? (ok ? 'Yes! Climb on.' : 'Not yet. Keep climbing.')
+            : (ok ? 'Yes! Turbo!' : 'Not yet. The car slows down.');
     const feedback = $('#feedback');
     if (feedback) feedback.textContent = line;
     const title = $('#app h1');

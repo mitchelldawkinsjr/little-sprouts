@@ -12,7 +12,7 @@ import {
   versePack
 } from '../logic.mjs?v=offline1';
 import { contextFor, onSpeechStatus, prefetchSpeech, speak, stop, voiceFor } from '../lib/speech.js?v=wait-2s';
-import { postSidecar, sidecarRows } from '../lib/sidecar.js?v=hills-free1';
+import { postSidecar, sidecarRows } from '../lib/sidecar.js?v=skybound1';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 
 export function registerHelpers(rt) {
@@ -67,7 +67,7 @@ export function registerHelpers(rt) {
   const countItems = [['🍎', 'apples'], ['⭐', 'stars'], ['🐞', 'ladybugs'], ['🌼', 'flowers'], ['🐟', 'fish'], ['🎈', 'balloons']];
   const huntThings = [['sock', 'socks'], ['spoon', 'spoons'], ['toy', 'toys'], ['book', 'books'], ['block', 'blocks'], ['crayon', 'crayons']];
   const styles = [['tap', '👆', 'Tap', 'Tap the answer on the screen.'], ['move', '🦘', 'Move', 'Spread floor cards out. The game calls the moves and a grown-up taps ✓.'], ['hunt', '🔎', 'Hunt', 'Find real things around you. A grown-up taps ✓. What’s missing? plays as Move.'], ['reach', '📷', 'Reach', 'Stand back so the camera sees shoulders and hands. Hold one hand on an answer until it fills. Video stays on this device and is never recorded.']];
-  const ARCADE_PLAY = new Set(['bike', 'flight', 'walk', 'lunar', 'hoop', 'light', 'bridge', 'maze', 'chase', 'hop', 'toast', 'glide', 'city', 'aisle', 'lily', 'mole', 'bust', 'stack', 'lamp', 'cube', 'crayon']);
+  const ARCADE_PLAY = new Set(['bike', 'flight', 'walk', 'skybound', 'lunar', 'hoop', 'light', 'bridge', 'maze', 'chase', 'hop', 'toast', 'glide', 'city', 'aisle', 'lily', 'mole', 'bust', 'stack', 'lamp', 'cube', 'crayon']);
   const moves = [['Hop like a bunny', '🐰'], ['Stomp like an elephant', '🐘'], ['Tiptoe like a mouse', '🐭'], ['Waddle like a penguin', '🐧'], ['Gallop like a horse', '🐴'], ['Crawl like a turtle', '🐢'], ['Leap like a frog', '🐸']];
   const breaks = ['Run to the door and back!', 'Spin around three times!', 'Do five big jumps!', 'March in a circle and come back!'];
   const listen = {
@@ -100,6 +100,7 @@ export function registerHelpers(rt) {
     bike: 'Listen, then tap the right answer.',
     flight: 'Listen, then fly through the word.',
     walk: 'Listen, then walk to the word.',
+    skybound: 'Listen, then tap the right answer.',
     trace: 'Start at the dot and stay on the line.',
     sort: 'Tap a tube, then pour into a match or an empty tube.',
     merge: 'Drop two that match so they touch.'
@@ -232,7 +233,8 @@ export function registerHelpers(rt) {
     bike: ['Good.', 'Not yet. The bike speeds up.'],
     rally: ['Yes! Turbo!', 'Not yet. The car slows down.'],
     flight: ['Yes! Through the gate.', 'Not yet. The glider turns back.'],
-    walk: ['You found it.', 'Not yet. Walk to another one.']
+    walk: ['You found it.', 'Not yet. Walk to another one.'],
+    skybound: ['Yes! Climb on.', 'Not yet. Keep climbing.']
   };
   function focusHeading() {
     const h = $('#app h1');

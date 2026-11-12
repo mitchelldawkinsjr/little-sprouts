@@ -1,0 +1,36 @@
+{
+  "license": "CC0-1.0",
+  "source": "https://polyhaven.com",
+  "models": {
+    "pine_sapling_small": {
+      "id": "pine_sapling_small",
+      "url": "models/pine_sapling_small/pine_sapling_small_1k.gltf",
+      "resolution": "1k",
+      "source": "https://polyhaven.com/a/pine_sapling_small"
+    },
+    "rock_moss_set_01": {
+      "id": "rock_moss_set_01",
+      "url": "models/rock_moss_set_01/rock_moss_set_01_1k.gltf",
+      "resolution": "1k",
+      "source": "https://polyhaven.com/a/rock_moss_set_01"
+    },
+    "tree_stump_01": {
+      "id": "tree_stump_01",
+      "url": "models/tree_stump_01/tree_stump_01_1k.gltf",
+      "resolution": "1k",
+      "source": "https://polyhaven.com/a/tree_stump_01"
+    }
+  },
+  "hdri": {
+    "id": "ninomaru_teien",
+    "url": "hdri/ninomaru_teien_1k.hdr",
+    "source": "https://polyhaven.com/a/ninomaru_teien"
+  },
+  "ground": {
+    "id": "forrest_ground_01",
+    "color": "textures/forest_color.jpg",
+    "normal": "textures/forest_normal.jpg",
+    "roughness": "textures/forest_roughness.jpg",
+    "source": "https://polyhaven.com/a/forrest_ground_01"
+  }
+}

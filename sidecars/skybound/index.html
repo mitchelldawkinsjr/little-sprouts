@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#543caa" />
+  <meta name="description" content="Skybound Obby — cinematic offline-first 3D adventure with Little Sprouts learning gates" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&display=swap" rel="stylesheet" />
+  <title>Skybound Obby · Crystal Run</title>
+  <script type="module" crossorigin src="./assets/index-Dz5XKccx.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-CjowvLsz.css">
+</head>
+<body>
+  <div id="game"></div>
+  <header id="hud">
+    <div class="brand"><span class="brand-star">✦</span> SKYBOUND <b>OBBY</b></div>
+    <div class="stats">
+      <label class="quality-label" for="quality-select">Graphics <select id="quality-select" aria-label="Graphics quality"><option value="auto">Auto</option><option value="cinematic">Cinematic</option><option value="balanced">Balanced</option><option value="performance">Performance</option></select></label>
+      <span class="stat"><span class="coin">◆</span> <strong id="gems">0</strong><small id="gems-total">/ 15</small></span>
+      <span class="stat">★ <strong id="stars">0</strong></span>
+      <span class="stat">⚑ <strong id="checkpoint">0</strong><small id="checkpoint-total">/ 3</small></span>
+      <span class="stat">◷ <strong id="timer">00:00</strong></span>
+      <button type="button" class="round" id="sound-btn" title="Toggle sound" aria-label="Toggle sound">♪</button>
+      <button type="button" class="round" id="pause-btn" title="Pause" aria-label="Pause">Ⅱ</button>
+    </div>
+  </header>
+  <div id="ask" hidden aria-live="polite"></div>
+  <div id="stage"><span id="stage-label">WORLD 01 · CRYSTAL RUN</span><div id="stage-track"><div id="stage-fill"></div></div></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div id="mobile-controls" aria-label="Touch game controls">
+    <div id="stick" aria-label="Virtual joystick"><div id="stick-thumb"></div></div>
+    <button id="jump-btn" aria-label="Jump">JUMP <span>↥</span></button>
+  </div>
+  <div id="hint">WASD / arrows to move · SPACE to jump · drag to turn camera · R to respawn</div>
+  <div id="modal" class="visible" role="dialog" aria-modal="true" aria-labelledby="modal-heading">
+    <div class="modal-card">
+      <div class="eyebrow" id="modal-eyebrow">WORLD 01 — CRYSTAL RUN</div>
+      <h1 id="modal-heading">SKYBOUND<br/><em>OBBY</em></h1>
+      <p id="modal-description">Three worlds, each harder than the last. Clear Crystal Run to unlock Storm Ascent, then Void Gauntlet.</p>
+      <div id="level-select" class="level-select" aria-label="Choose a world"></div>
+      <div class="howto"><span>⌨️ WASD / ARROWS</span><span>↥ SPACE TO JUMP</span><span>↺ DRAG TO LOOK</span></div>
+      <button id="play-btn">START ADVENTURE <span>→</span></button>
+      <p class="micro">Playable in-browser · Installable offline · Local save data</p>
+      <p class="micro" id="scanned-status" role="status" aria-live="polite">Scanned scenery: checking local assets…</p>
+    </div>
+  </div>
+</body>
+</html>
