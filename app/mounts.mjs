@@ -36,8 +36,12 @@ import {
   nextUpGame,
   clueMatch,
   parseVerseScript,
-  verseRecall
-} from '../logic.mjs?v=verse1';
+  needsVerseScriptBuild,
+  scriptFromSeed,
+  verseSheetRows,
+  verseRecall,
+  verseWithRef
+} from '../logic.mjs?v=verse8';
 import { canSpeak, warm } from '../lib/speech.js?v=wait-2s';
 import { mountCatch, mountLanes, mountRace, mountRocket, pokeRocket, stopArcade } from '../games/arcade.js?v=ask-first2-r2';
 import { mountLunar } from '../games/lunar.js?v=moon-board2';
@@ -85,7 +89,7 @@ import {
   shelfPanelHtml,
   starGardenHtml as gardenHtml,
   homePageHtml
-} from '../lib/home-ui.mjs?v=verse4';
+} from '../lib/home-ui.mjs?v=verse8';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=city-glide';
 
@@ -438,10 +442,9 @@ export function registerMounts(rt) {
   function showCompletedVerse(g) {
     rt.releaseListen();
     rt.stopSpeech();
-    const verse = g.pack?.verse || '';
-    const passage = [g.pack?.ref, g.pack?.title].filter(Boolean).join(' · ');
+    const verse = verseWithRef(g.pack);
     const remember = g.pack?.remember ? `<p class="hint">${esc(g.pack.remember)}</p>` : '';
-    $('#app').innerHTML = `<div class="playtop" data-mode="verse"><button class="quiet" id="back">← All games</button><b>${esc(g.title || 'Memory verse')}</b></div><section class="playarea"><h1>Read the whole verse.</h1>${passage ? `<p class="hint">${esc(passage)}</p>` : ''}<p class="verse-done">${esc(verse)}</p>${remember}<button class="speaker" id="listen"><span aria-hidden="true">🔈</span> Hear it again</button><button class="primary" id="verseRead">I read it</button></section>`;
+    $('#app').innerHTML = `<div class="playtop" data-mode="verse"><button class="quiet" id="back">← All games</button><b>${esc(g.title || 'Memory verse')}</b></div><section class="playarea"><h1>Read the whole verse.</h1><p class="verse-done">${esc(verse)}</p>${remember}<button class="speaker" id="listen"><span aria-hidden="true">🔈</span> Hear it again</button><button class="primary" id="verseRead">I read it</button></section>`;
     $('#back').onclick = requestHome;
     $('#listen').onclick = () => { rt.stopSpeech(); rt.say(verse); };
     $('#verseRead').onclick = () => rt.finish();
@@ -765,7 +768,7 @@ export function registerMounts(rt) {
     }).join('');
   }
   function verseEditor() {
-    return `<details class="verse-edit"><summary>Grown-up: use a different verse</summary><p class="hint">This replaces the question sheet for this learner. Leave it blank to use the sheet. One line each: title, remember, verse, bonus, bank, circle, fill, clue. The answer comes first inside braces, like {Joseph|David|Moses}.</p><textarea id="verseScript" rows="8">${esc(rt.p().verse || '')}</textarea><p id="verseEditError" class="hint"></p><button type="button" class="quiet" id="verseSave">Use this verse</button></details>`;
+    return `<details class="verse-edit"><summary>Grown-up: use a different verse</summary><p class="hint">Paste a reference like Genesis 21:11, or the full verse. Public text uses World English Bible or King James. One line each in the script: title, remember, verse, bonus, bank, circle, fill, clue.</p><label>Reference or full verse<textarea id="verseSeed" rows="3" placeholder="Genesis 21:11 — or paste the whole verse"></textarea></label><label>Public text <select id="verseTranslation"><option value="web">World English Bible</option><option value="kjv">King James</option></select></label><p><button type="button" class="quiet" id="verseBuild">Make the verse games</button> <button type="button" class="quiet" id="verseCopyRows">Copy sheet rows</button></p><textarea id="verseScript" rows="8">${esc(rt.p().verse || '')}</textarea><p id="verseEditError" class="hint"></p><button type="button" class="quiet" id="verseSave">Use this verse</button></details>`;
   }
   function verseBody(g) {
     const step = g.step;
@@ -773,11 +776,11 @@ export function registerMounts(rt) {
     const where = g.passage ? `<p class="hint">${esc(g.passage)}</p>` : '';
     if (!step) return `${where}${editor}`;
     if (step.kind === 'write' && g.phase === 'peek') {
-      return `${where}<p class="verse-line">${esc(g.pack?.verse || '')}</p><button class="primary" id="verseCover">Cover the verse</button>${editor}`;
+      return `${where}<p class="verse-line">${esc(verseWithRef(g.pack))}</p><button class="primary" id="verseCover">Cover the verse</button>${editor}`;
     }
     if (step.kind === 'write') {
-      const shown = g.phase === 'answer' ? `<p class="verse-line">${esc(g.pack?.verse || '')}</p>` : '';
-      return `${where}${shown}<label class="spell-type">Write the verse<textarea id="verseWrite" class="verse-write"></textarea></label><button class="primary" id="verseDone">I’m done</button> <button type="button" class="quiet" id="verseShow">Show the verse</button>${editor}`;
+      const shown = g.phase === 'answer' ? `<p class="verse-line">${esc(verseWithRef(g.pack))}</p>` : '';
+      return `${where}${shown}<label class="spell-type">Write what you remember <span class="hint">(optional)</span><textarea id="verseWrite" class="verse-write" placeholder="Extra star if you write the verse"></textarea></label><p class="hint">Okay to skip. Extra star if you write it.</p><button class="primary" id="verseDone">I’m done</button> <button type="button" class="quiet" id="verseShow">Show the verse</button>${editor}`;
     }
     if (step.kind === 'bonus') {
       const note = g.pack?.remember ? `<p class="hint">${esc(g.pack.remember)}</p>` : '';
@@ -815,12 +818,69 @@ export function registerMounts(rt) {
     else $('#feedback').textContent = 'Nice! Find the next word.';
   }
   function wireVerse(g) {
+    const err = () => $('#verseEditError');
+    const seedNow = () => {
+      const seed = ($('#verseSeed')?.value || '').trim();
+      if (seed) return seed;
+      const script = $('#verseScript')?.value || '';
+      return needsVerseScriptBuild(script) ? script.trim() : '';
+    };
+    const build = $('#verseBuild');
+    if (build) build.onclick = async () => {
+      const seed = seedNow();
+      if (!seed) {
+        if (err()) err().textContent = 'Paste a reference like John 3:16, or the full verse.';
+        return;
+      }
+      if (err()) err().textContent = 'Making the verse games…';
+      try {
+        const script = await scriptFromSeed(seed, { translation: $('#verseTranslation')?.value || 'web' });
+        if (!script || !parseVerseScript(script)) {
+          if (err()) err().textContent = 'Need a longer verse, or a reference the public Bible can find.';
+          return;
+        }
+        if ($('#verseScript')) $('#verseScript').value = script;
+        if ($('#verseSeed') && needsVerseScriptBuild($('#verseSeed').value)) $('#verseSeed').value = '';
+        if (err()) err().textContent = 'Script ready. Tap Use this verse, or copy sheet rows.';
+      } catch (ex) {
+        if (err()) err().textContent = ex?.message || 'That reference could not be loaded.';
+      }
+    };
+    const copy = $('#verseCopyRows');
+    if (copy) copy.onclick = async () => {
+      const script = $('#verseScript')?.value || '';
+      if (!script.trim() || !parseVerseScript(script)) {
+        if (err()) err().textContent = 'Make a verse script first.';
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(`learner,game,item,extra\n${verseSheetRows(script, '*')}`);
+        if (err()) err().textContent = 'Sheet rows copied.';
+      } catch {
+        if (err()) err().textContent = 'Copy failed. Select the script and copy it by hand.';
+      }
+    };
     const save = $('#verseSave');
-    if (save) save.onclick = () => {
-      const text = $('#verseScript')?.value || '';
+    if (save) save.onclick = async () => {
+      let text = $('#verseScript')?.value || '';
+      if (seedNow() && !parseVerseScript(text)) {
+        const seed = seedNow();
+        if (err()) err().textContent = 'Making the verse games…';
+        try {
+          const script = await scriptFromSeed(seed, { translation: $('#verseTranslation')?.value || 'web' });
+          if (!script || !parseVerseScript(script)) {
+            if (err()) err().textContent = 'Need a longer verse, or a reference the public Bible can find.';
+            return;
+          }
+          text = script;
+          if ($('#verseScript')) $('#verseScript').value = script;
+        } catch (ex) {
+          if (err()) err().textContent = ex?.message || 'That reference could not be loaded.';
+          return;
+        }
+      }
       if (text.trim() && !parseVerseScript(text)) {
-        const err = $('#verseEditError');
-        if (err) err.textContent = 'Add a circle, fill, clue, or verse line.';
+        if (err()) err().textContent = 'Add a circle, fill, clue, or verse line.';
         return;
       }
       rt.p().verse = text;
@@ -835,7 +895,7 @@ export function registerMounts(rt) {
     const cover = $('#verseCover');
     if (cover) cover.onclick = () => {
       g.phase = 'hidden';
-      g.prompt = 'Write what you remember.';
+      g.prompt = 'Write what you remember. Optional — extra star if you do.';
       renderGame();
     };
     const done = $('#verseDone');
@@ -851,12 +911,10 @@ export function registerMounts(rt) {
         return;
       }
       const score = verseRecall(g.pack?.verse || g.target, typed);
-      if (!score.ok) {
-        g.missed = true;
-        $('#feedback').textContent = `You have ${score.hit} of ${score.total} words. Add more if you can.`;
-        rt.say('Add more words you remember.');
-        showHint();
-        return;
+      // Writing is optional: empty or partial still advances; a full recall earns an extra star.
+      if (score.ok) {
+        g.wroteVerse = true;
+        g.extraStars = (g.extraStars || 0) + 1;
       }
       rt.answer(true, done);
     };
@@ -1015,7 +1073,7 @@ export function registerMounts(rt) {
       if ((g.mode === 'verse' || g.mode === 'clue') && (g.mode === 'clue' ? (g.hear || g.prompt) : g.pack?.verse)) {
         rt.releaseListen();
         rt.stopSpeech();
-        rt.say(g.mode === 'clue' ? (g.hear || g.prompt) : g.pack.verse);
+        rt.say(g.mode === 'clue' ? (g.hear || g.prompt) : verseWithRef(g.pack));
       } else if (ARCADE[g.mode]?.fly) {
         rt.releaseListen();
         rt.say(g.prompt);

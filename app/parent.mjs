@@ -6,6 +6,10 @@ import {
   parseSheet,
   parseWords,
   parseVerseScript,
+  needsVerseScriptBuild,
+  scriptFromSeed,
+  verseSheetRows,
+  expandVerseSheetRows,
   resetProgress,
   raceKinds,
   roundCount,
@@ -15,7 +19,7 @@ import {
   nextSprite,
   blankLearner,
   SPRITES
-} from '../logic.mjs?v=verse1';
+} from '../logic.mjs?v=verse8';
 import {
   getSpeechStatus,
   knownVoice,
@@ -28,7 +32,7 @@ import {
   voices
 } from '../lib/speech.js?v=wait-2s';
 import { sidecarGame, sidecarIsBuilt } from '../lib/sidecar.js?v=hills-free1';
-import { spriteHtml } from '../lib/home-ui.mjs?v=verse1';
+import { spriteHtml } from '../lib/home-ui.mjs?v=verse8';
 import { voiceStatusText } from '../lib/parent-ui.mjs?v=structure2';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 
@@ -470,11 +474,63 @@ export function registerParent(rt) {
       error = 'The Google Sheet could not be loaded. Games are using the default sheet.';
     }
     const merged = mergeSheets(base, remote);
-    rt.data.sheet = { at: Date.now(), rows: merged.rows, note: merged.note, games: merged.games, error };
-    if (merged.rows.length || !error) rt.save();
+    let rows = merged.rows;
+    try {
+      rows = await expandVerseSheetRows(rows);
+    } catch {
+      error = error || 'A verse reference on the sheet could not be loaded.';
+    }
+    rt.data.sheet = { at: Date.now(), rows, note: merged.note, games: merged.games, error };
+    if (rows.length || !error) rt.save();
     paintSheet();
   }
   $('#reloadSheet').onclick = () => loadSheet();
+  function verseSeedNow() {
+    const seed = ($('#verseSeed')?.value || '').trim();
+    if (seed) return seed;
+    const script = $('#verse')?.value || '';
+    return needsVerseScriptBuild(script) ? script.trim() : '';
+  }
+
+  async function buildVerseFromSeed({ quiet = false } = {}) {
+    const status = $('#verseBuildStatus');
+    const seed = verseSeedNow();
+    if (!seed) {
+      if (!quiet && status) status.textContent = 'Paste a reference like John 3:16, or paste the full verse.';
+      return null;
+    }
+    if (status) status.textContent = 'Making the verse games…';
+    try {
+      const script = await scriptFromSeed(seed, { translation: $('#verseTranslation')?.value || 'web' });
+      if (!script || !parseVerseScript(script)) {
+        if (status) status.textContent = 'Need a longer verse, or a reference the public Bible can find.';
+        return null;
+      }
+      if ($('#verse')) $('#verse').value = script;
+      if ($('#verseSeed') && needsVerseScriptBuild($('#verseSeed').value)) $('#verseSeed').value = '';
+      if (status) status.textContent = 'Script ready. Save Parent corner, or copy sheet rows into the Google Sheet.';
+      return script;
+    } catch (err) {
+      if (status) status.textContent = err?.message || 'That reference could not be loaded.';
+      return null;
+    }
+  }
+  $('#verseBuild')?.addEventListener('click', () => buildVerseFromSeed());
+  $('#verseCopyRows')?.addEventListener('click', async () => {
+    const status = $('#verseBuildStatus');
+    const script = $('#verse')?.value || '';
+    if (!script.trim() || !parseVerseScript(script)) {
+      if (status) status.textContent = 'Make a verse script first.';
+      return;
+    }
+    const csv = `learner,game,item,extra\n${verseSheetRows(script, '*')}`;
+    try {
+      await navigator.clipboard.writeText(csv);
+      if (status) status.textContent = 'Sheet rows copied. Paste them under the Google Sheet header.';
+    } catch {
+      if (status) status.textContent = 'Copy failed. Select the script and copy it by hand.';
+    }
+  });
   $('#close').onclick = () => closeSettings();
   $('#addLearner').onclick = () => addLearner();
   $('#removeLearner').onclick = () => removeCurrentLearner();
@@ -500,7 +556,15 @@ export function registerParent(rt) {
       $('#error').textContent = 'Add at least 3 different words, or leave the box blank for this grade’s list. Use letters only, with at most one apostrophe, up to 12 letters.';
       return;
     }
-    const verseText = $('#verse')?.value || '';
+    let verseText = $('#verse')?.value || '';
+    if (verseSeedNow() && !parseVerseScript(verseText)) {
+      const built = await buildVerseFromSeed();
+      if (!built) {
+        $('#error').textContent = $('#verseBuildStatus')?.textContent || 'Could not make the verse games from that text.';
+        return;
+      }
+      verseText = built;
+    }
     if (verseText.trim() && !parseVerseScript(verseText)) {
       $('#error').textContent = 'Memory verse needs a circle, fill, clue, or verse line. Leave the box blank to use the question sheet.';
       return;

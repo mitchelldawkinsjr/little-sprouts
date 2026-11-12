@@ -33,8 +33,9 @@ import {
   cubeBoard,
   stackBoard,
   lampBoard,
-  bustBoard
-} from '../logic.mjs?v=verse1';
+  bustBoard,
+  verseWithRef
+} from '../logic.mjs?v=verse8';
 import { canSpeak, commonLines, prefetchSpeech } from '../lib/speech.js?v=wait-2s';
 import { stopArcade } from '../games/arcade.js?v=ask-first2-r2';
 import { stopHoop } from '../games/hoop.js?v=hoop-trio-r2';
@@ -710,13 +711,14 @@ export function registerRound(rt) {
           g.hear = step.say;
         }
         if (step.kind === 'write') {
+          const listed = verseWithRef(g.pack);
           if (l >= 3) {
             g.phase = 'hidden';
-            g.prompt = 'Cover the verse and write what you remember.';
+            g.prompt = 'Write what you remember. Optional — extra star if you do.';
           } else if (l >= 2) {
             g.phase = 'peek';
-            g.prompt = `${g.pack.verse} Read it, then cover it.`;
-          } else g.prompt = `${g.pack.verse} Write the verse. You can look at the words.`;
+            g.prompt = `${listed} Read it, then cover it.`;
+          } else g.prompt = `${listed} Write what you remember. Optional — extra star if you do.`;
         }
       } else {
         g.options = [];
@@ -771,7 +773,7 @@ export function registerRound(rt) {
     if (g.mode === 'verse') {
       if (!g.heardVerse) {
         g.heardVerse = true;
-        rt.askBeforePlay(g.pack?.verse || g.prompt);
+        rt.askBeforePlay(verseWithRef(g.pack) || g.prompt);
       }
     } else if (g.mode !== 'clue' && gatesPlay) rt.askBeforePlay(g.prompt);
     rt.renderGame();
@@ -1228,9 +1230,9 @@ export function registerRound(rt) {
   }
   const heading = g => {
     if (g?.mode === 'verse' && g.verseKind === 'write') {
-      if (g.phase === 'hidden') return 'Write what you remember.';
+      if (g.phase === 'hidden') return 'Write what you remember. Optional — extra star if you do.';
       if (g.phase === 'peek') return 'Read the verse. Then cover it.';
-      return 'Write the verse. You can look at the words.';
+      return 'Write what you remember. You can look — optional, extra star if you do.';
     }
     if ((g?.mode === 'rally' || g?.mode === 'flight' || g?.mode === 'bike') && g.rallyKind === 'spell') {
       if (rt.data.sound && canSpeak()) return g.mode === 'flight' ? 'Fly through the letters in order.' : 'Spell the word.';
@@ -1242,7 +1244,11 @@ export function registerRound(rt) {
   function foundLine(g) {
     if (g.mode === 'clue') return `Yes. ${g.target}.`;
     if (g.mode === 'verse') {
-      if (g.verseKind === 'write') return g.peeked ? 'Here is the verse. Read it once more.' : 'You remembered the verse.';
+      if (g.verseKind === 'write') {
+        if (g.peeked) return 'Here is the verse. Read it once more.';
+        if (g.wroteVerse) return 'You remembered the verse. Extra star!';
+        return 'That’s okay. Writing was optional.';
+      }
       if (g.verseKind === 'bonus') return g.pack?.remember || 'Thank you for thinking about that.';
       if (g.verseKind === 'fill') return 'Yes. Those are the words.';
       return `Yes. ${g.target}.`;
@@ -1288,7 +1294,7 @@ export function registerRound(rt) {
     if (g.mode === 'verse') {
       if (g.verseKind === 'circle') return 'Read the sentence. Tap the word that fits.';
       if (g.verseKind === 'fill') return 'Tap the word bank in order.';
-      if (g.verseKind === 'write') return 'Write the words you remember.';
+      if (g.verseKind === 'write') return 'Optional. Write words from the verse for an extra star, or tap I’m done to skip.';
       return 'Tell what this verse teaches you about God.';
     }
     if (g.mode === 'quickmath') return 'Pick a mission. Answer as many as you can in three minutes.';
@@ -1622,15 +1628,22 @@ export function registerRound(rt) {
     const flightEnd = g.mode === 'flight' && (detail === 'crash' || detail === 'flew');
     const stageEnd = g.mode === 'rally' && detail === 'stage';
     const rounds = (g.mode === 'verse' || g.mode === 'clue') && g.deck?.length ? g.deck.length : flightEnd ? (g.flightRights || 5) : stageEnd ? Math.max(1, g.index || g.rallyRights || 1) : rt.questionCount();
+    const bonus = (g.mode === 'verse' || g.mode === 'clue') ? (g.extraStars | 0) : 0;
     Object.assign(rt.p(), applyRound(rt.p(), g.mode, g.key, rounds, g.firstCorrect));
+    if (bonus) {
+      rt.p().stars += bonus;
+      rt.p().earned = (rt.p().earned | 0) + bonus;
+    }
     rt.save();
     const dots = Array.from({ length: rounds }, (_, i) => `<span class="${i < g.firstCorrect ? 'on' : ''}"></span>`).join('');
     const played = rounds === 1 ? 'You played 1 question.' : `You played ${rounds}.`;
     const heading = flightEnd ? (detail === 'crash' ? 'Game over.' : 'You flew for 2 minutes.') : stageEnd ? 'You finished the stage.' : played;
     const note = flightEnd && detail === 'crash' ? 'The glider hit the ground.' : stageEnd ? `${g.rallyRights || 0} right along the road` : 'First try';
     const spoken = flightEnd ? (detail === 'crash' ? 'Game over. The glider hit the ground.' : 'You flew for 2 minutes.') : stageEnd ? 'You finished the stage.' : played;
-    const stars = rounds === 1 ? '+1 learning star' : `+${rounds} learning stars`;
-    $('#app').innerHTML = `<section class="playarea"><div class="result-star" aria-hidden="true">${flightEnd && detail === 'crash' ? '✈' : '🌟'}</div><h1>${heading}</h1><p>${note}</p><div class="dots" aria-label="${g.firstCorrect} of ${rounds} first tries">${dots}</div><p class="hint">${stars}</p>${rt.starGardenHtml()}<button class="primary" id="again">Play again</button> <button class="quiet" id="all">Choose a game</button></section>`;
+    const starTotal = rounds + bonus;
+    const stars = starTotal === 1 ? '+1 learning star' : `+${starTotal} learning stars`;
+    const bonusNote = bonus ? `<p class="hint">Includes +${bonus} for writing the verse.</p>` : '';
+    $('#app').innerHTML = `<section class="playarea"><div class="result-star" aria-hidden="true">${flightEnd && detail === 'crash' ? '✈' : '🌟'}</div><h1>${heading}</h1><p>${note}</p><div class="dots" aria-label="${g.firstCorrect} of ${rounds} first tries">${dots}</div><p class="hint">${stars}</p>${bonusNote}${rt.starGardenHtml()}<button class="primary" id="again">Play again</button> <button class="quiet" id="all">Choose a game</button></section>`;
     $('#again').onclick = () => rt.start(g.mode);
     $('#all').onclick = rt.home;
     rt.say(spoken);

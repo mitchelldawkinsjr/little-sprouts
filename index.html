@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=verse4">
+  <link rel="stylesheet" href="style.css?v=verse8">
 </head>
 <body>
   <header>
@@ -95,8 +95,16 @@
         <label>Sight words <textarea id="words" rows="3" placeholder="Leave blank for this grade’s list"></textarea></label>
         <p class="hint">Leave this blank and word games use this grade’s list. Or type at least 3 different words, separated by commas. Letters only, with at most one apostrophe, up to 12 letters. Kindergarten spelling stays on 2, 3, and 4 letter words. A longer word on the question sheet is spelled too. A word typed here is used only when that sheet has no word list. Build a word uses words longer than one letter when it can. Pre-K does not spell. Those games use numbers, shapes, and colors. Words from the question sheet are used instead when that sheet has at least 3 words for this learner. Rows marked preschool, kindergarten, grade1, grade2, grade3, or grade4 are used only for that math band. A word on the 4th grade list stays there, even when the shared list also has it.</p>
         <h3>Memory verse</h3>
+        <label>Reference or full verse <textarea id="verseSeed" rows="3" placeholder="Genesis 21:11 — or paste the whole verse"></textarea></label>
+        <label>Public text <select id="verseTranslation"><option value="web">World English Bible</option><option value="kjv">King James</option></select></label>
+        <p class="hint">Paste a reference like John 3:16, or the full verse in your own words. Tap Make the verse games, or Save Parent corner and it builds the script for you. Modern translations like NIV stay out of the sheet.</p>
+        <div class="race-kinds">
+          <button type="button" class="quiet" id="verseBuild">Make the verse games</button>
+          <button type="button" class="quiet" id="verseCopyRows">Copy sheet rows</button>
+        </div>
+        <p id="verseBuildStatus" class="hint"></p>
         <label>Verse script <textarea id="verse" rows="8" placeholder="Leave blank to use the question sheet"></textarea></label>
-        <p class="hint">Leave this blank and both verse games use the question sheet. A script here replaces the sheet for this learner. The same box is in each game, under Grown-up: use a different verse. One line each: title, remember, verse, bonus, bank, circle, fill, clue. The answer comes first inside braces, like {Joseph|David|Moses}. Memory verse uses the circle and fill lines. Finish the word uses the clue lines: the first letter shows, and they type the rest. Level 1 shows the verse while they write. Level 2 reads the verse, then covers it. Level 3 writes with the verse covered.</p>
+        <p class="hint">Leave this blank and both verse games use the question sheet. A script here replaces the sheet for this learner. The same box is in each game, under Grown-up: use a different verse. One line each: title, remember, verse, bonus, bank, circle, fill, clue. The answer comes first inside braces, like {Joseph|David|Moses}. Memory verse uses the circle and fill lines. Finish the word uses the clue lines: the first letter shows, and they type the rest. Writing what you remember is optional; an extra star if they do. On the sheet you can also put only a ref or verse row; reload expands it. Level 1 shows the verse while they write. Level 2 reads the verse, then covers it. Level 3 writes with the verse covered.</p>
         <h3>Gas race</h3>
         <p class="hint">Gas race stays on the screen in every play style. The tank starts full. Steering into the right answer fills it again. A wrong lane ends the race, and so does an empty tank. The score is how far the car traveled. Every learner on this device shares one distance board. Math facts follow the math band and the Gas race level. Sight words follow the list above. Shapes and colors follow those skill levels. Level 1 gives a longer tank. Level 3 gives a shorter tank and more lanes.</p>
         <div class="race-kinds">
@@ -123,7 +131,7 @@
         </label>
         <h3>Question sheet</h3>
         <p class="hint" id="sheetStatus">Checking the question sheet…</p>
-        <p class="hint">The default sheet is included with the app. Columns: learner, game, item, extra. game is words, count, hunt, facts, or verse. Leave learner blank, or write *, for every learner. Write preschool, kindergarten, grade1, grade2, grade3, or grade4 to limit words to that math band. For count, item is the name and extra is the picture. For hunt, item is one object and extra is the plural. For facts, item is a times table from 2 to 12, or double, 10s, 20s, or 30s, or cap. Put off in extra to leave that row out, and clear off to add the 20s or 30s. The cap row starts at 12, so math facts stay at 12 and under. Put off on cap, or write a higher number, to allow facts above 12. A row named above with off does the same as a cap of 12. Word rows come only from the <a href="https://docs.google.com/spreadsheets/d/e/2PACX-1vQdhKSZBII7leKaxTQ6mRPG0Q6POsFtOrCADtNIFDl6yrlnPoCXLXaUCsGvzzNIZPodTxfOHnAjP5MQ/pubhtml" target="_blank" rel="noopener">Google Sheet</a> when that sheet has any. The default word list is not added. Facts rows the Google Sheet does not have yet, such as double and 20s, are added from the default sheet. Add a hide column with yes to turn a row off. New count, hunt, and facts rows are copied into the Google Sheet about once an hour after the sheet script is installed. Word rows stay as written on the sheet. For verse, item is title, remember, verse, bonus, bank, circle, fill, or clue, and extra is the line. A brace holds the answer first, then other words: {Joseph|David|Moses}. Those rows are Genesis 39 until you add your own. A verse script in Parent corner, or in the game, replaces them for that learner.</p>
+        <p class="hint">The default sheet is included with the app. Columns: learner, game, item, extra. game is words, count, hunt, facts, or verse. Leave learner blank, or write *, for every learner. Write preschool, kindergarten, grade1, grade2, grade3, or grade4 to limit words to that math band. For count, item is the name and extra is the picture. For hunt, item is one object and extra is the plural. For facts, item is a times table from 2 to 12, or double, 10s, 20s, or 30s, or cap. Put off in extra to leave that row out, and clear off to add the 20s or 30s. The cap row starts at 12, so math facts stay at 12 and under. Put off on cap, or write a higher number, to allow facts above 12. A row named above with off does the same as a cap of 12. Word rows come only from the <a href="https://docs.google.com/spreadsheets/d/e/2PACX-1vQdhKSZBII7leKaxTQ6mRPG0Q6POsFtOrCADtNIFDl6yrlnPoCXLXaUCsGvzzNIZPodTxfOHnAjP5MQ/pubhtml" target="_blank" rel="noopener">Google Sheet</a> when that sheet has any. The default word list is not added. Facts rows the Google Sheet does not have yet, such as double and 20s, are added from the default sheet. Add a hide column with yes to turn a row off. New count, hunt, and facts rows are copied into the Google Sheet about once an hour after the sheet script is installed. Word rows stay as written on the sheet. For verse, item is title, remember, verse, bonus, bank, circle, fill, clue, or ref. Put only a ref like Genesis 21:11, or only the verse text, and reload expands the games. Or paste the full circle, fill, and clue rows. A brace holds the answer first: {Joseph|David|Moses}. Default rows are Genesis 39 until you add your own. A verse script in Parent corner, or in the game, replaces them for that learner.</p>
         <button type="button" class="quiet" id="reloadSheet">Reload question sheet</button>
         <h3>This device</h3>
         <label class="check"><input type="checkbox" id="sound"> Read prompts aloud for every learner</label>
@@ -248,7 +256,7 @@
     <button type="button" class="quiet" id="listenAgain">Hear it again</button>
     <button type="button" class="quiet" id="listenBack">← All games</button>
   </div>
-  <script type="module" src="app.js?v=verse4"></script>
+  <script type="module" src="app.js?v=verse8"></script>
   <script>
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
   </script>

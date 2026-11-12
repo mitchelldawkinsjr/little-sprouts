@@ -113,7 +113,13 @@ import {
   parseVerseScript,
   versePack,
   clueMatch,
-  verseRecall
+  verseRecall,
+  verseWithRef,
+  looksLikeVerseRef,
+  needsVerseScriptBuild,
+  buildVerseScript,
+  verseSheetRows,
+  scriptFromSeed
 } from '../logic.mjs';
 
 test('grown-up check uses a new addition in the teens', () => {
@@ -1307,6 +1313,9 @@ test('memory verse plays every worksheet activity', () => {
   assert.equal(verseRecall(pack.verse, 'warden Joseph prison attention Lord success').ok, true);
   assert.equal(verseRecall(pack.verse, 'hello there').ok, false);
   assert.equal(parseVerseScript('hello'), null);
+  assert.equal(verseWithRef(pack), `${pack.verse} — ${pack.ref}`);
+  assert.equal(verseWithRef({ verse: pack.verse, ref: '' }), pack.verse);
+  assert.equal(verseWithRef({ verse: `${pack.verse} — ${pack.ref}`, ref: pack.ref }), `${pack.verse} — ${pack.ref}`);
 });
 
 test('a learner verse replaces the sheet', () => {
@@ -1325,4 +1334,25 @@ test('a learner verse replaces the sheet', () => {
   assert.equal(own.source, 'learner');
   assert.equal(own.steps[0].kind, 'fill');
   assert.equal(parseSheet('learner,game,item,extra\n*,verse,circle,"See {one|two}."\n').rows[0].game, 'verse');
+});
+
+test('a verse script can be built from a reference or full text', async () => {
+  assert.equal(looksLikeVerseRef('Genesis 21:11'), true);
+  assert.equal(looksLikeVerseRef('1 John 4:8'), true);
+  assert.equal(looksLikeVerseRef('John 3:16'), true);
+  assert.equal(needsVerseScriptBuild('John 3:16'), true);
+  assert.equal(needsVerseScriptBuild('verse: For God so loved the world.\nfill: For God so {loved} the world.'), false);
+  assert.equal(looksLikeVerseRef('God kept his promise to Abraham.'), false);
+  const fromText = buildVerseScript({
+    reference: 'Genesis 21:1',
+    verse: 'And the LORD visited Sarah as he had said, and the LORD did unto Sarah as he had spoken.'
+  });
+  const pack = parseVerseScript(fromText);
+  assert.ok(pack.verse.includes('Sarah'));
+  assert.ok(pack.steps.some(step => step.kind === 'circle'));
+  assert.ok(pack.steps.some(step => step.kind === 'fill'));
+  assert.ok(pack.steps.some(step => step.kind === 'clue'));
+  assert.match(verseSheetRows(fromText), /^(\*,verse,[a-z]+,.+\n?)+\*?/m);
+  const fromSeed = await scriptFromSeed('And the LORD visited Sarah as he had said, and the LORD did unto Sarah as he had spoken.', { title: 'Genesis 21:1' });
+  assert.ok(parseVerseScript(fromSeed).steps.length >= 3);
 });
