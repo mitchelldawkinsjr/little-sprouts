@@ -1,8 +1,8 @@
 // From SimonDev's Quick_MinecraftClone2 (MIT, see LICENSE). Unchanged apart from import paths.
 import * as THREE from '../../../vendor/three/build/three.module.js?v=r187';
 
-import {noise} from './noise.js';
-import {math} from './math.js';
+import {noise} from './noise.js?v=blocks3';
+import {math} from './math.js?v=blocks3';
 
 
 export const foliage_sdfs = (() => {

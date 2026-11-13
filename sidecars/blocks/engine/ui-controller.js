@@ -1,6 +1,6 @@
-import {entity} from './entity.js';
-import {texture_defs} from './texture-defs.js';
-import {textures} from './textures.js';
+import {entity} from './entity.js?v=blocks3';
+import {texture_defs} from './texture-defs.js?v=blocks3';
+import {textures} from './textures.js?v=blocks3';
 
 // Forked from SimonDev's Quick_MinecraftClone2 (MIT). The original drew a fixed icon bar from PNGs
 // and cycled it with [ and ]. Here the bar shows only blocks this player has unlocked, each button

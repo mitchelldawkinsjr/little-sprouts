@@ -2,10 +2,10 @@
 // the moon biome is a meadow now, and TerrainSample() lets the page find solid ground to stand on.
 import * as THREE from '../../../vendor/three/build/three.module.js?v=r187';
 
-import {noise} from './noise.js';
-import {math} from './math.js';
-import {foliage_sdfs} from './foliage-sdfs.js';
-import {hack_defs} from './hack-defs.js';
+import {noise} from './noise.js?v=blocks3';
+import {math} from './math.js?v=blocks3';
+import {foliage_sdfs} from './foliage-sdfs.js?v=blocks3';
+import {hack_defs} from './hack-defs.js?v=blocks3';
 
 
 export const voxel_block_builder = (() => {

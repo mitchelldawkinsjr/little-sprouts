@@ -1,8 +1,8 @@
 import * as THREE from '../../../vendor/three/build/three.module.js?v=r187';
 
-import {entity} from './entity.js';
-import {voxel_shader} from './voxel-shader.js';
-import {texture_defs} from './texture-defs.js';
+import {entity} from './entity.js?v=blocks3';
+import {voxel_shader} from './voxel-shader.js?v=blocks3';
+import {texture_defs} from './texture-defs.js?v=blocks3';
 
 // Forked from SimonDev's Quick_MinecraftClone2 (MIT). The blinking outline shader, the held-block
 // swing, and the build-on-the-face-you-point-at rule come from the original's insert and

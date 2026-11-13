@@ -1,6 +1,6 @@
 // Forked from SimonDev's Quick_MinecraftClone2 (MIT). Changes for Little Sprouts: the worker path is
 // relative to this file, and a browser without module workers builds chunks on the page instead.
-import {voxel_block_builder} from './voxel-block-builder.js';
+import {voxel_block_builder} from './voxel-block-builder.js?v=blocks3';
 
 export const worker_pool = (() => {
 
@@ -20,7 +20,7 @@ export const worker_pool = (() => {
       this.broken_ = false;
       this.id_ = _IDS++;
       try {
-        this.worker_ = new Worker(new URL('./voxel-builder-threaded-worker.js', import.meta.url), {type: 'module'});
+        this.worker_ = new Worker(new URL('./voxel-builder-threaded-worker.js?v=blocks3', import.meta.url), {type: 'module'});
         this.worker_.onmessage = (e) => {
           this._OnMessage(e);
         };
