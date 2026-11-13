@@ -1,7 +1,7 @@
 import { gamePaused } from '../lib/hold.js?v=hold2';
 import { clamp, esc, rocketZone } from '../logic.mjs?v=structure3';
 import { spriteHtml } from '../lib/home-ui.mjs?v=shop1';
-import { buddyKind, buddyGear } from '../lib/buddy3d.mjs?v=ball2';
+import { buddyKind, buddyGear } from '../lib/buddy3d.mjs?v=ball3';
 const pointHits = (nx, ny, stage, item, pad = 24) => {
   const x = stage.left + nx * stage.width;
   const y = stage.top + ny * stage.height;

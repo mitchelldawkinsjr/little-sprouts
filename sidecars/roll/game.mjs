@@ -11,7 +11,7 @@ import {
 import { localQuestion, normalizeQuestion, LOCAL_ROUND } from './quiz.mjs?v=roll1';
 import { resolveAutoQuality, pixelRatioCap, rendererOptions, isPerformanceTier } from '../../lib/device-tier.mjs?v=low-end1';
 import { readPad, moveDirs, actionDown } from '../../lib/pad-core.mjs?v=pad-rt';
-import { makeBuddyBall, buddyKind } from '../../lib/buddy3d.mjs?v=ball2';
+import { makeBuddyBall, buddyKind } from '../../lib/buddy3d.mjs?v=ball3';
 
 const $ = (id) => document.getElementById(id);
 const stage = $('stage');

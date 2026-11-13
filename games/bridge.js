@@ -4,7 +4,7 @@
  * landing wide. A wrong answer makes it a thin strip.
  */
 import { gamePaused } from '../lib/hold.js?v=hold2';
-import { drawBuddy, buddyKind } from '../lib/buddy2d.mjs?v=ball2';
+import { drawBuddy, buddyKind } from '../lib/buddy2d.mjs?v=ball3';
 import { bridgeReach, bridgeWindow } from '../logic.mjs?v=bridge-run';
 
 let active = null;

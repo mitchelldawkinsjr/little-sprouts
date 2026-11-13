@@ -2,12 +2,12 @@ import './lib/pad.js?v=grass-pad';
 import './lib/tilt.js?v=ask-first';
 import { roundCount, stageOf, profileSprite, SPRITES } from './logic.mjs?v=offline1';
 import { knownVoice } from './lib/speech.js?v=ball2';
-import { findBuiltSidecars } from './lib/sidecar.js?v=buddy1';
+import { findBuiltSidecars } from './lib/sidecar.js?v=ball3';
 import { rt } from './app/runtime.mjs?v=lean-r2';
-import { registerHelpers } from './app/helpers.mjs?v=ball2';
-import { registerRound } from './app/round.mjs?v=ball2';
-import { registerMounts } from './app/mounts.mjs?v=ball2';
-import { registerParent } from './app/parent.mjs?v=ball2';
+import { registerHelpers } from './app/helpers.mjs?v=ball3';
+import { registerRound } from './app/round.mjs?v=ball3';
+import { registerMounts } from './app/mounts.mjs?v=ball3';
+import { registerParent } from './app/parent.mjs?v=ball3';
 import { registerShop } from './app/shop.mjs?v=shop1';
 import { registerRouter } from './app/router.mjs?v=shop1';
 

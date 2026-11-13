@@ -8,7 +8,7 @@ import { cubeLanes, cubeOverlap } from '../logic.mjs?v=cube-dash';
 import {
   resolveAutoQuality, pixelRatioCap, rendererOptions, isPerformanceTier
 } from '../lib/device-tier.mjs?v=low-end1';
-import { makeBuddy, buddyKind } from '../lib/buddy3d.mjs?v=ball2';
+import { makeBuddy, buddyKind } from '../lib/buddy3d.mjs?v=ball3';
 
 const THREE_URL = '../vendor/three/build/three.module.js?v=r187';
 const GROUND_TOP = 0.25;

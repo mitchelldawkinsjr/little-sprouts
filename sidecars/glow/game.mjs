@@ -15,7 +15,7 @@ import { RadianceField } from './radiance.mjs?v=glow1';
 import { localQuestion, normalizeQuestion, LOCAL_ROUND } from './quiz.mjs?v=glow1';
 import { resolveAutoQuality, isPerformanceTier } from '../../lib/device-tier.mjs?v=low-end1';
 import { readPad, actionDown } from '../../lib/pad-core.mjs?v=pad-rt';
-import { drawBuddyBall, buddyKind } from '../../lib/buddy2d.mjs?v=ball2';
+import { drawBuddyBall, buddyKind } from '../../lib/buddy2d.mjs?v=ball3';
 
 const $ = (id) => document.getElementById(id);
 const stage = $('stage');

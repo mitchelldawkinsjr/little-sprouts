@@ -10,7 +10,7 @@ import {
 } from './logic.mjs?v=grass1';
 import { localQuestion, normalizeQuestion, LOCAL_ROUND } from './quiz.mjs?v=grass1';
 import { makeGrass } from './grass.mjs?v=grass1';
-import { makeBuddy, buddyKind, BUDDIES } from '../../lib/buddy3d.mjs?v=ball2';
+import { makeBuddy, buddyKind, BUDDIES } from '../../lib/buddy3d.mjs?v=ball3';
 import { resolveAutoQuality, pixelRatioCap, rendererOptions, isPerformanceTier } from '../../lib/device-tier.mjs?v=low-end1';
 import { readPad, moveDirs, actionDown } from '../../lib/pad-core.mjs?v=pad-rt';
 

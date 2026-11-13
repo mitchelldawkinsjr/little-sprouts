@@ -46,3 +46,21 @@ test('Buddy ball 2D: every buddy draws clipped inside its ball', () => {
     assert.equal(saves, calls.filter(([k]) => k === 'restore').length, 'canvas state is balanced');
   }
 });
+
+test('Gear works with the cut-down three.js that Skybound and Paint Sphere pass in', async () => {
+  const { makeBuddy } = await import('../lib/buddy3d.mjs');
+  const { GEAR } = await import('../logic/shop.mjs');
+  const pick = (names) => Object.fromEntries(names.map(n => [n, THREE[n]]));
+  // Exactly the classes each built bundle hands to its window.Sprouts*Buddy hook.
+  const sky = pick(['Group', 'Mesh', 'SphereGeometry', 'CapsuleGeometry', 'ConeGeometry', 'TorusGeometry', 'CircleGeometry', 'MeshBasicMaterial', 'MeshStandardMaterial']);
+  const paint = pick(['Group', 'Mesh', 'SphereGeometry', 'CapsuleGeometry', 'ConeGeometry', 'TorusGeometry', 'MeshBasicMaterial']);
+  const toon = (color) => new THREE.MeshBasicMaterial({ color });
+  for (const kind of BUDDIES) {
+    for (const item of GEAR) {
+      const a = makeBuddy(sky, kind, { shadow: false, gear: item.id });
+      assert.ok(a.head.getObjectByName(`gear-${item.id}`), `Skybound ${kind} wears ${item.id}`);
+      const b = makeBuddy(paint, kind, { shadow: false, gear: item.id, material: toon });
+      assert.ok(b.head.getObjectByName(`gear-${item.id}`), `Paint ${kind} wears ${item.id}`);
+    }
+  }
+});

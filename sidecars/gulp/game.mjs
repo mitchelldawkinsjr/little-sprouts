@@ -1169,9 +1169,9 @@ function paintRoom() {
   }
   roomEl.hidden = false;
   if (link.role === 'host') {
-    roomEl.textContent = link.peer
-      ? `Friend joined. Press Play. Share this link: ${link.url}`
-      : `${link.status} Share this link: ${link.url}`;
+    // A room made on the same Wi-Fi with no internet has no link to share.
+    const share = link.room === 'wifi' ? '' : ` Share this link: ${link.url}`;
+    roomEl.textContent = link.peer ? `Friend joined. Press Play.${share}` : `${link.status}${share}`;
     playBtn.disabled = !link.peer;
     playBtn.textContent = link.peer ? (session?.phase === 'ended' ? 'Play again' : 'Play') : 'Waiting';
   } else {
