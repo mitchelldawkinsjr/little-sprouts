@@ -33,6 +33,12 @@
       #tilt[hidden] { display: none; }
       #ask { position: fixed; left: 50%; top: 62px; z-index: 2; transform: translateX(-50%); width: min(560px, calc(100% - 24px)); box-sizing: border-box; padding: 10px 16px; border-radius: 18px; background: #2f2418ee; color: #fbf5ea; text-align: center; font-weight: 800; font-size: clamp(18px, 3.6vw, 26px); line-height: 1.25; pointer-events: none; box-shadow: 0 8px 20px #2f241833; }
       #ask[hidden] { display: none; }
+      #show { display: flex; justify-content: center; margin-top: 8px; }
+      #show:empty { display: none; }
+      #show .countrow, #show .numpath { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; }
+      #show .countrow.array { display: grid; grid-template-columns: repeat(var(--cols, 5), auto); }
+      #show .countrow span, #show .numpath span { min-width: 26px; padding: 2px 4px; border-radius: 8px; background: #fbf5ea; color: #2f2418; font-size: clamp(18px, 4.5vw, 24px); }
+      #show .numpath .here { outline: 3px solid #db8b32; }
       #ask.done { background: #2f7d52ee; }
       #ask.done::after { content: ' ✓'; }
       #toast { position: fixed; left: 50%; top: 44%; z-index: 2; transform: translate(-50%, -50%); padding: 10px 22px; border-radius: 999px; font-weight: 800; font-size: clamp(26px, 6vw, 40px); pointer-events: none; white-space: nowrap; }
@@ -71,7 +77,7 @@
       <button id="tilt" type="button" aria-pressed="false" hidden>📱 Tilt</button>
       <span id="stars">⭐ 0</span>
     </div>
-    <div id="ask" hidden aria-live="polite"><span id="askText"></span></div>
+    <div id="ask" hidden aria-live="polite"><span id="askText"></span><div id="show"></div></div>
     <div id="toast" hidden aria-live="assertive"></div>
     <div id="hint" hidden>Drag anywhere to tilt the box</div>
     <div id="stick" hidden><i></i></div>
@@ -91,6 +97,6 @@
         </div>
       </div>
     </div>
-    <script type="module" src="./game.mjs?v=roll1"></script>
+    <script type="module" src="./game.mjs?v=roll2"></script>
   </body>
 </html>

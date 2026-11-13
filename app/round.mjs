@@ -16,6 +16,7 @@ import {
   rallyQuestionCount,
   rallyClearCount,
   stageOf,
+  profileSprite,
   laneCount,
   hookCast,
   skyWave,
@@ -36,7 +37,7 @@ import {
   bustBoard,
   verseWithRef
 } from '../logic.mjs?v=offline1';
-import { canSpeak, commonLines, prefetchSpeech } from '../lib/speech.js?v=roll1';
+import { canSpeak, commonLines, prefetchSpeech } from '../lib/speech.js?v=glow1';
 import { stopArcade } from '../games/arcade.js?v=ask-first2-r2';
 import { stopHoop } from '../games/hoop.js?v=hoop-trio-r2';
 import { stopHook } from '../games/hook.js?v=ask-first2-r2';
@@ -63,7 +64,7 @@ import { stopCrayon } from '../games/crayon.js?v=crayon-more';
 import { stopMarble } from '../games/marble.js?v=ask-first2-r2';
 import { stopBridge } from '../games/bridge.js?v=ask-first-r2';
 import { stopMaze } from '../games/maze.js?v=ask-first-r2';
-import { postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=roll1';
+import { postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=glow1';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=arcade';
 
@@ -152,6 +153,8 @@ export function registerRound(rt) {
       level: g.level,
       reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
       sound: rt.data.sound !== false,
+      // Games with a player character draw this learner's garden buddy.
+      buddy: profileSprite(rt.data.profiles?.[rt.data.active], rt.data.active),
       choices: g.tokens.map(token => ({
         label: String(token.label),
         ok: !!token.ok,
@@ -168,7 +171,7 @@ export function registerRound(rt) {
       message.gates = rallyGates(message.stops);
     }
     if (g.mode === 'flight' || g.mode === 'blocks') message.freeEvery = rallyClearCount(rt.questionCount());
-    if (g.mode === 'range' || g.mode === 'roll') message.total = rt.questionCount();
+    if (g.mode === 'range' || g.mode === 'roll' || g.mode === 'grass' || g.mode === 'glow') message.total = rt.questionCount();
     return message;
   }
   function gradeRally(index) {
@@ -178,7 +181,7 @@ export function registerRound(rt) {
     const ok = !!token.ok;
     postSidecar({ type: 'mark', index, ok });
     // Sky flight and the range keep the same question up after a miss.
-    const flightMiss = (g.mode === 'flight' || g.mode === 'range' || g.mode === 'gulp' || g.mode === 'blocks' || g.mode === 'roll') && !ok;
+    const flightMiss = (g.mode === 'flight' || g.mode === 'range' || g.mode === 'gulp' || g.mode === 'blocks' || g.mode === 'roll' || g.mode === 'grass' || g.mode === 'glow') && !ok;
     g.done = !flightMiss;
     if (!ok) g.missed = true;
     else if (!g.missed) g.firstCorrect++;
@@ -194,6 +197,10 @@ export function registerRound(rt) {
             ? (ok ? 'Yes! Gulp it all.' : 'Not yet. Find another bubble.')
           : g.mode === 'roll'
             ? (ok ? 'Yes! Right in the pocket.' : 'Not yet. Roll to another pocket.')
+          : g.mode === 'grass'
+            ? (ok ? 'Yes! You found it.' : 'Not yet. Run to another sign.')
+          : g.mode === 'glow'
+            ? (ok ? 'Yes! Your light found it.' : 'Not yet. Light a path to another pocket.')
           : g.mode === 'blocks'
             ? (ok ? 'Yes! A new block for you.' : 'Not yet. Pick another one.')
           : g.mode === 'skybound'
@@ -769,6 +776,8 @@ export function registerRound(rt) {
       } else if (g.mode === 'walk') walkAsk(g);
       else if (g.mode === 'gulp') gulpAsk(g);
       else if (g.mode === 'roll') rollAsk(g);
+      else if (g.mode === 'grass') grassAsk(g);
+      else if (g.mode === 'glow') glowAsk(g);
       else if (g.mode === 'paint') shellAsk(g);
       else {
         rallyAsk(g);
@@ -1122,6 +1131,22 @@ export function registerRound(rt) {
     else if (g.subject === 'shapes') g.prompt = `Roll to the ${g.target}.`;
     else if (g.subject === 'colors') g.prompt = `Roll to ${g.target}.`;
     else g.prompt = `${g.prompt} Roll to that answer.`;
+  }
+  function grassAsk(g) {
+    profileAsk(g, 'walk');
+    g.rallyKind = g.subject === 'math' ? 'math' : 'match';
+    if (g.subject === 'words') g.prompt = `Find the word ${g.target}.`;
+    else if (g.subject === 'shapes') g.prompt = `Find the ${g.target}.`;
+    else if (g.subject === 'colors') g.prompt = `Find ${g.target}.`;
+    else if (!/^Find\b/.test(g.prompt)) g.prompt = `${g.prompt} Find that answer.`;
+  }
+  function glowAsk(g) {
+    profileAsk(g, 'walk');
+    g.rallyKind = g.subject === 'math' ? 'math' : 'match';
+    if (g.subject === 'words') g.prompt = `Light the way to the word ${g.target}.`;
+    else if (g.subject === 'shapes') g.prompt = `Light the way to the ${g.target}.`;
+    else if (g.subject === 'colors') g.prompt = `Light the way to ${g.target}.`;
+    else g.prompt = `${g.prompt} Light the way to that answer.`;
   }
   function flightAsk(g) {
     if (g.rallyKind === 'spell') g.prompt = `Fly the letters of ${g.target}.`;

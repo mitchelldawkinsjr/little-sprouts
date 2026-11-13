@@ -25,6 +25,7 @@ const starsEl = $('stars');
 const tiltBtn = $('tilt');
 const askEl = $('ask');
 const askText = $('askText');
+const showEl = $('show');
 const toastEl = $('toast');
 const hintEl = $('hint');
 const stickEl = $('stick');
@@ -643,6 +644,7 @@ function present(q) {
   buildLevel(q);
   input.center = null;
   askText.textContent = q.prompt;
+  showEl.innerHTML = q.show || '';
   askEl.classList.remove('done');
   askEl.hidden = false;
   state.phase = 'play';
@@ -659,6 +661,8 @@ function nextLocal() {
 function hostAsk(msg) {
   const q = normalizeQuestion(msg);
   if (!q) return;
+  // The host's own markup: things to count, or a number path.
+  q.show = typeof msg.show === 'string' ? msg.show : '';
   if ('sound' in msg) state.sound = msg.sound !== false;
   const key = `${q.round}|${q.prompt}|${q.choices.map(c => c.label).join(',')}`;
   if (key === state.hostKey) return;

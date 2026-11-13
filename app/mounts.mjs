@@ -42,7 +42,7 @@ import {
   verseRecall,
   verseWithRef
 } from '../logic.mjs?v=offline1';
-import { canSpeak, warm } from '../lib/speech.js?v=roll1';
+import { canSpeak, warm } from '../lib/speech.js?v=glow1';
 import { mountCatch, mountLanes, mountRace, mountRocket, pokeRocket, stopArcade } from '../games/arcade.js?v=ask-first2-r2';
 import { mountLunar } from '../games/lunar.js?v=moon-board2';
 import { mountHoop, stopHoop } from '../games/hoop.js?v=hoop-trio-r2';
@@ -78,7 +78,7 @@ import {
   sidecarGame,
   sidecarIsBuilt,
   stopSidecar
-} from '../lib/sidecar.js?v=roll1';
+} from '../lib/sidecar.js?v=glow1';
 import {
   SHELF_META,
   shelfOf as shelfIdOf,

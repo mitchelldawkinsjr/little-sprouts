@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <title>Grass maze</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='1' y='1' width='14' height='14' rx='3' fill='%23bfe3f2'/%3E%3Cpath d='M3 15 L5 5 L6 15 M7 15 L8 3 L9 15 M10 15 L11 6 L13 15' fill='%234f8a2c'/%3E%3C/svg%3E" />
+    <script src="/lib/device-tier-boot.js?v=low-end1"></script>
+    <script>window.SproutsSidecarOwnAsk = true;</script>
+    <script src="/lib/sidecar-guest.js?v=gulp13"></script>
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "../../vendor/three/build/three.module.js?v=r187"
+      }
+    }
+    </script>
+    <style>
+      :root {
+        --ink: #2f2418;
+        --paper: #fbf5ea;
+        --leaf: #4f8a2c;
+        --coral: #e07a4a;
+      }
+      html, body { margin: 0; height: 100%; overflow: hidden; background: #bfe3f2; font-family: "Trebuchet MS", "Segoe UI", sans-serif; color: var(--ink); }
+      #stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+      #hud { position: fixed; left: 12px; right: 12px; top: 10px; z-index: 2; display: flex; justify-content: space-between; align-items: center; gap: 10px; pointer-events: none; }
+      #hud > span { padding: 8px 12px; border-radius: 14px; background: #fbf5eaee; font-weight: 700; font-size: clamp(16px, 2.5vw, 22px); box-shadow: 0 4px 12px #2f241822; }
+      #hud[hidden] { display: none; }
+      #map { pointer-events: auto; border: 0; border-radius: 14px; padding: 8px 12px; background: #fbf5eaee; color: var(--ink); font: 700 16px "Trebuchet MS", sans-serif; box-shadow: 0 4px 12px #2f241822; cursor: pointer; }
+      #map[aria-pressed="true"] { background: var(--leaf); color: #fff; }
+      #ask { position: fixed; left: 50%; top: 62px; z-index: 2; transform: translateX(-50%); width: min(560px, calc(100% - 24px)); box-sizing: border-box; padding: 10px 16px; border-radius: 18px; background: #2f2418ee; color: #fbf5ea; text-align: center; font-weight: 800; font-size: clamp(18px, 3.6vw, 26px); line-height: 1.25; pointer-events: none; box-shadow: 0 8px 20px #2f241833; }
+      #ask[hidden] { display: none; }
+      #show { display: flex; justify-content: center; margin-top: 8px; }
+      #show:empty { display: none; }
+      #show .countrow, #show .numpath { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; }
+      #show .countrow.array { display: grid; grid-template-columns: repeat(var(--cols, 5), auto); }
+      #show .countrow span, #show .numpath span { min-width: 26px; padding: 2px 4px; border-radius: 8px; background: #fbf5ea; color: #2f2418; font-size: clamp(18px, 4.5vw, 24px); }
+      #show .numpath .here { outline: 3px solid #db8b32; }
+      #ask.done { background: #2f7d52ee; }
+      #ask.done::after { content: ' ✓'; }
+      #toast { position: fixed; left: 50%; top: 44%; z-index: 2; transform: translate(-50%, -50%); padding: 10px 22px; border-radius: 999px; font-weight: 800; font-size: clamp(26px, 6vw, 40px); pointer-events: none; white-space: nowrap; }
+      #toast[hidden] { display: none; }
+      #toast.good { background: #fff6dc; color: #b8561f; }
+      #toast.bad { background: #eef1f4; color: #46566a; }
+      #hint { position: fixed; left: 50%; bottom: 14px; z-index: 2; transform: translateX(-50%); padding: 8px 14px; border-radius: 999px; background: #fbf5eadd; font-weight: 700; font-size: 15px; pointer-events: none; white-space: nowrap; }
+      #hint[hidden] { display: none; }
+      #stick { position: fixed; z-index: 2; width: 96px; height: 96px; margin: -48px 0 0 -48px; border-radius: 50%; border: 3px solid #2f241855; background: #fbf5ea55; pointer-events: none; }
+      #stick[hidden] { display: none; }
+      #stick i { position: absolute; left: 50%; top: 50%; width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%; background: #2f2418aa; }
+      #overlay { position: fixed; inset: 0; z-index: 3; display: grid; place-items: center; background: linear-gradient(180deg, #bfe3f2cc, #4f8a2ccc); padding: 20px; }
+      #overlay[hidden] { display: none; }
+      .card { width: min(440px, 100%); background: var(--paper); border-radius: 22px; padding: 22px 22px 18px; box-shadow: 0 18px 40px #2f241833; }
+      h1 { margin: 0 0 8px; font-size: clamp(28px, 6vw, 40px); letter-spacing: -0.02em; }
+      #blurb, #help { margin: 0 0 12px; line-height: 1.4; }
+      #help { padding-left: 1.1em; }
+      #help li { margin: 0.25em 0; }
+      #verdict { margin: 0 0 6px; text-align: center; font-size: clamp(30px, 8vw, 46px); font-weight: 800; color: #b8561f; }
+      #verdict[hidden], #reason[hidden] { display: none; }
+      #reason { margin: 0 0 16px; text-align: center; font-weight: 700; opacity: 0.8; }
+      .actions { display: flex; flex-wrap: wrap; gap: 10px; }
+      .actions button { border: 0; border-radius: 14px; padding: 12px 18px; font: 700 17px "Trebuchet MS", sans-serif; cursor: pointer; background: var(--coral); color: #fff; }
+      .actions button:disabled { opacity: 0.5; cursor: default; }
+      .actions button.pad-focus { outline: 4px solid var(--ink); outline-offset: 3px; }
+      @media (prefers-reduced-motion: no-preference) {
+        #toast:not([hidden]) { animation: toastPop 260ms ease-out; }
+        @keyframes toastPop { from { transform: translate(-50%, -50%) scale(0.7); opacity: 0; } }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="stage" aria-label="Grass maze: your garden buddy runs through a maze of tall grass"></canvas>
+    <div id="hud" hidden>
+      <span id="count">Maze 1</span>
+      <button id="map" type="button">🗺️ Map</button>
+      <span id="stars">⭐ 0</span>
+    </div>
+    <div id="ask" hidden aria-live="polite"><span id="askText"></span><div id="show"></div></div>
+    <div id="toast" hidden aria-live="assertive"></div>
+    <div id="hint" hidden>Drag anywhere to run</div>
+    <div id="stick" hidden><i></i></div>
+    <div id="overlay">
+      <div class="card">
+        <h1 id="title">Grass maze</h1>
+        <p id="verdict" hidden></p>
+        <p id="reason" hidden></p>
+        <p id="blurb">Run your garden buddy through a maze of tall grass. Find the sign with the right answer.</p>
+        <ul id="help">
+          <li>Drag anywhere, use the arrows, or a controller to run</li>
+          <li>Tap 🗺️ Map to see the whole maze</li>
+          <li>A wrong sign fades, and you keep looking</li>
+        </ul>
+        <div class="actions">
+          <button id="play" type="button" disabled>Loading…</button>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="./game.mjs?v=grass1"></script>
+  </body>
+</html>

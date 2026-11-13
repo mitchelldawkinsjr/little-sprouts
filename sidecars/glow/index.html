@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <title>Light lines</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23101421'/%3E%3Cpath d='M3 5 L13 10' stroke='%23ffe9a8' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='6' cy='4' r='2' fill='%23fff6dc'/%3E%3C/svg%3E" />
+    <script src="/lib/device-tier-boot.js?v=low-end1"></script>
+    <script>window.SproutsSidecarOwnAsk = true;</script>
+    <script src="/lib/sidecar-guest.js?v=gulp13"></script>
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "../../vendor/three/build/three.module.js?v=r187"
+      }
+    }
+    </script>
+    <style>
+      :root {
+        --ink: #f4f1ff;
+        --night: #07080d;
+        --panel: #161a2bee;
+        --gold: #ffd36b;
+        --coral: #ff8a5c;
+      }
+      html, body { margin: 0; height: 100%; overflow: hidden; background: var(--night); font-family: "Trebuchet MS", "Segoe UI", sans-serif; color: var(--ink); }
+      canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+      #stage { touch-action: none; }
+      #marks { pointer-events: none; }
+      #hud { position: fixed; left: 12px; right: 12px; top: 10px; z-index: 2; display: flex; justify-content: space-between; align-items: center; gap: 10px; pointer-events: none; }
+      #hud > span { padding: 8px 12px; border-radius: 14px; background: var(--panel); font-weight: 700; font-size: clamp(15px, 2.4vw, 21px); }
+      #hud[hidden] { display: none; }
+      #ask { position: fixed; left: 50%; top: 58px; z-index: 2; transform: translateX(-50%); width: min(560px, calc(100% - 24px)); box-sizing: border-box; padding: 9px 16px; border-radius: 18px; background: #232842ee; color: #fff; text-align: center; font-weight: 800; font-size: clamp(17px, 3.4vw, 25px); line-height: 1.25; pointer-events: none; }
+      #ask[hidden] { display: none; }
+      #ask.done { background: #2f7d52ee; }
+      #ask.done::after { content: ' ✓'; }
+      #toast { position: fixed; left: 50%; top: 42%; z-index: 2; transform: translate(-50%, -50%); padding: 10px 22px; border-radius: 999px; font-weight: 800; font-size: clamp(24px, 6vw, 38px); pointer-events: none; white-space: nowrap; }
+      #toast[hidden] { display: none; }
+      #toast.good { background: #fff6dc; color: #b8561f; }
+      #toast.bad { background: #eef1f4; color: #46566a; }
+      #hint { position: fixed; left: 50%; bottom: 82px; z-index: 2; transform: translateX(-50%); padding: 7px 14px; border-radius: 999px; background: var(--panel); font-weight: 700; font-size: 15px; pointer-events: none; white-space: nowrap; }
+      #hint[hidden] { display: none; }
+      #tools { position: fixed; left: 50%; bottom: 10px; z-index: 2; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 20px; background: var(--panel); max-width: calc(100% - 16px); box-sizing: border-box; }
+      #tools[hidden] { display: none; }
+      #tools button { border: 0; border-radius: 14px; min-width: 46px; height: 46px; padding: 0 10px; font: 800 16px "Trebuchet MS", sans-serif; cursor: pointer; background: #2a3050; color: var(--ink); display: grid; place-items: center; }
+      #tools button:disabled { opacity: 0.4; cursor: default; }
+      #tools .ink { width: 46px; padding: 0; position: relative; }
+      #tools .ink i { width: 26px; height: 26px; border-radius: 50%; display: block; box-shadow: 0 0 12px currentColor; background: currentColor; }
+      #tools .ink b { position: absolute; right: 2px; bottom: 0; font-size: 13px; }
+      #tools .ink[aria-pressed="true"] { outline: 3px solid #fff; outline-offset: 1px; background: #3d4570; }
+      #drop { background: var(--coral) !important; color: #fff !important; padding: 0 16px !important; }
+      #inkbar { width: clamp(48px, 12vw, 120px); height: 12px; border-radius: 6px; background: #0c0e18; overflow: hidden; }
+      #inkbar i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #fff6dc, var(--gold)); transition: width 80ms linear; }
+      @media (max-width: 620px) { #tools { gap: 5px; padding: 6px; } #tools button { min-width: 40px; height: 42px; } #tools .ink { width: 40px; } }
+      #overlay { position: fixed; inset: 0; z-index: 3; display: grid; place-items: center; background: radial-gradient(circle at 50% 30%, #1e2440dd, #05060add); padding: 20px; }
+      #overlay[hidden] { display: none; }
+      .card { width: min(460px, 100%); background: #181c30; border-radius: 22px; padding: 22px 22px 18px; box-shadow: 0 0 60px #ffd36b22; border: 1px solid #ffffff14; }
+      h1 { margin: 0 0 8px; font-size: clamp(28px, 6vw, 40px); letter-spacing: -0.02em; color: var(--gold); text-shadow: 0 0 18px #ffd36b66; }
+      #blurb, #help { margin: 0 0 12px; line-height: 1.4; }
+      #help { padding-left: 1.1em; }
+      #help li { margin: 0.25em 0; }
+      .sw { display: inline-block; width: 0.8em; height: 0.8em; border-radius: 50%; vertical-align: -0.05em; box-shadow: 0 0 8px currentColor; background: currentColor; }
+      #verdict { margin: 0 0 6px; text-align: center; font-size: clamp(30px, 8vw, 46px); font-weight: 800; color: var(--gold); }
+      #verdict[hidden], #reason[hidden] { display: none; }
+      #reason { margin: 0 0 16px; text-align: center; font-weight: 700; opacity: 0.85; }
+      .actions { display: flex; flex-wrap: wrap; gap: 10px; }
+      .actions button { border: 0; border-radius: 14px; padding: 12px 18px; font: 700 17px "Trebuchet MS", sans-serif; cursor: pointer; background: var(--coral); color: #fff; }
+      .actions button:disabled { opacity: 0.5; cursor: default; }
+      .actions button.pad-focus { outline: 4px solid #fff; outline-offset: 3px; }
+      #nogl { display: none; }
+      @media (prefers-reduced-motion: no-preference) {
+        #toast:not([hidden]) { animation: toastPop 260ms ease-out; }
+        @keyframes toastPop { from { transform: translate(-50%, -50%) scale(0.7); opacity: 0; } }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="stage" aria-label="Light lines: a dark board where drawn lines glow and guide a falling ball"></canvas>
+    <canvas id="marks" aria-hidden="true"></canvas>
+    <div id="hud" hidden>
+      <span id="count">Board 1</span>
+      <span id="lives">❤️❤️❤️</span>
+      <span id="stars">⭐ 0</span>
+    </div>
+    <div id="ask" hidden aria-live="polite"><span id="askText"></span></div>
+    <div id="toast" hidden aria-live="assertive"></div>
+    <div id="hint" hidden>Draw glowing lines, then tap Drop</div>
+    <div id="tools" hidden>
+      <span id="inkbar" title="Ink left"><i></i></span>
+      <button class="ink" type="button" data-ink="plain" aria-label="White line: a ramp" aria-pressed="true" style="color:#fff3dc"><i></i></button>
+      <button class="ink" type="button" data-ink="boost" aria-label="Green line: speeds the ball up" aria-pressed="false" style="color:#4dff73"><i></i><b>⚡</b></button>
+      <button class="ink" type="button" data-ink="bouncy" aria-label="Blue line: bouncy" aria-pressed="false" style="color:#4d8cff"><i></i><b>↥</b></button>
+      <button class="ink" type="button" data-ink="slow" aria-label="Yellow line: slows the ball" aria-pressed="false" style="color:#ffd12a"><i></i><b>🐢</b></button>
+      <button id="undo" type="button" aria-label="Undo the last line">↶</button>
+      <button id="clear" type="button" aria-label="Clear all lines">🗑</button>
+      <button id="drop" type="button">Drop ▶</button>
+    </div>
+    <div id="overlay">
+      <div class="card">
+        <h1 id="title">Light lines</h1>
+        <p id="verdict" hidden></p>
+        <p id="reason" hidden></p>
+        <p id="blurb">The board is dark. Draw glowing lines to light it up, then drop the ball and let it roll down your lines into the pocket with the right answer.</p>
+        <ul id="help">
+          <li><span class="sw" style="color:#fff3dc"></span> white is a ramp, <span class="sw" style="color:#4dff73"></span> green speeds up, <span class="sw" style="color:#4d8cff"></span> blue bounces, <span class="sw" style="color:#ffd12a"></span> yellow slows down</li>
+          <li><span class="sw" style="color:#ff3b30"></span> red lines are danger: touching one costs a heart</li>
+          <li>Ink runs out, so plan your path. Your light shows the hidden walls.</li>
+        </ul>
+        <p id="nogl">This device can't run the light. Try another browser.</p>
+        <div class="actions">
+          <button id="play" type="button" disabled>Loading…</button>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="./game.mjs?v=glow1"></script>
+  </body>
+</html>
