@@ -22,7 +22,7 @@ From this folder:
 node server/serve.mjs
 ```
 
-Open http://localhost:8000. There is no build step. From that address the browser can install Little Sprouts, and the pages already opened keep working if the network drops. This server also opens Paint Sphere’s friend room. If the site is already running from `python3 -m http.server`, start `node server/paint-link.mjs` beside it. Play with a friend uses that room.
+Open http://localhost:8000. There is no build step. From that address the browser can install Little Sprouts, and the pages already opened keep working if the network drops. This server also opens the friend room for Paint Sphere and Garden gulp. If the site is already running from `python3 -m http.server`, start `node server/paint-link.mjs` beside it. Play with a friend uses that room.
 
 ## How a round works
 
@@ -98,7 +98,10 @@ Most of the pictures, questions, and games are Little Sprouts’ own. These crea
 - [Animated emoji memory game](https://freefrontend.com/javascript-games/#2025-09-09-emoji-memory-match-l) on FreeFrontend. Pair match follows that flip. The cards are new.
 - [TurdleTips — Paper City Glider](https://codepen.io/TurdleTips/pen/01a00355-5252-7ba3-b92d-90c79c3e616a). City glide follows that paper plane through downtown blocks. The plane, the rings, and the questions are drawn here.
 - [Jens Broecher — Airplane pulling a banner](https://codepen.io/jensbroecher/pen/wvZQdEa). Sky flight’s bush plane follows that blue-and-white utility look. The plane is rebuilt here; no CodePen bitmap is shipped.
-- [Ricardo Cabello and the Three.js authors](https://github.com/mrdoob/three.js) (MIT). Sky flight’s quiz gates and bush plane, Paint sphere, Cube dash, and City glide draw with Three.js. The plane and gates are Little Sprouts’ own.
+- [Ricardo Cabello and the Three.js authors](https://github.com/mrdoob/three.js) (MIT). Sky flight’s quiz gates and bush plane, Paint sphere, Garden gulp, Shooting range, Cube dash, and City glide draw with Three.js. The plane and gates are Little Sprouts’ own.
+- Hole games such as Hole.io, Donut County, and browser takes like Gulp City. Garden gulp follows that swallow-and-grow idea. The garden, holes, and friend-room play are drawn here.
+- [SimonDev — Quick_FPS1](https://github.com/simondevyoutube/Quick_FPS1) (MIT). Shooting range’s Walk mode follows that first-person paintball walk. The plaza, boards, and blaster are drawn here; no enemies or health came along.
+- [Quaternius — Ultimate Platformer Pack](https://quaternius.com) (CC0). The street lights, crates, fence, tanks, pipes, and gears in the Walk plaza, from the copy shipped with Quick_FPS1.
 - [hexgrad — Kokoro](https://github.com/hexgrad/kokoro) (Apache 2.0). Spoken prompts use Kokoro-82M through [onnx-community’s ONNX build](https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX). If it cannot load, the browser’s own voice speaks.
 - [Google — MediaPipe Pose](https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker). Reach play uses it to find hands. Video stays on the device.
 - [Cassie Evans — CSS / SVG Blobby Background](https://codepen.io/cassie-codes/pen/zWJxXj). Merge jar uses that gooey blur, so matching circles melt together when they touch. The jar, the tokens, and the questions are drawn here.

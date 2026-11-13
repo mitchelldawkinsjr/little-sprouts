@@ -1,5 +1,5 @@
 /**
- * Pair two Paint Sphere browsers on /link.
+ * Pair two browsers on /link (Paint Sphere, Garden gulp).
  * The first socket owns the room. Everything else is forwarded.
  */
 import { createHash } from 'node:crypto'

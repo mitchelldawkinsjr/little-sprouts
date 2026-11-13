@@ -63,12 +63,12 @@ import { stopCrayon } from '../games/crayon.js?v=crayon-more';
 import { stopMarble } from '../games/marble.js?v=ask-first2-r2';
 import { stopBridge } from '../games/bridge.js?v=ask-first-r2';
 import { stopMaze } from '../games/maze.js?v=ask-first-r2';
-import { postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=skybound1';
+import { postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=range6';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=arcade';
 
 const NO_WORD = new Set(['trace', 'sort', 'merge']);
-const SUBJECT_WORDS = new Set('rally flight bike walk glide city rocket lunar hoop light hook sky planet bridge maze chase hop toast aisle lily mole bust stack lamp cube'.split(' '));
+const SUBJECT_WORDS = new Set('rally flight range bike walk glide city rocket lunar hoop light hook sky planet bridge maze chase hop toast aisle lily mole bust stack lamp cube'.split(' '));
 
 export function registerRound(rt) {
   Object.assign(rt, {
@@ -151,6 +151,7 @@ export function registerRound(rt) {
       round: g.index,
       level: g.level,
       reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
+      sound: rt.data.sound !== false,
       choices: g.tokens.map(token => ({
         label: String(token.label),
         ok: !!token.ok,
@@ -166,7 +167,8 @@ export function registerRound(rt) {
       message.stops = g.rallyStops || rallyQuestionCount(rt.questionCount());
       message.gates = rallyGates(message.stops);
     }
-    if (g.mode === 'flight') message.freeEvery = rallyClearCount(rt.questionCount());
+    if (g.mode === 'flight' || g.mode === 'blocks') message.freeEvery = rallyClearCount(rt.questionCount());
+    if (g.mode === 'range') message.total = rt.questionCount();
     return message;
   }
   function gradeRally(index) {
@@ -175,7 +177,8 @@ export function registerRound(rt) {
     if (!g || g.finished || g.done || !token) return;
     const ok = !!token.ok;
     postSidecar({ type: 'mark', index, ok });
-    const flightMiss = g.mode === 'flight' && !ok;
+    // Sky flight and the range keep the same question up after a miss.
+    const flightMiss = (g.mode === 'flight' || g.mode === 'range' || g.mode === 'gulp' || g.mode === 'blocks') && !ok;
     g.done = !flightMiss;
     if (!ok) g.missed = true;
     else if (!g.missed) g.firstCorrect++;
@@ -187,9 +190,15 @@ export function registerRound(rt) {
         ? (ok ? 'Good.' : 'Not yet. Hang on!')
         : g.mode === 'walk'
           ? (ok ? 'You found it.' : 'Not yet. Walk to another one.')
+          : g.mode === 'gulp'
+            ? (ok ? 'Yes! Gulp it all.' : 'Not yet. Find another bubble.')
+          : g.mode === 'blocks'
+            ? (ok ? 'Yes! A new block for you.' : 'Not yet. Pick another one.')
           : g.mode === 'skybound'
             ? (ok ? 'Yes! Climb on.' : 'Not yet. Keep climbing.')
-            : (ok ? 'Yes! Turbo!' : 'Not yet. The car slows down.');
+            : g.mode === 'range'
+              ? (ok ? (g.rallyKind === 'spell' ? `You spelled ${g.target}.` : 'Yes! Bullseye.') : 'Not yet. Shoot another one.')
+              : (ok ? 'Yes! Turbo!' : 'Not yet. The car slows down.');
     const feedback = $('#feedback');
     if (feedback) feedback.textContent = line;
     const title = $('#app h1');
@@ -200,8 +209,15 @@ export function registerRound(rt) {
       g.flightRights = (g.flightRights || 0) + 1;
       if (g.flightRights >= rallyClearCount(rt.questionCount())) return;
     }
+    // Block meadow: after enough right answers the page switches to free build and finishes itself.
+    if (g.mode === 'blocks') {
+      g.blockRights = (g.blockRights || 0) + 1;
+      if (g.blockRights >= rallyClearCount(rt.questionCount())) return;
+    }
     if (g.mode === 'rally' && ok) g.rallyRights = (g.rallyRights || 0) + 1;
-    rt.continueAfter('rally', g, 1200, 500);
+    // Garden gulp leaves the other right bubbles up a little longer for a bonus gulp.
+    if (g.mode === 'gulp') rt.continueAfter('rally', g, 3200, 2600);
+    else rt.continueAfter('rally', g, 1200, 500);
   }
   function question() {
     const g = rt.game;
@@ -739,21 +755,27 @@ export function registerRound(rt) {
         g.tokens = [];
         g.options = [];
         g.show = '';
-      } else if (g.freePlay && (g.mode === 'flight' || g.mode === 'walk' || g.mode === 'bike')) {
-        g.prompt = g.mode === 'flight' ? 'Fly the glider.' : g.mode === 'walk' ? 'Walk the meadow.' : 'Ride the dirt bike.';
+      } else if (g.freePlay && (g.mode === 'gulp' || g.mode === 'flight' || g.mode === 'walk' || g.mode === 'bike' || g.mode === 'blocks')) {
+        g.prompt = g.mode === 'gulp' ? 'Swallow what fits. Clear the city or grow big before the clock runs out.'
+          : g.mode === 'blocks' ? 'Build in the meadow.'
+          : g.mode === 'flight' ? 'Fly the glider.'
+          : g.mode === 'walk' ? 'Walk the meadow.'
+          : 'Ride the dirt bike.';
         g.tokens = [];
         g.options = [];
         g.show = '';
       } else if (g.mode === 'walk') walkAsk(g);
+      else if (g.mode === 'gulp') gulpAsk(g);
       else if (g.mode === 'paint') shellAsk(g);
       else {
         rallyAsk(g);
         if (g.mode === 'flight') flightAsk(g);
+        if (g.mode === 'range') rangeAsk(g);
       }
       // The card opens a few seconds later, when the ride reaches it. Make the line now so it plays the moment it shows.
       if (rt.data.sound && g.prompt && g.mode !== 'quickmath') prefetchSpeech([{ text: g.prompt, voiceId: rt.voiceNow(g.mode) }], { priority: 'next' });
       if (document.querySelector('iframe.sidecar-frame')) {
-        if (g.mode === 'quickmath') return;
+        if (g.mode === 'quickmath' || (g.mode === 'gulp' && g.freePlay)) return;
         rt.paintRallyChrome(g);
         postSidecar(rallyMessage(g));
       } else rt.renderGame();
@@ -1081,10 +1103,24 @@ export function registerRound(rt) {
     profileAsk(g, 'walk');
     g.rallyKind = g.subject === 'math' ? 'math' : 'match';
   }
+  // Garden gulp: answer bubbles float over the city. Same profile mix as the meadow walk.
+  function gulpAsk(g) {
+    profileAsk(g, 'walk');
+    g.rallyKind = g.subject === 'math' ? 'math' : 'match';
+    if (g.subject === 'words') g.prompt = `Gulp the word ${g.target}.`;
+    else if (g.subject === 'shapes') g.prompt = `Gulp the ${g.target}.`;
+    else if (g.subject === 'colors') g.prompt = `Gulp ${g.target}.`;
+    else g.prompt = `${g.prompt} Gulp that answer.`;
+  }
   function flightAsk(g) {
     if (g.rallyKind === 'spell') g.prompt = `Fly the letters of ${g.target}.`;
     else if (g.rallyKind === 'match' && g.subject === 'words') g.prompt = `Fly through the word ${g.target}.`;
     else if (g.rallyKind === 'match') g.prompt = `Fly through the ${g.target}.`;
+  }
+  function rangeAsk(g) {
+    if (g.rallyKind === 'spell') g.prompt = `Shoot the letters of ${g.target}.`;
+    else if (g.rallyKind === 'match' && g.subject === 'words') g.prompt = `Shoot the word ${g.target}.`;
+    else if (g.rallyKind === 'match') g.prompt = `Shoot the ${g.target}.`;
   }
   function arcadePack(pack, prompt) {
     const g = rt.game;
@@ -1236,8 +1272,8 @@ export function registerRound(rt) {
       if (g.phase === 'peek') return 'Read the verse. Then cover it.';
       return 'Write what you remember. You can look — optional, extra star if you do.';
     }
-    if ((g?.mode === 'rally' || g?.mode === 'flight' || g?.mode === 'bike') && g.rallyKind === 'spell') {
-      if (rt.data.sound && canSpeak()) return g.mode === 'flight' ? 'Fly through the letters in order.' : 'Spell the word.';
+    if ((g?.mode === 'rally' || g?.mode === 'flight' || g?.mode === 'range' || g?.mode === 'bike') && g.rallyKind === 'spell') {
+      if (rt.data.sound && canSpeak()) return g.mode === 'flight' ? 'Fly through the letters in order.' : g.mode === 'range' ? 'Shoot the letters in order.' : 'Spell the word.';
       return g.prompt;
     }
     if (!wordHidden(g)) return g.prompt;
@@ -1279,6 +1315,7 @@ export function registerRound(rt) {
     if (g.mode === 'paint') return `You painted ${g.target}.`;
     if (g.mode === 'walk') return g.subject === 'shapes' || g.subject === 'colors' ? `You walked to the ${g.target}.` : `You walked to ${g.target}.`;
     if (g.mode === 'flight') return g.rallyKind === 'spell' ? `You spelled ${g.target}.` : g.subject === 'shapes' || g.subject === 'colors' ? `You flew through the ${g.target}.` : `You flew through ${g.target}.`;
+    if (g.mode === 'range') return g.rallyKind === 'spell' ? `You spelled ${g.target}.` : g.subject === 'shapes' || g.subject === 'colors' ? `You shot the ${g.target}.` : `You shot ${g.target}.`;
     if (g.mode === 'bike') return g.rallyKind === 'spell' ? `You spelled ${g.target}.` : g.subject === 'shapes' || g.subject === 'colors' ? `You rode over the ${g.target}.` : `You rode over ${g.target}.`;
     if (g.mode === 'rally') return g.rallyKind === 'spell' ? `You spelled ${g.target}.` : g.subject === 'words' || g.subject === 'math' ? `You drove through ${g.target}.` : `You drove through the ${g.target}.`;
     if (g.mode === 'trace') return g.traceKind === 'letter' ? `The car drove the letter ${g.target}.` : g.traceKind === 'number' ? `The car drove the number ${g.target}.` : `The car drove the ${g.target}.`;
@@ -1303,6 +1340,7 @@ export function registerRound(rt) {
     if (g.mode === 'paint') return 'Paint the half with the right answer.';
     if (g.mode === 'walk') return g.subject === 'words' ? 'Listen for the word, then walk to it.' : 'Walk to the one that matches.';
     if (g.mode === 'flight') return g.rallyKind === 'spell' ? 'Listen for the word, then fly through each letter or type it.' : 'Steer through the gate that matches.';
+    if (g.mode === 'range') return g.rallyKind === 'spell' ? 'Listen for the word, then shoot each letter or type it.' : 'Aim at the board that matches, then shoot.';
     if (g.mode === 'chase' || g.mode === 'hop' || g.mode === 'toast' || g.mode === 'aisle' || g.mode === 'lily' || g.mode === 'mole' || g.mode === 'bust' || g.mode === 'stack' || g.mode === 'lamp' || g.mode === 'cube' || g.mode === 'glide' || g.mode === 'city' || g.mode === 'rally' || g.mode === 'bike') {
       if (g.subject === 'words') {
         if (g.mode === 'chase') return 'Listen for the word, then eat those berries.';
@@ -1629,7 +1667,11 @@ export function registerRound(rt) {
     rt.camOff();
     const flightEnd = g.mode === 'flight' && (detail === 'crash' || detail === 'flew');
     const stageEnd = g.mode === 'rally' && detail === 'stage';
-    const rounds = (g.mode === 'verse' || g.mode === 'clue') && g.deck?.length ? g.deck.length : flightEnd ? (g.flightRights || 5) : stageEnd ? Math.max(1, g.index || g.rallyRights || 1) : rt.questionCount();
+    // Garden gulp asks for a whole timed round, so count the questions it actually finished.
+    const gulpEnd = g.mode === 'gulp' && !g.freePlay;
+    // Block meadow counts the gift boxes actually opened before free build.
+    const blocksEnd = g.mode === 'blocks' && detail === 'build' && !g.freePlay;
+    const rounds = (g.mode === 'verse' || g.mode === 'clue') && g.deck?.length ? g.deck.length : flightEnd ? (g.flightRights || 5) : blocksEnd ? Math.max(1, g.blockRights || 1) : stageEnd ? Math.max(1, g.index || g.rallyRights || 1) : gulpEnd ? Math.max(1, g.index | 0, g.firstCorrect | 0) : rt.questionCount();
     const bonus = (g.mode === 'verse' || g.mode === 'clue') ? (g.extraStars | 0) : 0;
     Object.assign(rt.p(), applyRound(rt.p(), g.mode, g.key, rounds, g.firstCorrect));
     if (bonus) {

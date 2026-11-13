@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Block meadow</title>
+  <style>
+    :root { --ink: #16382c; --paper: #faf9f5; --leaf: #32634e; --warm: #db8b32; --line: #d7decc; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #d4e8f4; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Trebuchet MS", sans-serif; color: var(--ink); -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+    #view { position: fixed; inset: 0; }
+    #view canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+    button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent; }
+
+    #cross { position: fixed; left: 50%; top: 50%; width: 26px; height: 26px; margin: -13px 0 0 -13px; pointer-events: none; z-index: 2; }
+    #cross::before, #cross::after { content: ""; position: absolute; background: var(--paper); box-shadow: 0 0 0 1.5px #16382c99; border-radius: 2px; }
+    #cross::before { left: 11.5px; top: 0; width: 3px; height: 26px; }
+    #cross::after { top: 11.5px; left: 0; height: 3px; width: 26px; }
+    body.touch:not(.pad) #cross { display: none; }
+
+    #hud { position: fixed; left: 10px; right: 10px; top: 10px; z-index: 3; display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; pointer-events: none; }
+    .pill { display: flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; background: #faf9f5ee; font-weight: 800; font-size: clamp(15px, 2.4vw, 20px); box-shadow: 0 2px 8px #16382c22; }
+    #arrow { display: inline-block; width: 26px; height: 26px; transition: transform .12s linear; }
+    #arrow svg { display: block; width: 100%; height: 100%; }
+    #quest[hidden], #stars[hidden] { display: none; }
+    #note { position: fixed; left: 50%; top: 64px; transform: translateX(-50%); z-index: 3; margin: 0; padding: 8px 16px; border-radius: 14px; background: var(--leaf); color: var(--paper); font-weight: 800; font-size: clamp(16px, 2.6vw, 22px); pointer-events: none; text-align: center; max-width: 86vw; }
+    #note[hidden] { display: none; }
+
+    #bar { position: fixed; left: 50%; bottom: max(12px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 3; display: flex; gap: 6px; padding: 6px; border-radius: 16px; background: #16382cb3; max-width: calc(100vw - 24px); overflow-x: auto; scrollbar-width: none; }
+    #bar::-webkit-scrollbar { display: none; }
+    .icon-bar-item { flex: 0 0 auto; width: 48px; height: 48px; border: 3px solid transparent; border-radius: 10px; background-size: cover; image-rendering: pixelated; cursor: pointer; padding: 0; }
+    .icon-bar-item.highlight { border-color: var(--paper); transform: translateY(-3px); box-shadow: 0 3px 0 #0004; }
+    .icon-bar-item.dig-slot { background: #faf9f5; font-size: 26px; line-height: 1; display: flex; align-items: center; justify-content: center; }
+    .icon-bar-item.new { animation: pop .6s ease-out 2; }
+    @keyframes pop { 50% { transform: translateY(-3px) scale(1.25); } }
+
+    .side { position: fixed; z-index: 3; display: flex; flex-direction: column; gap: 10px; }
+    #tools { right: max(12px, env(safe-area-inset-right)); bottom: calc(max(12px, env(safe-area-inset-bottom)) + 76px); }
+    .round { width: 72px; height: 72px; border: 0; border-radius: 50%; background: #16382ce0; color: var(--paper); font-size: 15px; font-weight: 800; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; touch-action: none; cursor: pointer; }
+    .round .icon { font-size: 26px; line-height: 1; }
+    .round.on { background: var(--warm); }
+    #jump { display: none; }
+    body.touch #jump { display: flex; }
+    #done { position: fixed; right: max(12px, env(safe-area-inset-right)); top: 10px; z-index: 4; padding: 10px 16px; border: 0; border-radius: 14px; background: var(--leaf); color: var(--paper); font-weight: 800; font-size: 17px; cursor: pointer; }
+    #done[hidden] { display: none; }
+
+    #stick { position: fixed; left: max(14px, env(safe-area-inset-left)); bottom: calc(max(12px, env(safe-area-inset-bottom)) + 70px); z-index: 3; width: 128px; height: 128px; border-radius: 50%; background: #16382c55; border: 3px solid #faf9f588; display: none; touch-action: none; }
+    body.touch #stick { display: block; }
+    #knob { position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; background: #faf9f5dd; box-shadow: 0 2px 6px #0004; pointer-events: none; }
+
+    #card { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; background: rgba(20, 16, 12, .42); }
+    #card[hidden] { display: none; }
+    #card .sheet { width: min(720px, 92%); max-height: 92vh; overflow: auto; background: var(--paper); border-radius: 22px; padding: 20px 18px 16px; box-shadow: 0 16px 40px #0005; text-align: center; }
+    #card .gift { font-size: 40px; line-height: 1; margin: 0 0 4px; }
+    #card .prompt { margin: 0 0 12px; font-size: clamp(22px, 3.4vw, 34px); font-weight: 800; line-height: 1.25; }
+    #card .show { display: flex; justify-content: center; margin: 0 0 12px; font-size: 28px; }
+    #card .show:empty { display: none; }
+    #card .countrow, #card .numpath { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+    #card .numpath .here { outline: 3px solid var(--warm); border-radius: 8px; }
+    #card .choices { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+    #card .choice { min-width: 120px; min-height: 92px; padding: 10px 14px; border: 3px solid var(--line); border-radius: 16px; background: #fff; font-weight: 800; font-size: clamp(20px, 3vw, 30px); line-height: 1.1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; cursor: pointer; }
+    #card .choice.letter { min-width: 64px; min-height: 64px; }
+    #card .choice.wrong { border-color: #e3ad7b; background: #fff4e9; opacity: .55; }
+    #card .choice.right { border-color: var(--leaf); background: #e7f0df; }
+    #card .choice.focus, #card button.focus { outline: 4px solid var(--warm); outline-offset: 2px; }
+    #card .slots { margin: 0 0 14px; font-weight: 800; font-size: 32px; letter-spacing: .14em; }
+    #card .row { display: flex; justify-content: center; gap: 10px; margin-top: 14px; }
+    #card .soft { min-height: 44px; padding: 8px 16px; border: 1px solid var(--line); border-radius: 12px; background: transparent; font-size: 16px; font-weight: 700; cursor: pointer; }
+    #card .say { margin: 10px 0 0; font-size: 16px; font-weight: 700; min-height: 1.3em; }
+    #card .shape { display: block; width: 54px; height: 54px; background: var(--shape-color, #5d7a45); }
+    #card .circle { border-radius: 50%; }
+    #card .square { border-radius: 5px; }
+    #card .triangle { clip-path: polygon(50% 0, 0 100%, 100% 100%); }
+    #card .rectangle { width: 72px; height: 44px; border-radius: 5px; }
+    #card .oval { width: 72px; border-radius: 50%; }
+    #card .diamond { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+    #card .star { clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 94%, 50% 73%, 21% 94%, 32% 57%, 2% 35%, 39% 35%); }
+    #card .hexagon { clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); }
+    #card .swatch { width: 54px; height: 54px; border-radius: 50%; border: 1px solid #0002; }
+
+    #loading { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: #d4e8f4; font-weight: 800; font-size: 22px; }
+    #loading[hidden] { display: none; }
+    #loading .sprout { font-size: 54px; animation: bob 1s ease-in-out infinite alternate; }
+    @keyframes bob { to { transform: translateY(-8px); } }
+    @media (prefers-reduced-motion: reduce) { #loading .sprout, .icon-bar-item.new { animation: none; } }
+  </style>
+</head>
+<body>
+  <div id="view" aria-label="Block meadow. Walk, build, and find the gift boxes."></div>
+  <div id="cross" aria-hidden="true"></div>
+  <div id="hud">
+    <div class="pill" id="quest" hidden><span id="arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2 20 20 12 15 4 20Z" fill="#db8b32" stroke="#16382c" stroke-width="1.5" stroke-linejoin="round"/></svg></span><span id="questText">Find the gift box</span></div>
+    <div class="pill" id="stars" hidden>⭐ <span id="starCount">0</span></div>
+  </div>
+  <p id="note" role="status" aria-live="polite" hidden></p>
+  <button type="button" id="done" hidden>I’m done building</button>
+  <div id="bar" role="toolbar" aria-label="Blocks"></div>
+  <div class="side" id="tools">
+    <button type="button" class="round" id="jump" aria-label="Jump"><span class="icon">⤒</span>Jump</button>
+    <button type="button" class="round" id="mode" aria-label="Switch between build and dig"><span class="icon" id="modeIcon">🧱</span><span id="modeText">Build</span></button>
+  </div>
+  <div id="stick" aria-hidden="true"><div id="knob"></div></div>
+  <div id="card" hidden role="dialog" aria-modal="true" aria-labelledby="cardPrompt">
+    <div class="sheet">
+      <p class="gift" aria-hidden="true">🎁</p>
+      <p class="prompt" id="cardPrompt"></p>
+      <div class="show" id="cardShow"></div>
+      <p class="slots" id="cardSlots" hidden></p>
+      <div class="choices" id="cardChoices"></div>
+      <p class="say" id="cardSay" aria-live="polite"></p>
+      <div class="row"><button type="button" class="soft" id="later">Later</button></div>
+    </div>
+  </div>
+  <div id="loading"><span class="sprout" aria-hidden="true">🌱</span><span id="loadingText">Growing the meadow…</span></div>
+  <script type="module" src="game.js?v=blocks2"></script>
+</body>
+</html>

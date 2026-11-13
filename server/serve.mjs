@@ -1,5 +1,5 @@
 /**
- * Static site plus the Paint Sphere friend room on /link.
+ * Static site plus the Paint Sphere / Garden gulp friend room on /link.
  * python3 -m http.server cannot open that room.
  */
 import { createReadStream, existsSync, statSync } from 'node:fs'

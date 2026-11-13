@@ -1,12 +1,12 @@
 {
-  "name": "Skybound Obby: Crystal Run",
-  "short_name": "Skybound Obby",
-  "description": "An offline-friendly 3D island obstacle adventure",
+  "name": "Rocket Launcher",
+  "short_name": "Rocket Launcher",
+  "description": "Quiz for time, scramble for parts, then blast off",
   "display": "standalone",
   "start_url": "./",
   "scope": "./",
   "background_color": "#b9ebf9",
-  "theme_color": "#543caa",
+  "theme_color": "#1e3558",
   "icons": [
     {
       "src": "./icon-192.png",

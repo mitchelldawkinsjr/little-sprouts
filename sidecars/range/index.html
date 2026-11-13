@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shooting range</title>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "../../vendor/three/build/three.module.js",
+      "three/addons/": "../../vendor/three/addons/"
+    }
+  }
+  </script>
+  <style>
+    html, body { margin: 0; height: 100%; background: #9fd2ef; overflow: hidden; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Trebuchet MS", sans-serif; }
+    #view { position: fixed; inset: 0; z-index: 1; }
+    #view canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+    #cross { position: fixed; left: 50%; top: 50%; z-index: 2; width: 34px; height: 34px; margin: -17px 0 0 -17px; border: 3px solid #faf9f5; border-radius: 50%; box-shadow: 0 0 0 2px #16382c99; pointer-events: none; transition: opacity .15s, transform .15s; }
+    #cross::before, #cross::after { content: ""; position: absolute; background: #faf9f5; box-shadow: 0 0 0 1px #16382c99; }
+    #cross::before { left: 50%; top: -9px; bottom: -9px; width: 3px; margin-left: -1.5px; }
+    #cross::after { top: 50%; left: -9px; right: -9px; height: 3px; margin-top: -1.5px; }
+    #cross.cool { opacity: .45; transform: scale(.85); }
+    #hud { position: fixed; left: 184px; right: 96px; top: 10px; z-index: 3; margin: 0; text-align: center; color: #16382c; pointer-events: none; }
+    #hud .spell-type { pointer-events: auto; display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 8px auto 0; width: min(240px, 80%); font-size: 14px; font-weight: 700; color: #f7f4ec; text-shadow: 0 1px 2px #16382c; }
+    #hud .spell-type[hidden] { display: none; }
+    #hud .spell-key { width: 100%; height: 46px; border: 0; border-radius: 12px; text-align: center; font: 700 26px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #16382c; background: #faf9f5ee; }
+    #hud .spell-key.wrong { background: #fff4e9; }
+    #hud .prompt { margin: 0 auto; max-width: 720px; padding: 8px 14px; border-radius: 14px; background: #faf9f5ee; font-size: clamp(18px, 3vw, 28px); font-weight: 700; line-height: 1.25; }
+    #hud .show { display: flex; justify-content: center; margin-top: 8px; }
+    #hud .show:empty { display: none; }
+    #hud .countrow, #hud .numpath { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+    #hud .countrow span, #hud .numpath span { min-width: 28px; padding: 2px 4px; border-radius: 8px; background: #fff; font-size: 26px; }
+    #hud .numpath .here { outline: 3px solid #db8b32; }
+    #hud .slots { margin: 8px 0 0; letter-spacing: .18em; font-weight: 800; font-size: 28px; color: #f7f4ec; text-shadow: 0 1px 2px #16382c; }
+    #hud .note { margin: 6px 0 0; font-weight: 700; font-size: 20px; color: #f3d7a1; text-shadow: 0 1px 2px #16382c; }
+    .aim { position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 3; display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; pointer-events: none; }
+    .aim .stack { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .aim .row { display: flex; gap: 10px; }
+    .aim button { pointer-events: auto; touch-action: none; width: 64px; height: 64px; border: 0; border-radius: 20px; background: #16382ce6; color: #faf9f5; font-size: 28px; }
+    .aim button:active { background: #2f6a52; }
+    .aim #shoot { width: 104px; height: 104px; border-radius: 50%; background: #c8452fe6; font-size: 22px; font-weight: 800; }
+    .aim #shoot:active { background: #e0634b; }
+    .corner { position: fixed; top: 10px; z-index: 4; display: flex; gap: 8px; align-items: center; }
+    .corner.left { left: 12px; }
+    .corner.right { right: 12px; }
+    #modeBtn { border: 0; border-radius: 999px; padding: 10px 16px; background: #16382ce6; color: #faf9f5; font: 800 16px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    #modeBtn:active, #hearBtn:active { background: #2f6a52; }
+    #hearBtn { border: 0; border-radius: 999px; width: 42px; height: 42px; background: #16382ce6; color: #faf9f5; font-size: 18px; }
+    #count[hidden] { display: none; }
+    .pill, #gears { margin: 0; padding: 8px 12px; border-radius: 999px; background: #faf9f5ee; color: #16382c; font-weight: 800; font-size: 16px; }
+    #gears[hidden] { display: none; }
+    #map { position: fixed; left: 50%; bottom: 14px; z-index: 3; width: 128px; height: 128px; margin-left: -64px; border-radius: 50%; background: #16382ccc; box-shadow: 0 0 0 3px #faf9f5cc; pointer-events: none; }
+    #map[hidden] { display: none; }
+    #done { position: fixed; inset: 0; z-index: 5; display: grid; place-items: center; background: #16382c88; }
+    #done[hidden] { display: none; }
+    #done .card { max-width: 320px; padding: 22px 26px; border-radius: 20px; background: #faf9f5; color: #16382c; text-align: center; }
+    #done h2 { margin: 0 0 8px; font-size: 30px; }
+    #done p { margin: 0 0 16px; font-size: 20px; font-weight: 700; }
+    #again { border: 0; border-radius: 999px; padding: 12px 22px; background: #c8452f; color: #faf9f5; font: 800 20px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    @media (max-width: 520px) { #hud { left: 12px; right: 12px; top: 56px; } #map { width: 96px; height: 96px; margin-left: -48px; bottom: 130px; } }
+  </style>
+</head>
+<body>
+  <div id="view" aria-label="Shooting range"></div>
+  <div id="cross" aria-hidden="true"></div>
+  <div class="corner left">
+    <button type="button" id="modeBtn" aria-pressed="false">🚶 Walk</button>
+    <button type="button" id="hearBtn" aria-label="Hear the question again">🔊</button>
+  </div>
+  <div class="corner right">
+    <p id="count" class="pill" hidden></p>
+    <p id="gears" class="pill" hidden aria-label="Gears picked up">⚙ 0</p>
+  </div>
+  <canvas id="map" width="256" height="256" hidden aria-hidden="true"></canvas>
+  <div id="hud" aria-live="polite">
+    <p class="prompt" id="prompt">Aim at a board and shoot.</p>
+    <div class="show" id="show"></div>
+    <p class="slots" id="slots" hidden></p>
+    <label class="spell-type" id="spellType" hidden>Type the next letter
+      <input class="spell-key" id="spellInput" autocomplete="off" autocapitalize="none" spellcheck="false" inputmode="text" aria-label="Type the next letter">
+    </label>
+    <p class="note" id="note" hidden></p>
+  </div>
+  <div id="done" hidden>
+    <div class="card">
+      <h2>Round done!</h2>
+      <p id="doneScore"></p>
+      <button type="button" id="again">Play again</button>
+    </div>
+  </div>
+  <div class="aim">
+    <div class="stack">
+      <button type="button" id="aimUp" aria-label="Aim up">▲</button>
+      <div class="row">
+        <button type="button" id="aimLeft" aria-label="Aim left">◀</button>
+        <button type="button" id="aimRight" aria-label="Aim right">▶</button>
+      </div>
+      <button type="button" id="aimDown" aria-label="Aim down">▼</button>
+    </div>
+    <button type="button" id="shoot" aria-label="Shoot">Shoot</button>
+  </div>
+  <script type="module" src="range.js?v=range6"></script>
+</body>
+</html>

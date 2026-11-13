@@ -78,7 +78,7 @@ import {
   sidecarGame,
   sidecarIsBuilt,
   stopSidecar
-} from '../lib/sidecar.js?v=skybound1';
+} from '../lib/sidecar.js?v=range6';
 import {
   SHELF_META,
   shelfOf as shelfIdOf,
@@ -466,7 +466,9 @@ export function registerMounts(rt) {
         else rt.question();
         return;
       }
-      if (g.index >= rounds) rt.finish();
+      // Garden gulp keeps asking for the whole timed round; the game ends it.
+      if (g.mode === 'gulp') rt.question();
+      else if (g.index >= rounds) rt.finish();
       else rt.question();
     }, wait ?? (rt.data.sound ? soundMs : quietMs));
   }
@@ -1235,13 +1237,15 @@ export function registerMounts(rt) {
           frame?.focus();
           if (rt.game?.mode === 'bike') postSidecar(rt.bikeConfig(rt.game));
           if (rt.game?.mode === 'quickmath') return;
-          if (rt.game?.freePlay && (rt.game.mode === 'flight' || rt.game.mode === 'walk' || rt.game.mode === 'skybound')) postSidecar({ type: 'arcade' });
+          if (rt.game?.freePlay && (rt.game.mode === 'flight' || rt.game.mode === 'walk' || rt.game.mode === 'skybound' || rt.game.mode === 'gulp' || rt.game.mode === 'blocks')) postSidecar({ type: 'arcade' });
           else if (rt.game) postSidecar(rt.rallyMessage(rt.game));
         },
         onProgress(info) {
           if (rt.game?.mode === 'bike' && Number.isFinite(+info?.travel)) rt.game.bikeTravel = +info.travel;
         },
         onShow() {
+          // Garden gulp keeps moving while the question is read, so just say it.
+          if (rt.game?.mode === 'gulp') { if (!rt.game.finished) rt.say(rt.game.prompt); return; }
           if (rt.game && !rt.game.finished) rt.askBeforePlay(rt.game.prompt);
         },
         onReplay() {
@@ -1250,6 +1254,10 @@ export function registerMounts(rt) {
         onNeed() {
           if (!rt.game || rt.game.finished || rt.game.freePlay) return;
           if (rt.game.mode === 'rally' && ((rt.game.rallyRights || 0) >= rallyClearCount(rt.questionCount()) || rt.game.index >= (rt.game.rallyStops || rallyQuestionCount(rt.questionCount())))) {
+            postSidecar({ type: 'clear' });
+            return;
+          }
+          if (rt.game.mode === 'blocks' && (rt.game.blockRights || 0) >= rallyClearCount(rt.questionCount())) {
             postSidecar({ type: 'clear' });
             return;
           }
@@ -1289,6 +1297,31 @@ export function registerMounts(rt) {
               if (rt.game !== round || round.finished) return;
               rt.finish('stage');
             }, 800);
+            return;
+          }
+          if (round.mode === 'gulp') {
+            if (round.freePlay) return;
+            // Leave the winner screen up for a moment, then show the Sprouts results.
+            clearTimers('rally');
+            rt.rallyTimer = setTimeout(() => {
+              rt.rallyTimer = 0;
+              if (rt.game !== round || round.finished) return;
+              rt.finish(detail || 'round');
+            }, 4500);
+            return;
+          }
+          if (round.mode === 'blocks') {
+            const line = 'Great building!';
+            const feedback = $('#feedback');
+            if (feedback) feedback.textContent = line;
+            const title = $('#app h1');
+            if (title) title.textContent = line;
+            clearTimers('rally');
+            rt.rallyTimer = setTimeout(() => {
+              rt.rallyTimer = 0;
+              if (rt.game !== round || round.finished) return;
+              rt.finish(detail || 'build');
+            }, 600);
             return;
           }
           if (round.mode === 'skybound') {

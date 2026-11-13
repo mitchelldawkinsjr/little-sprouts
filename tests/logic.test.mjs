@@ -1028,6 +1028,10 @@ test('sidecar games stay a list a new bootstrapped game can join', async () => {
   assert.equal(paint.title, 'Paint sphere');
   assert.match(paint.src, /^sidecars\/paint\/index\.html/);
   assert.match(paint.howTo, /learner’s profile/);
+  const gulp = sidecarGame('gulp');
+  assert.equal(gulp.title, 'Garden gulp');
+  assert.match(gulp.src, /^sidecars\/gulp\/index\.html/);
+  assert.match(gulp.howTo, /Paint Sphere/);
   assert.deepEqual(sidecarRows()[0].slice(0, 2), ['rally', 'Backroad rally']);
   assert.equal(sidecarIsBuilt('rally'), false);
   const saved = globalThis.fetch;
@@ -1044,7 +1048,7 @@ test('sidecar games stay a list a new bootstrapped game can join', async () => {
 });
 
 test('a sidecar opens its own page only when it sets alone', () => {
-  for (const [id, title] of [['rally', 'Backroad rally'], ['flight', 'Sky flight'], ['bike', 'Dirt ride'], ['walk', 'Garden walk'], ['paint', 'Paint sphere']]) {
+  for (const [id, title] of [['rally', 'Backroad rally'], ['flight', 'Sky flight'], ['bike', 'Dirt ride'], ['walk', 'Garden walk'], ['paint', 'Paint sphere'], ['gulp', 'Garden gulp'], ['range', 'Shooting range']]) {
     const alone = sidecarAlone(sidecarGame(id));
     assert.equal(alone.title, title);
     assert.match(alone.href, new RegExp(`^sidecars/${id}/index\\.html$`));
@@ -1052,6 +1056,210 @@ test('a sidecar opens its own page only when it sets alone', () => {
   }
   assert.equal(sidecarAlone(null), null);
   assert.equal(sidecarAlone({ title: 'Shape safari', src: 'index.html' }), null);
+});
+
+test('garden gulp swallows only what fits and ranks by size', async () => {
+  const {
+    canSwallow, growFrom, softGulpShrink, canGulpRival, trySwallowBits, ranks, buildBits,
+    cityCleared, aliveCount, START_RADIUS
+  } = await import('../sidecars/gulp/logic.mjs');
+  assert.equal(canSwallow(1, 0.8), true);
+  assert.equal(canSwallow(1, 1), false);
+  assert.ok(growFrom(1, 1) > 1);
+  assert.ok(softGulpShrink(2) < 2);
+  assert.equal(canGulpRival(2, 1.5), true);
+  const hole = { x: 0, z: 0, r: START_RADIUS };
+  const bits = [
+    { id: 0, x: 0, z: 0, size: 0.3, alive: true },
+    { id: 1, x: 0, z: 0, size: 3, alive: true }
+  ];
+  assert.equal(trySwallowBits(hole, bits), 1);
+  assert.equal(bits[0].alive, false);
+  assert.equal(bits[1].alive, true);
+  assert.ok(hole.r > START_RADIUS);
+  const board = ranks([{ id: 'you', r: 2 }, { id: 'bot', r: 1.2 }]);
+  assert.equal(board[0].id, 'you');
+  assert.equal(buildBits(7, 5).length, 5);
+  assert.deepEqual(buildBits(7, 3).map(b => b.kind), buildBits(7, 3).map(b => b.kind));
+  const city = buildBits(11);
+  assert.ok(city.length >= 400);
+  assert.ok(city.some(b => Math.hypot(b.x, b.z) > 35));
+  assert.ok(city.some(b => b.kind === 'car' || b.kind === 'shop' || b.kind === 'tower'));
+  assert.equal(cityCleared(city), false);
+  assert.equal(aliveCount(city), city.length);
+  city.forEach(b => { b.alive = false; });
+  assert.equal(cityCleared(city), true);
+});
+
+test('garden gulp cannot snowball through the city in one frame', async () => {
+  const { trySwallowBits, growFrom, START_RADIUS } = await import('../sidecars/gulp/logic.mjs');
+  // A small bite unlocks a bigger one only on the next frame.
+  const hole = { x: 0, z: 0, r: START_RADIUS };
+  const bits = [
+    { id: 0, x: 0, z: 0, size: 0.3, alive: true },
+    { id: 1, x: 0, z: 0, size: START_RADIUS / 1.12 + 0.001, alive: true }
+  ];
+  bits[1].size = Math.min(bits[1].size, growFrom(START_RADIUS, 0.3) / 1.12);
+  assert.equal(trySwallowBits(hole, bits), 1);
+  assert.equal(bits[1].alive, true);
+  // Growth is area-based, so eating a whole city stays bounded.
+  let r = START_RADIUS;
+  for (let i = 0; i < 3000; i++) r = growFrom(r, 1);
+  assert.ok(r < 20, `radius ${r} should stay bounded`);
+});
+
+test('garden gulp: a bigger hole still eats a smaller one, never the reverse', async () => {
+  const { tryRivalGulp } = await import('../sidecars/gulp/logic.mjs');
+  const big = { id: 'big', x: 0, z: 0, r: 3, stunUntil: 0 };
+  const small = { id: 'small', x: 0.5, z: 0, r: 1.5, stunUntil: 0 };
+  assert.equal(tryRivalGulp(small, big, 10), null);
+  assert.deepEqual(tryRivalGulp(big, small, 10), { eater: 'big', eaten: 'small' });
+  assert.ok(big.r > 3.1, 'eater gains a real chunk');
+  assert.ok(small.r < 1.5, 'eaten hole shrinks');
+  assert.ok(small.stunUntil > 10, 'eaten hole is briefly safe');
+});
+
+test('the shooting range grades a board once and spells one letter at a time', async () => {
+  const {
+    createRange, assignAsk, shootRange, markRange, stepRange, typeRange, nudgeRange, aimAtBoard, YAW_LIMIT, PITCH_MAX
+  } = await import('../sidecars/range/sim.mjs');
+  const range = createRange();
+  assert.deepEqual(shootRange(range), []);
+  const ask = { round: 2, kind: 'math', prompt: 'What is 2 + 2?', level: 1, choices: [{ label: '3' }, { label: '4' }, { label: '6' }] };
+  assert.equal(assignAsk(range, ask), true);
+  assert.equal(assignAsk(range, ask), false);
+  assert.equal(range.boards.length, 3);
+  nudgeRange(range, 9, 9);
+  assert.equal(range.yaw, YAW_LIMIT);
+  assert.equal(range.pitch, PITCH_MAX);
+  assert.deepEqual(shootRange(range).map(e => e.type), ['miss']);
+  assert.deepEqual(shootRange(range), [], 'the blaster cools after an air miss');
+  stepRange(range, 1);
+  aimAtBoard(range, 0);
+  assert.deepEqual(shootRange(range).filter(e => e.type === 'pick'), [{ type: 'pick', index: 0 }]);
+  aimAtBoard(range, 1);
+  assert.deepEqual(shootRange(range), [], 'one pick waits for the host');
+  markRange(range, false);
+  assert.equal(range.boards.length, 3, 'a wrong board stays up');
+  assert.equal(range.boards[0].wrong, true);
+  stepRange(range, 1);
+  aimAtBoard(range, 0);
+  assert.deepEqual(shootRange(range).map(e => e.type), ['miss'], 'a greyed board no longer counts');
+  stepRange(range, 1);
+  aimAtBoard(range, 1);
+  assert.equal(shootRange(range).find(e => e.type === 'pick').index, 1);
+  markRange(range, true);
+  assert.equal(range.solved, true);
+  aimAtBoard(range, 2);
+  assert.deepEqual(shootRange(range), []);
+  assert.equal(assignAsk(range, ask), false, 'the same question re-sent after solving does not reset');
+  assert.equal(createRange().ask, null);
+  const counted = createRange();
+  assignAsk(counted, { ...ask, round: 9, total: 10 });
+  assert.equal(counted.ask.total, 10, 'the range knows how long the round is');
+
+  const { clearRange } = await import('../sidecars/range/sim.mjs');
+  clearRange(counted);
+  assert.equal(counted.ask, null);
+  assert.equal(counted.boards.length, 0, 'a finished round takes the boards down');
+  assert.deepEqual(shootRange(counted), []);
+
+  const spell = createRange();
+  assignAsk(spell, { round: 3, kind: 'spell', prompt: 'Spell cat.', word: 'cat', letters: ['t', 'c', 'o', 'a'], choices: [{ label: 'cat', ok: true }] });
+  const letterAt = label => spell.boards.find(board => board.label === label).index;
+  aimAtBoard(spell, letterAt('t'));
+  assert.deepEqual(shootRange(spell).map(e => e.type), ['hit', 'slip']);
+  assert.equal(spell.built, '');
+  stepRange(spell, 1);
+  aimAtBoard(spell, letterAt('c'));
+  assert.deepEqual(shootRange(spell).map(e => e.type), ['hit', 'letter']);
+  assert.equal(spell.built, 'c');
+  assert.ok(spell.boards.every(board => board.label !== 'c'), 'a shot letter leaves the row');
+  assert.deepEqual(typeRange(spell, 'at').filter(e => e.type === 'pick'), [{ type: 'pick', index: 0 }]);
+  assert.equal(spell.solved, true);
+  assert.equal(spell.boards.length, 0);
+
+  const typed = createRange();
+  assignAsk(typed, { round: 4, kind: 'spell', prompt: 'Spell go.', word: 'go', letters: ['o', 'g'], choices: [{ label: 'go' }] });
+  assert.deepEqual(typeRange(typed, 'gx').map(e => e.type), ['letter', 'slip']);
+  assert.deepEqual(typeRange(typed, 'o'), [], 'typing waits out the slip too');
+  stepRange(typed, 1);
+  assert.equal(typeRange(typed, 'o').at(-1).type, 'pick');
+});
+
+test('walk mode spreads the boards over the plaza and keeps the learner out of walls', async () => {
+  const { createRange, assignAsk, setRangeMode, shootRange, markRange, stepRange, walkRange, nudgeRange, aimAtBoard, WALK_BOARD } = await import('../sidecars/range/sim.mjs');
+  const { SLOTS, BUILDINGS, PROPS, PLANTER, GEARS, SPAWN, YARD } = await import('../sidecars/range/map.mjs');
+  const open = (x, z, pad) => Math.abs(x) < YARD - pad && Math.abs(z) < YARD - pad
+    && BUILDINGS.every(b => Math.abs(x - b.x) > b.hw + pad || Math.abs(z - b.z) > b.hd + pad)
+    && PROPS.filter(p => p.r > 0).concat([PLANTER]).every(p => Math.hypot(x - p.x, z - p.z) > p.r + pad);
+  SLOTS.forEach(slot => assert.ok(open(slot.x, slot.z, WALK_BOARD.w / 2), `slot ${slot.x},${slot.z} is open ground`));
+  GEARS.forEach(gear => assert.ok(open(gear.x, gear.z, 0.4), `gear ${gear.x},${gear.z} is open ground`));
+
+  const walk = createRange({ mode: 'walk' });
+  const ask = { round: 5, kind: 'match', prompt: 'Shoot the word cat.', level: 2, choices: [{ label: 'dog' }, { label: 'cat' }, { label: 'sun' }, { label: 'map' }] };
+  assignAsk(walk, ask);
+  assert.equal(walk.boards.length, 4);
+  assert.equal(new Set(walk.boards.map(b => `${b.x},${b.z}`)).size, 4, 'each board has its own spot');
+  walk.boards.forEach(b => assert.ok(Math.hypot(b.x - SPAWN.x, b.z - SPAWN.z) >= 6, 'boards start away from the learner'));
+  const again = createRange({ mode: 'walk' });
+  assignAsk(again, ask);
+  assert.deepEqual(again.boards.map(b => [b.x, b.z]), walk.boards.map(b => [b.x, b.z]), 'the same question lands the same way');
+
+  nudgeRange(walk, Math.PI * 1.5, 0);
+  assert.ok(Math.abs(walk.yaw) <= Math.PI, 'walk turns all the way round');
+  const target = walk.boards[1];
+  aimAtBoard(walk, target.index);
+  nudgeRange(walk, Math.PI, 0);
+  assert.deepEqual(shootRange(walk).map(e => e.type), ['miss'], 'facing away hits nothing');
+  stepRange(walk, 1);
+  aimAtBoard(walk, target.index);
+  const shot = shootRange(walk);
+  assert.equal(shot[0].type, 'hit');
+  assert.ok(Math.abs(shot[0].u) < 0.01 && Math.abs(shot[0].v) < 0.01, 'a dead-center shot lands mid-board');
+  assert.equal(shot.at(-1).index, target.index);
+  markRange(walk, false);
+  assert.equal(walk.boards.find(b => b.index === target.index).wrong, true);
+
+  const wall = BUILDINGS[0];
+  walk.x = wall.x;
+  walk.z = wall.z + wall.hd + 2;
+  walk.yaw = 0;
+  for (let i = 0; i < 60; i++) walkRange(walk, 1, 0, 0.05);
+  assert.ok(walk.z >= wall.z + wall.hd, 'a shop wall stops the walk');
+  walk.x = 0;
+  walk.z = YARD - 2;
+  walk.yaw = Math.PI;
+  for (let i = 0; i < 60; i++) walkRange(walk, 1, 0, 0.05);
+  assert.ok(walk.z < YARD, 'the fence keeps the learner in the yard');
+
+  const gear = walk.gears[0];
+  walk.x = gear.x + 2;
+  walk.z = gear.z;
+  walk.yaw = -Math.PI / 2;
+  let picked = [];
+  for (let i = 0; i < 20 && !picked.length; i++) picked = walkRange(walk, 1, 0, 0.05).filter(e => e.type === 'gear');
+  assert.equal(picked.length, 1);
+  assert.equal(walk.gearCount, 1);
+
+  const spell = createRange({ mode: 'walk' });
+  assignAsk(spell, { round: 6, kind: 'spell', prompt: 'Spell cat.', word: 'cat', letters: ['t', 'c', 'o', 'a'], choices: [{ label: 'cat' }] });
+  assert.equal(spell.boards.length, 4, 'every letter stands somewhere on the map');
+  const spots = Object.fromEntries(spell.boards.map(b => [b.label, `${b.x},${b.z}`]));
+  aimAtBoard(spell, spell.boards.find(b => b.label === 'c').index);
+  assert.deepEqual(shootRange(spell).map(e => e.type), ['hit', 'letter']);
+  assert.equal(spell.boards.length, 3);
+  spell.boards.forEach(b => assert.equal(`${b.x},${b.z}`, spots[b.label], 'the other letters stay where they were'));
+
+  const switching = createRange();
+  assignAsk(switching, ask);
+  assert.ok(switching.boards.every(b => b.yaw != null));
+  assert.equal(setRangeMode(switching, 'walk'), true);
+  assert.ok(switching.boards.every(b => b.x != null), 'switching to Walk moves the boards onto the plaza');
+  assert.equal(setRangeMode(switching, 'walk'), false);
+  setRangeMode(switching, 'stand');
+  assert.equal(switching.yaw, 0);
+  assert.ok(switching.boards.every(b => b.yaw != null));
 });
 
 test('4th grade Move turns multiplying into skip-count movement', () => {
@@ -1355,4 +1563,58 @@ test('a verse script can be built from a reference or full text', async () => {
   assert.match(verseSheetRows(fromText), /^(\*,verse,[a-z]+,.+\n?)+\*?/m);
   const fromSeed = await scriptFromSeed('And the LORD visited Sarah as he had said, and the LORD did unto Sarah as he had spoken.', { title: 'Genesis 21:1' });
   assert.ok(parseVerseScript(fromSeed).steps.length >= 3);
+});
+
+test('garden gulp questions: one right answer, bubbles spread around the player', async () => {
+  const { localQuestion, normalizeQuestion, placeBubbles, RIGHT_COPIES, WRONG_COPIES } = await import('../sidecars/gulp/quiz.mjs');
+  const { mulberry, rightAnswerGrow, wrongAnswerShrink, touchedBubbles, START_RADIUS } = await import('../sidecars/gulp/logic.mjs');
+  const rnd = mulberry(5);
+  for (let i = 0; i < 8; i++) {
+    const q = localQuestion(rnd, i);
+    assert.ok(q.prompt.length > 3);
+    assert.equal(q.choices.filter(c => c.ok).length, 1, q.prompt);
+    assert.equal(new Set(q.choices.map(c => c.label)).size, q.choices.length, 'no duplicate answers');
+  }
+  const add = localQuestion(mulberry(9), 0);
+  const [, a, b] = add.prompt.match(/(\d+) \+ (\d+)/).map(Number);
+  assert.equal(add.choices.find(c => c.ok).label, String(a + b));
+
+  assert.equal(normalizeQuestion({ prompt: 'x', choices: [{ label: 'a', ok: true }] }), null);
+  assert.equal(normalizeQuestion({ prompt: 'x', choices: [{ label: 'a' }, { label: 'b' }] }), null);
+  const host = normalizeQuestion({ prompt: 'Gulp cat.', choices: [{ label: 'dog' }, { label: 'cat', ok: true }] });
+  assert.equal(host.choices[1].index, 1);
+
+  const near = { x: 10, z: -5 };
+  const bubbles = placeBubbles(mulberry(3), host.choices, near);
+  assert.equal(bubbles.length, RIGHT_COPIES + WRONG_COPIES);
+  assert.equal(bubbles.filter(x => x.choice === 1).length, RIGHT_COPIES);
+  for (const bub of bubbles) assert.ok(Math.hypot(bub.x - near.x, bub.z - near.z) >= 3, 'not right on top of the player');
+
+  assert.ok(rightAnswerGrow(START_RADIUS) > START_RADIUS * 1.8, 'a right answer is a big boost early');
+  assert.ok(wrongAnswerShrink(2) <= 2 * 0.85);
+  assert.ok(wrongAnswerShrink(START_RADIUS) < START_RADIUS, 'a wrong answer still costs something at the start');
+  assert.ok(START_RADIUS - wrongAnswerShrink(START_RADIUS) >= 0.15 - 1e-9, 'the bite is big enough to see');
+  assert.equal(wrongAnswerShrink(0.41), 0.4, 'never shrinks away to nothing');
+  const hole = { x: bubbles[0].x, z: bubbles[0].z, r: START_RADIUS };
+  assert.ok(touchedBubbles(hole, bubbles).includes(bubbles[0]));
+});
+
+test('garden gulp spreads answers wider as the hole grows, one answer per gulp', async () => {
+  const { placeBubbles, bubbleGap } = await import('../sidecars/gulp/quiz.mjs');
+  const { mulberry, bubbleReach } = await import('../sidecars/gulp/logic.mjs');
+  const choices = [{ ok: false }, { ok: true }, { ok: false }];
+  assert.ok(bubbleGap(8) > bubbleGap(1));
+  assert.ok(bubbleReach(8) < 8 + 0.45, 'a big hole has to aim, not just brush a bubble');
+  for (const r of [0.55, 2, 5, 10]) {
+    for (let seed = 1; seed <= 30; seed++) {
+      const near = { x: (seed % 7) * 6 - 18, z: (seed % 5) * 9 - 18, r };
+      const list = placeBubbles(mulberry(seed), choices, near);
+      for (let i = 0; i < list.length; i++) {
+        for (let j = i + 1; j < list.length; j++) {
+          const d = Math.hypot(list[i].x - list[j].x, list[i].z - list[j].z);
+          assert.ok(d > 2 * bubbleReach(r), `r=${r} seed=${seed}: two answers ${d.toFixed(1)} apart`);
+        }
+      }
+    }
+  }
 });
