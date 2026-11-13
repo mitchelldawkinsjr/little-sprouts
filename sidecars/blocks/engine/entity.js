@@ -1,5 +1,5 @@
 // From SimonDev's Quick_MinecraftClone2 (MIT, see LICENSE). Unchanged apart from import paths.
-import * as THREE from '../../../vendor/three/build/three.module.js';
+import * as THREE from '../../../vendor/three/build/three.module.js?v=r187';
 
 
 export const entity = (() => {

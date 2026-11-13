@@ -1,6 +1,6 @@
 // Forked from SimonDev's Quick_MinecraftClone2 (MIT). Unchanged apart from import paths;
 // Block meadow skips the clouds on low-power devices.
-import * as THREE from '../../../vendor/three/build/three.module.js';
+import * as THREE from '../../../vendor/three/build/three.module.js?v=r187';
 
 import {entity} from './entity.js';
 import {math} from './math.js';

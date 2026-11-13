@@ -1,6 +1,6 @@
 // Forked from SimonDev's Quick_MinecraftClone2 (MIT). Changes for Little Sprouts: Three r187 names,
 // the moon biome is a meadow now, and TerrainSample() lets the page find solid ground to stand on.
-import * as THREE from '../../../vendor/three/build/three.module.js';
+import * as THREE from '../../../vendor/three/build/three.module.js?v=r187';
 
 import {noise} from './noise.js';
 import {math} from './math.js';

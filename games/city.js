@@ -9,7 +9,7 @@ import {
   resolveAutoQuality, pixelRatioCap, rendererOptions, isPerformanceTier
 } from '../lib/device-tier.mjs?v=low-end1';
 
-const THREE_URL = '../vendor/three/build/three.module.js';
+const THREE_URL = '../vendor/three/build/three.module.js?v=r187';
 const RING = 3.4;
 
 let active = null;

@@ -1,6 +1,6 @@
 // Forked from SimonDev's Quick_MinecraftClone2 (MIT). Changes for Little Sprouts: the worker count
 // fits the device, a chunk knows when its first mesh is in, and the manager re-applies saved edits then.
-import * as THREE from '../../../vendor/three/build/three.module.js';
+import * as THREE from '../../../vendor/three/build/three.module.js?v=r187';
 
 import {worker_pool} from './worker-pool.js';
 

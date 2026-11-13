@@ -1,4 +1,4 @@
-import * as THREE from '../../../vendor/three/build/three.module.js';
+import * as THREE from '../../../vendor/three/build/three.module.js?v=r187';
 
 import {entity} from './entity.js';
 import {voxel_shader} from './voxel-shader.js';

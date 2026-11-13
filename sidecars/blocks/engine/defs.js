@@ -1,4 +1,4 @@
-import * as THREE from '../../../vendor/three/build/three.module.js';
+import * as THREE from '../../../vendor/three/build/three.module.js?v=r187';
 
 // Forked from SimonDev's Quick_MinecraftClone2 (MIT). Colours are Little Sprouts' soft daytime sky.
 // THREE.Color already turns these hex values into linear colour, so no extra conversion here.

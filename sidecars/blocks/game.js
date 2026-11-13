@@ -4,7 +4,7 @@
 // entity/component loop. This file is Little Sprouts' own: kid controls (touch, mouse, keys, and
 // the shared controller layout), gift boxes that ask the learner's questions, block rewards,
 // free build, and saving the world in this browser.
-import * as THREE from '../../vendor/three/build/three.module.js';
+import * as THREE from '../../vendor/three/build/three.module.js?v=r187';
 import { entity_manager } from './engine/entity-manager.js';
 import { entity } from './engine/entity.js';
 import { threejs_component } from './engine/threejs-component.js';

@@ -1,4 +1,4 @@
-import * as THREE from '../../../vendor/three/build/three.module.js';
+import * as THREE from '../../../vendor/three/build/three.module.js?v=r187';
 
 // Forked from SimonDev's Quick_MinecraftClone2 (MIT). The original loaded 16×16 PNGs into a
 // texture array. Here every tile is painted in code: Little Sprouts' own pixel art, and nothing

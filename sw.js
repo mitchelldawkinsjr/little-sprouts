@@ -10,10 +10,10 @@ const SHELL = [
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-180.png',
-  './vendor/fonts/fonts.css',
+  './vendor/fonts/fonts.css?v=r187',
   './vendor/fonts/dm-sans.woff2',
   './vendor/fonts/outfit.woff2',
-  './vendor/three/build/three.module.js',
+  './vendor/three/build/three.module.js?v=r187',
   './vendor/three/addons/objects/Sky.js'
 ];
 
