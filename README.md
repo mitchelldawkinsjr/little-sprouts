@@ -24,6 +24,16 @@ node server/serve.mjs
 
 Open http://localhost:8000. There is no build step. From that address the browser can install Little Sprouts, and the pages already opened keep working if the network drops. This server also opens the friend room for Paint Sphere and Garden gulp. If the site is already running from `python3 -m http.server`, start `node server/paint-link.mjs` beside it. Play with a friend uses that room.
 
+## Play with a friend, with or without internet
+
+Paint Sphere and Garden gulp share one friend room (`lib/friend-link.mjs`). Both games' `link.js` hand it their room socket, so the games don't change.
+
+- **Internet up:** the relay gives out the room code and link as before. Once both players are in, the two browsers open a direct WebRTC connection, and game messages travel over it. On the same Wi-Fi they never leave the house. If the direct connection can't open, messages keep going through the relay. If the internet drops mid-game, the direct connection carries on.
+- **Internet down, same Wi-Fi:** no relay answers, so a card asks **Start a room** or **Join a friend**. The host's computer chirps about four seconds of sound carrying its connection details (ggwave), and the friend's computer hears it and chirps back. The same details also show as a QR code for a tablet or phone to scan. Then the direct connection opens. Each device needs to have opened Little Sprouts online once, so the app is cached.
+- **Host online, friend offline:** the host can tap **Friend has no internet? Join on this Wi-Fi** and use the same sound handshake.
+
+Joining by sound needs the microphone once, and it works best with the computers close together and the sound up. Guest Wi-Fi networks that keep devices apart (client isolation) block the direct connection. `lib/friend-wire.mjs` packs a WebRTC offer or answer into about 75 bytes; `tests/friend-link.test.mjs` covers it and a full chirp round trip.
+
 ## How a round works
 
 Home shows **Up next**, then **What shall we play?** with shelves for shapes and colors, words, numbers, and adventures. **How we play** opens Tap, Move, Hunt, or Reach:

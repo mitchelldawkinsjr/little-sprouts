@@ -1,5 +1,7 @@
 import { gamePaused } from '../lib/hold.js?v=hold2';
 import { clamp, esc, rocketZone } from '../logic.mjs?v=structure3';
+import { spriteHtml } from '../lib/home-ui.mjs?v=shop1';
+import { buddyKind, buddyGear } from '../lib/buddy3d.mjs?v=ball2';
 const pointHits = (nx, ny, stage, item, pad = 24) => {
   const x = stage.left + nx * stage.width;
   const y = stage.top + ny * stage.height;
@@ -143,7 +145,11 @@ function openSession() {
   return session;
 }
 
-export function mountCatch(root, { prompt, choices, target, speed, reduced, onDone, onMiss, watchHands }) {
+export function mountCatch(root, { prompt, choices, target, speed, buddy, reduced, onDone, onMiss, watchHands }) {
+  // The learner's garden buddy carries the basket (ADR 0001). It is drawn outside the
+  // basket's box, so the catch area stays the basket.
+  const kind = buddyKind(buddy);
+  const carrier = `<span class="basket-buddy" style="--grow:3">${spriteHtml(kind, buddyGear(kind))}</span>`;
   const session = openSession();
   const list = [...choices];
   if (!list.some(choice => String(choice) === String(target))) list.push(target);
@@ -156,7 +162,7 @@ export function mountCatch(root, { prompt, choices, target, speed, reduced, onDo
   const reach = typeof watchHands === 'function';
   root.innerHTML = reach
     ? `<div class="camstage catch-cam"><video playsinline muted autoplay></video><div class="field" role="group" aria-label="${esc(prompt)}. Reach up and catch the right answer with your hand.">${items.map(item => `<span class="falling">${esc(item.choice)}</span>`).join('')}</div><span class="hand" hidden></span><span class="hand" hidden></span><p class="camstatus" id="camstatus"></p></div>`
-    : `<div class="arcade"><div class="field" role="group" aria-label="${esc(prompt)}. Move left and right to catch the right answer.">${items.map(item => `<span class="falling">${esc(item.choice)}</span>`).join('')}<span class="basket" aria-hidden="true">🧺</span></div>${steerButtons()}</div>`;
+    : `<div class="arcade"><div class="field" role="group" aria-label="${esc(prompt)}. Move left and right to catch the right answer.">${items.map(item => `<span class="falling">${esc(item.choice)}</span>`).join('')}<span class="basket" aria-hidden="true">${carrier}🧺</span></div>${steerButtons()}</div>`;
   const stage = root.querySelector('.arcade') || root.querySelector('.catch-cam');
   const field = root.querySelector('.field');
   const basket = root.querySelector('.basket');

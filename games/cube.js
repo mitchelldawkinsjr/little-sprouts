@@ -1,5 +1,5 @@
 /**
- * Cube dash — a blue cube runs a long path while red cubes rush in.
+ * Cube dash — the learner's garden buddy runs a long path while red cubes rush in (ADR 0001).
  * Steer into the cube with the right answer. A red cube costs a life.
  * The path, the rush, and the lives follow Jason Leisure's Red vs Blue.
  * The questions and the on-screen buttons are Little Sprouts' own.
@@ -8,6 +8,7 @@ import { cubeLanes, cubeOverlap } from '../logic.mjs?v=cube-dash';
 import {
   resolveAutoQuality, pixelRatioCap, rendererOptions, isPerformanceTier
 } from '../lib/device-tier.mjs?v=low-end1';
+import { makeBuddy, buddyKind } from '../lib/buddy3d.mjs?v=ball2';
 
 const THREE_URL = '../vendor/three/build/three.module.js?v=r187';
 const GROUND_TOP = 0.25;
@@ -106,7 +107,7 @@ function box(THREE, geo, color) {
   return mesh;
 }
 
-export function mountCube(root, { board = {}, reduced, nextQuestion, onPrompt, onLives, onMiss, onClear, onOver, onFinished } = {}) {
+export function mountCube(root, { board = {}, buddy, reduced, nextQuestion, onPrompt, onLives, onMiss, onClear, onOver, onFinished } = {}) {
   stopCube();
   const session = {
     dead: false,
@@ -124,7 +125,7 @@ export function mountCube(root, { board = {}, reduced, nextQuestion, onPrompt, o
 
   const host = document.createElement('div');
   host.className = 'arcade cube-play';
-  host.innerHTML = `<div class="cube" role="application" aria-label="Steer the blue cube. Jump over the red ones. Touch the cube with the right answer."><p class="cube-wait">The cubes are coming.</p><b class="cube-lives"></b><b class="cube-score"></b></div><div class="steer cube-pad" aria-label="Steer"><button type="button" class="steer-btn" data-dir="up" aria-label="Move ahead">↑</button><button type="button" class="steer-btn" data-dir="left" aria-label="Move left">←</button><button type="button" class="steer-btn" data-dir="down" aria-label="Move back">↓</button><button type="button" class="steer-btn" data-dir="right" aria-label="Move right">→</button><button type="button" class="steer-btn cube-jump" data-act="jump" aria-label="Jump">Jump</button></div>`;
+  host.innerHTML = `<div class="cube" role="application" aria-label="Steer your buddy. Jump over the red cubes. Touch the cube with the right answer."><p class="cube-wait">The cubes are coming.</p><b class="cube-lives"></b><b class="cube-score"></b></div><div class="steer cube-pad" aria-label="Steer"><button type="button" class="steer-btn" data-dir="up" aria-label="Move ahead">↑</button><button type="button" class="steer-btn" data-dir="left" aria-label="Move left">←</button><button type="button" class="steer-btn" data-dir="down" aria-label="Move back">↓</button><button type="button" class="steer-btn" data-dir="right" aria-label="Move right">→</button><button type="button" class="steer-btn cube-jump" data-act="jump" aria-label="Jump">Jump</button></div>`;
   root.replaceChildren(host);
   const stage = host.querySelector('.cube');
 
@@ -197,9 +198,14 @@ function begin(THREE, stage, session, { board, reduced, nextQuestion, onPrompt, 
   });
 
   const cubeGeo = new THREE.BoxGeometry(1, 1, 1);
-  const playerMat = new THREE.MeshStandardMaterial({ color: '#3ee0ef', roughness: 0.35, metalness: 0.08 });
-  const playerMesh = new THREE.Mesh(cubeGeo, playerMat);
-  playerMesh.castShadow = true;
+  // The runner is the learner's garden buddy. Its hit box stays the 1×1×1 cube.
+  const runner = makeBuddy(THREE, buddyKind(buddy), { shadow: false });
+  runner.group.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  const playerMesh = new THREE.Group();
+  runner.group.scale.setScalar(0.95);
+  runner.group.position.y = -0.5;
+  runner.group.rotation.y = Math.PI; // faces down the path (-z)
+  playerMesh.add(runner.group);
   scene.add(playerMesh);
   const player = { x: 0, y: GROUND_TOP + 0.5, z: 0, vx: 0, vy: 0, vz: 0, w: 1, h: 1, d: 1 };
 
@@ -309,7 +315,8 @@ function begin(THREE, stage, session, { board, reduced, nextQuestion, onPrompt, 
     settle(player);
     if (player.vz < -0.2) score += 28 * dt;
     playerMesh.position.set(player.x, player.y, player.z);
-    playerMat.emissive.set(invuln > 0 && Math.floor(invuln * 10) % 2 ? '#083038' : '#000000');
+    playerMesh.visible = !(invuln > 0 && Math.floor(invuln * 10) % 2);
+    runner.animate(dt, grounded() ? Math.min(1, Math.hypot(player.vx, player.vz) / 4 + 0.35) : 0.2, performance.now() / 1000);
     if (invuln > 0) invuln -= dt;
 
     ground.position.z = player.z - 10;
@@ -481,7 +488,7 @@ function begin(THREE, stage, session, { board, reduced, nextQuestion, onPrompt, 
     groundGeo.dispose();
     railGeo.dispose();
     railMat.dispose();
-    playerMat.dispose();
+    runner.dispose();
     ground.material.dispose();
     renderer.dispose();
     renderer.domElement.remove();

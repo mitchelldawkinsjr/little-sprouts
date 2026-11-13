@@ -2,3 +2,5 @@ Local copies for offline PWA play.
 - three@0.183.0 — MIT (https://github.com/mrdoob/three.js)
 - @mediapipe/tasks-vision@1.1.1 + pose_landmarker_lite — Apache-2.0 (https://mediapipe.dev)
 - Outfit + DM Sans — SIL OFL (Google Fonts)
+- ggwave@0.4.0 (data over sound, friend rooms with no internet) — MIT (https://github.com/ggerganov/ggwave)
+- qrcode-generator@2.0.4 — MIT, Kazuhiko Arase; jsQR@1.4.0 — Apache-2.0 (vendor/qr)

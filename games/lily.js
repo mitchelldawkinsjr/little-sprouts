@@ -4,7 +4,7 @@
  * the hazards. Ride the floating pots. Little Sprouts original scene.
  */
 import { questionHolding } from '../lib/hold.js?v=hold2';
-import { drawBuddy, buddyKind } from '../lib/buddy2d.mjs?v=shop1';
+import { drawBuddy, buddyKind } from '../lib/buddy2d.mjs?v=ball2';
 import { lilyPads, lilyRide, lilyOverlap } from '../logic.mjs?v=lily-cross';
 
 const COLS = 5;

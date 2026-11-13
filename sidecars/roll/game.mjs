@@ -11,7 +11,7 @@ import {
 import { localQuestion, normalizeQuestion, LOCAL_ROUND } from './quiz.mjs?v=roll1';
 import { resolveAutoQuality, pixelRatioCap, rendererOptions, isPerformanceTier } from '../../lib/device-tier.mjs?v=low-end1';
 import { readPad, moveDirs, actionDown } from '../../lib/pad-core.mjs?v=pad-rt';
-import { makeBuddyBall, buddyKind } from '../../lib/buddy3d.mjs?v=shop1';
+import { makeBuddyBall, buddyKind } from '../../lib/buddy3d.mjs?v=ball2';
 
 const $ = (id) => document.getElementById(id);
 const stage = $('stage');
@@ -590,7 +590,7 @@ const boop = () => { tone(330, 0.1, 0.18, 'square', 0.06); tone(247, 0.26, 0.25,
 /* ---------- voice (on its own page; inside Sprouts the host reads) ---------- */
 
 let sproutsVoice = null;
-import('../../lib/speech.js?v=roll').then((mod) => { sproutsVoice = mod; }).catch(() => {});
+import('../../lib/speech.js?v=ball2').then((mod) => { sproutsVoice = mod; }).catch(() => {});
 
 function speak(text) {
   if (!text || embedded) return;

@@ -3,7 +3,7 @@
  * that match. Stay clear of the snails. Little Sprouts original maze and art.
  */
 import { questionHolding } from '../lib/hold.js?v=hold2';
-import { drawBuddy, buddyKind } from '../lib/buddy2d.mjs?v=shop1';
+import { drawBuddy, buddyKind } from '../lib/buddy2d.mjs?v=ball2';
 import { esc, shuffle } from '../logic.mjs?v=structure3';
 
 const UNIT = 10;

@@ -1,8 +1,10 @@
 /**
  * Tilt maze — roll to the flag before the clock runs out.
+ * The ball is the learner's garden buddy in a clear ball (ADR 0001).
  * A fall or an empty clock waits for the host to add time.
  * The board is drawn here for Little Sprouts.
  */
+import { drawBuddyBall, buddyKind } from '../lib/buddy2d.mjs?v=ball2';
 import { questionHolding } from '../lib/hold.js?v=hold2';
 
 let active = null;
@@ -108,7 +110,9 @@ function holesFor(cols, rows, count, walls, rand) {
   return holes;
 }
 
-export function mountMaze(root, { clock, reduced, onTick, onFall, onTime, onGoal }) {
+export function mountMaze(root, { clock, buddy, reduced, onTick, onFall, onTime, onGoal }) {
+  const kind = buddyKind(buddy);
+  let spin = 0;
   stopMaze();
   const calm = reduced ? 0.72 : 1;
   const session = {
@@ -247,17 +251,7 @@ export function mountMaze(root, { clock, reduced, onTick, onFall, onTime, onGoal
     ctx.arc(bx + 2, by + 3, r * 0.75, 0, Math.PI * 2);
     ctx.fillStyle = '#24332c33';
     ctx.fill();
-    ctx.beginPath();
-    ctx.arc(bx, by, r, 0, Math.PI * 2);
-    ctx.fillStyle = '#f4f7ef';
-    ctx.fill();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = '#32634e';
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(bx - r * 0.28, by - r * 0.28, r * 0.22, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffffff';
-    ctx.fill();
+    drawBuddyBall(ctx, kind, bx, by, r, { spin });
   };
 
   const blocked = (x, y, nx, ny) => {
@@ -311,6 +305,7 @@ export function mountMaze(root, { clock, reduced, onTick, onFall, onTime, onGoal
       const next = blocked(ball.x, ball.y, ball.x + ball.vx * dt, ball.y + ball.vy * dt);
       if (next.x === ball.x) ball.vx = 0;
       if (next.y === ball.y) ball.vy = 0;
+      spin += ((next.x - ball.x) + (next.y - ball.y)) / 0.28;
       ball.x = next.x;
       ball.y = next.y;
       const cx = Math.floor(ball.x);

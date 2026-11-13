@@ -30,7 +30,7 @@ import {
   speakAndWait,
   voiceFor,
   voices
-} from '../lib/speech.js?v=buddy1';
+} from '../lib/speech.js?v=ball2';
 import { sidecarGame, sidecarIsBuilt } from '../lib/sidecar.js?v=buddy1';
 import { spriteHtml } from '../lib/home-ui.mjs?v=shop1';
 import { voiceStatusText } from '../lib/parent-ui.mjs?v=structure2';

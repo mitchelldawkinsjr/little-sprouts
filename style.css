@@ -670,3 +670,6 @@ body.listen-first header,body.listen-first .playtop{position:relative;z-index:31
   .shop-list{grid-template-columns:repeat(2,1fr);gap:10px}
   .shop-preview{width:80px;height:92px}
 }
+.basket .basket-buddy{position:absolute;left:50%;bottom:52%;transform:translateX(-50%);z-index:-1;pointer-events:none}
+.basket .basket-buddy .buddy-sprite{margin:0}
+@media(max-width:560px){.basket .basket-buddy .buddy-sprite{width:58px;height:68px}}

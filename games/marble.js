@@ -5,7 +5,7 @@
  * closed and can pop again. Clearing the asked color counts.
  */
 import { questionHolding } from '../lib/hold.js?v=hold2';
-import { drawBuddy, buddyKind } from '../lib/buddy2d.mjs?v=shop1';
+import { drawBuddy, buddyKind } from '../lib/buddy2d.mjs?v=ball2';
 import { clamp, esc, marbleLevel } from '../logic.mjs?v=structure3';
 
 const DIAM = 26;

@@ -10,7 +10,7 @@
  * You are the buddy on your profile. The rival is the next buddy in the list,
  * so the two never look the same.
  */
-import { makeBuddy, buddyKind, BUDDIES } from '/lib/buddy3d.mjs?v=shop1';
+import { makeBuddy, buddyKind, BUDDIES } from '/lib/buddy3d.mjs?v=ball2';
 
 window.SproutsPaintBuddy = (T, toon, mine) => {
   try {

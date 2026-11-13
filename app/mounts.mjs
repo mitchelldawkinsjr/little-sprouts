@@ -42,8 +42,8 @@ import {
   verseRecall,
   verseWithRef
 } from '../logic.mjs?v=offline1';
-import { canSpeak, warm } from '../lib/speech.js?v=buddy1';
-import { mountCatch, mountLanes, mountRace, mountRocket, pokeRocket, stopArcade } from '../games/arcade.js?v=ask-first2-r2';
+import { canSpeak, warm } from '../lib/speech.js?v=ball2';
+import { mountCatch, mountLanes, mountRace, mountRocket, pokeRocket, stopArcade } from '../games/arcade.js?v=ball2';
 import { mountLunar } from '../games/lunar.js?v=moon-board2';
 import { mountHoop, stopHoop } from '../games/hoop.js?v=hoop-trio-r2';
 import { lightMarkSlots, mountLight, stopLight } from '../games/light.js?v=light-pace-icons';
@@ -52,25 +52,25 @@ import { mountSky, stopSky } from '../games/sky.js?v=ask-first2-r2';
 import { mountPlanet, stopPlanet } from '../games/planet.js?v=sky-rocks2';
 import { mountPuzzle, stopPuzzle } from '../games/puzzle.js?v=puzzle-glass';
 import { mountMatch, stopMatch } from '../games/match.js?v=pair-match2';
-import { mountChase, stopChase } from '../games/chase.js?v=shop1';
-import { mountHop, stopHop } from '../games/hop.js?v=shop1';
+import { mountChase, stopChase } from '../games/chase.js?v=ball2';
+import { mountHop, stopHop } from '../games/hop.js?v=ball2';
 import { mountToast, stopToast } from '../games/toast.js?v=ask-first-r2';
 import { mountGlide, stopGlide } from '../games/glide.js?v=ask-first-r2';
 import { mountCity, stopCity } from '../games/city.js?v=low-end1';
-import { mountAisle, stopAisle } from '../games/aisle.js?v=shop1';
-import { mountLily, stopLily } from '../games/lily.js?v=shop1';
+import { mountAisle, stopAisle } from '../games/aisle.js?v=ball2';
+import { mountLily, stopLily } from '../games/lily.js?v=ball2';
 import { mountBust, stopBust } from '../games/bust.js?v=ghost-same2-r2';
 import { mountMole, stopMole } from '../games/mole.js?v=mole-pop3';
-import { mountCube, stopCube } from '../games/cube.js?v=low-end1';
+import { mountCube, stopCube } from '../games/cube.js?v=ball2';
 import { mountStack, stopStack } from '../games/stack.js?v=stack-words-r2';
 import { mountLamp, stopLamp } from '../games/lamp.js?v=lamp-r2';
 import { mountTrace, stopTrace } from '../games/trace.js?v=trace-car2';
 import { mountSort, stopSort } from '../games/sort.js?v=sort-roll';
 import { mountMerge, stopMerge } from '../games/merge.js?v=goo-jar2';
 import { mountCrayon, stopCrayon } from '../games/crayon.js?v=crayon-more';
-import { mountMarble, stopMarble } from '../games/marble.js?v=shop1';
-import { mountBridge, stopBridge } from '../games/bridge.js?v=shop1';
-import { mountMaze, stopMaze } from '../games/maze.js?v=ask-first-r2';
+import { mountMarble, stopMarble } from '../games/marble.js?v=ball2';
+import { mountBridge, stopBridge } from '../games/bridge.js?v=ball2';
+import { mountMaze, stopMaze } from '../games/maze.js?v=ball2';
 import {
   mountSidecar,
   postSidecar,
@@ -1362,6 +1362,7 @@ export function registerMounts(rt) {
         choices: g.options,
         target: g.target,
         speed: g.speed,
+        buddy: profileSprite(rt.p(), rt.data.active),
         reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
         watchHands: reach && g.mode === 'catch' ? watchCatchHands : undefined,
         watchBody: reach && g.mode === 'lanes' ? watchLaneBody : undefined,
@@ -1565,6 +1566,7 @@ export function registerMounts(rt) {
       g.live = true;
       g.court = mountMaze($('#arcade'), {
         clock: g.clock,
+        buddy: profileSprite(rt.p(), rt.data.active),
         reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
         onTick(info) {
           if (rt.game !== g || g.finished || g.asking) return;
@@ -1911,6 +1913,7 @@ export function registerMounts(rt) {
     if (cube && g.phase !== 'ready') {
       mountCube($('#arcade'), {
         board: g.board,
+        buddy: profileSprite(rt.p(), rt.data.active),
         reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
         nextQuestion: () => rt.arcadeQuestion('cube'),
         onPrompt: () => paintArcadePrompt('cube'),

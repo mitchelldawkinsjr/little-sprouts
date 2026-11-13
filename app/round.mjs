@@ -37,33 +37,33 @@ import {
   bustBoard,
   verseWithRef
 } from '../logic.mjs?v=offline1';
-import { canSpeak, commonLines, prefetchSpeech } from '../lib/speech.js?v=buddy1';
-import { stopArcade } from '../games/arcade.js?v=ask-first2-r2';
+import { canSpeak, commonLines, prefetchSpeech } from '../lib/speech.js?v=ball2';
+import { stopArcade } from '../games/arcade.js?v=ball2';
 import { stopHoop } from '../games/hoop.js?v=hoop-trio-r2';
 import { stopHook } from '../games/hook.js?v=ask-first2-r2';
 import { stopSky } from '../games/sky.js?v=ask-first2-r2';
 import { stopPlanet } from '../games/planet.js?v=sky-rocks2';
 import { stopPuzzle } from '../games/puzzle.js?v=puzzle-glass';
 import { stopMatch } from '../games/match.js?v=pair-match2';
-import { stopChase } from '../games/chase.js?v=shop1';
-import { stopHop } from '../games/hop.js?v=shop1';
+import { stopChase } from '../games/chase.js?v=ball2';
+import { stopHop } from '../games/hop.js?v=ball2';
 import { stopToast } from '../games/toast.js?v=ask-first-r2';
 import { stopGlide } from '../games/glide.js?v=ask-first-r2';
 import { stopCity } from '../games/city.js?v=low-end1';
-import { stopAisle } from '../games/aisle.js?v=shop1';
-import { stopLily } from '../games/lily.js?v=shop1';
+import { stopAisle } from '../games/aisle.js?v=ball2';
+import { stopLily } from '../games/lily.js?v=ball2';
 import { stopBust } from '../games/bust.js?v=ghost-same2-r2';
 import { stopMole } from '../games/mole.js?v=mole-pop3';
-import { stopCube } from '../games/cube.js?v=low-end1';
+import { stopCube } from '../games/cube.js?v=ball2';
 import { stopStack } from '../games/stack.js?v=stack-words-r2';
 import { stopLamp } from '../games/lamp.js?v=lamp-r2';
 import { stopTrace } from '../games/trace.js?v=trace-car2';
 import { stopSort } from '../games/sort.js?v=sort-roll';
 import { stopMerge } from '../games/merge.js?v=goo-jar2';
 import { stopCrayon } from '../games/crayon.js?v=crayon-more';
-import { stopMarble } from '../games/marble.js?v=shop1';
-import { stopBridge } from '../games/bridge.js?v=shop1';
-import { stopMaze } from '../games/maze.js?v=ask-first-r2';
+import { stopMarble } from '../games/marble.js?v=ball2';
+import { stopBridge } from '../games/bridge.js?v=ball2';
+import { stopMaze } from '../games/maze.js?v=ball2';
 import { postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=buddy1';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=arcade';
@@ -667,8 +667,8 @@ export function registerRound(rt) {
       g.board = cubeBoard(l);
       g.lives = g.board.lives;
       g.howTo = g.freePlay
-        ? 'Steer the blue cube. Jump over the red ones.'
-        : 'Steer the blue cube. Jump over the red ones. Touch the cube with the right answer. A red cube costs a life.';
+        ? 'Steer your buddy. Jump over the red cubes.'
+        : 'Steer your buddy. Jump over the red cubes. Touch the cube with the right answer. A red cube costs a life.';
       g.phase = g.started ? 'play' : 'ready';
       if (!g.started) {
         g.prompt = g.howTo;

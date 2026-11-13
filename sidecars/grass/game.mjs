@@ -10,7 +10,7 @@ import {
 } from './logic.mjs?v=grass1';
 import { localQuestion, normalizeQuestion, LOCAL_ROUND } from './quiz.mjs?v=grass1';
 import { makeGrass } from './grass.mjs?v=grass1';
-import { makeBuddy, buddyKind, BUDDIES } from '../../lib/buddy3d.mjs?v=shop1';
+import { makeBuddy, buddyKind, BUDDIES } from '../../lib/buddy3d.mjs?v=ball2';
 import { resolveAutoQuality, pixelRatioCap, rendererOptions, isPerformanceTier } from '../../lib/device-tier.mjs?v=low-end1';
 import { readPad, moveDirs, actionDown } from '../../lib/pad-core.mjs?v=pad-rt';
 
@@ -509,7 +509,7 @@ const tap = () => tone(180 + Math.random() * 40, 0, 0.05, 'sine', 0.08);
 /* ---------- voice (on its own page; inside Sprouts the host reads) ---------- */
 
 let sproutsVoice = null;
-import('../../lib/speech.js?v=grass1').then((mod) => { sproutsVoice = mod; }).catch(() => {});
+import('../../lib/speech.js?v=ball2').then((mod) => { sproutsVoice = mod; }).catch(() => {});
 
 function speak(text) {
   if (!text || embedded) return;

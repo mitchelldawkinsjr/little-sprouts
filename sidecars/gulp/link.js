@@ -1,82 +1,39 @@
-/* Paint Sphere opens friend rooms on /link. A plain file server has no room,
-   so a failed same-host connection tries the room process on port 5180. */
-const NativeSocket = WebSocket
-const ROOM_PORT = '5180'
+/* Friend rooms (Paint Sphere, Garden gulp). The game opens a WebSocket to /link; this hands
+   it a stand-in that lib/friend-link.mjs fills: the relay when the internet is up (with a
+   direct connection once both are in), or a sound / QR handshake on the same Wi-Fi when it
+   is down. Every other WebSocket is left alone. This copy matches sidecars/paint/link.js. */
+(function () {
+  var Native = window.WebSocket;
+  var LINK = '/lib/friend-link.mjs?v=friend1';
 
-function roomFallback(url) {
-  let parsed
-  try { parsed = new URL(url) } catch { return '' }
-  if (parsed.pathname !== '/link' || parsed.port === ROOM_PORT) return ''
-  parsed.port = ROOM_PORT
-  return parsed.href
-}
-
-function RoomSocket(url, protocols) {
-  const next = roomFallback(url)
-  if (!next) return new NativeSocket(url, protocols)
-  return new RoomFallback(url, next)
-}
-
-RoomSocket.CONNECTING = NativeSocket.CONNECTING
-RoomSocket.OPEN = NativeSocket.OPEN
-RoomSocket.CLOSING = NativeSocket.CLOSING
-RoomSocket.CLOSED = NativeSocket.CLOSED
-
-class RoomFallback extends EventTarget {
-  constructor(primary, fallback) {
-    super()
-    this.readyState = NativeSocket.CONNECTING
-    this._socket = null
-    this._opened = false
-    this._userClosed = false
-    this._attempt(primary, fallback)
+  function isRoom(url) {
+    try { return new URL(url, location.href).pathname === '/link'; } catch (e) { return false; }
   }
 
-  send(data) {
-    this._socket?.send(data)
+  function RoomSocket(url, protocols) {
+    if (!isRoom(url) || typeof EventTarget !== 'function') return new Native(url, protocols);
+    var stand = new EventTarget();
+    var room = null;
+    var queue = [];
+    var closeEarly = false;
+    stand.url = String(url);
+    stand.readyState = 0;
+    stand.send = function (data) { if (room) room.send(data); else queue.push(data); };
+    stand.close = function () { if (room) room.close(); else closeEarly = true; };
+    import(LINK).then(function (mod) {
+      room = mod.openRoom(String(url), stand, Native);
+      queue.splice(0).forEach(function (data) { room.send(data); });
+      if (closeEarly) room.close();
+    }).catch(function () {
+      stand.readyState = 3;
+      stand.dispatchEvent(new CloseEvent('close'));
+    });
+    return stand;
   }
 
-  close() {
-    this._userClosed = true
-    this.readyState = NativeSocket.CLOSING
-    if (this._socket) this._socket.close()
-    else this._finish()
-  }
-
-  _attempt(url, next) {
-    if (this._userClosed) return
-    const socket = new NativeSocket(url)
-    let settled = false
-    const giveUp = () => {
-      if (settled || this._opened) return
-      settled = true
-      if (this._userClosed || !next) this._finish()
-      else this._attempt(next, '')
-    }
-    socket.addEventListener('error', giveUp)
-    socket.addEventListener('close', giveUp)
-    socket.addEventListener('open', () => {
-      if (settled || this._userClosed) {
-        socket.close()
-        return
-      }
-      settled = true
-      this._opened = true
-      this._socket = socket
-      this.readyState = NativeSocket.OPEN
-      socket.addEventListener('message', (event) => {
-        this.dispatchEvent(new MessageEvent('message', { data: event.data }))
-      })
-      socket.addEventListener('close', () => this._finish())
-      this.dispatchEvent(new Event('open'))
-    })
-  }
-
-  _finish() {
-    if (this.readyState === NativeSocket.CLOSED) return
-    this.readyState = NativeSocket.CLOSED
-    this.dispatchEvent(new CloseEvent('close'))
-  }
-}
-
-window.WebSocket = RoomSocket
+  RoomSocket.CONNECTING = 0;
+  RoomSocket.OPEN = 1;
+  RoomSocket.CLOSING = 2;
+  RoomSocket.CLOSED = 3;
+  window.WebSocket = RoomSocket;
+})();
