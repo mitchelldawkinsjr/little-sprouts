@@ -186,6 +186,45 @@ body:has(.playtop) .speaker,body:has(.playtop) #reveal,body:has(.playtop) #raceS
 body:has(.playtop) .speaker{padding:8px 16px}
 body:has(.playtop) .feedback{margin:6px 0}
 body:has(.playtop) #arcade,body:has(.playtop) .camstage{flex:1;min-height:0;width:100%;align-self:stretch;display:flex;flex-direction:column}
+/* Play chrome: compact actions, focus mode, fullscreen */
+.playtop{gap:8px;flex-wrap:wrap}
+.playtop .play-main{display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 160px}
+.playtop .play-main b{font-size:15px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.playtop .play-main>span,.playtop .play-main #rallyTally,.playtop .play-main #lightTally,.playtop .play-main #glideTally,.playtop .play-main #cityTally,.playtop .play-main #runTally,.playtop .play-main #hopTally,.playtop .play-main #toastTally,.playtop .play-main #aisleTally,.playtop .play-main #lilyTally,.playtop .play-main #cubeTally,.playtop .play-main #moleTally,.playtop .play-main #bustTally,.playtop .play-main #stackTally,.playtop .play-main #lampTally,.playtop .play-main #bridgeTally,.playtop .play-main #rocketTally{font-size:13px;color:var(--muted);white-space:nowrap}
+.play-actions{display:flex;align-items:center;gap:6px;margin-left:auto}
+.icon-btn{min-width:44px;min-height:44px;padding:0;display:inline-grid;place-items:center;border-radius:22px;font-size:20px;line-height:1}
+.icon-btn .btn-label{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+#playListen{background:#edf2e5;border-color:#dce1d6}
+.playarea .speaker{margin:0 0 4px}
+body.play-focus #playFocus,body:fullscreen #playFocus{background:#e7eddf;border-color:#9db08c}
+body:fullscreen #playFull{background:#e7eddf;border-color:#9db08c}
+/* Option 1: auto-compact on small/tight screens */
+@media(max-width:700px),(max-height:560px){
+  body:has(.playtop) header{display:none}
+  body:has(.playtop) main{padding:4px 8px calc(8px + env(safe-area-inset-bottom));padding-top:max(4px,env(safe-area-inset-top))}
+  body:has(.playtop) .progress{margin:4px 0;height:6px}
+  body:has(.playtop) .playarea{padding:8px 8px 10px;border-radius:16px}
+  body:has(.playtop) .playarea h1{font-size:clamp(18px,4.5vw,24px);margin:0 0 4px}
+  body:has(.playtop) .playarea>.speaker{display:none}
+  body:has(.playtop) .playtop{gap:6px}
+  body:has(.playtop) .playtop #back{padding:8px 10px;font-size:12px}
+  .sidecar-frame{min-height:180px;border-radius:12px}
+}
+/* Option 2: focus mode (manual toggle, any size) */
+body.play-focus:has(.playtop) header{display:none}
+body.play-focus:has(.playtop) main{max-width:none;padding:4px 6px calc(6px + env(safe-area-inset-bottom));padding-top:max(4px,env(safe-area-inset-top))}
+body.play-focus:has(.playtop) .progress{display:none}
+body.play-focus:has(.playtop) .play-alone{display:none}
+body.play-focus:has(.playtop) .playarea{padding:6px;border:0;border-radius:12px;background:transparent}
+body.play-focus:has(.playtop) .playarea h1{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+body.play-focus:has(.playtop) .playarea>.speaker{display:none}
+body.play-focus:has(.playtop) .feedback{margin:2px 0;font-size:14px}
+body.play-focus:has(.playtop) .playtop{padding:2px 0}
+body.play-focus:has(.playtop) .playtop .play-main b{font-size:14px}
+@media(max-width:560px){
+  .playtop .play-main b{max-width:38vw}
+  .play-actions{gap:4px}
+}
 .sidecar-host{flex:1;min-height:0;width:100%}
 .sidecar-frame{width:100%;height:100%;min-height:280px;border:0;border-radius:16px;background:#1c1914;display:block}
 .sidecar-missing{margin:24px auto;max-width:360px;text-align:center;color:#244b3d}

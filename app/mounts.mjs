@@ -440,14 +440,59 @@ export function registerMounts(rt) {
       else rt.question();
     }, 700);
   }
+  function playFocusOn() { return document.body.classList.contains('play-focus'); }
+  function setPlayFocus(on) {
+    document.body.classList.toggle('play-focus', !!on);
+    try { sessionStorage.setItem('ls:play-focus', on ? '1' : '0'); } catch {}
+    syncPlayViewButtons();
+  }
+  function syncPlayViewButtons() {
+    const focus = $('#playFocus');
+    if (focus) {
+      const on = playFocusOn();
+      focus.setAttribute('aria-pressed', String(on));
+      focus.setAttribute('aria-label', on ? 'Show controls' : 'Focus view');
+      focus.title = on ? 'Show controls' : 'Focus view';
+      focus.textContent = on ? '⤢' : '⤡';
+    }
+    const full = $('#playFull');
+    if (full) {
+      const on = !!document.fullscreenElement;
+      full.setAttribute('aria-pressed', String(on));
+      full.setAttribute('aria-label', on ? 'Exit full screen' : 'Full screen');
+      full.title = on ? 'Exit full screen' : 'Full screen';
+      full.textContent = on ? '🗗' : '⛶';
+    }
+  }
+  function wirePlayViewControls(doListen) {
+    try { if (sessionStorage.getItem('ls:play-focus') === '1') document.body.classList.add('play-focus'); } catch {}
+    if ($('#playListen')) $('#playListen').onclick = doListen;
+    if ($('#playFocus')) $('#playFocus').onclick = () => setPlayFocus(!playFocusOn());
+    if ($('#playFull')) $('#playFull').onclick = async () => {
+      try {
+        if (document.fullscreenElement) await document.exitFullscreen();
+        else await (document.documentElement.requestFullscreen?.() || document.body.requestFullscreen?.());
+      } catch {}
+      syncPlayViewButtons();
+    };
+    document.removeEventListener('fullscreenchange', syncPlayViewButtons);
+    document.addEventListener('fullscreenchange', syncPlayViewButtons);
+    syncPlayViewButtons();
+  }
+  function playTopControls() {
+    return `<div class="play-actions"><button type="button" class="quiet icon-btn" id="playListen" aria-label="Hear it again" title="Hear it again">🔈</button><button type="button" class="quiet icon-btn" id="playFocus" aria-label="Focus view" title="Focus view" aria-pressed="false">⤡</button><button type="button" class="quiet icon-btn" id="playFull" aria-label="Full screen" title="Full screen" aria-pressed="false">⛶</button></div>`;
+  }
+
   function showCompletedVerse(g) {
     rt.releaseListen();
     rt.stopSpeech();
     const verse = verseWithRef(g.pack);
     const remember = g.pack?.remember ? `<p class="hint">${esc(g.pack.remember)}</p>` : '';
-    $('#app').innerHTML = `<div class="playtop" data-mode="verse"><button class="quiet" id="back">← All games</button><b>${esc(g.title || 'Memory verse')}</b></div><section class="playarea"><h1>Read the whole verse.</h1><p class="verse-done">${esc(verse)}</p>${remember}<button class="speaker" id="listen"><span aria-hidden="true">🔈</span> Hear it again</button><button class="primary" id="verseRead">I read it</button></section>`;
+    const hearVerse = () => { rt.stopSpeech(); rt.say(verse); };
+    $('#app').innerHTML = `<div class="playtop" data-mode="verse"><button class="quiet" id="back">← All games</button><div class="play-main"><b>${esc(g.title || 'Memory verse')}</b></div>${playTopControls()}</div><section class="playarea"><h1>Read the whole verse.</h1><p class="verse-done">${esc(verse)}</p>${remember}<button class="speaker" id="listen"><span aria-hidden="true">🔈</span> Hear it again</button><button class="primary" id="verseRead">I read it</button></section>`;
     $('#back').onclick = requestHome;
-    $('#listen').onclick = () => { rt.stopSpeech(); rt.say(verse); };
+    $('#listen').onclick = hearVerse;
+    wirePlayViewControls(hearVerse);
     $('#verseRead').onclick = () => rt.finish();
     rt.focusHeading();
   }
@@ -1070,10 +1115,7 @@ export function registerMounts(rt) {
     const reveal = race
       ? (raceEars ? '<button class="quiet" id="reveal" hidden aria-label="Show the word"><span aria-hidden="true">👁</span></button>' : '')
       : (rt.wordHidden(g) ? '<button class="quiet" id="reveal" aria-label="Show the word"><span aria-hidden="true">👁</span></button>' : '');
-    $('#app').innerHTML = `<div class="playtop" data-mode="${esc(g.mode)}"><button class="quiet" id="back">← All games</button><b>${esc(g.title)}</b>${tally}</div>${alone}${bar}<section class="playarea"><h1>${esc(rt.heading(g))}</h1><button class="speaker" id="listen"><span aria-hidden="true">🔈</span> Hear it again</button>${reveal}${memory}${scene}${body}<p class="feedback" id="feedback" aria-live="polite"></p><button class="primary" id="next" data-camera-go hidden>${g.index + 1 === rounds ? 'See my stars ★' : 'Next adventure →'}</button></section>`;
-    $('#back').onclick = requestHome;
-    if ($('#playAlone')) $('#playAlone').onclick = openSidecarAlone;
-    $('#listen').onclick = () => {
+    const hearAgain = () => {
       if ((g.mode === 'verse' || g.mode === 'clue') && (g.mode === 'clue' ? (g.hear || g.prompt) : g.pack?.verse)) {
         rt.releaseListen();
         rt.stopSpeech();
@@ -1083,6 +1125,11 @@ export function registerMounts(rt) {
         rt.say(g.prompt);
       } else rt.askBeforePlay(g.prompt);
     };
+    $('#app').innerHTML = `<div class="playtop" data-mode="${esc(g.mode)}"><button class="quiet" id="back">← All games</button><div class="play-main"><b>${esc(g.title)}</b>${tally}</div>${playTopControls()}</div>${alone}${bar}<section class="playarea"><h1>${esc(rt.heading(g))}</h1><button class="speaker" id="listen"><span aria-hidden="true">🔈</span> Hear it again</button>${reveal}${memory}${scene}${body}<p class="feedback" id="feedback" aria-live="polite"></p><button class="primary" id="next" data-camera-go hidden>${g.index + 1 === rounds ? 'See my stars ★' : 'Next adventure →'}</button></section>`;
+    $('#back').onclick = requestHome;
+    if ($('#playAlone')) $('#playAlone').onclick = openSidecarAlone;
+    $('#listen').onclick = hearAgain;
+    wirePlayViewControls(hearAgain);
     if ($('#reveal')) $('#reveal').onclick = () => {
       g.shown = true;
       const title = $('#app h1');
