@@ -24,6 +24,7 @@ COPY sidecars/skybound /usr/share/nginx/html/sidecars/skybound
 COPY sidecars/range /usr/share/nginx/html/sidecars/range
 COPY sidecars/blocks /usr/share/nginx/html/sidecars/blocks
 COPY sidecars/gulp /usr/share/nginx/html/sidecars/gulp
+COPY sidecars/roll /usr/share/nginx/html/sidecars/roll
 COPY index.html style.css app.js logic.mjs sheet.csv manifest.webmanifest sw.js /usr/share/nginx/html/
 COPY icons /usr/share/nginx/html/icons
 COPY app /usr/share/nginx/html/app

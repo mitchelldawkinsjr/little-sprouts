@@ -168,7 +168,7 @@ export function registerRound(rt) {
       message.gates = rallyGates(message.stops);
     }
     if (g.mode === 'flight' || g.mode === 'blocks') message.freeEvery = rallyClearCount(rt.questionCount());
-    if (g.mode === 'range') message.total = rt.questionCount();
+    if (g.mode === 'range' || g.mode === 'roll') message.total = rt.questionCount();
     return message;
   }
   function gradeRally(index) {
@@ -178,7 +178,7 @@ export function registerRound(rt) {
     const ok = !!token.ok;
     postSidecar({ type: 'mark', index, ok });
     // Sky flight and the range keep the same question up after a miss.
-    const flightMiss = (g.mode === 'flight' || g.mode === 'range' || g.mode === 'gulp' || g.mode === 'blocks') && !ok;
+    const flightMiss = (g.mode === 'flight' || g.mode === 'range' || g.mode === 'gulp' || g.mode === 'blocks' || g.mode === 'roll') && !ok;
     g.done = !flightMiss;
     if (!ok) g.missed = true;
     else if (!g.missed) g.firstCorrect++;
@@ -192,6 +192,8 @@ export function registerRound(rt) {
           ? (ok ? 'You found it.' : 'Not yet. Walk to another one.')
           : g.mode === 'gulp'
             ? (ok ? 'Yes! Gulp it all.' : 'Not yet. Find another bubble.')
+          : g.mode === 'roll'
+            ? (ok ? 'Yes! Right in the pocket.' : 'Not yet. Roll to another pocket.')
           : g.mode === 'blocks'
             ? (ok ? 'Yes! A new block for you.' : 'Not yet. Pick another one.')
           : g.mode === 'skybound'
@@ -766,6 +768,7 @@ export function registerRound(rt) {
         g.show = '';
       } else if (g.mode === 'walk') walkAsk(g);
       else if (g.mode === 'gulp') gulpAsk(g);
+      else if (g.mode === 'roll') rollAsk(g);
       else if (g.mode === 'paint') shellAsk(g);
       else {
         rallyAsk(g);
@@ -1111,6 +1114,14 @@ export function registerRound(rt) {
     else if (g.subject === 'shapes') g.prompt = `Gulp the ${g.target}.`;
     else if (g.subject === 'colors') g.prompt = `Gulp ${g.target}.`;
     else g.prompt = `${g.prompt} Gulp that answer.`;
+  }
+  function rollAsk(g) {
+    profileAsk(g, 'walk');
+    g.rallyKind = g.subject === 'math' ? 'math' : 'match';
+    if (g.subject === 'words') g.prompt = `Roll to the word ${g.target}.`;
+    else if (g.subject === 'shapes') g.prompt = `Roll to the ${g.target}.`;
+    else if (g.subject === 'colors') g.prompt = `Roll to ${g.target}.`;
+    else g.prompt = `${g.prompt} Roll to that answer.`;
   }
   function flightAsk(g) {
     if (g.rallyKind === 'spell') g.prompt = `Fly the letters of ${g.target}.`;
