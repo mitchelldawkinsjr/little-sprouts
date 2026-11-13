@@ -1,4 +1,4 @@
-import './lib/pad.js?v=pad-all';
+import './lib/pad.js?v=skybound-pad';
 import './lib/tilt.js?v=ask-first';
 import { roundCount, stageOf, profileSprite, SPRITES } from './logic.mjs?v=offline1';
 import { knownVoice } from './lib/speech.js?v=wait-2s';
