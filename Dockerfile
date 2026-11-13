@@ -31,5 +31,6 @@ COPY logic /usr/share/nginx/html/logic
 COPY lib /usr/share/nginx/html/lib
 COPY games /usr/share/nginx/html/games
 COPY voice /usr/share/nginx/html/voice
+COPY vendor /usr/share/nginx/html/vendor
 
 EXPOSE 80
