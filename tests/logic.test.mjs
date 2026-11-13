@@ -1048,7 +1048,7 @@ test('sidecar games stay a list a new bootstrapped game can join', async () => {
 });
 
 test('a sidecar opens its own page only when it sets alone', () => {
-  for (const [id, title] of [['rally', 'Backroad rally'], ['flight', 'Sky flight'], ['bike', 'Dirt ride'], ['walk', 'Garden walk'], ['paint', 'Paint sphere'], ['gulp', 'Garden gulp'], ['range', 'Shooting range']]) {
+  for (const [id, title] of [['rally', 'Backroad rally'], ['flight', 'Sky flight'], ['bike', 'Dirt ride'], ['walk', 'Garden walk'], ['paint', 'Paint sphere'], ['gulp', 'Garden gulp'], ['range', 'Targets']]) {
     const alone = sidecarAlone(sidecarGame(id));
     assert.equal(alone.title, title);
     assert.match(alone.href, new RegExp(`^sidecars/${id}/index\\.html$`));
@@ -1119,12 +1119,12 @@ test('garden gulp: a bigger hole still eats a smaller one, never the reverse', a
   assert.ok(small.stunUntil > 10, 'eaten hole is briefly safe');
 });
 
-test('the shooting range grades a board once and spells one letter at a time', async () => {
+test('Targets grades a board once and spells one letter at a time', async () => {
   const {
-    createRange, assignAsk, shootRange, markRange, stepRange, typeRange, nudgeRange, aimAtBoard, YAW_LIMIT, PITCH_MAX
+    createRange, assignAsk, paintRange, markRange, stepRange, typeRange, nudgeRange, aimAtBoard, YAW_LIMIT, PITCH_MAX
   } = await import('../sidecars/range/sim.mjs');
   const range = createRange();
-  assert.deepEqual(shootRange(range), []);
+  assert.deepEqual(paintRange(range), []);
   const ask = { round: 2, kind: 'math', prompt: 'What is 2 + 2?', level: 1, choices: [{ label: '3' }, { label: '4' }, { label: '6' }] };
   assert.equal(assignAsk(range, ask), true);
   assert.equal(assignAsk(range, ask), false);
@@ -1132,26 +1132,26 @@ test('the shooting range grades a board once and spells one letter at a time', a
   nudgeRange(range, 9, 9);
   assert.equal(range.yaw, YAW_LIMIT);
   assert.equal(range.pitch, PITCH_MAX);
-  assert.deepEqual(shootRange(range).map(e => e.type), ['miss']);
-  assert.deepEqual(shootRange(range), [], 'the blaster cools after an air miss');
+  assert.deepEqual(paintRange(range).map(e => e.type), ['miss']);
+  assert.deepEqual(paintRange(range), [], 'the launcher pauses after a miss');
   stepRange(range, 1);
   aimAtBoard(range, 0);
-  assert.deepEqual(shootRange(range).filter(e => e.type === 'pick'), [{ type: 'pick', index: 0 }]);
+  assert.deepEqual(paintRange(range).filter(e => e.type === 'pick'), [{ type: 'pick', index: 0 }]);
   aimAtBoard(range, 1);
-  assert.deepEqual(shootRange(range), [], 'one pick waits for the host');
+  assert.deepEqual(paintRange(range), [], 'one pick waits for the host');
   markRange(range, false);
   assert.equal(range.boards.length, 3, 'a wrong board stays up');
   assert.equal(range.boards[0].wrong, true);
   stepRange(range, 1);
   aimAtBoard(range, 0);
-  assert.deepEqual(shootRange(range).map(e => e.type), ['miss'], 'a greyed board no longer counts');
+  assert.deepEqual(paintRange(range).map(e => e.type), ['miss'], 'a greyed board no longer counts');
   stepRange(range, 1);
   aimAtBoard(range, 1);
-  assert.equal(shootRange(range).find(e => e.type === 'pick').index, 1);
+  assert.equal(paintRange(range).find(e => e.type === 'pick').index, 1);
   markRange(range, true);
   assert.equal(range.solved, true);
   aimAtBoard(range, 2);
-  assert.deepEqual(shootRange(range), []);
+  assert.deepEqual(paintRange(range), []);
   assert.equal(assignAsk(range, ask), false, 'the same question re-sent after solving does not reset');
   assert.equal(createRange().ask, null);
   const counted = createRange();
@@ -1162,17 +1162,17 @@ test('the shooting range grades a board once and spells one letter at a time', a
   clearRange(counted);
   assert.equal(counted.ask, null);
   assert.equal(counted.boards.length, 0, 'a finished round takes the boards down');
-  assert.deepEqual(shootRange(counted), []);
+  assert.deepEqual(paintRange(counted), []);
 
   const spell = createRange();
   assignAsk(spell, { round: 3, kind: 'spell', prompt: 'Spell cat.', word: 'cat', letters: ['t', 'c', 'o', 'a'], choices: [{ label: 'cat', ok: true }] });
   const letterAt = label => spell.boards.find(board => board.label === label).index;
   aimAtBoard(spell, letterAt('t'));
-  assert.deepEqual(shootRange(spell).map(e => e.type), ['hit', 'slip']);
+  assert.deepEqual(paintRange(spell).map(e => e.type), ['hit', 'slip']);
   assert.equal(spell.built, '');
   stepRange(spell, 1);
   aimAtBoard(spell, letterAt('c'));
-  assert.deepEqual(shootRange(spell).map(e => e.type), ['hit', 'letter']);
+  assert.deepEqual(paintRange(spell).map(e => e.type), ['hit', 'letter']);
   assert.equal(spell.built, 'c');
   assert.ok(spell.boards.every(board => board.label !== 'c'), 'a shot letter leaves the row');
   assert.deepEqual(typeRange(spell, 'at').filter(e => e.type === 'pick'), [{ type: 'pick', index: 0 }]);
@@ -1188,7 +1188,7 @@ test('the shooting range grades a board once and spells one letter at a time', a
 });
 
 test('walk mode spreads the boards over the plaza and keeps the learner out of walls', async () => {
-  const { createRange, assignAsk, setRangeMode, shootRange, markRange, stepRange, walkRange, nudgeRange, aimAtBoard, WALK_BOARD } = await import('../sidecars/range/sim.mjs');
+  const { createRange, assignAsk, setRangeMode, paintRange, markRange, stepRange, walkRange, nudgeRange, aimAtBoard, WALK_BOARD } = await import('../sidecars/range/sim.mjs');
   const { SLOTS, BUILDINGS, PROPS, PLANTER, GEARS, SPAWN, YARD } = await import('../sidecars/range/map.mjs');
   const open = (x, z, pad) => Math.abs(x) < YARD - pad && Math.abs(z) < YARD - pad
     && BUILDINGS.every(b => Math.abs(x - b.x) > b.hw + pad || Math.abs(z - b.z) > b.hd + pad)
@@ -1197,7 +1197,7 @@ test('walk mode spreads the boards over the plaza and keeps the learner out of w
   GEARS.forEach(gear => assert.ok(open(gear.x, gear.z, 0.4), `gear ${gear.x},${gear.z} is open ground`));
 
   const walk = createRange({ mode: 'walk' });
-  const ask = { round: 5, kind: 'match', prompt: 'Shoot the word cat.', level: 2, choices: [{ label: 'dog' }, { label: 'cat' }, { label: 'sun' }, { label: 'map' }] };
+  const ask = { round: 5, kind: 'match', prompt: 'Paint the word cat.', level: 2, choices: [{ label: 'dog' }, { label: 'cat' }, { label: 'sun' }, { label: 'map' }] };
   assignAsk(walk, ask);
   assert.equal(walk.boards.length, 4);
   assert.equal(new Set(walk.boards.map(b => `${b.x},${b.z}`)).size, 4, 'each board has its own spot');
@@ -1211,10 +1211,10 @@ test('walk mode spreads the boards over the plaza and keeps the learner out of w
   const target = walk.boards[1];
   aimAtBoard(walk, target.index);
   nudgeRange(walk, Math.PI, 0);
-  assert.deepEqual(shootRange(walk).map(e => e.type), ['miss'], 'facing away hits nothing');
+  assert.deepEqual(paintRange(walk).map(e => e.type), ['miss'], 'facing away hits nothing');
   stepRange(walk, 1);
   aimAtBoard(walk, target.index);
-  const shot = shootRange(walk);
+  const shot = paintRange(walk);
   assert.equal(shot[0].type, 'hit');
   assert.ok(Math.abs(shot[0].u) < 0.01 && Math.abs(shot[0].v) < 0.01, 'a dead-center shot lands mid-board');
   assert.equal(shot.at(-1).index, target.index);
@@ -1247,7 +1247,7 @@ test('walk mode spreads the boards over the plaza and keeps the learner out of w
   assert.equal(spell.boards.length, 4, 'every letter stands somewhere on the map');
   const spots = Object.fromEntries(spell.boards.map(b => [b.label, `${b.x},${b.z}`]));
   aimAtBoard(spell, spell.boards.find(b => b.label === 'c').index);
-  assert.deepEqual(shootRange(spell).map(e => e.type), ['hit', 'letter']);
+  assert.deepEqual(paintRange(spell).map(e => e.type), ['hit', 'letter']);
   assert.equal(spell.boards.length, 3);
   spell.boards.forEach(b => assert.equal(`${b.x},${b.z}`, spots[b.label], 'the other letters stay where they were'));
 

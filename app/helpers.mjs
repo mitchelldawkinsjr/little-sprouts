@@ -11,8 +11,8 @@ import {
   wordsFor,
   versePack
 } from '../logic.mjs?v=offline1';
-import { contextFor, onSpeechStatus, prefetchSpeech, speak, stop, voiceFor } from '../lib/speech.js?v=glow1';
-import { postSidecar, sidecarRows } from '../lib/sidecar.js?v=glow1';
+import { contextFor, onSpeechStatus, prefetchSpeech, speak, stop, voiceFor } from '../lib/speech.js?v=buddy1';
+import { postSidecar, sidecarRows } from '../lib/sidecar.js?v=buddy1';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 
 export function registerHelpers(rt) {
@@ -102,7 +102,7 @@ export function registerHelpers(rt) {
     walk: 'Listen, then walk to the word.',
     skybound: 'Listen, then tap the right answer.',
     blocks: 'Listen, then pick the right answer.',
-    range: 'Listen, then shoot the right board.',
+    range: 'Listen, then paint the right board.',
     trace: 'Start at the dot and stay on the line.',
     sort: 'Tap a tube, then pour into a match or an empty tube.',
     merge: 'Drop two that match so they touch.'
@@ -238,7 +238,7 @@ export function registerHelpers(rt) {
     walk: ['You found it.', 'Not yet. Walk to another one.'],
     skybound: ['Yes! Climb on.', 'Not yet. Keep climbing.'],
     blocks: ['Yes! A new block for you.', 'Not yet. Pick another one.'],
-    range: ['Yes! Bullseye.', 'Not yet. Shoot another one.']
+    range: ['Yes! Splat!', 'Not yet. Paint another one.']
   };
   function focusHeading() {
     const h = $('#app h1');

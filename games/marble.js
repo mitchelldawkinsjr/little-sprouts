@@ -5,6 +5,7 @@
  * closed and can pop again. Clearing the asked color counts.
  */
 import { questionHolding } from '../lib/hold.js?v=hold2';
+import { drawBuddy, buddyKind } from '../lib/buddy2d.mjs?v=shop1';
 import { clamp, esc, marbleLevel } from '../logic.mjs?v=structure3';
 
 const DIAM = 26;
@@ -59,7 +60,8 @@ function buildPath(w, h) {
   return { pts, length: total, frogR, cx, cy };
 }
 
-export function mountMarble(root, { palette, track, reduced, onQuestion, onScore, onClear, onOver }) {
+export function mountMarble(root, { buddy, palette, track, reduced, onQuestion, onScore, onClear, onOver }) {
+  const kind = buddyKind(buddy);
   stopMarble();
   const calm = reduced ? 0.55 : 1;
   const session = {
@@ -226,23 +228,16 @@ export function mountMarble(root, { palette, track, reduced, onQuestion, onScore
       drawMarble(marble.color, at.x, at.y, 12, false);
     });
     pops.forEach(pop => drawMarble(pop.color, pop.x, pop.y, 12 * pop.life, true));
+    // The shooter is the learner's garden buddy (ADR 0001), standing in the hole
+    // with the next marble held out the way it aims.
+    ctx.fillStyle = '#2f6a50';
+    ctx.beginPath();
+    ctx.arc(center.x, center.y, frogR, 0, Math.PI * 2);
+    ctx.fill();
+    drawBuddy(ctx, kind, center.x, center.y + frogR * 0.78, frogR * 2.1, { flip: Math.cos(aim) < 0, shadow: false });
     ctx.save();
     ctx.translate(center.x, center.y);
     ctx.rotate(aim);
-    ctx.fillStyle = '#2f6a50';
-    ctx.beginPath();
-    ctx.arc(0, 0, frogR, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#e7f6df';
-    ctx.beginPath();
-    ctx.arc(frogR * 0.42, -frogR * 0.46, frogR * 0.32, 0, Math.PI * 2);
-    ctx.arc(frogR * 0.42, frogR * 0.46, frogR * 0.32, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#24332c';
-    ctx.beginPath();
-    ctx.arc(frogR * 0.52, -frogR * 0.46, frogR * 0.14, 0, Math.PI * 2);
-    ctx.arc(frogR * 0.52, frogR * 0.46, frogR * 0.14, 0, Math.PI * 2);
-    ctx.fill();
     drawMarble(target, frogR + 4, 0, 9, false);
     ctx.restore();
     ctx.strokeStyle = '#32634e88';

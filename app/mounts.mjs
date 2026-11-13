@@ -42,7 +42,7 @@ import {
   verseRecall,
   verseWithRef
 } from '../logic.mjs?v=offline1';
-import { canSpeak, warm } from '../lib/speech.js?v=glow1';
+import { canSpeak, warm } from '../lib/speech.js?v=buddy1';
 import { mountCatch, mountLanes, mountRace, mountRocket, pokeRocket, stopArcade } from '../games/arcade.js?v=ask-first2-r2';
 import { mountLunar } from '../games/lunar.js?v=moon-board2';
 import { mountHoop, stopHoop } from '../games/hoop.js?v=hoop-trio-r2';
@@ -52,13 +52,13 @@ import { mountSky, stopSky } from '../games/sky.js?v=ask-first2-r2';
 import { mountPlanet, stopPlanet } from '../games/planet.js?v=sky-rocks2';
 import { mountPuzzle, stopPuzzle } from '../games/puzzle.js?v=puzzle-glass';
 import { mountMatch, stopMatch } from '../games/match.js?v=pair-match2';
-import { mountChase, stopChase } from '../games/chase.js?v=ask-first2-r2';
-import { mountHop, stopHop } from '../games/hop.js?v=hop-lives-r1';
+import { mountChase, stopChase } from '../games/chase.js?v=shop1';
+import { mountHop, stopHop } from '../games/hop.js?v=shop1';
 import { mountToast, stopToast } from '../games/toast.js?v=ask-first-r2';
 import { mountGlide, stopGlide } from '../games/glide.js?v=ask-first-r2';
 import { mountCity, stopCity } from '../games/city.js?v=low-end1';
-import { mountAisle, stopAisle } from '../games/aisle.js?v=market-aisle2-r2';
-import { mountLily, stopLily } from '../games/lily.js?v=ask-first-r2';
+import { mountAisle, stopAisle } from '../games/aisle.js?v=shop1';
+import { mountLily, stopLily } from '../games/lily.js?v=shop1';
 import { mountBust, stopBust } from '../games/bust.js?v=ghost-same2-r2';
 import { mountMole, stopMole } from '../games/mole.js?v=mole-pop3';
 import { mountCube, stopCube } from '../games/cube.js?v=low-end1';
@@ -68,8 +68,8 @@ import { mountTrace, stopTrace } from '../games/trace.js?v=trace-car2';
 import { mountSort, stopSort } from '../games/sort.js?v=sort-roll';
 import { mountMerge, stopMerge } from '../games/merge.js?v=goo-jar2';
 import { mountCrayon, stopCrayon } from '../games/crayon.js?v=crayon-more';
-import { mountMarble, stopMarble } from '../games/marble.js?v=ask-first2-r2';
-import { mountBridge, stopBridge } from '../games/bridge.js?v=ask-first-r2';
+import { mountMarble, stopMarble } from '../games/marble.js?v=shop1';
+import { mountBridge, stopBridge } from '../games/bridge.js?v=shop1';
 import { mountMaze, stopMaze } from '../games/maze.js?v=ask-first-r2';
 import {
   mountSidecar,
@@ -78,7 +78,7 @@ import {
   sidecarGame,
   sidecarIsBuilt,
   stopSidecar
-} from '../lib/sidecar.js?v=glow1';
+} from '../lib/sidecar.js?v=buddy1';
 import {
   SHELF_META,
   shelfOf as shelfIdOf,
@@ -89,7 +89,8 @@ import {
   shelfPanelHtml,
   starGardenHtml as gardenHtml,
   homePageHtml
-} from '../lib/home-ui.mjs?v=offline1';
+} from '../lib/home-ui.mjs?v=shop1';
+import { wornGear } from '../logic/shop.mjs?v=shop1';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=city-glide';
 
@@ -581,6 +582,7 @@ export function registerMounts(rt) {
     document.querySelectorAll('[data-style]').forEach(b => b.onclick = () => { rt.p().style = b.dataset.style; rt.save(); home('style'); });
     document.querySelectorAll('[data-learner]').forEach(b => b.onclick = () => pickLearner(+b.dataset.learner));
     if ($('#printCards')) $('#printCards').onclick = rt.openPrint;
+    if ($('#openShop')) $('#openShop').onclick = () => rt.openShop();
     document.querySelectorAll('[data-game]').forEach(b => b.onclick = () => start(b.dataset.game));
     rt.focusHeading();
     if (rt.data.sound) warm(rt.data.voice);
@@ -724,7 +726,7 @@ export function registerMounts(rt) {
   }
   function starGardenHtml(pick) {
     return gardenHtml({
-      rows: pointBoard(rt.data.profiles),
+      rows: pointBoard(rt.data.profiles).map(row => ({ ...row, gear: wornGear(rt.data.profiles[row.index]) })),
       activeIndex: rt.data.active,
       pick: !!pick,
       esc
@@ -1482,6 +1484,7 @@ export function registerMounts(rt) {
       const palette = rt.colors.slice(0, g.track?.colors || 3);
       g.live = true;
       g.court = mountMarble($('#arcade'), {
+        buddy: profileSprite(rt.p(), rt.data.active),
         palette,
         track: g.track,
         reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -1525,6 +1528,7 @@ export function registerMounts(rt) {
     if (bridge && g.phase !== 'ready') {
       g.live = true;
       g.court = mountBridge($('#arcade'), {
+        buddy: profileSprite(rt.p(), rt.data.active),
         span: g.span,
         stops: rt.questionCount(),
         reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -1771,6 +1775,7 @@ export function registerMounts(rt) {
     }
     if (chase && g.phase !== 'ready') {
       mountChase($('#arcade'), {
+        buddy: profileSprite(rt.p(), rt.data.active),
         prompt: g.prompt,
         choices: g.tokens,
         copies: g.board.copies,
@@ -1800,6 +1805,7 @@ export function registerMounts(rt) {
     }
     if (hop && g.phase !== 'ready') {
       mountHop($('#arcade'), {
+        buddy: profileSprite(rt.p(), rt.data.active),
         board: g.board,
         reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
         nextQuestion: () => rt.arcadeQuestion('hop'),
@@ -2254,6 +2260,7 @@ export function registerMounts(rt) {
     }
     if (aisle && g.phase !== 'ready') {
       mountAisle($('#arcade'), {
+        buddy: profileSprite(rt.p(), rt.data.active),
         board: g.board,
         reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
         nextQuestion: () => rt.arcadeQuestion('aisle'),
@@ -2300,6 +2307,7 @@ export function registerMounts(rt) {
     }
     if (lily && g.phase !== 'ready') {
       mountLily($('#arcade'), {
+        buddy: profileSprite(rt.p(), rt.data.active),
         board: g.board,
         reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
         nextQuestion: () => rt.arcadeQuestion('lily'),

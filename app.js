@@ -1,14 +1,15 @@
 import './lib/pad.js?v=grass-pad';
 import './lib/tilt.js?v=ask-first';
 import { roundCount, stageOf, profileSprite, SPRITES } from './logic.mjs?v=offline1';
-import { knownVoice } from './lib/speech.js?v=glow1';
-import { findBuiltSidecars } from './lib/sidecar.js?v=glow1';
+import { knownVoice } from './lib/speech.js?v=buddy1';
+import { findBuiltSidecars } from './lib/sidecar.js?v=buddy1';
 import { rt } from './app/runtime.mjs?v=lean-r2';
-import { registerHelpers } from './app/helpers.mjs?v=glow1';
-import { registerRound } from './app/round.mjs?v=glow1';
-import { registerMounts } from './app/mounts.mjs?v=glow1';
-import { registerParent } from './app/parent.mjs?v=glow1';
-import { registerRouter } from './app/router.mjs?v=hash-r1';
+import { registerHelpers } from './app/helpers.mjs?v=buddy1';
+import { registerRound } from './app/round.mjs?v=shop1';
+import { registerMounts } from './app/mounts.mjs?v=shop1';
+import { registerParent } from './app/parent.mjs?v=shop1';
+import { registerShop } from './app/shop.mjs?v=shop1';
+import { registerRouter } from './app/router.mjs?v=shop1';
 
 // Live state. Every module reads and writes it through rt.
 Object.assign(rt, {
@@ -71,6 +72,7 @@ registerHelpers(rt);
 registerRound(rt);
 registerMounts(rt);
 registerParent(rt);
+registerShop(rt);
 registerRouter(rt);
 
 if (named) rt.save();

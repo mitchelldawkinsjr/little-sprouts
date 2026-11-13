@@ -4,6 +4,7 @@
  * the hazards. Ride the floating pots. Little Sprouts original scene.
  */
 import { questionHolding } from '../lib/hold.js?v=hold2';
+import { drawBuddy, buddyKind } from '../lib/buddy2d.mjs?v=shop1';
 import { lilyPads, lilyRide, lilyOverlap } from '../logic.mjs?v=lily-cross';
 
 const COLS = 5;
@@ -95,42 +96,13 @@ function drawShape(ctx, shape, x, y, s, fill) {
   ctx.restore();
 }
 
-function drawTurtle(ctx, x, y, s, face, squash) {
-  ctx.save();
-  ctx.translate(x, y);
-  if (face === 'left') ctx.rotate(-Math.PI / 2);
-  else if (face === 'right') ctx.rotate(Math.PI / 2);
-  else if (face === 'down') ctx.rotate(Math.PI);
-  const belly = squash ? 0.2 : 0.3;
-  ctx.fillStyle = '#5d8f4a';
-  ctx.beginPath();
-  ctx.ellipse(0, s * 0.08, s * 0.38, s * belly, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#3f6b38';
-  ctx.beginPath();
-  ctx.ellipse(0, s * 0.02, s * 0.32, s * belly * 0.85, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = '#2d4f28';
-  ctx.lineWidth = Math.max(1.5, s * 0.04);
-  ctx.beginPath();
-  ctx.moveTo(-s * 0.18, -s * 0.08);
-  ctx.lineTo(s * 0.18, s * 0.12);
-  ctx.moveTo(s * 0.18, -s * 0.08);
-  ctx.lineTo(-s * 0.18, s * 0.12);
-  ctx.stroke();
-  ctx.fillStyle = '#7f9f62';
-  ctx.beginPath();
-  ctx.ellipse(0, -s * 0.28, s * 0.16, s * 0.12, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#1d3324';
-  ctx.beginPath();
-  ctx.arc(-s * 0.06, -s * 0.3, s * 0.035, 0, Math.PI * 2);
-  ctx.arc(s * 0.06, -s * 0.3, s * 0.035, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
+// The player is the learner's garden buddy (ADR 0001), standing upright on the cell.
+function drawTurtle(ctx, kind, x, y, s, face, squash) {
+  drawBuddy(ctx, kind, x, y + s * 0.42, s * 0.98, { flip: face === 'left', squash: squash ? 0.6 : 0 });
 }
 
-export function mountLily(root, { board = {}, reduced, nextQuestion, onPrompt, onMiss, onClear, onLives, onOver, onFinished } = {}) {
+export function mountLily(root, { buddy, board = {}, reduced, nextQuestion, onPrompt, onMiss, onClear, onLives, onOver, onFinished } = {}) {
+  const kind = buddyKind(buddy);
   stopLily();
   if (!root) return;
   const session = {
@@ -345,7 +317,7 @@ export function mountLily(root, { board = {}, reduced, nextQuestion, onPrompt, o
       const lift = hop ? Math.sin(Math.min(1, hop.t) * Math.PI) * cell * 0.16 : 0;
       const px = ox + (frog.x + FROG / 2) * cell;
       const py = oy + (frog.y + FROG / 2) * cell - lift;
-      drawTurtle(ctx, px, py, cell * 0.72, face, false);
+      drawTurtle(ctx, kind, px, py, cell * 0.72, face, false);
     } else if (hurtKind === 'water') {
       const px = ox + (frog.x + FROG / 2) * cell;
       const py = oy + (frog.y + FROG / 2) * cell;
@@ -357,7 +329,7 @@ export function mountLily(root, { board = {}, reduced, nextQuestion, onPrompt, o
     } else {
       const px = ox + (frog.x + FROG / 2) * cell;
       const py = oy + (frog.y + FROG * 0.8) * cell;
-      drawTurtle(ctx, px, py, cell * 0.72, face, true);
+      drawTurtle(ctx, kind, px, py, cell * 0.72, face, true);
     }
     for (let i = 0; i < Math.max(0, lives); i++) {
       ctx.fillStyle = '#2f7a3a';

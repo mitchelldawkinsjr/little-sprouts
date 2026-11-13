@@ -573,12 +573,18 @@ function drawRider() {
     knee = { x: 4, y: -1 };
     boot = { x: 10, y: 7 };
   }
-  const suit = '#1f3d6e';
-  const suitLite = '#3c6cb8';
+  // The rider is the learner's garden buddy (ADR 0001): its colors on the suit, its head
+  // in place of the helmet. Without the buddy module the old helmeted rider is drawn.
+  const look = window.SproutsBuddy;
+  const kind = look ? look.buddyKind(window.SproutsBuddyName) : '';
+  const colors = look ? look.buddyColors(kind) : null;
+  const suit = colors ? colors.body : '#1f3d6e';
+  const suitLite = colors ? colors.belly : '#3c6cb8';
+  const glove = colors ? colors.limb : '#f2c14e';
   limb(shoulder.x - 2, shoulder.y + 1, hand.x - 2, hand.y + 1, 5, suit);
   limb(hip.x, hip.y, knee.x, knee.y, 6, suit);
   limb(knee.x, knee.y, boot.x, boot.y, 5.5, suit);
-  ctx.fillStyle = '#161616';
+  ctx.fillStyle = colors ? colors.limb : '#161616';
   ctx.beginPath();
   ctx.ellipse(boot.x, boot.y, 5, 3.2, 0.4, 0, 7);
   ctx.fill();
@@ -591,10 +597,14 @@ function drawRider() {
   ctx.ellipse(shoulder.x - 2, shoulder.y + 4, 3.2, 5, 0.2, 0, 7);
   ctx.fill();
   limb(shoulder.x + 2, shoulder.y, hand.x, hand.y, 5, suit);
-  ctx.fillStyle = '#f2c14e';
+  ctx.fillStyle = glove;
   ctx.beginPath();
   ctx.arc(hand.x, hand.y, 3.2, 0, 7);
   ctx.fill();
+  if (look) {
+    look.drawBuddy(ctx, kind, head.x, head.y, 46, { part: 'head' });
+    return;
+  }
   ctx.fillStyle = '#f2c14e';
   ctx.beginPath();
   ctx.arc(head.x, head.y, 11, 0, 7);

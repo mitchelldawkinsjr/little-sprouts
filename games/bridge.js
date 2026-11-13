@@ -4,6 +4,7 @@
  * landing wide. A wrong answer makes it a thin strip.
  */
 import { gamePaused } from '../lib/hold.js?v=hold2';
+import { drawBuddy, buddyKind } from '../lib/buddy2d.mjs?v=shop1';
 import { bridgeReach, bridgeWindow } from '../logic.mjs?v=bridge-run';
 
 let active = null;
@@ -23,7 +24,8 @@ function nextPad(span, rand) {
   };
 }
 
-export function mountBridge(root, { span, stops = 5, reduced, onCrossed, onMiss }) {
+export function mountBridge(root, { buddy, span, stops = 5, reduced, onCrossed, onMiss }) {
+  const kind = buddyKind(buddy);
   stopBridge();
   const calm = reduced ? 0.65 : 1;
   const session = {
@@ -116,31 +118,8 @@ export function mountBridge(root, { span, stops = 5, reduced, onCrossed, onMiss 
     ctx.fill();
   };
 
-  const drawHero = (x, y, step) => {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.fillStyle = '#111';
-    ctx.beginPath();
-    ctx.roundRect(-9, -32, 18, 22, 5);
-    ctx.fill();
-    const kick = Math.sin(step) * 3;
-    ctx.beginPath();
-    ctx.arc(-5, -7, 3.2, 0, Math.PI * 2);
-    ctx.arc(5, -7 + kick, 3.2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(4, -22, 2.4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#e23b3b';
-    ctx.fillRect(-11, -33, 22, 5);
-    ctx.beginPath();
-    ctx.moveTo(-11, -31);
-    ctx.lineTo(-18, -36);
-    ctx.lineTo(-16, -26);
-    ctx.fill();
-    ctx.restore();
-  };
+  // The walker is the learner's garden buddy (ADR 0001).
+  const drawHero = (x, y, step) => drawBuddy(ctx, kind, x, y, 44, { step });
 
   const drawFlag = (x, ground) => {
     ctx.fillStyle = '#111';

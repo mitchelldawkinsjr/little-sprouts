@@ -1,11 +1,11 @@
 import * as THREE from 'three';
 import { questionHolding } from '../../lib/hold.js?v=hold2';
 import {
-  EYE, STAND_DIST, assignAsk, clearRange, createRange, markRange, nudgeRange, setRangeMode, shootRange, stepRange, typeRange, walkRange
-} from './sim.mjs?v=range4';
+  EYE, STAND_DIST, assignAsk, clearRange, createRange, markRange, nudgeRange, setRangeMode, paintRange, stepRange, typeRange, walkRange
+} from './sim.mjs?v=targets1';
 import { BUILDINGS, PLANTER, YARD } from './map.mjs';
 import { buildPlaza } from './plaza.js?v=range4';
-import { createSound } from './sound.mjs?v=range4';
+import { createSound } from './sound.mjs?v=targets1';
 import { actionDown, axisDir, moveDirs, readPad } from '../../lib/pad-core.mjs?v=pad-rt';
 import {
   resolveAutoQuality, pixelRatioCap, rendererOptions, isPerformanceTier
@@ -49,7 +49,7 @@ let noteUntil = 0;
 let boardKey = '';
 let stride = 0;
 let bob = 0;
-// Controller latch. lib/pad.js leaves this frame alone, so the range reads pad-core itself.
+// Controller latch. lib/pad.js leaves this frame alone, so Targets reads pad-core itself.
 const padHeld = { action: false };
 
 let renderer;
@@ -59,7 +59,7 @@ try {
 } catch (err) {
   noteEl.hidden = false;
   noteEl.textContent = 'This device needs WebGL. Update the browser or turn on hardware acceleration.';
-  promptEl.textContent = 'Shooting range needs a newer browser';
+  promptEl.textContent = 'Targets needs a newer browser';
   throw err;
 }
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, pixelRatioCap(visualTier)));
@@ -120,23 +120,40 @@ for (let index = 0; index < treeCount; index++) {
 // Walk mode: the plaza is built the first time someone picks Walk.
 let plaza = null;
 
-// The blaster rides with the camera, low and to the right.
-const blaster = new THREE.Group();
-const body = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.42), lambert(0x2f7fc4));
-const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.3, 10), lambert(0xf2c14e));
-barrel.rotation.x = Math.PI / 2;
-barrel.position.set(0, 0.02, -0.33);
-const grip = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.16, 0.08), lambert(0xe86a3a));
-grip.position.set(0, -0.12, 0.1);
-blaster.add(body, barrel, grip);
-blaster.position.set(0.32, -0.3, -0.7);
-camera.add(blaster);
+// A chunky toy paint launcher rides with the camera, low and to the right. The clear
+// hopper on top and the nozzle show the color of the next paint ball.
+let paintIndex = 0;
+const launcher = new THREE.Group();
+const loadedMat = lambert(PAINT[0]);
+const body = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.12, 0.36), lambert(0x2fb5a3));
+const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.135, 0.03, 0.3), lambert(0xffd23f));
+stripe.position.set(0, 0.0, 0.01);
+const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.16, 14), lambert(0xf7f4ec));
+nozzle.rotation.x = Math.PI / 2;
+nozzle.position.set(0, 0.01, -0.25);
+const tip = new THREE.Mesh(new THREE.TorusGeometry(0.042, 0.014, 8, 18), loadedMat);
+tip.position.set(0, 0.01, -0.33);
+const hopper = new THREE.Mesh(
+  new THREE.SphereGeometry(0.075, 16, 12),
+  new THREE.MeshLambertMaterial({ color: 0xe8f6ff, transparent: true, opacity: 0.45, depthWrite: false })
+);
+hopper.scale.set(1, 1.15, 1);
+hopper.position.set(0, 0.13, 0.02);
+const loaded = new THREE.Mesh(new THREE.SphereGeometry(0.045, 12, 10), loadedMat);
+loaded.position.set(0, 0.11, 0.02);
+const grip = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.15, 0.08), lambert(0xff8c42));
+grip.position.set(0, -0.11, 0.09);
+grip.rotation.x = -0.25;
+launcher.add(body, stripe, nozzle, tip, hopper, loaded, grip);
+launcher.position.set(0.32, -0.3, -0.7);
+camera.add(launcher);
 let kick = 0;
 
-const dart = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), lambert(0xf28c28));
-dart.visible = false;
-scene.add(dart);
-const shot = { from: new THREE.Vector3(), to: new THREE.Vector3(), t: 1 };
+const blobMat = lambert(PAINT[0]);
+const blob = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 10), blobMat);
+blob.visible = false;
+scene.add(blob);
+const flick = { from: new THREE.Vector3(), to: new THREE.Vector3(), t: 1 };
 
 const boardRoot = new THREE.Group();
 scene.add(boardRoot);
@@ -195,7 +212,7 @@ function splatTexture(color) {
 
 function splatMaterial() {
   return new THREE.MeshBasicMaterial({
-    map: splatTextures[Math.floor(Math.random() * splatTextures.length)],
+    map: splatTextures[paintIndex],
     transparent: true,
     depthWrite: false,
     polygonOffset: true,
@@ -374,7 +391,7 @@ function splatGround() {
     old.material.dispose();
     groundRoot.remove(old);
   }
-  shot.ground = t;
+  flick.ground = t;
   return true;
 }
 
@@ -390,14 +407,21 @@ function showNote(text, seconds = 1.2) {
   noteUntil = performance.now() + seconds * 1000;
 }
 
-function fireDart(distance) {
+function throwBlob(distance) {
   camera.updateMatrixWorld();
-  blaster.localToWorld(shot.from.set(0, 0.02, -0.5));
-  shot.to.copy(camera.position).addScaledVector(aimDir(), distance || (state.mode === 'walk' ? 30 : DIST));
-  shot.t = 0;
-  dart.visible = !reduced;
+  launcher.localToWorld(flick.from.set(0, 0.01, -0.36));
+  flick.to.copy(camera.position).addScaledVector(aimDir(), distance || (state.mode === 'walk' ? 30 : DIST));
+  flick.t = 0;
+  blobMat.color.set(PAINT[paintIndex]);
+  blob.visible = !reduced;
   kick = 1;
-  sound.shoot();
+  sound.pop();
+}
+
+/** After each paint ball, the next color drops into the hopper. */
+function nextPaint() {
+  paintIndex = (paintIndex + 1) % PAINT.length;
+  loadedMat.color.set(PAINT[paintIndex]);
 }
 
 function applyEvents(events) {
@@ -408,7 +432,7 @@ function applyEvents(events) {
       splatBoard(event);
       sound.hit();
     } else if (event.type === 'miss') {
-      showNote(state.mode === 'walk' ? 'Missed. Find a board and aim at it.' : 'Missed. Aim at a board.', 0.8);
+      showNote(state.mode === 'walk' ? 'Missed. Find a board and paint it.' : 'Missed. Point at a board.', 0.8);
       sound.miss();
     } else if (event.type === 'letter') sound.letter();
     else if (event.type === 'slip') {
@@ -426,26 +450,27 @@ function applyEvents(events) {
 }
 
 function judged(ok) {
-  showNote(ok ? 'Yes!' : 'Not yet. Shoot another one.');
+  showNote(ok ? 'Yes!' : 'Not yet. Paint another one.');
   if (ok) sound.right();
   else sound.wrong();
 }
 
-function fire() {
+function paint() {
   if (questionHolding()) return;
-  const events = shootRange(state);
+  const events = paintRange(state);
   if (!events.length) return;
   const hit = events.find(event => event.type === 'hit');
-  shot.ground = 0;
+  flick.ground = 0;
   const landed = !hit && splatGround();
-  fireDart(hit?.t || (landed ? shot.ground : 0));
+  throwBlob(hit?.t || (landed ? flick.ground : 0));
   if (landed) sound.splat();
   applyEvents(events);
+  nextPaint();
 }
 
-// Stand and Walk share the four arrow buttons. In Walk they walk and turn instead of aiming.
+// Stand and Walk share the four arrow buttons. In Walk they walk and turn instead of looking around.
 const buttonLabels = {
-  stand: { aimUp: 'Aim up', aimDown: 'Aim down', aimLeft: 'Aim left', aimRight: 'Aim right' },
+  stand: { aimUp: 'Look up', aimDown: 'Look down', aimLeft: 'Look left', aimRight: 'Look right' },
   walk: { aimUp: 'Walk forward', aimDown: 'Walk back', aimLeft: 'Turn left', aimRight: 'Turn right' }
 };
 
@@ -494,10 +519,10 @@ function hold(button, side) {
   button.addEventListener('pointercancel', up);
 }
 Object.keys(held).forEach(id => hold(document.getElementById(id), id));
-document.getElementById('shoot').addEventListener('click', fire);
+document.getElementById('paint').addEventListener('click', paint);
 
 // Reading the question aloud. Inside Little Sprouts the host reads it (on show, or on replay)
-// and holds play while it does. On its own page the range reads with the browser's voice and
+// and holds play while it does. On its own page Targets reads with the browser's voice and
 // holds play the same way: questionHolding() sees listen-first on this page's body.
 let speechWaiting = '';
 let speechToken = 0;
@@ -547,7 +572,7 @@ window.addEventListener('keydown', event => {
   if (event.target === spellInput) return;
   if (event.code === 'Space' || event.code === 'Enter') {
     event.preventDefault();
-    if (!event.repeat) fire();
+    if (!event.repeat) paint();
     return;
   }
   keys.add(event.code);
@@ -577,13 +602,13 @@ renderer.domElement.addEventListener('pointerup', event => {
   const tapped = drag.moved <= 8;
   drag = null;
   if (!tapped || questionHolding()) return;
-  // A tap aims where the finger landed, then shoots.
+  // A tap points where the finger landed, then paints.
   const rect = renderer.domElement.getBoundingClientRect();
   pointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
   ray.setFromCamera(pointer, camera);
   const dir = ray.ray.direction;
   nudgeRange(state, Math.atan2(dir.x, -dir.z) - state.yaw, Math.asin(Math.max(-1, Math.min(1, dir.y))) - state.pitch);
-  fire();
+  paint();
 });
 renderer.domElement.addEventListener('pointercancel', () => { drag = null; });
 
@@ -594,7 +619,7 @@ spellInput.addEventListener('input', () => {
   if (!raw || questionHolding()) return;
   const events = typeRange(state, raw);
   spellInput.classList.toggle('wrong', events.some(event => event.type === 'slip'));
-  if (events.some(event => event.type === 'letter')) fireDart();
+  if (events.some(event => event.type === 'letter')) { throwBlob(); nextPaint(); }
   applyEvents(events);
 });
 
@@ -609,7 +634,7 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-// Stand: arrows, WASD, and the buttons aim.
+// Stand: arrows, WASD, and the buttons look around.
 // Walk: up and down (W, S, ▲, ▼) walk, left and right turn, and A and D step sideways.
 function keyInput(dt) {
   const on = code => keys.has(code);
@@ -626,8 +651,8 @@ function keyInput(dt) {
   return { forward: 0, strafe: 0 };
 }
 
-// Same mapping as every Little Sprouts game, and A or the right trigger shoots.
-// Stand: left stick or d-pad aims, the right stick fine-aims.
+// Same mapping as every Little Sprouts game, and A or the right trigger paints.
+// Stand: left stick or d-pad looks around, the right stick fine-tunes.
 // Walk: left stick walks and steps sideways, the d-pad walks and turns, the right stick looks around.
 // B, Y, and Start stay with the host page.
 function padInput(dt, quiet) {
@@ -659,7 +684,7 @@ function padInput(dt, quiet) {
     const y = (pad.up || pad.down ? dirs.y : stickY) + lookY * 0.4;
     if (x || y) nudgeRange(state, x * aimRate * dt, -y * aimRate * 0.7 * dt);
   }
-  if (fresh) fire();
+  if (fresh) paint();
   return move;
 }
 
@@ -733,7 +758,7 @@ function paintMap() {
 
 function paintHud(now) {
   const ask = state.ask;
-  promptEl.textContent = ask?.prompt || (state.mode === 'walk' ? 'Walk around and shoot a board.' : 'Aim at a board and shoot.');
+  promptEl.textContent = ask?.prompt || (state.mode === 'walk' ? 'Walk around and paint a board.' : 'Point at a board and paint it.');
   if ((showEl.dataset.html || '') !== (ask?.show || '')) {
     showEl.dataset.html = ask?.show || '';
     showEl.innerHTML = ask?.show || '';
@@ -763,12 +788,14 @@ function animate(dt) {
   else camera.position.set(0, EYE, 0);
   camera.rotation.set(state.pitch, -state.yaw, 0);
   kick = Math.max(0, kick - dt * 6);
-  blaster.position.set(0.32 + (walking && !reduced ? Math.cos(bob * 0.5) * 0.012 : 0), -0.3 + sway * 0.4, -0.7 + kick * 0.08);
-  blaster.rotation.x = kick * 0.18;
-  if (shot.t < 1) {
-    shot.t = Math.min(1, shot.t + dt / (walking ? 0.24 : 0.18));
-    dart.position.lerpVectors(shot.from, shot.to, shot.t);
-    if (shot.t >= 1) dart.visible = false;
+  launcher.position.set(0.32 + (walking && !reduced ? Math.cos(bob * 0.5) * 0.012 : 0), -0.3 + sway * 0.4, -0.7 + kick * 0.06);
+  launcher.rotation.x = kick * 0.14;
+  if (flick.t < 1) {
+    flick.t = Math.min(1, flick.t + dt / (walking ? 0.3 : 0.24));
+    blob.position.lerpVectors(flick.from, flick.to, flick.t);
+    // A slight lob, like a soft paint ball.
+    blob.position.y += Math.sin(flick.t * Math.PI) * 0.08;
+    if (flick.t >= 1) blob.visible = false;
   }
   boardMeshes.forEach(mesh => {
     if (mesh.wobble <= 0) return;
@@ -782,7 +809,7 @@ function frame(now) {
   const dt = last ? Math.min(0.05, (now - last) / 1000) : 0;
   last = now;
   if (questionHolding()) {
-    // The question is being read. Keep drawing, but take no aim, steps, or shots.
+    // The question is being read. Keep drawing, but take no looks, steps, or paint.
     keys.clear();
     padInput(dt, true);
     renderer.render(scene, camera);
@@ -805,14 +832,14 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 
-// On its own page the range plays a short round of sample questions, then shows the score.
+// On its own page Targets plays a short round of sample questions, then shows the score.
 // Inside Little Sprouts the host sets the round length and ends the round itself.
 const demos = [
-  { kind: 'spell', prompt: 'Spell cat. Shoot the letters in order.', word: 'cat', letters: ['t', 'c', 'o', 'a', 's'], choices: ['cat'], answer: 'cat' },
+  { kind: 'spell', prompt: 'Spell cat. Paint the letters in order.', word: 'cat', letters: ['t', 'c', 'o', 'a', 's'], choices: ['cat'], answer: 'cat' },
   { kind: 'math', prompt: 'What is 2 + 2?', choices: ['3', '4', '6'], answer: '4' },
-  { kind: 'match', prompt: 'Shoot the word dog.', choices: ['sun', 'dog', 'map', 'cup'], answer: 'dog' },
-  { kind: 'match', prompt: 'Shoot the star.', choices: [{ label: 'circle', shape: 'circle', fill: '#5d7a45' }, { label: 'star', shape: 'star', fill: '#5d7a45' }, { label: 'square', shape: 'square', fill: '#5d7a45' }], answer: 'star' },
-  { kind: 'spell', prompt: 'Spell sun. Shoot the letters in order.', word: 'sun', letters: ['n', 'u', 'm', 's', 'a'], choices: ['sun'], answer: 'sun' },
+  { kind: 'match', prompt: 'Paint the word dog.', choices: ['sun', 'dog', 'map', 'cup'], answer: 'dog' },
+  { kind: 'match', prompt: 'Paint the star.', choices: [{ label: 'circle', shape: 'circle', fill: '#5d7a45' }, { label: 'star', shape: 'star', fill: '#5d7a45' }, { label: 'square', shape: 'square', fill: '#5d7a45' }], answer: 'star' },
+  { kind: 'spell', prompt: 'Spell sun. Paint the letters in order.', word: 'sun', letters: ['n', 'u', 'm', 's', 'a'], choices: ['sun'], answer: 'sun' },
   { kind: 'math', prompt: 'What is 3 + 4?', choices: ['6', '7', '9', '8'], answer: '7' }
 ];
 let demoRound = 0;

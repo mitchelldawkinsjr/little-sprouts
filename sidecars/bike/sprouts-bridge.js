@@ -187,6 +187,7 @@
     var data = event.data;
     if (!data || data.source !== SOURCE || event.source !== window.parent) return;
     if (data.type === 'config') applyConfig(data);
+    if (data.buddy) window.SproutsBuddyName = data.buddy;
     if (data.type === 'ask' && data.choices && data.choices.length) {
       if (asking) return;
       var waiting = needing;

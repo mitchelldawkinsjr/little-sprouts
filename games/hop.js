@@ -4,6 +4,7 @@
  * rise toward the learner. Wrong answers crumble. Little Sprouts original.
  */
 import { questionHolding } from '../lib/hold.js?v=hold2';
+import { drawBuddy, buddyKind } from '../lib/buddy2d.mjs?v=shop1';
 
 let active = null;
 
@@ -29,28 +30,9 @@ function roundBox(ctx, x, y, w, h, r) {
   else ctx.rect(x, y, w, h);
 }
 
-function drawSprout(ctx, x, y, w, h, face, rising) {
-  ctx.save();
-  ctx.translate(x + w / 2, y + h * 0.62);
-  ctx.scale(face === 'left' ? -1 : 1, rising ? 0.82 : 1);
-  const r = Math.min(w, h) * 0.62;
-  ctx.fillStyle = '#f8ce6c';
-  ctx.beginPath();
-  ctx.ellipse(0, 0, r * 0.72, r * 0.78, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = '#8a6a12';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  ctx.fillStyle = '#7f9f62';
-  ctx.beginPath();
-  ctx.ellipse(r * 0.15, -r * 0.85, r * 0.42, r * 0.2, -0.7, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#244b3d';
-  ctx.beginPath();
-  ctx.arc(-r * 0.22, -r * 0.02, r * 0.09, 0, Math.PI * 2);
-  ctx.arc(r * 0.18, -r * 0.02, r * 0.09, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
+// The player is the learner's garden buddy (ADR 0001).
+function drawSprout(ctx, kind, x, y, w, h, face, rising) {
+  drawBuddy(ctx, kind, x + w / 2, y + h, h * 1.25, { flip: face === 'left', squash: rising ? -0.35 : 0 });
 }
 
 function drawMark(ctx, plat, x, y, s) {
@@ -78,7 +60,8 @@ function drawMark(ctx, plat, x, y, s) {
   ctx.restore();
 }
 
-export function mountHop(root, { board = {}, reduced, nextQuestion, onPrompt, onMiss, onClear, onLives, onOver, onFinished }) {
+export function mountHop(root, { buddy, board = {}, reduced, nextQuestion, onPrompt, onMiss, onClear, onLives, onOver, onFinished }) {
+  const kind = buddyKind(buddy);
   stopHop();
   const session = {
     dead: false,
@@ -454,7 +437,7 @@ export function mountHop(root, { board = {}, reduced, nextQuestion, onPrompt, on
       ctx.fill();
     });
     const rising = player.vy < -jumpV * 0.45;
-    drawSprout(ctx, play.x + player.x, play.y + player.y, player.w, player.h, player.face, rising);
+    drawSprout(ctx, kind, play.x + player.x, play.y + player.y, player.w, player.h, player.face, rising);
     for (let i = 0; i < Math.max(0, lives); i++) {
       ctx.fillStyle = '#2f7a3a';
       ctx.beginPath();

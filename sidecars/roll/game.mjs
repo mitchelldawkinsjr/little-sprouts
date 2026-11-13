@@ -1,5 +1,6 @@
 /**
  * Marble box — tilt a wooden maze and roll the marble into the pocket with the right answer.
+ * The marble is the learner's garden buddy in a clear ball (ADR 0001).
  * Inside Little Sprouts the host sends each question; on its own page the game makes them.
  */
 import * as THREE from 'three';
@@ -10,6 +11,7 @@ import {
 import { localQuestion, normalizeQuestion, LOCAL_ROUND } from './quiz.mjs?v=roll1';
 import { resolveAutoQuality, pixelRatioCap, rendererOptions, isPerformanceTier } from '../../lib/device-tier.mjs?v=low-end1';
 import { readPad, moveDirs, actionDown } from '../../lib/pad-core.mjs?v=pad-rt';
+import { makeBuddyBall, buddyKind } from '../../lib/buddy3d.mjs?v=shop1';
 
 const $ = (id) => document.getElementById(id);
 const stage = $('stage');
@@ -125,31 +127,20 @@ const tray = new THREE.Group();
 scene.add(tray);
 let levelGroup = null;
 
-function marbleTexture() {
-  const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 128;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#3f9c8f';
-  ctx.fillRect(0, 0, 256, 128);
-  const swirl = (color, off, width) => {
-    ctx.strokeStyle = color;
-    ctx.lineWidth = width;
-    ctx.beginPath();
-    for (let x = 0; x <= 256; x += 4) ctx.lineTo(x, 64 + Math.sin(x / 256 * Math.PI * 4 + off) * 34);
-    ctx.stroke();
-  };
-  swirl('#f3d36b', 0, 12);
-  swirl('#fbf5ea', 2.2, 7);
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
+// The marble is the learner's garden buddy in a clear ball; the host's ask can swap it.
+let marble = makeBuddyBall(THREE, buddyKind(), MARBLE_R);
+let marbleMesh = marble.group;
+function setBuddy(kind) {
+  if (kind === marble.kind) return;
+  const next = makeBuddyBall(THREE, kind, MARBLE_R);
+  next.group.position.copy(marbleMesh.position);
+  next.group.scale.copy(marbleMesh.scale);
+  const parent = marbleMesh.parent;
+  if (parent) { parent.remove(marbleMesh); parent.add(next.group); }
+  marble.dispose();
+  marble = next;
+  marbleMesh = next.group;
 }
-
-const marbleMesh = new THREE.Mesh(
-  new THREE.SphereGeometry(MARBLE_R, 32, 20),
-  new THREE.MeshStandardMaterial({ map: marbleTexture(), roughness: 0.18, metalness: 0.05 })
-);
 const marbleShadow = new THREE.Mesh(new THREE.CircleGeometry(MARBLE_R * 1.05, 24), MATS.shadow);
 marbleShadow.rotation.x = -Math.PI / 2;
 marbleShadow.renderOrder = 2;
@@ -219,7 +210,7 @@ function disposeGroup(group) {
   group.traverse((o) => {
     if (o.isMesh || o.isSprite) {
       if (o.geometry && !o.userData.shared) o.geometry.dispose();
-      if (o.material && !Object.values(MATS).includes(o.material) && o.material !== marbleMesh.material) {
+      if (o.material && !Object.values(MATS).includes(o.material)) {
         o.material.map?.dispose();
         o.material.dispose();
       }
@@ -664,6 +655,7 @@ function hostAsk(msg) {
   // The host's own markup: things to count, or a number path.
   q.show = typeof msg.show === 'string' ? msg.show : '';
   if ('sound' in msg) state.sound = msg.sound !== false;
+  setBuddy(buddyKind(msg.buddy));
   const key = `${q.round}|${q.prompt}|${q.choices.map(c => c.label).join(',')}`;
   if (key === state.hostKey) return;
   state.hostKey = key;
@@ -754,7 +746,6 @@ if (embedded) call(window.SproutsSidecar?.need);
 
 /* ---------- loop ---------- */
 
-const spin = new THREE.Quaternion();
 const axis = new THREE.Vector3();
 let last = performance.now();
 
@@ -797,12 +788,12 @@ function frame(now) {
   }
   if (state.phase === 'play') m.y = MARBLE_R;
 
-  // Roll the marble the way it moves.
+  // Roll the shell the way it moves; the buddy inside turns to face that way and runs.
   if (speed > 0.01) {
     axis.set(m.vz, 0, -m.vx).normalize();
-    spin.setFromAxisAngle(axis, (speed * dt) / MARBLE_R);
-    marbleMesh.quaternion.premultiply(spin);
+    marble.roll(axis, (speed * dt) / MARBLE_R);
   }
+  marble.animate(dt, state.phase === 'play' ? m.vx : 0, state.phase === 'play' ? m.vz : 0, now / 1000);
   marbleMesh.position.set(m.x, m.y, m.z);
   marbleShadow.position.set(m.x + 0.12, 0.012, m.z + 0.08);
   marbleShadow.visible = state.phase !== 'drop' && marbleMesh.scale.x > 0.5;

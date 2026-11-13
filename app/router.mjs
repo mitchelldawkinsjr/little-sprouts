@@ -9,7 +9,7 @@ export function parseHash(hash) {
   if (!raw || raw === 'home') return { view: 'home' };
   const [view, detail] = raw.split('/');
   if (view === 'play' && detail) return { view: 'play', mode: detail };
-  if (view === 'welcome' || view === 'settings') return { view };
+  if (view === 'welcome' || view === 'settings' || view === 'shop') return { view };
   return { view: 'home' };
 }
 
@@ -75,6 +75,19 @@ export function registerRouter(rt) {
         await leaveRoundThen(() => {
           rt.home?.(undefined, { syncHash: false });
           rt.start?.(mode, { syncHash: false });
+        });
+        return;
+      }
+
+      if (view === 'shop') {
+        if (!rt.data.profiles?.length) {
+          rt.setHash('welcome', { replace: true });
+          rt.showWelcome?.({ syncHash: false });
+          return;
+        }
+        await leaveRoundThen(() => {
+          if (rt.roundActive()) rt.home?.(undefined, { syncHash: false });
+          rt.openShop?.({ syncHash: false });
         });
         return;
       }

@@ -3,6 +3,7 @@
  * that match. Stay clear of the snails. Little Sprouts original maze and art.
  */
 import { questionHolding } from '../lib/hold.js?v=hold2';
+import { drawBuddy, buddyKind } from '../lib/buddy2d.mjs?v=shop1';
 import { esc, shuffle } from '../logic.mjs?v=structure3';
 
 const UNIT = 10;
@@ -165,42 +166,13 @@ function drawMark(ctx, choice, x, y, s) {
   ctx.restore();
 }
 
-function drawBeetle(ctx, x, y, s, dir, dying) {
-  const cx = x + s / 2;
-  const cy = y + s / 2;
-  const r = s * 0.38;
-  ctx.save();
-  ctx.translate(cx, cy);
-  const angle = dir === 'right' ? 0 : dir === 'left' ? Math.PI : dir === 'up' ? -Math.PI / 2 : dir === 'down' ? Math.PI / 2 : 0;
-  ctx.rotate(angle);
-  if (dying > 0) ctx.globalAlpha = Math.max(0.15, 1 - dying);
-  ctx.fillStyle = '#2f5c3a';
-  ctx.beginPath();
-  ctx.ellipse(0, 0, r * 1.05, r * 0.78, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#4a8a58';
-  ctx.beginPath();
-  ctx.ellipse(-r * 0.15, 0, r * 0.55, r * 0.5, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = '#1d3b28';
-  ctx.lineWidth = Math.max(1.5, s * 0.06);
-  ctx.beginPath();
-  ctx.moveTo(0, -r * 0.7);
-  ctx.lineTo(0, r * 0.7);
-  ctx.stroke();
-  ctx.fillStyle = '#244b3d';
-  ctx.beginPath();
-  ctx.arc(r * 0.55, -r * 0.18, r * 0.14, 0, Math.PI * 2);
-  ctx.arc(r * 0.55, r * 0.18, r * 0.14, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = '#1d3b28';
-  ctx.beginPath();
-  ctx.moveTo(r * 0.85, -r * 0.35);
-  ctx.quadraticCurveTo(r * 1.25, -r * 0.55, r * 1.35, -r * 0.2);
-  ctx.moveTo(r * 0.85, r * 0.35);
-  ctx.quadraticCurveTo(r * 1.25, r * 0.55, r * 1.35, r * 0.2);
-  ctx.stroke();
-  ctx.restore();
+// The player is the learner's garden buddy (ADR 0001); it walks while moving.
+function drawBeetle(ctx, kind, x, y, s, dir, dying, moving) {
+  drawBuddy(ctx, kind, x + s / 2, y + s * 0.95, s * 1.05, {
+    flip: dir === 'left',
+    step: moving ? performance.now() / 70 : 0,
+    alpha: dying > 0 ? Math.max(0.15, 1 - dying) : 1
+  });
 }
 
 function drawSnail(ctx, x, y, s, color, dir, tick) {
@@ -252,7 +224,8 @@ function drawHedges(ctx, map, cell, ox, oy) {
   }
 }
 
-export function mountChase(root, { prompt, choices = [], copies = 2, playerSpeed = 3.4, bugSpeed = 2.15, bugs = 1, reduced, onDone, onMiss }) {
+export function mountChase(root, { buddy, prompt, choices = [], copies = 2, playerSpeed = 3.4, bugSpeed = 2.15, bugs = 1, reduced, onDone, onMiss }) {
+  const kind = buddyKind(buddy);
   stopChase();
   const session = {
     dead: false,
@@ -452,7 +425,7 @@ export function mountChase(root, { prompt, choices = [], copies = 2, playerSpeed
       drawSnail(ctx, x, y, cell, snail.color, snail.dir, tick);
     });
     const [px, py] = at(player.x, player.y);
-    drawBeetle(ctx, px, py, cell, player.dir === 'none' ? 'up' : player.dir, dying);
+    drawBeetle(ctx, kind, px, py, cell, player.dir === 'none' ? 'up' : player.dir, dying, player.dir !== 'none');
     berries.forEach(berry => {
       if (berry.gone && berry.flash <= 0) return;
       const [x, y] = at(berry.c * UNIT, berry.r * UNIT);

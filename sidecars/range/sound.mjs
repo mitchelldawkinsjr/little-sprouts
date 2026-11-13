@@ -1,4 +1,4 @@
-/* Range sounds, made on the spot with Web Audio. No files to load.
+/* Targets sounds, made on the spot with Web Audio. No files to load.
    Everything runs through one level, matching lib/sidecar-guest.js:
    the game sits under the spoken question and dips further while a line is read. */
 
@@ -79,22 +79,22 @@ export function createSound() {
       ducked = !!value;
       if (mix) mix.gain.setTargetAtTime(ducked ? DUCK_LEVEL : GAME_LEVEL, ctx.currentTime, ducked ? 0.05 : 0.3);
     },
-    // Foam dart leaving the blaster: a soft puff and a quick drop.
-    shoot: play(() => {
-      hiss({ dur: 0.12, level: 0.5, freq: 1800, to: 500, q: 0.8 });
-      tone({ type: 'square', from: 520, to: 160, dur: 0.09, level: 0.08 });
+    // A soft, bubbly pop as a paint ball leaves the launcher.
+    pop: play(() => {
+      hiss({ dur: 0.1, level: 0.4, freq: 1400, to: 600, q: 0.9 });
+      tone({ type: 'sine', from: 660, to: 300, dur: 0.08, level: 0.1 });
     }),
-    // Dart smacks a wooden board.
+    // Paint splats onto a wooden board.
     hit: play(() => {
       tone({ type: 'sine', from: 190, to: 85, dur: 0.16, level: 0.5 });
       hiss({ dur: 0.05, level: 0.35, freq: 2400, q: 2 });
       hiss({ at: 0.02, dur: 0.12, level: 0.2, freq: 700, to: 300, q: 0.7 });
     }),
-    // A paintball landing on the ground.
+    // Paint landing on the ground.
     splat: play(() => {
       hiss({ dur: 0.14, level: 0.24, freq: 800, to: 250, q: 0.8 });
     }),
-    // Dart flies past everything.
+    // A paint ball sails past everything.
     miss: play(() => {
       hiss({ at: 0.05, dur: 0.28, level: 0.18, freq: 900, to: 2600, q: 3 });
     }),

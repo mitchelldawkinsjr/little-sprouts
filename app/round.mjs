@@ -37,7 +37,7 @@ import {
   bustBoard,
   verseWithRef
 } from '../logic.mjs?v=offline1';
-import { canSpeak, commonLines, prefetchSpeech } from '../lib/speech.js?v=glow1';
+import { canSpeak, commonLines, prefetchSpeech } from '../lib/speech.js?v=buddy1';
 import { stopArcade } from '../games/arcade.js?v=ask-first2-r2';
 import { stopHoop } from '../games/hoop.js?v=hoop-trio-r2';
 import { stopHook } from '../games/hook.js?v=ask-first2-r2';
@@ -45,13 +45,13 @@ import { stopSky } from '../games/sky.js?v=ask-first2-r2';
 import { stopPlanet } from '../games/planet.js?v=sky-rocks2';
 import { stopPuzzle } from '../games/puzzle.js?v=puzzle-glass';
 import { stopMatch } from '../games/match.js?v=pair-match2';
-import { stopChase } from '../games/chase.js?v=ask-first2-r2';
-import { stopHop } from '../games/hop.js?v=ask-first-r2';
+import { stopChase } from '../games/chase.js?v=shop1';
+import { stopHop } from '../games/hop.js?v=shop1';
 import { stopToast } from '../games/toast.js?v=ask-first-r2';
 import { stopGlide } from '../games/glide.js?v=ask-first-r2';
 import { stopCity } from '../games/city.js?v=low-end1';
-import { stopAisle } from '../games/aisle.js?v=market-aisle2-r2';
-import { stopLily } from '../games/lily.js?v=ask-first-r2';
+import { stopAisle } from '../games/aisle.js?v=shop1';
+import { stopLily } from '../games/lily.js?v=shop1';
 import { stopBust } from '../games/bust.js?v=ghost-same2-r2';
 import { stopMole } from '../games/mole.js?v=mole-pop3';
 import { stopCube } from '../games/cube.js?v=low-end1';
@@ -61,10 +61,10 @@ import { stopTrace } from '../games/trace.js?v=trace-car2';
 import { stopSort } from '../games/sort.js?v=sort-roll';
 import { stopMerge } from '../games/merge.js?v=goo-jar2';
 import { stopCrayon } from '../games/crayon.js?v=crayon-more';
-import { stopMarble } from '../games/marble.js?v=ask-first2-r2';
-import { stopBridge } from '../games/bridge.js?v=ask-first-r2';
+import { stopMarble } from '../games/marble.js?v=shop1';
+import { stopBridge } from '../games/bridge.js?v=shop1';
 import { stopMaze } from '../games/maze.js?v=ask-first-r2';
-import { postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=glow1';
+import { postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=buddy1';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=arcade';
 
@@ -206,7 +206,7 @@ export function registerRound(rt) {
           : g.mode === 'skybound'
             ? (ok ? 'Yes! Climb on.' : 'Not yet. Keep climbing.')
             : g.mode === 'range'
-              ? (ok ? (g.rallyKind === 'spell' ? `You spelled ${g.target}.` : 'Yes! Bullseye.') : 'Not yet. Shoot another one.')
+              ? (ok ? (g.rallyKind === 'spell' ? `You spelled ${g.target}.` : 'Yes! Splat!') : 'Not yet. Paint another one.')
               : (ok ? 'Yes! Turbo!' : 'Not yet. The car slows down.');
     const feedback = $('#feedback');
     if (feedback) feedback.textContent = line;
@@ -1154,9 +1154,9 @@ export function registerRound(rt) {
     else if (g.rallyKind === 'match') g.prompt = `Fly through the ${g.target}.`;
   }
   function rangeAsk(g) {
-    if (g.rallyKind === 'spell') g.prompt = `Shoot the letters of ${g.target}.`;
-    else if (g.rallyKind === 'match' && g.subject === 'words') g.prompt = `Shoot the word ${g.target}.`;
-    else if (g.rallyKind === 'match') g.prompt = `Shoot the ${g.target}.`;
+    if (g.rallyKind === 'spell') g.prompt = `Paint the letters of ${g.target}.`;
+    else if (g.rallyKind === 'match' && g.subject === 'words') g.prompt = `Paint the word ${g.target}.`;
+    else if (g.rallyKind === 'match') g.prompt = `Paint the ${g.target}.`;
   }
   function arcadePack(pack, prompt) {
     const g = rt.game;
@@ -1309,7 +1309,7 @@ export function registerRound(rt) {
       return 'Write what you remember. You can look — optional, extra star if you do.';
     }
     if ((g?.mode === 'rally' || g?.mode === 'flight' || g?.mode === 'range' || g?.mode === 'bike') && g.rallyKind === 'spell') {
-      if (rt.data.sound && canSpeak()) return g.mode === 'flight' ? 'Fly through the letters in order.' : g.mode === 'range' ? 'Shoot the letters in order.' : 'Spell the word.';
+      if (rt.data.sound && canSpeak()) return g.mode === 'flight' ? 'Fly through the letters in order.' : g.mode === 'range' ? 'Paint the letters in order.' : 'Spell the word.';
       return g.prompt;
     }
     if (!wordHidden(g)) return g.prompt;
@@ -1376,7 +1376,7 @@ export function registerRound(rt) {
     if (g.mode === 'paint') return 'Paint the half with the right answer.';
     if (g.mode === 'walk') return g.subject === 'words' ? 'Listen for the word, then walk to it.' : 'Walk to the one that matches.';
     if (g.mode === 'flight') return g.rallyKind === 'spell' ? 'Listen for the word, then fly through each letter or type it.' : 'Steer through the gate that matches.';
-    if (g.mode === 'range') return g.rallyKind === 'spell' ? 'Listen for the word, then shoot each letter or type it.' : 'Aim at the board that matches, then shoot.';
+    if (g.mode === 'range') return g.rallyKind === 'spell' ? 'Listen for the word, then paint each letter or type it.' : 'Find the board that matches, then paint it.';
     if (g.mode === 'chase' || g.mode === 'hop' || g.mode === 'toast' || g.mode === 'aisle' || g.mode === 'lily' || g.mode === 'mole' || g.mode === 'bust' || g.mode === 'stack' || g.mode === 'lamp' || g.mode === 'cube' || g.mode === 'glide' || g.mode === 'city' || g.mode === 'rally' || g.mode === 'bike') {
       if (g.subject === 'words') {
         if (g.mode === 'chase') return 'Listen for the word, then eat those berries.';

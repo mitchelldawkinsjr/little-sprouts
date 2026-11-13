@@ -35,6 +35,7 @@
   var level = 1;
   var reduced = false;
   var speed = 3;
+  var buddyName = '';
 
   function send(type, extra) {
     if (window.parent === window) return;
@@ -330,7 +331,17 @@
   function draw() {
     ctx.clearRect(0, 0, WORLD_W, WORLD_H);
     ctx.drawImage(art.meadow, 0, 0);
-    ctx.drawImage(art[pose], frame * BUDDY_W, 0, BUDDY_W, BUDDY_H, buddy.x, buddy.y, BUDDY_W, BUDDY_H);
+    // The walker is the learner's garden buddy (ADR 0001); the old sprout art is the fallback.
+    var look = window.SproutsBuddy;
+    if (look) {
+      var walking = pose.indexOf('walk') === 0;
+      look.drawBuddy(ctx, look.buddyKind(buddyName), buddy.x + BUDDY_W / 2, buddy.y + BUDDY_H - 6, BUDDY_H * 0.95, {
+        flip: pose.indexOf('Left') > 0,
+        step: walking ? performance.now() / 80 : 0
+      });
+    } else {
+      ctx.drawImage(art[pose], frame * BUDDY_W, 0, BUDDY_W, BUDDY_H, buddy.x, buddy.y, BUDDY_W, BUDDY_H);
+    }
     signs.forEach(function (sign) {
       ctx.drawImage(sign.view.img, sign.view.x + sign.view.shake, sign.view.y);
     });
@@ -407,6 +418,7 @@
       if (show) show.innerHTML = '';
       return;
     }
+    if (data.buddy) buddyName = data.buddy;
     if (data.type === 'ask' && data.choices && data.choices.length) {
       if (question && question.round === data.round && signs.length && !settled) return;
       if (!booted) question = data;

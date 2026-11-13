@@ -1,15 +1,15 @@
-/* Two ways to play the range.
-   Stand: the learner stays at the counter and aims a foam-dart blaster.
+/* Two ways to play Targets.
+   Stand: the learner stays at the counter with a toy paint launcher.
    A question is a row of boards in front of the counter.
    Walk: the learner walks a plaza (map.mjs). The boards stand around it, readable
-   from both sides, and the learner hunts for the one to shoot.
+   from both sides, and the learner hunts for the one to paint.
 
-   In both, match and math rounds shoot one board, and the host grades it.
+   In both, match and math rounds paint one board, and the host grades it.
    A wrong board stays up but greys out; the others keep standing.
-   Spelling shoots one letter at a time. A wrong letter is a slip.
+   Spelling paints one letter at a time. A wrong letter is a slip.
    Stand puts up the next row after each right letter. Walk keeps every letter
-   where it stands and takes away the ones already shot.
-   The whole word sends one pick. An air miss or a slip only cools the blaster for a moment. */
+   where it stands and takes away the ones already painted.
+   The whole word sends one pick. A miss or a slip only pauses the launcher for a moment. */
 
 import { BUILDINGS, GEARS, PLANTER, PROPS, SLOTS, SPAWN, YARD } from './map.mjs';
 
@@ -161,7 +161,7 @@ function standBoardAt(state) {
     }
   });
   if (!best) return null;
-  // Where the dart lands on the board face, in the board's own units, for the paint splat.
+  // Where the paint lands on the board face, in the board's own units, for the paint splat.
   const across = STAND_DIST * Math.cos(best.pitch);
   return {
     board: best,
@@ -221,7 +221,7 @@ export function createRange(options = {}) {
     pending: null,
     pendingFor: 0,
     cooldown: 0,
-    shots: 0,
+    paints: 0,
     level: 1,
     reduced: !!options.reduced
   };
@@ -240,7 +240,7 @@ export function setRangeMode(state, mode) {
   }
   if (state.ask && !state.solved) placeBoards(state);
   else {
-    // A solved question has nothing left to shoot. Clear the old ground's boards.
+    // A solved question has nothing left to paint. Clear the old ground's boards.
     state.boards = [];
     state.layout += 1;
   }
@@ -391,11 +391,11 @@ function hitChoice(state, board, events) {
   events.push({ type: 'pick', index: board.index });
 }
 
-/** Fire once along the current aim. Returns local events plus any pick or slip for the host. */
-export function shootRange(state) {
+/** Launch one paint ball at where the learner is looking. Returns local events plus any pick or slip for the host. */
+export function paintRange(state) {
   const events = [];
   if (!ready(state)) return events;
-  state.shots += 1;
+  state.paints += 1;
   const found = boardAt(state);
   if (!found || found.board.wrong) {
     state.cooldown = MISS_COOL;
@@ -409,7 +409,7 @@ export function shootRange(state) {
   return events;
 }
 
-/** Typed letters shoot the matching board for the learner. Only a whole word sends a pick. */
+/** Typed letters paint the matching board for the learner. Only a whole word sends a pick. */
 export function typeRange(state, raw) {
   const events = [];
   const ask = state.ask;

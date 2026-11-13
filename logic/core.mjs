@@ -501,6 +501,6 @@ export function numberDeck(stage, countLevel, pathLevel) {
 }
 
 export function resetProgress(profile) {
-  return { ...profile, stars: 0, earned: 0, sessions: 0, correct: 0, total: 0, skills: {} };
+  return { ...profile, stars: 0, spent: 0, earned: 0, sessions: 0, correct: 0, total: 0, skills: {} };
 }
 

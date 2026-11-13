@@ -22,8 +22,25 @@ makes the games feel like one world, and it tells the child "this one is you".
 
 ## Consequences
 
-- New games with a player character use `lib/buddy3d.mjs` (or a 2D version of
-  the same buddies) instead of their own character art.
-- Grass maze is the first. Older games with their own character (Garden walk's
-  sprout, the dirt bike rider, Paint Sphere's player) should move over when they
-  are next changed.
+- 3D games use `makeBuddy` from `lib/buddy3d.mjs`. It takes the game's own material
+  (`opts.material`) and returns rig parts (chest, head, arms, legs, eyes) so a game
+  can keep its own animation and look.
+- Canvas games use `drawBuddy` from `lib/buddy2d.mjs` (front view, same colors). HTML
+  games use `spriteHtml` from `lib/home-ui.mjs`.
+- Gear bought in the Star shop shows on the buddy everywhere. `makeBuddy` and
+  `drawBuddy` read it from the saved profile (`buddyGear(kind)`) when the buddy is the
+  learner's own, so a rival never wears it; `spriteHtml(kind, gear)` takes it directly.
+- When a game has a rival character (Paint Sphere's bot), the rival is a different
+  buddy: the next one in the list after the learner's.
+- Games where the child is a vehicle, a ball, or a first-person camera (Rally,
+  Glider, Marble box, Light lines, Garden gulp, Block meadow, Shooting range) have no
+  character to replace.
+
+Where it applies (2026-11-13): Grass maze, Garden walk, Dirt ride (buddy head and
+colors on the rider), Paint Sphere, Skybound climb, Sprout hop, Lily cross, Garden
+chase, Marble path, Stick bridge, and Market walk.
+
+Paint Sphere and Skybound ship as built bundles whose source folders no longer match
+what is live. Their bundles call `window.SproutsPaintBuddy` / `window.SproutsSkyBuddy`
+(set by `sidecars/paint/buddy.js` and `sidecars/skybound/buddy.js`) and fall back to
+their old characters. Port that call into the source before the next rebuild.

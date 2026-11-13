@@ -1,5 +1,6 @@
 /**
  * Light lines — draw glowing lines on a dark board, then drop a ball that rolls down
+ * (the learner's garden buddy in a clear ball, ADR 0001)
  * them into the pocket with the right answer. The light is real 2D global illumination
  * (radiance cascades): drawn lines light the floor, reveal hidden walls, and cast shadows.
  * Inside Little Sprouts the host sends each question; on its own page the game makes them.
@@ -14,6 +15,7 @@ import { RadianceField } from './radiance.mjs?v=glow1';
 import { localQuestion, normalizeQuestion, LOCAL_ROUND } from './quiz.mjs?v=glow1';
 import { resolveAutoQuality, isPerformanceTier } from '../../lib/device-tier.mjs?v=low-end1';
 import { readPad, actionDown } from '../../lib/pad-core.mjs?v=pad-rt';
+import { drawBuddyBall, buddyKind } from '../../lib/buddy2d.mjs?v=shop1';
 
 const $ = (id) => document.getElementById(id);
 const stage = $('stage');
@@ -77,6 +79,8 @@ const state = {
   kind: 'plain',
   lives: LIVES,
   ball: null,
+  buddy: buddyKind(),
+  spin: 0,
   list: [],
   still: 0,
   rollTime: 0,
@@ -450,6 +454,7 @@ function hostAsk(msg) {
   const q = normalizeQuestion(msg);
   if (!q) return;
   if ('sound' in msg) state.sound = msg.sound !== false;
+  state.buddy = buddyKind(msg.buddy);
   const key = `${q.round}|${q.prompt}|${q.choices.map(c => c.label).join(',')}`;
   if (key === state.hostKey) return;
   state.hostKey = key;
@@ -674,15 +679,8 @@ function drawMarks(now) {
   }
   if (b) {
     const c = toCss(b.x, b.y);
-    const br = BALL_R * s * scale;
-    const g = ctx.createRadialGradient(c.x - br * 0.35, c.y - br * 0.35, br * 0.1, c.x, c.y, br);
-    g.addColorStop(0, '#ffffff');
-    g.addColorStop(0.6, '#ffe9b8');
-    g.addColorStop(1, '#e8a85a');
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(c.x, c.y, br, 0, Math.PI * 2);
-    ctx.fill();
+    // The ball is the learner's garden buddy rolled up in a clear ball (ADR 0001).
+    drawBuddyBall(ctx, state.buddy, c.x, c.y, BALL_R * s * scale, { spin: state.spin });
   }
 
   // While drawing, a faint ring follows the pen so you see where ink goes.
@@ -712,7 +710,9 @@ function frame(now) {
 
   if (state.phase === 'roll') {
     const ball = state.ball;
+    const fromX = ball.x;
     const r = stepBall(ball, state.list, dt);
+    state.spin += (ball.x - fromX) / BALL_R;
     contact(r);
     state.rollTime += dt;
     if (r.hazard) loseLife();

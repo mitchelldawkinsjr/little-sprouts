@@ -6,6 +6,8 @@
  * aisles meet. The market and the shopper are drawn here.
  */
 import { gamePaused } from '../lib/hold.js?v=hold2';
+import { spriteHtml } from '../lib/home-ui.mjs?v=shop1';
+import { buddyKind, buddyGear } from '../lib/buddy3d.mjs?v=shop1';
 import { esc } from '../logic.mjs?v=structure3';
 
 let stop = () => {};
@@ -79,7 +81,8 @@ export function stopAisle() {
   stop = () => {};
 }
 
-export function mountAisle(root, { board = {}, reduced, nextQuestion, onPrompt, onMiss, onClear, onTime, onFinished } = {}) {
+export function mountAisle(root, { buddy, board = {}, reduced, nextQuestion, onPrompt, onMiss, onClear, onTime, onFinished } = {}) {
+  const kind = buddyKind(buddy);
   stopAisle();
   if (!root) return;
   const prefix = `mkt${++serial}`;
@@ -209,7 +212,8 @@ export function mountAisle(root, { board = {}, reduced, nextQuestion, onPrompt, 
     const radios = [];
     const spots = [];
     const arrows = [];
-    let css = '';
+    // The shopper is the learner's garden buddy (ADR 0001), drawn like the home screen.
+    let css = '.market-buddy{position:absolute;left:-7px;bottom:4px;--grow:3}.market-buddy .buddy-sprite{margin:0}';
     for (let row = 0; row < ROWS; row++) {
       for (let col = 0; col < cols; col++) {
         const spot = { row, col };
@@ -236,7 +240,7 @@ export function mountAisle(root, { board = {}, reduced, nextQuestion, onPrompt, 
         }
       }
     }
-    engine.innerHTML = `<style>${css}</style>${radios.join('')}<div class="market-view aisle" aria-label="A market. Tap the arrows to walk the aisles and pick up the right thing."><div class="market-world">${spots.join('')}</div><div class="market-kid" data-face="right" aria-hidden="true"><div class="market-kid-flip"><span class="market-shadow"></span><span class="market-basket"></span><span class="market-shirt"></span><span class="market-face"></span><span class="market-leaf"></span></div></div>${arrows.join('')}<p class="market-say" hidden></p><p class="market-clock" aria-live="polite"></p></div><div class="steer market-pad" aria-label="Walk"><button type="button" class="steer-btn" data-dir="up" aria-label="Up">↑</button><button type="button" class="steer-btn" data-dir="left" aria-label="Left">←</button><button type="button" class="steer-btn" data-dir="down" aria-label="Down">↓</button><button type="button" class="steer-btn" data-dir="right" aria-label="Right">→</button></div>`;
+    engine.innerHTML = `<style>${css}</style>${radios.join('')}<div class="market-view aisle" aria-label="A market. Tap the arrows to walk the aisles and pick up the right thing."><div class="market-world">${spots.join('')}</div><div class="market-kid" data-face="right" aria-hidden="true"><div class="market-kid-flip"><span class="market-shadow"></span><span class="market-buddy">${spriteHtml(kind, buddyGear(kind))}</span><span class="market-basket"></span></div></div>${arrows.join('')}<p class="market-say" hidden></p><p class="market-clock" aria-live="polite"></p></div><div class="steer market-pad" aria-label="Walk"><button type="button" class="steer-btn" data-dir="up" aria-label="Up">↑</button><button type="button" class="steer-btn" data-dir="left" aria-label="Left">←</button><button type="button" class="steer-btn" data-dir="down" aria-label="Down">↓</button><button type="button" class="steer-btn" data-dir="right" aria-label="Right">→</button></div>`;
     at = { row: ROWS - 1, col: 0 };
     paintClock();
     paintHere();
