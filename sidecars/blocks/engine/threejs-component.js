@@ -1,8 +1,8 @@
 import * as THREE from '../../../vendor/three/build/three.module.js?v=r187';
 
-import {entity} from "./entity.js";
-import {defs} from "./defs.js";
-import {voxel_shader} from "./voxel-shader.js";
+import {entity} from "./entity.js?v=blocks3";
+import {defs} from "./defs.js?v=blocks3";
+import {voxel_shader} from "./voxel-shader.js?v=blocks3";
 
 // Forked from SimonDev's Quick_MinecraftClone2 (MIT). Changes for Little Sprouts: no post-processing
 // chain (low-end tablets), the shaders write sRGB themselves, the starry space cube map is gone, and
