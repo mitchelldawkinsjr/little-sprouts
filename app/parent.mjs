@@ -30,8 +30,8 @@ import {
   speakAndWait,
   voiceFor,
   voices
-} from '../lib/speech.js?v=wait-2s';
-import { sidecarGame, sidecarIsBuilt } from '../lib/sidecar.js?v=range6';
+} from '../lib/speech.js?v=roll1';
+import { sidecarGame, sidecarIsBuilt } from '../lib/sidecar.js?v=roll1';
 import { spriteHtml } from '../lib/home-ui.mjs?v=offline1';
 import { voiceStatusText } from '../lib/parent-ui.mjs?v=structure2';
 import { $, esc } from './runtime.mjs?v=lean-r2';

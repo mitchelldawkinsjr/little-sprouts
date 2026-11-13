@@ -264,11 +264,11 @@
     <button type="button" class="quiet" id="listenAgain">Hear it again</button>
     <button type="button" class="quiet" id="listenBack">← All games</button>
   </div>
-  <script type="module" src="app.js?v=range6"></script>
+  <script type="module" src="app.js?v=roll1"></script>
   <script type="module">
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js?v=offline1').then(async () => {
-        const { warmOffline } = await import('./lib/offline-warm.mjs?v=range4');
+        const { warmOffline } = await import('./lib/offline-warm.mjs?v=roll1');
         warmOffline();
       }).catch(() => {});
     }
