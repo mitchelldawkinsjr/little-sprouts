@@ -2,10 +2,10 @@
 // fits the device, a chunk knows when its first mesh is in, and the manager re-applies saved edits then.
 import * as THREE from '../../../vendor/three/build/three.module.js?v=r187';
 
-import {worker_pool} from './worker-pool.js?v=blocks3';
+import {worker_pool} from './worker-pool.js?v=blocks4';
 
-import {voxel_block_builder} from './voxel-block-builder.js?v=blocks3';
-import {hack_defs} from './hack-defs.js?v=blocks3';
+import {voxel_block_builder} from './voxel-block-builder.js?v=blocks4';
+import {hack_defs} from './hack-defs.js?v=blocks4';
 
 
 export const voxel_builder_threaded = (() => {

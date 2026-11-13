@@ -1,6 +1,6 @@
 // From SimonDev's Quick_MinecraftClone2 (MIT, see LICENSE). Unchanged apart from import paths.
 
-import {voxel_block_builder} from './voxel-block-builder.js?v=blocks3';
+import {voxel_block_builder} from './voxel-block-builder.js?v=blocks4';
 
 
 const _BLOCK = new voxel_block_builder.VoxelBlockBuilder();

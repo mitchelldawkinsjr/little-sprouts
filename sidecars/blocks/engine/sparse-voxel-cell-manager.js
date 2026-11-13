@@ -1,12 +1,12 @@
 import * as THREE from '../../../vendor/three/build/three.module.js?v=r187';
 
-import {entity} from './entity.js?v=blocks3';
-import {utils} from './utils.js?v=blocks3';
-import {voxel_builder_threaded} from './voxel-builder-threaded.js?v=blocks3';
-import {voxel_shader} from './voxel-shader.js?v=blocks3';
-import {textures} from './textures.js?v=blocks3';
-import {texture_defs} from './texture-defs.js?v=blocks3';
-import {defs} from './defs.js?v=blocks3';
+import {entity} from './entity.js?v=blocks4';
+import {utils} from './utils.js?v=blocks4';
+import {voxel_builder_threaded} from './voxel-builder-threaded.js?v=blocks4';
+import {voxel_shader} from './voxel-shader.js?v=blocks4';
+import {textures} from './textures.js?v=blocks4';
+import {texture_defs} from './texture-defs.js?v=blocks4';
+import {defs} from './defs.js?v=blocks4';
 
 // Forked from SimonDev's Quick_MinecraftClone2 (MIT). Changes for Little Sprouts:
 // - Textures are painted in code (textures.js) instead of loading Minecraft-style PNGs.

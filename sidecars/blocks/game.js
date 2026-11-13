@@ -5,21 +5,21 @@
 // the shared controller layout), gift boxes that ask the learner's questions, block rewards,
 // free build, and saving the world in this browser.
 import * as THREE from '../../vendor/three/build/three.module.js?v=r187';
-import { entity_manager } from './engine/entity-manager.js?v=blocks3';
-import { entity } from './engine/entity.js?v=blocks3';
-import { threejs_component } from './engine/threejs-component.js?v=blocks3';
-import { sparse_voxel_cell_manager } from './engine/sparse-voxel-cell-manager.js?v=blocks3';
-import { cloud_controller } from './engine/cloud-controller.js?v=blocks3';
-import { player_controller } from './engine/player-controller.js?v=blocks3';
-import { voxel_tools } from './engine/voxel-tools.js?v=blocks3';
-import { ui_controller } from './engine/ui-controller.js?v=blocks3';
-import { hack_defs } from './engine/hack-defs.js?v=blocks3';
-import { texture_defs } from './engine/texture-defs.js?v=blocks3';
-import { voxel_block_builder } from './engine/voxel-block-builder.js?v=blocks3';
+import { entity_manager } from './engine/entity-manager.js?v=blocks4';
+import { entity } from './engine/entity.js?v=blocks4';
+import { threejs_component } from './engine/threejs-component.js?v=blocks4';
+import { sparse_voxel_cell_manager } from './engine/sparse-voxel-cell-manager.js?v=blocks4';
+import { cloud_controller } from './engine/cloud-controller.js?v=blocks4';
+import { player_controller } from './engine/player-controller.js?v=blocks4';
+import { voxel_tools } from './engine/voxel-tools.js?v=blocks4';
+import { ui_controller } from './engine/ui-controller.js?v=blocks4';
+import { hack_defs } from './engine/hack-defs.js?v=blocks4';
+import { texture_defs } from './engine/texture-defs.js?v=blocks4';
+import { voxel_block_builder } from './engine/voxel-block-builder.js?v=blocks4';
 import { questionHolding } from '../../lib/hold.js?v=hold2';
 import { actionDown, axisDir, held, moveDirs, nextIndex, readPad } from '../../lib/pad-core.mjs?v=pad-blocks';
 import { resolveAutoQuality, pixelRatioCap, rendererOptions, isPerformanceTier } from '../../lib/device-tier.mjs?v=low-end1';
-import { chestDistance, goalFrom, localQuestion, nextLetterOk, normalizeAsk, readSave } from './quiz.mjs?v=blocks3';
+import { chestDistance, goalFrom, localQuestion, nextLetterOk, normalizeAsk, readSave } from './quiz.mjs?v=blocks4';
 
 const SOURCE = 'sprouts-sidecar';
 const SAVE_KEY = 'sprouts-blocks-v1';

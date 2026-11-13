@@ -1,7 +1,7 @@
 import * as THREE from '../../../vendor/three/build/three.module.js?v=r187';
-import {entity} from './entity.js?v=blocks3';
-import {defs} from './defs.js?v=blocks3';
-import {texture_defs} from './texture-defs.js?v=blocks3';
+import {entity} from './entity.js?v=blocks4';
+import {defs} from './defs.js?v=blocks4';
+import {texture_defs} from './texture-defs.js?v=blocks4';
 
 // Forked from SimonDev's Quick_MinecraftClone2 (MIT). The velocity, damping, and sphere-against-voxel
 // collision come from the original. Changes for Little Sprouts:
