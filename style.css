@@ -762,3 +762,49 @@ canvas.shop-preview{display:block;padding:0;box-sizing:border-box}
 .basket .basket-buddy .buddy-sprite{margin:0}
 @media(max-width:560px){.basket .basket-buddy .buddy-sprite{width:58px;height:68px}}
 .offline-status{font-size:13px;font-weight:600;margin:8px 0}.offline-status.offline-ready{color:var(--green)}.offline-bar{display:block;width:100%;height:9px;accent-color:#8caa6a;margin:0 0 4px}.offline-bar[hidden]{display:none}
+/* The star shop is a long list, not a game board: the whole page scrolls like any web page. */
+body:has(.playarea.shop){height:auto;min-height:100dvh;overflow:visible;display:block}
+body:has(.playtop) .playarea.shop{display:block;overflow:visible;min-height:0}
+/* More star-shop gear on the HTML buddy. */
+.gear-chef{top:-20px;left:calc(50% - 13px);width:26px;height:22px;background:#fbfbf7;border-radius:12px 12px 3px 3px;box-shadow:inset 0 -6px 0 #e9e9e2,0 0 0 1px #0002}
+.gear-chef::before{content:"";left:-4px;top:-5px;width:34px;height:14px;border-radius:50%;background:#fbfbf7;box-shadow:0 0 0 1px #0001}
+.gear-pirate{top:-16px;left:-6px;right:-6px;height:20px;background:#22252b;border-radius:50% 50% 30% 30%/90% 90% 20% 20%}
+.gear-pirate::after{content:"☠";left:calc(50% - 5px);top:3px;font-size:10px;line-height:1;color:#f7f7f2}
+.gear-halo{top:-16px;left:calc(50% - 15px);width:30px;height:9px;border:3px solid #ffd84a;border-radius:50%;box-shadow:0 0 6px #ffe98a;box-sizing:border-box}
+.frog .gear-chef,.frog .gear-pirate,.frog .gear-halo{top:-24px}
+.gear-roundies{top:11px;left:5px;right:5px;height:12px}
+.gear-roundies::before,.gear-roundies::after{content:"";top:0;width:12px;height:12px;border:2px solid #f1c232;border-radius:50%;box-sizing:border-box}
+.gear-roundies::before{left:0}
+.gear-roundies::after{right:0}
+.gear-pixel{top:12px;left:4px;right:4px;height:3px;background:#111}
+.gear-pixel::before,.gear-pixel::after{content:"";top:0;width:14px;height:8px;background:#111;clip-path:polygon(0 0,100% 0,100% 60%,80% 60%,80% 100%,20% 100%,20% 60%,0 60%)}
+.gear-pixel::before{left:0}
+.gear-pixel::after{right:0}
+.frog .gear-roundies,.frog .gear-pixel{top:-8px;left:2px;right:2px}
+.owl .gear-roundies,.owl .gear-pixel{top:13px}
+.gear-mustache{bottom:5px;left:calc(50% - 10px);width:20px;height:6px;background:#5b3a1e;border-radius:60% 60% 40% 40%/90% 90% 30% 30%;clip-path:polygon(0 40%,20% 0,50% 40%,80% 0,100% 40%,90% 100%,50% 70%,10% 100%)}
+.gear-rainbowgrillz{bottom:1px;left:calc(50% - 8px);width:16px;height:5px;border-radius:2px;background:linear-gradient(90deg,#e8414b 0 25%,#f6d35b 0 50%,#4bbf6b 0 75%,#3f8fe0 0)}
+.frog .gear-rainbowgrillz{left:calc(50% - 10px);width:20px}
+.gear-scarf{bottom:22px;left:calc(50% - 17px);width:34px;height:8px;border-radius:5px;background:repeating-linear-gradient(90deg,#d9434f 0 6px,#f7f7f2 6px 9px);z-index:2}
+.gear-scarf::after{content:"";right:4px;top:5px;width:7px;height:13px;border-radius:2px;background:#d9434f}
+.gear-medal{bottom:11px;left:calc(50% - 12px);width:24px;height:12px;border:3px solid #3f6fd1;border-top:0;border-radius:0 0 14px 14px;z-index:2;box-sizing:border-box}
+.gear-medal::after{content:"1";left:calc(50% - 5px);bottom:-9px;width:10px;height:10px;border-radius:50%;background:#f1c232;color:#7a4c00;font:900 7px/10px system-ui,sans-serif;text-align:center}
+.gear-icechain{bottom:11px;left:calc(50% - 12px);width:24px;height:12px;border:3px dotted #dfe7ee;border-top:0;border-radius:0 0 14px 14px;z-index:2;box-sizing:border-box}
+.gear-icechain::after{content:"";left:calc(50% - 4px);bottom:-9px;width:8px;height:9px;background:#5ad1ff;clip-path:polygon(0 30%,30% 0,70% 0,100% 30%,50% 100%);filter:drop-shadow(0 0 2px #bfeaff)}
+.gear-jersey23{background:#ce1141;box-shadow:inset 0 -4px 0 #111}
+.gear-jersey23::after{content:"23";position:static!important;color:#fff;font:900 12px/1 system-ui,sans-serif;text-shadow:0 0 2px #000}
+.gear-hoodie{background:#7d5bbf}
+.gear-hoodie::after{content:"";position:static!important;width:18px;height:8px;margin-top:10px;border-radius:3px 3px 6px 6px;background:#5f4396}
+.gear-backpack{left:6px;right:6px;bottom:4px;height:26px}
+.gear-backpack::before,.gear-backpack::after{content:"";top:0;width:14px;height:26px;border-radius:8px;background:#f08a24}
+.gear-backpack::before{left:0}
+.gear-backpack::after{right:0}
+.gear-dragonwings{bottom:8px;left:-8px;right:-8px;height:38px}
+.gear-dragonwings::before,.gear-dragonwings::after{content:"";top:0;width:28px;height:36px;background:#4caf50;clip-path:polygon(100% 70%,0 0,20% 40%,5% 55%,25% 70%,15% 90%,100% 100%)}
+.gear-dragonwings::before{left:0}
+.gear-dragonwings::after{right:0;transform:scaleX(-1)}
+.gear-slides.shoe{background:#2a6ed1;border-bottom:3px solid #f4f4f4;box-shadow:0 -4px 0 #f7f7f2}
+.gear-skates.shoe{height:12px;background:#ff6fa8;border-bottom:3px solid #8a8f99;box-shadow:0 4px 0 -1px #ffd84a}
+.gear-starpin{top:-5px;left:-5px;width:15px;height:15px;font-size:15px;line-height:1;color:#f1c232}
+.gear-starpin::before{content:"★";position:static!important}
+.gear-butterfly{top:-6px;left:-6px;width:16px;height:14px;background:#3f9fe8;clip-path:polygon(0 0,45% 40%,50% 30%,55% 40%,100% 0,90% 100%,55% 70%,50% 80%,45% 70%,10% 100%)}

@@ -23,7 +23,7 @@ export const SLOT_NAMES = {
   eyes: 'Glasses',
   mouth: 'Smiles',
   neck: 'Necklaces',
-  body: 'Jerseys',
+  body: 'Shirts',
   back: 'Capes and wings',
   feet: 'Shoes',
   pin: 'Little extras'
@@ -38,30 +38,48 @@ export const GEAR = [
   { id: 'phones', name: 'Big headphones', price: 10, slot: 'hat', about: 'Hear the beat.' },
   { id: 'wizard', name: 'Wizard hat', price: 12, slot: 'hat', about: 'Sparkly stars. Very magic.' },
   { id: 'crown', name: 'Gold crown', price: 15, slot: 'hat', about: 'For the ruler of the garden.' },
+  { id: 'chef', name: 'Chef hat', price: 7, slot: 'hat', about: 'Something tasty is cooking.' },
+  { id: 'pirate', name: 'Pirate hat', price: 11, slot: 'hat', about: 'Ahoy! Treasure ahead.' },
+  { id: 'halo', name: 'Gold halo', price: 13, slot: 'hat', about: 'A glowing ring that floats.' },
   // Glasses
   { id: 'shades', name: 'Sunglasses', price: 8, slot: 'eyes', about: 'Too cool.' },
   { id: 'starshades', name: 'Star glasses', price: 9, slot: 'eyes', about: 'Shine like a star.' },
   { id: 'hearts', name: 'Heart glasses', price: 9, slot: 'eyes', about: 'Lots of love.' },
+  { id: 'roundies', name: 'Round glasses', price: 6, slot: 'eyes', about: 'Smart and ready to read.' },
+  { id: 'pixel', name: 'Pixel shades', price: 11, slot: 'eyes', about: 'Blocky black shades. So cool.' },
   // Smiles
   { id: 'grillz', name: 'Gold grillz', price: 14, slot: 'mouth', about: 'A shiny gold smile.' },
   { id: 'icegrillz', name: 'Ice grillz', price: 18, slot: 'mouth', about: 'Sparkly, frosty teeth.' },
+  { id: 'mustache', name: 'Silly mustache', price: 5, slot: 'mouth', about: 'Very fancy. Very curly.' },
+  { id: 'rainbowgrillz', name: 'Rainbow grillz', price: 20, slot: 'mouth', about: 'Every color in one smile.' },
   // Necklaces
   { id: 'bowtie', name: 'Bow tie', price: 5, slot: 'neck', about: 'Fancy!' },
   { id: 'chain', name: 'Gold chain', price: 12, slot: 'neck', about: 'Big gold links and a shiny coin.' },
   { id: 'chain67', name: '67 chain', price: 16, slot: 'neck', about: 'Six seven! A gold 67 on a chain.' },
+  { id: 'scarf', name: 'Cozy scarf', price: 6, slot: 'neck', about: 'Striped and snuggly.' },
+  { id: 'medal', name: 'Gold medal', price: 11, slot: 'neck', about: 'Number one learner!' },
+  { id: 'icechain', name: 'Ice chain', price: 20, slot: 'neck', about: 'Silver links and a big blue gem.' },
   // Jerseys
   { id: 'jersey10', name: 'Number 10 jersey', price: 14, slot: 'body', about: 'Sky blue stripes. For a magic left foot.' },
   { id: 'jersey7', name: 'Number 7 jersey', price: 14, slot: 'body', about: 'Red and green. Jump high, then celebrate!' },
+  { id: 'jersey23', name: 'Number 23 jersey', price: 14, slot: 'body', about: 'Red hoops jersey. Fly to the rim!' },
+  { id: 'hoodie', name: 'Comfy hoodie', price: 9, slot: 'body', about: 'Purple, soft, with a front pocket.' },
   // Capes and wings
   { id: 'cape', name: 'Hero cape', price: 10, slot: 'back', about: 'Ready to save the day.' },
   { id: 'wings', name: 'Fairy wings', price: 12, slot: 'back', about: 'Flutter, flutter.' },
+  { id: 'backpack', name: 'Backpack', price: 7, slot: 'back', about: 'Ready for school.' },
+  { id: 'dragonwings', name: 'Dragon wings', price: 16, slot: 'back', about: 'Big green wings. Roar!' },
   // Shoes
   { id: 'boots', name: 'Rain boots', price: 6, slot: 'feet', about: 'Puddles? No problem.' },
   { id: 'lightups', name: 'Light-up sneakers', price: 10, slot: 'feet', about: 'Glow with every step.' },
   { id: 'kicks67', name: '67 kicks', price: 13, slot: 'feet', about: 'Six seven on your feet!' },
   { id: 'cleats', name: 'Golden boots', price: 15, slot: 'feet', about: 'For the top scorer.' },
+  { id: 'slides', name: 'Slides and socks', price: 7, slot: 'feet', about: 'Comfy on game day.' },
+  { id: 'skates', name: 'Roller skates', price: 12, slot: 'feet', about: 'Zoom zoom on four wheels.' },
   // Little extras
-  { id: 'flower', name: 'Flower', price: 3, slot: 'pin', about: 'A pink flower by the ear.' }
+  { id: 'flower', name: 'Flower', price: 3, slot: 'pin', about: 'A pink flower by the ear.' },
+  { id: 'starpin', name: 'Star clip', price: 4, slot: 'pin', about: 'A little gold star.' },
+  { id: 'butterfly', name: 'Butterfly clip', price: 5, slot: 'pin', about: 'A blue butterfly friend.' }
 ];
 
 const GEAR_IDS = GEAR.map(item => item.id);

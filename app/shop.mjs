@@ -4,9 +4,9 @@
  * The buddy can wear one thing in each spot (a hat, glasses, a smile, a necklace, a jersey,
  * a cape or wings, shoes, and a little extra), so a whole outfit shows in every game.
  */
-import { GEAR, SLOTS, SLOT_NAMES, buyGear, gearItem, ownedGear, starsToSpend, takeOffGear, wearGear, wornGear, wornList } from '../logic/shop.mjs?v=shop2';
+import { GEAR, SLOTS, SLOT_NAMES, buyGear, gearItem, ownedGear, starsToSpend, takeOffGear, wearGear, wornGear, wornList } from '../logic/shop.mjs?v=shop3';
 import { profileSprite } from '../logic/profiles.mjs?v=buddy1';
-import { drawBuddy } from '../lib/buddy2d.mjs?v=gear1';
+import { drawBuddy } from '../lib/buddy2d.mjs?v=gear2';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 
 const starWord = (n) => (n === 1 ? '1 star' : `${n} stars`);

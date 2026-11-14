@@ -24,7 +24,7 @@ import { BUGS, COME_FROM, CYCLE, LINES, NIGHT, bugTarget, canGrab, feetBlock, sh
 import { animate as animateBug, dropBug, makeCaterpillar, makeSpider } from './bugs.js?v=blocks5';
 import { DAY_BOXES, KITS, NEW_DAY, POWERS, TOO_CLOSE, boosts, facingFromYaw, kitCells, kitToWorld, prizeFor } from './prizes.mjs?v=blocks5';
 import { SEND_EVERY, SKY_EVERY, STILL_EVERY, readEdit, readSpot, roomLine, worldCollector, worldParts } from './friends.mjs?v=blocks5';
-import { BUDDIES, buddyGear, buddyKind, makeBuddy } from '../../lib/buddy3d.mjs?v=gear1';
+import { BUDDIES, buddyGear, buddyKind, makeBuddy } from '../../lib/buddy3d.mjs?v=gear2';
 
 const SOURCE = 'sprouts-sidecar';
 const SAVE_KEY = 'sprouts-blocks-v1';

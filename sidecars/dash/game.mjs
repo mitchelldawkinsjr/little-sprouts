@@ -19,7 +19,7 @@ import {
   jumpHeight, jumpTime, answerRow, dist, meters, saveBest
 } from './logic.mjs?v=dash2';
 import { localQuestion, normalizeQuestion, LOCAL_ROUND } from './quiz.mjs?v=dash2';
-import { makeBuddy, buddyKind, BUDDIES } from '../../lib/buddy3d.mjs?v=gear1';
+import { makeBuddy, buddyKind, BUDDIES } from '../../lib/buddy3d.mjs?v=gear2';
 import { resolveAutoQuality, pixelRatioCap, rendererOptions, isPerformanceTier } from '../../lib/device-tier.mjs?v=low-end1';
 import { readPad, actionDown, moveDirs } from '../../lib/pad-core.mjs?v=pad-rt';
 import { to, killTweensOf, update as tweenUpdate, Ease } from './tween.mjs?v=dash3';

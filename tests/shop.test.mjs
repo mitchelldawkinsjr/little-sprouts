@@ -191,3 +191,12 @@ test('Star shop: the buddy drawing shows a whole outfit', () => {
   for (const id of ['cap', 'chain67', 'kicks67', 'jersey7', 'cape', 'icegrillz', 'hearts', 'flower']) assert.match(html, new RegExp(`gear-${id}`));
   assert.equal((html.match(/gear-kicks67 shoe/g) || []).length, 2, 'a shoe on each foot');
 });
+
+test('Star shop: the second batch of gear is in the shop and fills every spot', async () => {
+  const { SLOTS } = await import('../logic/shop.mjs');
+  assert.ok(GEAR.length >= 40);
+  for (const id of ['chef', 'pirate', 'halo', 'roundies', 'pixel', 'mustache', 'rainbowgrillz', 'scarf', 'medal', 'icechain', 'jersey23', 'hoodie', 'backpack', 'dragonwings', 'slides', 'skates', 'starpin', 'butterfly']) assert.ok(gearItem(id), id);
+  for (const slot of SLOTS) assert.ok(GEAR.filter(item => item.slot === slot).length >= 2, `${slot} has a choice`);
+  const html = spriteHtml('bear', 'pirate pixel rainbowgrillz icechain hoodie dragonwings skates butterfly');
+  for (const id of ['pirate', 'pixel', 'rainbowgrillz', 'icechain', 'hoodie', 'dragonwings', 'skates', 'butterfly']) assert.match(html, new RegExp(`gear-${id}`));
+});

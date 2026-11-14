@@ -44,7 +44,7 @@ import {
 } from '../logic.mjs?v=offline1';
 import { canSpeak, warm } from '../lib/speech.js?v=night1';
 import { bakedLines } from '../lib/speech-core.mjs?v=night1';
-import { mountCatch, mountLanes, mountRace, mountRocket, pokeRocket, stopArcade } from '../games/arcade.js?v=gear1';
+import { mountCatch, mountLanes, mountRace, mountRocket, pokeRocket, stopArcade } from '../games/arcade.js?v=gear2';
 import { mountLunar } from '../games/lunar.js?v=moon-board2';
 import { mountHoop, stopHoop } from '../games/hoop.js?v=hoop-trio-r2';
 import { lightMarkSlots, mountLight, stopLight } from '../games/light.js?v=light-pace-icons';
@@ -53,25 +53,25 @@ import { mountSky, stopSky } from '../games/sky.js?v=ask-first2-r2';
 import { mountPlanet, stopPlanet } from '../games/planet.js?v=sky-rocks2';
 import { mountPuzzle, stopPuzzle } from '../games/puzzle.js?v=puzzle-glass';
 import { mountMatch, stopMatch } from '../games/match.js?v=pair-match2';
-import { mountChase, stopChase } from '../games/chase.js?v=gear1';
-import { mountHop, stopHop } from '../games/hop.js?v=gear1';
+import { mountChase, stopChase } from '../games/chase.js?v=gear2';
+import { mountHop, stopHop } from '../games/hop.js?v=gear2';
 import { mountToast, stopToast } from '../games/toast.js?v=ask-first-r2';
-import { mountGlide, stopGlide } from '../games/glide.js?v=gear1';
+import { mountGlide, stopGlide } from '../games/glide.js?v=gear2';
 import { mountCity, stopCity } from '../games/city.js?v=low-end1';
-import { mountAisle, stopAisle } from '../games/aisle.js?v=gear1';
-import { mountLily, stopLily } from '../games/lily.js?v=gear1';
+import { mountAisle, stopAisle } from '../games/aisle.js?v=gear2';
+import { mountLily, stopLily } from '../games/lily.js?v=gear2';
 import { mountBust, stopBust } from '../games/bust.js?v=ghost-same2-r2';
 import { mountMole, stopMole } from '../games/mole.js?v=mole-pop3';
-import { mountCube, stopCube } from '../games/cube.js?v=gear1';
+import { mountCube, stopCube } from '../games/cube.js?v=gear2';
 import { mountStack, stopStack } from '../games/stack.js?v=stack-words-r2';
 import { mountLamp, stopLamp } from '../games/lamp.js?v=lamp-r2';
 import { mountTrace, stopTrace } from '../games/trace.js?v=trace-car2';
 import { mountSort, stopSort } from '../games/sort.js?v=sort-roll';
 import { mountMerge, stopMerge } from '../games/merge.js?v=goo-jar2';
 import { mountCrayon, stopCrayon } from '../games/crayon.js?v=crayon-more';
-import { mountMarble, stopMarble } from '../games/marble.js?v=gear1';
-import { mountBridge, stopBridge } from '../games/bridge.js?v=gear1';
-import { mountMaze, stopMaze } from '../games/maze.js?v=gear1';
+import { mountMarble, stopMarble } from '../games/marble.js?v=gear2';
+import { mountBridge, stopBridge } from '../games/bridge.js?v=gear2';
+import { mountMaze, stopMaze } from '../games/maze.js?v=gear2';
 import {
   mountSidecar,
   postSidecar,
@@ -90,8 +90,8 @@ import {
   shelfPanelHtml,
   starGardenHtml as gardenHtml,
   homePageHtml
-} from '../lib/home-ui.mjs?v=gear1';
-import { wornGear } from '../logic/shop.mjs?v=shop2';
+} from '../lib/home-ui.mjs?v=gear2';
+import { wornGear } from '../logic/shop.mjs?v=shop3';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=aviator1';
 

@@ -6,8 +6,8 @@
  * aisles meet. The market and the shopper are drawn here.
  */
 import { gamePaused } from '../lib/hold.js?v=hold2';
-import { spriteHtml } from '../lib/home-ui.mjs?v=gear1';
-import { buddyKind, buddyGear } from '../lib/buddy3d.mjs?v=gear1';
+import { spriteHtml } from '../lib/home-ui.mjs?v=gear2';
+import { buddyKind, buddyGear } from '../lib/buddy3d.mjs?v=gear2';
 import { esc } from '../logic.mjs?v=structure3';
 
 let stop = () => {};

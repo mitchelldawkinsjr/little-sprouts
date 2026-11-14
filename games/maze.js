@@ -4,7 +4,7 @@
  * A fall or an empty clock waits for the host to add time.
  * The board is drawn here for Little Sprouts.
  */
-import { drawBuddyBall, buddyKind } from '../lib/buddy2d.mjs?v=gear1';
+import { drawBuddyBall, buddyKind } from '../lib/buddy2d.mjs?v=gear2';
 import { questionHolding } from '../lib/hold.js?v=hold2';
 
 let active = null;

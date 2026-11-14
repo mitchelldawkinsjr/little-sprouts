@@ -4,7 +4,7 @@
  * rise toward the learner. Wrong answers crumble. Little Sprouts original.
  */
 import { questionHolding } from '../lib/hold.js?v=hold2';
-import { drawBuddy, buddyKind } from '../lib/buddy2d.mjs?v=gear1';
+import { drawBuddy, buddyKind } from '../lib/buddy2d.mjs?v=gear2';
 
 let active = null;
 
