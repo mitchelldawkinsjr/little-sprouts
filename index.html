@@ -234,6 +234,7 @@
       <ul class="credit-list">
         <li><a href="https://github.com/jakesgordon/javascript-racer" target="_blank" rel="noopener">Jake Gordon — javascript-racer</a><p>Word lanes and Gas race use his road drawing. MIT, copyright 2012–2016 Jake Gordon and contributors.</p></li>
         <li><a href="https://github.com/cnrasili/Hooked" target="_blank" rel="noopener">cnrasili — Hooked</a><p>Hook the fish follows that cast-and-steer idea. The pond, fish, and sounds here are new.</p></li>
+        <li><a href="https://codepen.io/Yakudoo/pen/YGxYej" target="_blank" rel="noopener">Karim Maaloul (Yakudoo) — running CodePen</a><p>Garden dash follows that look and feel: a runner on a little turning planet seen from the side, misty trees with cube fruit, the jump, the chaser that closes in after each bump, and the sit-up munch when it catches you. The buddy, caterpillar, garden things, and answer boards here are new.</p></li>
         <li><a href="https://codepen.io/Megafry/pen/yyyZyYw" target="_blank" rel="noopener">Megafry — Toast Catcher</a><p>Toast pop uses that arc and the lives. The questions are Little Sprouts’ own.</p></li>
         <li><a href="https://codepen.io/jcoulterdesign/pen/NOMeEb" target="_blank" rel="noopener">Jamie Coulter — The Mine</a><p>Market walk uses that aisle engine: one step per arrow, the shop follows, and you pick up what is in the spot you are standing in. The market, the shopper, and the questions are drawn here.</p></li>
         <li><a href="https://codepen.io/deeptoaster/pen/eYdEPzj" target="_blank" rel="noopener">deeptoaster — Pure CSS Whac-A-Mole</a><p>Mole pop follows that peek from the holes. A tap on empty dirt misses. The moles and the questions are drawn here. MIT.</p></li>
@@ -244,10 +245,11 @@
         <li><a href="https://freefrontend.com/javascript-games/#2025-11-02-js-planet-defense-game-l" target="_blank" rel="noopener">JS Planet Defense on FreeFrontend</a><p>Planet guard follows that aim and those incoming rocks. It is drawn here.</p></li>
         <li><a href="https://freefrontend.com/javascript-games/#2026-01-01-glass-physics-3d-jigsaw-puzzle-l" target="_blank" rel="noopener">Glass Physics 3D Jigsaw on FreeFrontend</a><p>Shape puzzle follows that glass-piece idea. The pieces and the speech check are new.</p></li>
         <li><a href="https://freefrontend.com/javascript-games/#2025-09-09-emoji-memory-match-l" target="_blank" rel="noopener">Animated emoji memory game on FreeFrontend</a><p>Pair match follows that flip. The cards are shapes, colors, numbers, and words drawn here.</p></li>
+        <li><a href="https://codepen.io/Zultan/pen/mwGZBP" target="_blank" rel="noopener">Zultan — low-poly plane over a turning world</a><p>Island glide follows that look and feel: the turning green world with low-poly trees and flowers, the orbiting clouds, the low sun, and the plane that eases after the pointer. It is rebuilt here for current Three.js; the buddy pilot, gems, and questions are Little Sprouts’ own.</p></li>
         <li><a href="https://codepen.io/TurdleTips/pen/01a00355-5252-7ba3-b92d-90c79c3e616a" target="_blank" rel="noopener">TurdleTips — Paper City Glider</a><p>City glide follows that paper plane through downtown blocks. The plane, the rings, and the questions are drawn here.</p></li>
         <li><a href="https://codepen.io/jensbroecher/pen/wvZQdEa" target="_blank" rel="noopener">Jens Broecher — Airplane pulling a banner</a><p>Sky flight’s bush plane follows that blue-and-white utility look. The plane is rebuilt here; no CodePen bitmap is shipped.</p></li>
         <li><a href="https://github.com/simondevyoutube/Quick_MinecraftClone2" target="_blank" rel="noopener">SimonDev (simondevyoutube)</a><p>Block meadow’s world engine is forked from Quick_MinecraftClone2: streamed chunks built in workers, terrain and biomes, trees, ambient occlusion, and clouds. MIT, copyright 2021. The blocks, textures, controls, gift boxes, and saving are Little Sprouts’ own.</p></li>
-        <li><a href="https://github.com/mrdoob/three.js" target="_blank" rel="noopener">Ricardo Cabello and the Three.js authors</a><p>Sky flight’s quiz gates and bush plane, Paint sphere, Garden gulp, Targets, Block meadow, Cube dash, and City glide draw with Three.js. MIT, copyright 2010–2024. The plane and gates are Little Sprouts’ own.</p></li>
+        <li><a href="https://github.com/mrdoob/three.js" target="_blank" rel="noopener">Ricardo Cabello and the Three.js authors</a><p>Sky flight’s quiz gates and bush plane, Paint sphere, Garden gulp, Targets, Block meadow, Cube dash, City glide, and Island glide draw with Three.js. MIT, copyright 2010–2024. The plane and gates are Little Sprouts’ own.</p></li>
         <li><p>Garden gulp follows the hole-game idea made popular by Hole.io and Donut County (and browser takes like Gulp City): you are a hole, swallow what fits, grow, and the biggest hole wins. The garden, holes, and friend-room play are Little Sprouts’ own.</p></li>
         <li><a href="https://github.com/simondevyoutube/Quick_FPS1" target="_blank" rel="noopener">SimonDev — Quick_FPS1</a><p>Targets’ Walk mode follows that first-person paintball walk: move around, look, and leave paint where it lands. MIT. The plaza, boards, and paint launcher are drawn here; no enemies or health came along.</p></li>
         <li><a href="https://quaternius.com" target="_blank" rel="noopener">Quaternius — Ultimate Platformer Pack</a><p>The street lights, crates, fence, tanks, pipes, and gears in the Walk plaza. CC0, public domain. The copy shipped here came with Quick_FPS1.</p></li>
@@ -268,11 +270,11 @@
     <button type="button" class="quiet" id="listenAgain">Hear it again</button>
     <button type="button" class="quiet" id="listenBack">← All games</button>
   </div>
-  <script type="module" src="app.js?v=ball3"></script>
+  <script type="module" src="app.js?v=dash1"></script>
   <script type="module">
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js?v=offline3').then(async () => {
-        const { warmOffline } = await import('./lib/offline-warm.mjs?v=offline3');
+        const { warmOffline } = await import('./lib/offline-warm.mjs?v=dash1');
         warmOffline();
       }).catch(() => {});
     }

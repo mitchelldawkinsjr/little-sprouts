@@ -11,6 +11,6 @@ export const ARCADE = {
   lamp: { prompt: 'Fill the firefly jar.', aria: 'Catch that glow bug into the jar.', reveal: true },
   bust: { prompt: 'Bust the ghosts.', aria: 'Tap that ghost before it ducks.', reveal: true, said: true, stat: 'score' },
   hop: { prompt: 'Bounce up the leaves.', aria: 'Green leaves bounce. A wrong answer breaks. Falls and wrong landings cost a life.', reveal: true, stat: 'lives' },
-  glide: { prompt: 'Hold to climb. Grab the gems.', aria: 'Hold to climb. Let go to dive.' },
+  glide: { prompt: 'Fly to the gems.', aria: 'Move your finger or the mouse and the plane follows. Miss the hills, the storm clouds, and the ground.' },
   city: { prompt: 'Fly through the rings.', aria: 'Steer through the ring with the answer.', reveal: true, said: true }
 };

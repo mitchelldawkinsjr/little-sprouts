@@ -30,9 +30,9 @@ import {
   speakAndWait,
   voiceFor,
   voices
-} from '../lib/speech.js?v=ball2';
-import { sidecarGame, sidecarIsBuilt } from '../lib/sidecar.js?v=ball3';
-import { spriteHtml } from '../lib/home-ui.mjs?v=shop1';
+} from '../lib/speech.js?v=aviator1';
+import { sidecarGame, sidecarIsBuilt } from '../lib/sidecar.js?v=exp1';
+import { spriteHtml } from '../lib/home-ui.mjs?v=exp1';
 import { voiceStatusText } from '../lib/parent-ui.mjs?v=structure2';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 

@@ -4,7 +4,7 @@
  */
 import { GEAR, buyGear, gearItem, ownedGear, starsToSpend, takeOffGear, wearGear, wornGear } from '../logic/shop.mjs?v=shop1';
 import { profileSprite } from '../logic/profiles.mjs?v=buddy1';
-import { spriteHtml } from '../lib/home-ui.mjs?v=shop1';
+import { spriteHtml } from '../lib/home-ui.mjs?v=exp1';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 
 const starWord = (n) => (n === 1 ? '1 star' : `${n} stars`);

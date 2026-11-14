@@ -46,7 +46,7 @@ makes the games feel like one world, and it tells the child "this one is you".
 
 Where it applies (2026-11-13): Grass maze, Garden walk, Dirt ride (buddy head and
 colors on the rider), Paint Sphere, Skybound climb, Sprout hop, Lily cross, Garden
-chase, Marble path, Stick bridge, and Market walk. Buddy ball: Light lines and
+chase, Marble path, Stick bridge, Market walk, and Garden dash. Buddy ball: Light lines and
 Marble box.
 
 Paint Sphere and Skybound ship as built bundles whose source folders no longer match

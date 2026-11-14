@@ -820,7 +820,7 @@ let sproutsVoice = null;
 
 function loadSproutsVoice() {
   // Loading it early also lets it prime audio on the first tap, which iOS requires.
-  import('../../lib/speech.js?v=ball2')
+  import('../../lib/speech.js?v=aviator1')
     .then((mod) => {
       sproutsVoice = mod;
       // The first question is made ahead too, while the menu is up.

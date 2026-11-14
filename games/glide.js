@@ -1,10 +1,52 @@
 /**
- * Island glide — hold to raise the nose, release to dive.
- * The biplane circles a low island. Yellow gems add to the score
- * and put a little fuel back. The ground and an empty tank end the flight.
- * The plane, island, and gems here are Little Sprouts' own.
+ * Island glide — a little red plane over a slowly turning green world.
+ * Move the finger, mouse, or arrows and the plane eases after it, tilting as it goes.
+ * A controller works through the shared Little Sprouts controller (lib/pad.js): the d-pad
+ * and left stick arrive as arrow keys, and the right stick and trigger as the pointer.
+ * The world turns under the plane and brings gems around: yellow gems are fuel, labeled
+ * gems are answers. Hills rise from the land and storm clouds float in the air; hitting
+ * one, or the ground, costs a heart. No hearts or an empty tank ends the flight.
+ *
+ * The look and feel follow Zultan's CodePen "mwGZBP" (a take on The Aviator): a turning
+ * cylinder of land with low-poly trees and flowers, orbiting clouds, a big low sun, warm
+ * fog, and a plane that chases the pointer. The scene is rebuilt here for current Three.js,
+ * the learner's garden buddy flies the plane, and the gems and questions are Little Sprouts'.
  */
 import { gamePaused } from '../lib/hold.js?v=hold2';
+import { makeBuddy, buddyKind } from '../lib/buddy3d.mjs?v=ball3';
+import {
+  resolveAutoQuality, pixelRatioCap, rendererOptions, isPerformanceTier
+} from '../lib/device-tier.mjs?v=low-end1';
+
+const THREE_URL = '../vendor/three/build/three.module.js?v=r187';
+const TAU = Math.PI * 2;
+
+/** The pen's palette. */
+export const COLORS = {
+  red: 0xf25346,
+  yellow: 0xedeb27,
+  white: 0xd8d0d1,
+  brown: 0x59332e,
+  brownDark: 0x23190f,
+  blue: 0x68c3c0,
+  green: 0x458248,
+  lightgreen: 0x629265,
+  fog: 0xf7d9aa
+};
+
+/** The world: land radius, how far its center sits below the horizon, and the flying lane. */
+export const LAND_R = 600;
+export const LANE_Z = -250;
+/** Where the plane may go (world units). Low enough to touch the ground, so flying low is risky. */
+export const BOX = { x0: -100, x1: -20, y0: 4, y1: 190 };
+/** Hearts per flight. */
+export const LIVES = 3;
+/** Wheels touch the land below this height. */
+export const GROUND_CLEAR = 12;
+/** Seconds of blinking after a bump, when nothing else can hit. */
+export const SAFE_TIME = 1.6;
+/** Radians per second the land turns: the pen turns 0.005 a frame. */
+export const TURN = 0.24;
 
 let active = null;
 
@@ -13,27 +55,63 @@ export function stopGlide() {
   active = null;
 }
 
-const TAU = Math.PI * 2;
-const RING = 46;
-const SLICES = 72;
-const RINGS = [
-  { r0: 0, r1: 11, kind: 'lagoon' },
-  { r0: 11, r1: 17, kind: 'sand' },
-  { r0: 17, r1: 26, kind: 'grass' },
-  { r0: 26, r1: 34, kind: 'grass' },
-  { r0: 34, r1: 42, kind: 'grass' },
-  { r0: 42, r1: 50, kind: 'grass' },
-  { r0: 50, r1: 57, kind: 'sand' },
-  { r0: 57, r1: 68, kind: 'shallows' },
-  { r0: 68, r1: 96, kind: 'ocean' }
-];
-
-function ground(angle) {
-  const peak = Math.pow(Math.max(0, Math.sin(angle - 0.7)), 3) * 8;
-  const ridge = Math.pow(Math.max(0, Math.sin(angle * 2 + 2.2)), 4) * 4.5;
-  const roll = Math.sin(angle * 3 + 1.1) * 1.4 + Math.sin(angle * 5 + 0.4) * 0.7;
-  return 1.6 + peak + ridge + Math.max(0, roll);
+/** Map v from [vmin, vmax] (clamped) onto [tmin, tmax]. */
+export function normalize(v, vmin, vmax, tmin, tmax) {
+  const nv = Math.max(Math.min(v, vmax), vmin);
+  return tmin + ((nv - vmin) / (vmax - vmin)) * (tmax - tmin);
 }
+
+/** Where the plane wants to be for a pointer at (-1..1, -1..1), y up. */
+export function aimFor(px, py) {
+  return {
+    x: normalize(px, -0.75, 0.75, BOX.x0, BOX.x1),
+    y: normalize(py, -0.75, 0.75, BOX.y0, BOX.y1)
+  };
+}
+
+/**
+ * One frame of the pen's chase: move a tenth of the way (per 60th of a second) and tilt by
+ * what is left. Returns the new position and rotation.
+ */
+export function chase(plane, aim, dt) {
+  const k = 1 - Math.pow(0.9, dt * 60);
+  const x = plane.x + (aim.x - plane.x) * k;
+  const y = plane.y + (aim.y - plane.y) * k;
+  const tilt = v => Math.max(-0.7, Math.min(0.7, v));
+  return {
+    x,
+    y,
+    rz: tilt((aim.y - y) * 0.0128),
+    rx: tilt((y - aim.y) * 0.0064),
+    ry: tilt((x - aim.x) * 0.0064)
+  };
+}
+
+/** A world point as an angle around the land's center and a height above the land. */
+export function onLand(x, y) {
+  return { angle: Math.atan2(y + LAND_R, x), alt: Math.hypot(x, y + LAND_R) - LAND_R };
+}
+
+/** How tall a hill (h high, `base` wide each side) stands `d` units along the land from its peak. */
+export function hillTop(d, hill) {
+  return hill.h * Math.max(0, 1 - Math.abs(d) / hill.base);
+}
+
+/** Whether the plane (`alt` high, `d` along from a hill's peak) touches that hill. */
+export function hitsHill(d, alt, hill) {
+  const reach = Math.max(0, Math.abs(d) - 12);
+  return alt - 8 < hill.h * Math.max(0, 1 - reach / hill.base);
+}
+
+/** A spot `height` above the land, `ahead` radians in front of the top, after the land turned `turn`. */
+export function spotOnLand(ahead, height) {
+  const r = LAND_R + height;
+  const a = Math.PI / 2 - ahead;
+  return { x: Math.cos(a) * r, y: Math.sin(a) * r - LAND_R };
+}
+
+/** Heights (above the land) for the answer gems, so the plane has to move to each one. */
+export const ASK_HEIGHTS = [70, 150, 110, 180, 60];
 
 function mulberry(seed) {
   let a = seed >>> 0;
@@ -45,28 +123,12 @@ function mulberry(seed) {
   };
 }
 
-function fade(edge0, edge1, x) {
-  const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0 || 1)));
-  return t * t * (3 - 2 * t);
-}
-
-function landY(angle, radius) {
-  if (radius < 11 || radius > 68) return 0.2;
-  const inland = fade(11, 20, radius) * fade(68, 52, radius);
-  return 0.2 + (ground(angle) - 0.2) * inland;
-}
-
-function surfaceY(kind, angle, time) {
-  if (kind === 'lagoon' || kind === 'shallows' || kind === 'ocean') {
-    return 0.22 + Math.sin(angle * 7 + time) * 0.1 + Math.sin(angle * 3 - time * 0.6) * 0.05;
-  }
-  if (kind === 'sand') return 0.72 + Math.max(0, ground(angle) - 1.6) * 0.04;
-  return ground(angle);
+function call(fn, ...args) {
+  try { return fn?.(...args); } catch { return undefined; }
 }
 
 export function mountGlide(root, { reduced, onScore, nextQuestion, onPrompt, onClear, onMiss, onOver, onFinished } = {}) {
   stopGlide();
-  const calm = reduced ? 0.8 : 1;
   const session = {
     dead: false,
     raf: 0,
@@ -75,26 +137,397 @@ export function mountGlide(root, { reduced, onScore, nextQuestion, onPrompt, onC
       if (this.dead) return;
       this.dead = true;
       cancelAnimationFrame(this.raf);
-      this.cleanups.forEach(fn => fn());
+      this.cleanups.forEach(fn => { try { fn(); } catch { /* gone */ } });
       if (active === this) active = null;
     }
   };
   active = session;
-
-  root.innerHTML = `<div class="glide-play"><div class="glide" role="application" aria-label="Hold to climb. Let go and the plane dives. Grab the gem with the answer."><canvas class="glide-view"></canvas></div></div>`;
+  root.innerHTML = `<div class="glide-play"><div class="glide" role="application" aria-label="Move your finger or the mouse and the plane follows. Grab the gem with the answer." style="background:linear-gradient(#e4e0ba,#f7d9aa)"><p class="city-wait" style="margin:0;padding:24px;text-align:center;font:700 18px Outfit,sans-serif;color:#5a3a22">The island is coming.</p></div></div>`;
   const stage = root.querySelector('.glide');
-  const canvas = stage.querySelector('canvas');
-  const ctx = canvas.getContext('2d');
+  import(THREE_URL).then(THREE => {
+    if (session.dead) return;
+    stage.querySelector('.city-wait')?.remove();
+    begin(THREE, stage, session, { reduced, onScore, nextQuestion, onPrompt, onClear, onMiss, onOver, onFinished });
+  }).catch(() => {
+    if (session.dead) return;
+    const wait = stage.querySelector('.city-wait');
+    if (wait) wait.textContent = 'The island could not load. Check the connection and try again.';
+  });
+  return { destroy: () => session.destroy(), peek: () => session.peek?.() };
+}
+
+function begin(THREE, stage, session, { reduced, onScore, nextQuestion, onPrompt, onClear, onMiss, onOver, onFinished }) {
+  const tier = resolveAutoQuality();
+  const lowGpu = isPerformanceTier(tier);
+  const calm = reduced ? 0.8 : 1;
+  const rand = mulberry(19);
+
+  const view = document.createElement('canvas');
+  const hud = document.createElement('canvas');
+  for (const c of [view, hud]) {
+    c.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none';
+  }
+  view.className = 'glide-view';
+  hud.style.pointerEvents = 'none';
+  stage.append(view, hud);
+  const ctx = hud.getContext('2d');
+
+  let renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas: view, ...rendererOptions(tier), alpha: true });
+    if (!renderer.getContext()) throw new Error('no-webgl');
+  } catch {
+    view.remove();
+    hud.remove();
+    stage.append(Object.assign(document.createElement('p'), {
+      className: 'city-wait',
+      textContent: 'Island glide needs WebGL. Update the browser or turn on hardware acceleration.'
+    }));
+    return;
+  }
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, pixelRatioCap(tier)));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.setClearColor(0x000000, 0);
+  renderer.shadowMap.enabled = !lowGpu;
+
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(COLORS.fog, 100, 950);
+  const camera = new THREE.PerspectiveCamera(60, 16 / 9, 1, 10000);
+  camera.position.set(0, 150, 100);
+
+  // Lights: the pen's hemisphere and sun. Current Three.js wants about π times the old numbers.
+  scene.add(new THREE.HemisphereLight(0xaaaaaa, 0x000000, 0.9 * Math.PI));
+  const sunLight = new THREE.DirectionalLight(0xffffff, 0.9 * Math.PI);
+  sunLight.position.set(0, 350, 350);
+  sunLight.castShadow = !lowGpu;
+  Object.assign(sunLight.shadow.camera, { left: -650, right: 650, top: 650, bottom: -650, near: 1, far: 1000 });
+  sunLight.shadow.mapSize.set(tier === 'cinematic' ? 2048 : 1024, tier === 'cinematic' ? 2048 : 1024);
+  scene.add(sunLight);
+
+  const flat = (color, extra = {}) => new THREE.MeshPhongMaterial({ color, flatShading: true, ...extra });
+  const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
+  // The pen pulls box corners on the -x end in; this does the same on Three's newer boxes.
+  const pinchBack = (geom, fn) => {
+    const pos = geom.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      if (pos.getX(i) >= 0) continue;
+      const v = fn(pos.getY(i), pos.getZ(i));
+      pos.setY(i, v.y);
+      pos.setZ(i, v.z);
+    }
+    pos.needsUpdate = true;
+    geom.computeVertexNormals();
+    return geom;
+  };
+  const mesh = (geom, mat, shadow = true) => {
+    const m = new THREE.Mesh(geom, mat);
+    m.castShadow = shadow;
+    m.receiveShadow = shadow;
+    return m;
+  };
+
+  // Land: a long green cylinder lying along z, turning about its axis.
+  const world = new THREE.Group();
+  world.position.y = -LAND_R;
+  scene.add(world);
+  const landGeom = new THREE.CylinderGeometry(LAND_R, LAND_R, 1700, 40, 10);
+  landGeom.rotateX(-Math.PI / 2);
+  const land = mesh(landGeom, flat(COLORS.lightgreen));
+  land.castShadow = false;
+  world.add(land);
+
+  // Trees and flowers stand on the land. Each part is one instanced mesh, so 650 plants stay cheap.
+  const plantParts = new Map();
+  const part = (key, geom, mat, shadow = true) => {
+    if (!plantParts.has(key)) plantParts.set(key, { geom, mat, shadow, list: [], colors: [] });
+    return plantParts.get(key);
+  };
+  const leavesMat = flat(COLORS.green);
+  const treeParts = [
+    { p: part('trunk', box(10, 20, 10), new THREE.MeshBasicMaterial({ color: COLORS.brown })), y: 0 },
+    { p: part('leaf1', new THREE.CylinderGeometry(1, 36, 36, 4), leavesMat), y: 20 },
+    { p: part('leaf2', new THREE.CylinderGeometry(1, 27, 27, 4), leavesMat), y: 40 },
+    { p: part('leaf3', new THREE.CylinderGeometry(1, 18, 18, 4), leavesMat), y: 55 }
+  ];
+  const petalGeom = pinchBack(box(15, 20, 5), (y, z) => ({ y: y - Math.sign(y) * 4, z }));
+  petalGeom.translate(12.5, 0, 3);
+  const stem = part('stem', box(5, 50, 5), flat(COLORS.green), false);
+  const core = part('core', box(10, 10, 10), flat(COLORS.yellow), false);
+  const petals = part('petal', petalGeom, new THREE.MeshBasicMaterial({ color: 0xffffff }));
+  const petalColors = [COLORS.red, COLORS.yellow, COLORS.blue];
+  const place = new THREE.Matrix4();
+  const local = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const zAxis = new THREE.Vector3(0, 0, 1);
+  const standAt = (a, z, s) => {
+    q.setFromAxisAngle(zAxis, a - Math.PI / 2);
+    return new THREE.Matrix4().compose(
+      new THREE.Vector3(Math.cos(a) * 605, Math.sin(a) * 605, z), q, new THREE.Vector3(s, s, s));
+  };
+  const nTrees = lowGpu ? 140 : 300;
+  for (let i = 0; i < nTrees; i++) {
+    // Trees stay off the flying lane, so the plane never seems to fly through one.
+    const z = -rand() * 460;
+    const at = standAt((TAU / nTrees) * i, z > -180 ? z : z - 140, 0.3 + rand() * 0.75);
+    treeParts.forEach(({ p, y }) => p.list.push(at.clone().multiply(local.makeTranslation(0, y, 0))));
+  }
+  const nFlowers = lowGpu ? 150 : 350;
+  for (let i = 0; i < nFlowers; i++) {
+    const at = standAt((TAU / nFlowers) * i, -rand() * 600, 0.1 + rand() * 0.3);
+    stem.list.push(at.clone());
+    const head = at.clone().multiply(local.makeTranslation(0, 25, 3));
+    core.list.push(head.clone());
+    const color = new THREE.Color(petalColors[Math.floor(rand() * 3)]);
+    for (let k = 0; k < 4; k++) {
+      petals.list.push(head.clone().multiply(local.makeRotationZ(k * Math.PI / 2)));
+      petals.colors.push(color);
+    }
+  }
+  const forest = new THREE.Group();
+  world.add(forest);
+  for (const { geom, mat, shadow, list, colors } of plantParts.values()) {
+    const inst = new THREE.InstancedMesh(geom, mat, list.length);
+    list.forEach((m, i) => inst.setMatrixAt(i, m));
+    colors.forEach((c, i) => inst.setColorAt(i, c));
+    inst.castShadow = shadow && !lowGpu;
+    inst.receiveShadow = shadow;
+    forest.add(inst);
+  }
+
+  // Clouds: clumps of dodecahedrons on a wider ring that turns a little slower than the land.
+  const sky = new THREE.Group();
+  sky.position.y = -LAND_R;
+  scene.add(sky);
+  const cloudGeom = new THREE.DodecahedronGeometry(20, 0);
+  const cloudMat = new THREE.MeshPhongMaterial({ color: COLORS.white });
+  const nClouds = 25;
+  for (let i = 0; i < nClouds; i++) {
+    const cloud = new THREE.Group();
+    const blocks = 3 + Math.floor(rand() * 3);
+    for (let b = 0; b < blocks; b++) {
+      const m = mesh(cloudGeom, cloudMat, !lowGpu);
+      m.position.set(b * 15, rand() * 10, rand() * 10);
+      m.rotation.set(0, rand() * TAU, rand() * TAU);
+      const s = 0.1 + rand() * 0.9;
+      m.scale.set(s, s, s);
+      cloud.add(m);
+    }
+    const a = (TAU / nClouds) * i;
+    const h = 800 + rand() * 200;
+    cloud.position.set(Math.cos(a) * h, Math.sin(a) * h, -400 - rand() * 400);
+    cloud.rotation.z = a + Math.PI / 2;
+    const s = 1 + rand() * 2;
+    cloud.scale.set(s, s, s);
+    sky.add(cloud);
+  }
+
+  // The big low sun behind everything, softened by the fog.
+  const sun = new THREE.Mesh(new THREE.SphereGeometry(400, 20, 10), flat(COLORS.yellow));
+  sun.scale.set(1, 1, 0.3);
+  sun.position.set(0, -30, -850);
+  scene.add(sun);
+
+  // The plane, built as in the pen, with the learner's buddy in the seat.
+  const plane = new THREE.Group();
+  const red = flat(COLORS.red);
+  const white = flat(COLORS.white);
+  const cockpitGeom = pinchBack(box(80, 50, 50), (y, z) => ({ y: y > 0 ? y - 10 : y + 30, z: z - Math.sign(z) * 20 }));
+  plane.add(mesh(cockpitGeom, red));
+  const engine = mesh(box(20, 50, 50), white);
+  engine.position.x = 40;
+  plane.add(engine);
+  const tail = mesh(box(15, 20, 5), red);
+  tail.position.set(-35, 25, 0);
+  plane.add(tail);
+  const wingGeom = box(40, 4, 150);
+  const wingTop = mesh(wingGeom, red);
+  wingTop.position.set(20, 12, 0);
+  const wingBottom = mesh(wingGeom, red);
+  wingBottom.position.set(20, -3, 0);
+  plane.add(wingTop, wingBottom);
+  const shield = mesh(box(3, 15, 20), flat(COLORS.white, { transparent: true, opacity: 0.3 }));
+  shield.position.set(5, 27, 0);
+  plane.add(shield);
+  const propeller = mesh(pinchBack(box(20, 10, 10), (y, z) => ({ y: y - Math.sign(y) * 5, z: z - Math.sign(z) * 5 })), flat(COLORS.brown));
+  const bladeMat = flat(COLORS.brownDark);
+  const blade1 = mesh(box(1, 100, 10), bladeMat);
+  blade1.position.x = 8;
+  const blade2 = mesh(box(1, 10, 100), bladeMat);
+  blade2.position.x = 8;
+  propeller.add(blade1, blade2);
+  propeller.position.x = 50;
+  plane.add(propeller);
+  const guardR = mesh(box(30, 15, 10), white);
+  guardR.position.set(25, -20, 25);
+  const guardL = guardR.clone();
+  guardL.position.z = -25;
+  const tireMat = flat(COLORS.brownDark);
+  const tireR = mesh(box(24, 24, 4), tireMat);
+  tireR.position.set(25, -28, 25);
+  tireR.add(mesh(box(10, 10, 6), flat(COLORS.brown)));
+  const tireL = tireR.clone();
+  tireL.position.z = -25;
+  const tireB = tireR.clone();
+  tireB.scale.set(0.5, 0.5, 0.5);
+  tireB.position.set(-35, -5, 0);
+  const strutGeom = box(4, 20, 4);
+  strutGeom.translate(0, 10, 0);
+  const strut = mesh(strutGeom, red);
+  strut.position.set(-35, -5, 0);
+  strut.rotation.z = -0.3;
+  plane.add(guardR, guardL, tireR, tireL, tireB, strut);
+  let pilot = null;
+  try {
+    pilot = makeBuddy(THREE, buddyKind(), { shadow: false, material: color => flat(color) });
+    pilot.group.scale.setScalar(22);
+    pilot.group.position.set(-12, 6, 0);
+    pilot.group.rotation.y = Math.PI / 2;
+    pilot.group.traverse(o => { o.castShadow = !lowGpu; });
+    plane.add(pilot.group);
+  } catch { pilot = null; }
+  plane.scale.setScalar(0.42);
+  plane.position.set(-40, 110, LANE_Z);
+  scene.add(plane);
+
+  // Gems ride on the land, so they come around with it.
+  const track = new THREE.Group();
+  world.add(track);
+  const fuelGeom = new THREE.OctahedronGeometry(12, 0);
+  const fuelMat = flat(COLORS.yellow, { emissive: 0x6a5a00 });
+  const askGeom = new THREE.OctahedronGeometry(20, 0);
+  const gems = [];
+  let turn = 0;
+  const addGem = (ahead, height, opts = {}) => {
+    const ask = !!opts.ask;
+    const mat = ask ? flat(new THREE.Color(opts.fill || '#fff4dc'), { emissive: 0x332a18 }) : fuelMat;
+    const m = mesh(ask ? askGeom : fuelGeom, mat, !lowGpu);
+    const gem = { mesh: m, height, ask, hot: !!opts.hot, gone: false, ...opts };
+    placeGem(gem, ahead);
+    track.add(m);
+    gems.push(gem);
+    return gem;
+  };
+  // Put a gem `ahead` radians in front of the top of the land as it stands now.
+  const placeGem = (gem, ahead) => {
+    gem.a = Math.PI / 2 - ahead - turn;
+    const r = LAND_R + gem.height;
+    gem.mesh.position.set(Math.cos(gem.a) * r, Math.sin(gem.a) * r, LANE_Z);
+  };
+  const dropGem = gem => {
+    track.remove(gem.mesh);
+    if (gem.ask) gem.mesh.material.dispose();
+  };
+  const gemWorld = gem => {
+    const a = gem.a + turn;
+    const r = LAND_R + gem.height;
+    return { x: Math.cos(a) * r, y: Math.sin(a) * r - LAND_R };
+  };
+  const fuelHeight = () => 60 + rand() * 120;
+  const seedGems = () => {
+    gems.splice(0).forEach(dropGem);
+    for (let i = 0; i < 8; i++) addGem(0.55 + i * 0.3, fuelHeight());
+  };
+
+  // Obstacles ride on the land too: rocky hills to fly over and storm clouds to fly around.
+  const hillMat = flat(0x9a7556);
+  const hillCapMat = flat(COLORS.green);
+  const stormMat = flat(0x737884);
+  const boltMat = new THREE.MeshBasicMaterial({ color: 0xffd23a });
+  const stormGeom = new THREE.DodecahedronGeometry(15, 0);
+  const boltGeom = box(4, 18, 4);
+  const obstacles = [];
+  const wrap = a => {
+    while (a > Math.PI) a -= TAU;
+    while (a < -Math.PI) a += TAU;
+    return a;
+  };
+  const makeHill = (h, base) => {
+    const g = new THREE.Group();
+    const rock = mesh(new THREE.CylinderGeometry(6, base, h, 6, 1), hillMat, !lowGpu);
+    rock.position.y = h / 2 - 4;
+    const cap = mesh(new THREE.CylinderGeometry(1, base * 0.42, h * 0.32, 6, 1), hillCapMat, !lowGpu);
+    cap.position.y = h * 0.84 - 4;
+    g.add(rock, cap);
+    return g;
+  };
+  const makeStorm = () => {
+    const g = new THREE.Group();
+    for (let i = 0; i < 4; i++) {
+      const m = mesh(stormGeom, stormMat, !lowGpu);
+      m.position.set((i - 1.5) * 13, (i % 2) * 6, (i % 3) * 5 - 5);
+      m.scale.setScalar(0.85 + (i % 2) * 0.35);
+      g.add(m);
+    }
+    const bolt1 = new THREE.Mesh(boltGeom, boltMat);
+    bolt1.position.set(-2, -16, 0);
+    bolt1.rotation.z = 0.5;
+    const bolt2 = new THREE.Mesh(boltGeom, boltMat);
+    bolt2.position.set(3, -30, 0);
+    bolt2.rotation.z = -0.5;
+    g.add(bolt1, bolt2);
+    return g;
+  };
+  const addObstacle = (kind, ahead, height = 70 + rand() * 110) => {
+    const ob = kind === 'hill'
+      ? { kind, h: 55 + rand() * 60, base: 45 + rand() * 25 }
+      : { kind, height, radius: 30 };
+    ob.mesh = kind === 'hill' ? makeHill(ob.h, ob.base) : makeStorm();
+    ob.a = Math.PI / 2 - ahead - turn;
+    if (kind === 'hill') {
+      ob.mesh.position.set(Math.cos(ob.a) * LAND_R, Math.sin(ob.a) * LAND_R, LANE_Z);
+      ob.mesh.rotation.z = ob.a - Math.PI / 2;
+    } else {
+      const r = LAND_R + ob.height;
+      ob.mesh.position.set(Math.cos(ob.a) * r, Math.sin(ob.a) * r, LANE_Z);
+      ob.mesh.rotation.z = ob.a - Math.PI / 2;
+    }
+    track.add(ob.mesh);
+    obstacles.push(ob);
+    // Fuel gems never hide inside an obstacle.
+    gems.forEach(gem => {
+      if (gem.ask || Math.abs(wrap(gem.a - ob.a)) > 0.16) return;
+      if (kind === 'hill') gem.height = Math.max(gem.height, ob.h + 40);
+      else if (Math.abs(gem.height - ob.height) < 60) gem.height = ob.height > 120 ? ob.height - 70 : ob.height + 70;
+      placeGem(gem, Math.PI / 2 - turn - gem.a);
+    });
+    return ob;
+  };
+  const dropObstacle = ob => {
+    track.remove(ob.mesh);
+    ob.mesh.traverse(o => { if (o.geometry && o.geometry !== stormGeom && o.geometry !== boltGeom) o.geometry.dispose(); });
+  };
+  // Answers win: a storm next to a labeled gem moves up or down out of its way, and a gem
+  // over a hill floats above the peak. Every answer stays reachable without a bump.
+  const NEAR = 0.14;
+  const stormAway = h => (h > 120 ? h - 85 : h + 85);
+  const moveStorm = (ob, height) => {
+    ob.height = Math.max(45, Math.min(185, height));
+    const r = LAND_R + ob.height;
+    ob.mesh.position.set(Math.cos(ob.a) * r, Math.sin(ob.a) * r, LANE_Z);
+  };
+  const makeRoom = gem => {
+    const near = obstacles.filter(ob => Math.abs(wrap(ob.a - gem.a)) <= NEAR);
+    // Hills first, since lifting the gem over one can bring it next to a storm.
+    near.forEach(ob => {
+      if (ob.kind !== 'hill' || ob.h + 45 <= gem.height) return;
+      gem.height = ob.h + 45;
+      placeGem(gem, Math.PI / 2 - turn - gem.a);
+    });
+    near.forEach(ob => {
+      if (ob.kind === 'storm' && Math.abs(ob.height - gem.height) < 80) moveStorm(ob, stormAway(gem.height));
+    });
+  };
+  // Heights of the labeled gems near a spot `ahead` of the top.
+  const askHeightsAt = ahead => {
+    const a = Math.PI / 2 - ahead - turn;
+    return gems.filter(gem => gem.ask && !gem.gone && Math.abs(wrap(gem.a - a)) < NEAR).map(gem => gem.height);
+  };
+
   let width = 960;
   let height = 540;
   let mode = 'title';
-  let holding = false;
-  let angle = 0.4;
-  let alt = ground(angle) + 8;
-  let pitch = 0.2;
   let fuel = 1;
   let score = 0;
-  let grace = 0;
   let bonus = 0;
   let lap = 0;
   let asking = false;
@@ -103,57 +536,16 @@ export function mountGlide(root, { reduced, onScore, nextQuestion, onPrompt, onC
   let learningDone = false;
   let closed = false;
   let last = 0;
-  let spin = 0;
-  const gems = [];
-  const rand = mulberry(19);
-  const place = (count, test) => {
-    const list = [];
-    let guard = 0;
-    while (list.length < count && guard < count * 12) {
-      guard += 1;
-      const a = rand() * TAU;
-      const h = ground(a);
-      const spot = test(a, h, rand);
-      if (spot) list.push(spot);
-    }
-    return list;
-  };
-  const palms = place(22, (a, h, roll) => {
-    if (h > 4.4) return null;
-    const beach = roll() > 0.5;
-    return { a, r: beach ? 15.2 : 54.2, y: 0.9, lean: roll() * 1.4 - 0.7, s: 0.85 + roll() * 0.7 };
-  });
-  const pines = place(34, (a, h, roll) => {
-    if (h < 3.2 || h > 10.5) return null;
-    return { a, r: 22 + roll() * 26, h: 1.5 + roll() * 2.1, shade: roll(), fat: roll() };
-  });
-  const rocks = place(18, (a, h, roll) => {
-    if (h < 7) return null;
-    return { a, r: 24 + roll() * 22, s: 0.6 + roll() * 0.9 };
-  });
-  const blooms = place(40, (a, h, roll) => {
-    if (h < 2.4 || h > 8) return null;
-    return { a, r: 20 + roll() * 28, c: roll() > 0.5 ? '#e07a8a' : '#f2d35a' };
-  });
-  const birds = Array.from({ length: 5 }, () => ({
-    x: rand(),
-    y: 0.08 + rand() * 0.22,
-    w: 0.4 + rand() * 0.8,
-    flip: rand() > 0.5 ? 1 : -1
-  }));
-  const hut = { a: 3.4, r: 32 };
-  const light = { a: 5.1, r: 54.5 };
+  let clock = 0;
+  let lives = LIVES;
+  let safe = 0;
+  let bump = 0;
+  let nextObstacle = 0;
+  const aim = { x: -60, y: 120 };
+  const keys = { up: false, down: false, left: false, right: false };
+  const pos = { x: -40, y: 110 };
 
-  const call = (fn, ...args) => { try { return fn?.(...args); } catch { return undefined; } };
   const tell = () => call(() => onScore?.(score));
-
-  const seedGems = () => {
-    gems.length = 0;
-    for (let i = 0; i < 8; i++) {
-      const a = angle + 1.6 + i * 0.7;
-      gems.push({ a, y: ground(a) + 3.2 + (i % 3) * 1.8, hot: false, ask: false });
-    }
-  };
 
   const placeAsk = () => {
     if (typeof nextQuestion !== 'function' || learningDone || asking || closed) return;
@@ -166,45 +558,53 @@ export function mountGlide(root, { reduced, onScore, nextQuestion, onPrompt, onC
     }
     slipped = false;
     asking = true;
-    const offsets = [-6, 0, 6, -3, 3];
     pack.choices.forEach((choice, i) => {
-      const a = angle + 1.55 + i * 0.62;
-      const y = Math.max(ground(a) + 3.2, alt + offsets[i % offsets.length]);
-      gems.push({
-        a,
-        y,
-        hot: false,
+      const gem = addGem(0.6 + i * 0.42, ASK_HEIGHTS[i % ASK_HEIGHTS.length], {
         ask: true,
         label: String(choice.label || ''),
         ok: !!choice.ok,
         fill: choice.fill || '',
         shape: choice.shape || ''
       });
+      makeRoom(gem);
     });
     call(onPrompt);
   };
 
-  const begin = () => {
+  const start = () => {
     mode = 'fly';
-    angle = 0.4;
-    alt = ground(angle) + 7.5;
-    pitch = 0.28;
     fuel = 1;
     score = 0;
-    grace = 0.85;
     bonus = 0;
-    lap = 0;
+    lap = Math.floor(turn / TAU);
     asking = false;
-    askWait = 0.45;
+    askWait = 0.6;
     slipped = false;
+    lives = LIVES;
+    safe = 0;
+    bump = 0;
+    aim.x = -60;
+    aim.y = 120;
+    obstacles.splice(0).forEach(dropObstacle);
+    // A calm few seconds before the first obstacle.
+    nextObstacle = turn + 0.9;
     seedGems();
     tell();
+  };
+
+  // A bump costs a heart, blinks the plane, and lifts it clear.
+  const crash = () => {
+    if (safe > 0 || mode !== 'fly') return;
+    lives -= 1;
+    safe = SAFE_TIME;
+    bump = 1;
+    if (lives <= 0) { end('crash'); return; }
+    aim.y = Math.max(aim.y, 120);
   };
 
   const end = reason => {
     if (mode !== 'fly') return;
     mode = 'over';
-    holding = false;
     tell();
     if (closed || learningDone) return;
     closed = true;
@@ -215,127 +615,19 @@ export function mountGlide(root, { reduced, onScore, nextQuestion, onPrompt, onC
     const rect = stage.getBoundingClientRect();
     width = Math.max(320, rect.width);
     height = Math.max(220, rect.height);
+    renderer.setSize(width, height, false);
+    const aspect = width / height;
+    camera.aspect = aspect;
+    // On a tall screen, widen the view so the gems still show up in time.
+    camera.fov = aspect >= 1 ? 60 : (2 * Math.atan(Math.tan(Math.PI / 6) * Math.min(1.8, 1 / aspect)) * 180) / Math.PI;
+    camera.updateProjectionMatrix();
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    canvas.width = Math.round(width * dpr);
-    canvas.height = Math.round(height * dpr);
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
+    hud.width = Math.round(width * dpr);
+    hud.height = Math.round(height * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   };
 
-  const camera = () => {
-    const back = angle - 0.72;
-    const floor = ground(angle);
-    const lift = Math.max(0, alt - floor);
-    const eye = {
-      x: Math.cos(back) * (RING + 4),
-      y: alt + 2.4,
-      z: Math.sin(back) * (RING + 4)
-    };
-    let soon = null;
-    let soonRel = Infinity;
-    gems.forEach(gem => {
-      if (!gem.ask || gem.gone) return;
-      let rel = gem.a - angle;
-      while (rel <= -Math.PI) rel += TAU;
-      while (rel > Math.PI) rel -= TAU;
-      if (rel < -0.15 || rel >= soonRel) return;
-      soon = gem;
-      soonRel = rel;
-    });
-    const fall = Math.min(lift, 24) * 0.62;
-    const want = soon ? soon.y : alt - fall;
-    const lookY = Math.max(alt - 18, Math.min(alt - 1.2, alt * 0.5 + want * 0.5));
-    const ahead = angle + 0.55;
-    const at = {
-      x: Math.cos(ahead) * RING,
-      y: lookY,
-      z: Math.sin(ahead) * RING
-    };
-    const fwd = norm(sub(at, eye));
-    const right = norm(cross(fwd, { x: 0, y: 1, z: 0 }));
-    const up = cross(right, fwd);
-    return { eye, fwd, right, up };
-  };
-
-  const project = (p, cam) => {
-    const d = sub(p, cam.eye);
-    const cz = dot(d, cam.fwd);
-    if (cz < 0.9) return null;
-    const cx = dot(d, cam.right);
-    const cy = dot(d, cam.up);
-    const f = Math.min(width, height) * 0.9;
-    return {
-      x: width / 2 + cx / cz * f,
-      y: height * 0.58 - cy / cz * f,
-      z: cz,
-      s: f / cz
-    };
-  };
-
-  const sky = () => {
-    const drop = pitch * height * 0.1;
-    ctx.save();
-    ctx.translate(0, drop);
-    const g = ctx.createLinearGradient(0, -height, 0, height);
-    g.addColorStop(0, '#6ea8d8');
-    g.addColorStop(0.42, '#f3c7a4');
-    g.addColorStop(0.68, '#f7e2cf');
-    g.addColorStop(1, '#8ebed4');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, -height, width, height * 3);
-    const sunX = width * 0.78;
-    const sunY = height * 0.16;
-    const glow = ctx.createRadialGradient(sunX, sunY, 8, sunX, sunY, 90);
-    glow.addColorStop(0, 'rgba(255, 244, 210, 0.95)');
-    glow.addColorStop(0.35, 'rgba(255, 214, 150, 0.45)');
-    glow.addColorStop(1, 'rgba(255, 214, 150, 0)');
-    ctx.fillStyle = glow;
-    ctx.fillRect(sunX - 100, sunY - 100, 200, 200);
-    ctx.fillStyle = '#fff6df';
-    ctx.beginPath();
-    ctx.arc(sunX, sunY, 26, 0, TAU);
-    ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.55)';
-    ctx.beginPath();
-    ctx.ellipse(sunX - 8, sunY - 8, 8, 5, -0.6, 0, TAU);
-    ctx.fill();
-    birds.forEach(bird => {
-      const x = ((bird.x + spin * 0.008 * bird.flip) % 1) * width;
-      const y = bird.y * height + Math.sin(spin + bird.x * 6) * 4;
-      ctx.strokeStyle = 'rgba(70, 78, 92, 0.55)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(x - 7 * bird.w, y);
-      ctx.quadraticCurveTo(x - 3 * bird.w, y - 5 * bird.w, x, y);
-      ctx.quadraticCurveTo(x + 3 * bird.w, y - 5 * bird.w, x + 7 * bird.w, y);
-      ctx.stroke();
-    });
-    for (let i = 0; i < 4; i++) {
-      const x = ((0.12 + i * 0.22 + spin * 0.004) % 1) * width;
-      const y = height * (0.12 + (i % 2) * 0.08);
-      const w = 46 + i * 8;
-      ctx.fillStyle = 'rgba(255,255,255,0.82)';
-      ctx.beginPath();
-      ctx.ellipse(x, y, w, w * 0.38, 0, 0, TAU);
-      ctx.ellipse(x + w * 0.55, y + 6, w * 0.62, w * 0.28, 0, 0, TAU);
-      ctx.ellipse(x - w * 0.48, y + 8, w * 0.5, w * 0.24, 0, 0, TAU);
-      ctx.fill();
-      ctx.fillStyle = 'rgba(210, 196, 184, 0.35)';
-      ctx.beginPath();
-      ctx.ellipse(x, y + 10, w * 0.7, w * 0.16, 0, 0, TAU);
-      ctx.fill();
-    }
-    ctx.restore();
-  };
-
-  const fillPoly = pts => {
-    ctx.beginPath();
-    pts.forEach((p, n) => n ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
-    ctx.closePath();
-    ctx.fill();
-  };
-
+  // ---- 2D layer: score, fuel, answer labels, and the title card. ----
   const rounded = (x, y, w, h, r) => {
     const radius = Math.min(r, w / 2, h / 2);
     ctx.beginPath();
@@ -345,388 +637,6 @@ export function mountGlide(root, { reduced, onScore, nextQuestion, onPrompt, onC
     ctx.arcTo(x, y + h, x, y, radius);
     ctx.arcTo(x, y, x + w, y, radius);
     ctx.closePath();
-  };
-
-  const banner = text => {
-    ctx.save();
-    ctx.translate(width / 2, 14);
-    rounded(-70, 0, 140, 46, 14);
-    ctx.fillStyle = '#8a5a34';
-    ctx.fill();
-    rounded(-62, 6, 124, 34, 10);
-    ctx.fillStyle = '#f6e7c1';
-    ctx.fill();
-    ctx.fillStyle = '#e2b437';
-    ctx.beginPath();
-    ctx.moveTo(-40, 23);
-    ctx.lineTo(-32, 14);
-    ctx.lineTo(-24, 23);
-    ctx.lineTo(-32, 32);
-    ctx.fill();
-    ctx.fillStyle = '#5a3a22';
-    ctx.font = '800 26px Outfit, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(text, 10, 23);
-    ctx.restore();
-  };
-
-  const fuelBar = () => {
-    const w = Math.min(220, width * 0.34);
-    const x = width / 2 - w / 2;
-    const y = height - 28;
-    rounded(x - 28, y - 10, w + 56, 26, 13);
-    ctx.fillStyle = 'rgba(20, 48, 62, 0.82)';
-    ctx.fill();
-    ctx.fillStyle = '#f6e7c1';
-    ctx.font = '700 11px Outfit, sans-serif';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('Fuel', x - 18, y + 3);
-    rounded(x + 16, y - 2, w - 8, 10, 5);
-    ctx.fillStyle = '#10283f';
-    ctx.fill();
-    const fill = Math.max(0, (w - 8) * fuel);
-    if (fill > 1) {
-      rounded(x + 16, y - 2, fill, 10, 5);
-      ctx.fillStyle = fuel > 0.28 ? '#f2c14b' : '#e23b3b';
-      ctx.fill();
-    }
-  };
-
-  const drawPlane = (px, py, sc, nose) => {
-    const s = Math.max(48, Math.min(120, sc));
-    ctx.save();
-    ctx.translate(px, py);
-    ctx.rotate(-nose * 0.55);
-    ctx.fillStyle = '#b84334';
-    rounded(-s * 1.15, s * 0.18, s * 2.3, s * 0.2, s * 0.08);
-    ctx.fill();
-    ctx.strokeStyle = '#6a4632';
-    ctx.lineWidth = Math.max(1.5, s * 0.035);
-    ctx.beginPath();
-    ctx.moveTo(-s * 0.55, -s * 0.32);
-    ctx.lineTo(-s * 0.72, s * 0.22);
-    ctx.moveTo(s * 0.2, -s * 0.32);
-    ctx.lineTo(s * 0.34, s * 0.22);
-    ctx.stroke();
-    ctx.fillStyle = '#3f86b0';
-    ctx.beginPath();
-    ctx.ellipse(s * 0.02, -s * 0.02, s * 0.46, s * 0.3, 0, 0, TAU);
-    ctx.fill();
-    ctx.fillStyle = '#2c688c';
-    ctx.beginPath();
-    ctx.ellipse(-s * 0.08, s * 0.04, s * 0.3, s * 0.16, 0, 0, TAU);
-    ctx.fill();
-    ctx.fillStyle = '#d45340';
-    ctx.beginPath();
-    ctx.moveTo(-s * 0.4, -s * 0.08);
-    ctx.lineTo(-s * 0.78, -s * 0.46);
-    ctx.lineTo(-s * 0.22, -s * 0.08);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = '#e15a45';
-    rounded(-s * 1.28, -s * 0.46, s * 2.56, s * 0.22, s * 0.08);
-    ctx.fill();
-    ctx.fillStyle = '#f4d35e';
-    ctx.fillRect(-s * 0.08, -s * 0.46, s * 0.14, s * 0.22);
-    ctx.fillStyle = '#f7f3ea';
-    ctx.fillRect(-s * 1.28, -s * 0.4, s * 2.56, s * 0.035);
-    ctx.save();
-    ctx.translate(s * 0.5, -s * 0.02);
-    ctx.rotate(spin * (holding ? 1.8 : 1));
-    ctx.strokeStyle = 'rgba(55, 46, 40, 0.9)';
-    ctx.lineWidth = Math.max(2, s * 0.055);
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(-s * 0.3, 0);
-    ctx.lineTo(s * 0.3, 0);
-    ctx.moveTo(0, -s * 0.3);
-    ctx.lineTo(0, s * 0.3);
-    ctx.stroke();
-    ctx.restore();
-    ctx.fillStyle = '#5c4634';
-    ctx.beginPath();
-    ctx.arc(s * 0.5, -s * 0.02, Math.max(2, s * 0.06), 0, TAU);
-    ctx.fill();
-    ctx.fillStyle = '#f4f0e4';
-    ctx.beginPath();
-    ctx.ellipse(s * 0.12, -s * 0.06, s * 0.11, s * 0.08, 0, 0, TAU);
-    ctx.fill();
-    ctx.fillStyle = '#24322c';
-    ctx.beginPath();
-    ctx.arc(s * 0.14, -s * 0.06, Math.max(1.5, s * 0.035), 0, TAU);
-    ctx.fill();
-    ctx.restore();
-  };
-
-  const drawPalm = (p, tree) => {
-    const s = Math.max(10, tree.s * p.s * 0.11);
-    const topX = p.x + tree.lean * s * 0.45;
-    const topY = p.y - s * 1.15;
-    ctx.strokeStyle = '#8d5a32';
-    ctx.lineWidth = Math.max(2, s * 0.12);
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(p.x, p.y);
-    ctx.quadraticCurveTo(p.x + tree.lean * s, p.y - s * 0.55, topX, topY);
-    ctx.stroke();
-    ctx.strokeStyle = '#2f7a45';
-    ctx.lineWidth = Math.max(2, s * 0.1);
-    for (let i = 0; i < 5; i++) {
-      const a = -2.4 + i * 0.85;
-      ctx.beginPath();
-      ctx.moveTo(topX, topY);
-      ctx.quadraticCurveTo(
-        topX + Math.cos(a) * s * 0.45,
-        topY + Math.sin(a) * s * 0.2,
-        topX + Math.cos(a) * s * 0.85,
-        topY + Math.sin(a) * s * 0.35
-      );
-      ctx.stroke();
-    }
-    ctx.fillStyle = '#6aaa45';
-    ctx.beginPath();
-    ctx.ellipse(topX, topY + 2, s * 0.16, s * 0.1, 0, 0, TAU);
-    ctx.fill();
-  };
-
-  const drawPine = (p, tree) => {
-    const h = tree.h * p.s * 0.1;
-    ctx.fillStyle = '#6d5336';
-    ctx.fillRect(p.x - Math.max(1.5, h * 0.06), p.y - h * 0.28, Math.max(3, h * 0.12), h * 0.32);
-    const greens = tree.shade > 0.55 ? ['#2f6a40', '#3e8a4c', '#67a85a'] : ['#245c48', '#2f7a52', '#4e9460'];
-    greens.forEach((color, i) => {
-      const rise = h * (0.35 + i * 0.22);
-      const wide = h * (0.52 - i * 0.1);
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.moveTo(p.x, p.y - rise - h * 0.28);
-      ctx.lineTo(p.x + wide, p.y - rise + h * 0.22);
-      ctx.lineTo(p.x - wide, p.y - rise + h * 0.22);
-      ctx.closePath();
-      ctx.fill();
-    });
-  };
-
-  const paintWorld = () => {
-    const cam = camera();
-    const time = spin * 0.35;
-    const sun = norm({ x: 0.42, y: 0.84, z: 0.32 });
-    const items = [];
-    const push = (z, draw) => items.push({ z, draw });
-    const radii = [];
-    for (let r = 0; r <= 76; r += 2.5) radii.push(r);
-    const arc = Math.PI * 1.15;
-    const steps = 42;
-    for (let i = 0; i < steps; i++) {
-      const a0 = angle - 0.7 + i / steps * arc;
-      const a1 = angle - 0.7 + (i + 1) / steps * arc;
-      for (let b = 0; b < radii.length - 1; b++) {
-        const r0 = radii[b];
-        const r1 = radii[b + 1];
-        const y00 = landY(a0, r0);
-        const y10 = landY(a1, r0);
-        const y11 = landY(a1, r1);
-        const y01 = landY(a0, r1);
-        const corners = [
-          { x: Math.cos(a0) * r0, y: y00, z: Math.sin(a0) * r0 },
-          { x: Math.cos(a1) * r0, y: y10, z: Math.sin(a1) * r0 },
-          { x: Math.cos(a1) * r1, y: y11, z: Math.sin(a1) * r1 },
-          { x: Math.cos(a0) * r1, y: y01, z: Math.sin(a0) * r1 }
-        ];
-        const pts = corners.map(p => project(p, cam));
-        if (pts.some(p => !p)) continue;
-        const xs = pts.map(p => p.x);
-        const ys = pts.map(p => p.y);
-        if (Math.max(...xs) - Math.min(...xs) > width * 1.2) continue;
-        if (Math.max(...ys) - Math.min(...ys) > height * 1.2) continue;
-        if (pts.every(p => p.x < -40 || p.x > width + 40 || p.y < -40 || p.y > height + 40)) continue;
-        const z = (pts[0].z + pts[1].z + pts[2].z + pts[3].z) / 4;
-        const yMid = (y00 + y10 + y11 + y01) / 4;
-        const rMid = (r0 + r1) / 2;
-        const e1 = sub(corners[1], corners[0]);
-        const e2 = sub(corners[3], corners[0]);
-        const nrm = norm(cross(e2, e1));
-        if (nrm.y < 0) { nrm.x = -nrm.x; nrm.y = -nrm.y; nrm.z = -nrm.z; }
-        const light = 0.78 + Math.max(0, dot(nrm, sun)) * 0.22;
-        const water = rMid < 11 || rMid > 68;
-        const coast = !water && (rMid < 16.5 || rMid > 57);
-        const peak = !water && !coast && yMid > 7.4;
-        const base = water
-          ? (rMid < 11 ? '#3f96a8' : '#2f86a4')
-          : peak
-            ? (yMid > 9.2 ? '#f7f4ee' : '#c9b8a2')
-            : coast
-              ? '#e4d0a2'
-              : (yMid > 4.8 ? '#7eaa4e' : '#62943f');
-        const color = tinted(base, 1 - light, water ? '#12384c' : '#2a4030');
-        push(z, () => {
-          ctx.fillStyle = color;
-          ctx.strokeStyle = color;
-          ctx.lineWidth = 2;
-          ctx.lineJoin = 'round';
-          fillPoly(pts);
-          ctx.stroke();
-        });
-      }
-    }
-    const scatter = (list, draw) => {
-      list.forEach(item => {
-        const y = item.y ?? ground(item.a);
-        const p = project({ x: Math.cos(item.a) * item.r, y, z: Math.sin(item.a) * item.r }, cam);
-        if (!p || p.x < -60 || p.x > width + 60) return;
-        push(p.z, () => draw(p, item));
-      });
-    };
-    scatter(rocks, (p, rock) => {
-      const s = Math.max(5, rock.s * p.s * 0.08);
-      ctx.fillStyle = '#8d8274';
-      ctx.beginPath();
-      ctx.ellipse(p.x, p.y, s, s * 0.62, 0, 0, TAU);
-      ctx.fill();
-      ctx.fillStyle = '#b7aea2';
-      ctx.beginPath();
-      ctx.ellipse(p.x - s * 0.2, p.y - s * 0.16, s * 0.55, s * 0.36, -0.4, 0, TAU);
-      ctx.fill();
-    });
-    scatter(pines, drawPine);
-    scatter(palms, drawPalm);
-    scatter(blooms, (p, bloom) => {
-      const s = Math.max(2, p.s * 0.012);
-      ctx.fillStyle = '#3f7a3a';
-      ctx.fillRect(p.x, p.y - s * 2, 1.2, s * 2);
-      ctx.fillStyle = bloom.c;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y - s * 2.4, s * 1.3, 0, TAU);
-      ctx.fill();
-    });
-    const hutP = project({ x: Math.cos(hut.a) * hut.r, y: ground(hut.a), z: Math.sin(hut.a) * hut.r }, cam);
-    if (hutP) {
-      push(hutP.z, () => {
-        const s = Math.max(8, hutP.s * 0.05);
-        ctx.fillStyle = '#a56b3c';
-        ctx.fillRect(hutP.x - s * 0.7, hutP.y - s * 0.7, s * 1.4, s * 0.75);
-        ctx.fillStyle = '#8d4d32';
-        ctx.beginPath();
-        ctx.moveTo(hutP.x - s * 0.95, hutP.y - s * 0.65);
-        ctx.lineTo(hutP.x, hutP.y - s * 1.35);
-        ctx.lineTo(hutP.x + s * 0.95, hutP.y - s * 0.65);
-        ctx.fill();
-        ctx.fillStyle = '#5c3a28';
-        ctx.fillRect(hutP.x - s * 0.16, hutP.y - s * 0.38, s * 0.32, s * 0.42);
-        ctx.fillStyle = '#f2d48a';
-        ctx.fillRect(hutP.x + s * 0.28, hutP.y - s * 0.52, s * 0.22, s * 0.2);
-      });
-    }
-    const lamp = project({ x: Math.cos(light.a) * light.r, y: 0.9, z: Math.sin(light.a) * light.r }, cam);
-    if (lamp) {
-      push(lamp.z, () => {
-        const s = Math.max(8, lamp.s * 0.055);
-        ctx.fillStyle = 'rgba(40, 40, 40, 0.2)';
-        ctx.beginPath();
-        ctx.ellipse(lamp.x, lamp.y + 2, s * 0.45, s * 0.16, 0, 0, TAU);
-        ctx.fill();
-        ctx.fillStyle = '#f7f4ee';
-        ctx.fillRect(lamp.x - s * 0.16, lamp.y - s * 1.35, s * 0.32, s * 1.35);
-        ctx.fillStyle = '#d45340';
-        ctx.fillRect(lamp.x - s * 0.16, lamp.y - s * 0.85, s * 0.32, s * 0.22);
-        ctx.fillStyle = '#3f86b0';
-        ctx.beginPath();
-        ctx.arc(lamp.x, lamp.y - s * 1.48, s * 0.2, 0, TAU);
-        ctx.fill();
-        const beam = 0.5 + 0.5 * Math.sin(spin * 0.8);
-        ctx.fillStyle = `rgba(255, 236, 170, ${0.15 + beam * 0.2})`;
-        ctx.beginPath();
-        ctx.moveTo(lamp.x, lamp.y - s * 1.48);
-        ctx.lineTo(lamp.x + s * 1.8, lamp.y - s * 0.2);
-        ctx.lineTo(lamp.x + s * 1.1, lamp.y + s * 0.3);
-        ctx.fill();
-      });
-    }
-    const gy = ground(angle);
-    const clearance = alt - gy;
-    const shadow = project({
-      x: Math.cos(angle) * RING,
-      y: gy + 0.2,
-      z: Math.sin(angle) * RING
-    }, cam);
-    if (shadow) {
-      push(shadow.z - 0.05, () => {
-        const near = Math.max(0, Math.min(1, 1 - clearance / 14));
-        const rx = Math.max(8, shadow.s * 0.09 * (0.55 + near * 0.7));
-        ctx.fillStyle = clearance < 2.2 ? `rgba(176, 48, 40, ${0.25 + near * 0.25})` : `rgba(36, 58, 44, ${0.16 + near * 0.22})`;
-        ctx.beginPath();
-        ctx.ellipse(shadow.x, shadow.y, rx, rx * 0.42, 0, 0, TAU);
-        ctx.fill();
-      });
-    }
-    const craft = project({
-      x: Math.cos(angle) * RING,
-      y: alt,
-      z: Math.sin(angle) * RING
-    }, cam);
-    gems.forEach(gem => {
-      if (gem.ask) return;
-      const bob = Math.sin(spin * 2 + gem.a) * 0.35;
-      const p = project({
-        x: Math.cos(gem.a) * RING,
-        y: gem.y + bob,
-        z: Math.sin(gem.a) * RING
-      }, cam);
-      if (!p) return;
-      push(p.z - 0.15, () => {
-        const s = Math.max(16, p.s * 0.13) * (gem.hot ? 1.15 : 1);
-        const glow = ctx.createRadialGradient(p.x, p.y, 1, p.x, p.y, s * 2.1);
-        glow.addColorStop(0, gem.hot ? 'rgba(255, 196, 80, 0.9)' : 'rgba(255, 226, 90, 0.75)');
-        glow.addColorStop(1, 'rgba(255, 226, 90, 0)');
-        ctx.fillStyle = glow;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, s * 2.1, 0, TAU);
-        ctx.fill();
-        ctx.fillStyle = gem.hot ? '#ffb703' : '#ffe14a';
-        ctx.beginPath();
-        ctx.moveTo(p.x, p.y - s);
-        ctx.lineTo(p.x + s * 0.72, p.y);
-        ctx.lineTo(p.x, p.y + s * 0.85);
-        ctx.lineTo(p.x - s * 0.72, p.y);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = gem.hot ? '#fff1c2' : '#fff6b0';
-        ctx.beginPath();
-        ctx.moveTo(p.x, p.y - s * 0.72);
-        ctx.lineTo(p.x + s * 0.28, p.y - s * 0.05);
-        ctx.lineTo(p.x, p.y + s * 0.15);
-        ctx.lineTo(p.x - s * 0.18, p.y - s * 0.08);
-        ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,0.85)';
-        ctx.fillRect(p.x - s * 0.08, p.y - s * 0.55, Math.max(2, s * 0.16), s * 0.28);
-      });
-    });
-    items.sort((a, b) => b.z - a.z);
-    items.forEach(item => item.draw());
-    if (shadow && craft && mode === 'fly') {
-      ctx.save();
-      ctx.strokeStyle = clearance < 2.2 ? 'rgba(176, 48, 40, 0.55)' : 'rgba(36, 58, 44, 0.4)';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([5, 7]);
-      ctx.beginPath();
-      ctx.moveTo(craft.x, craft.y);
-      ctx.lineTo(shadow.x, shadow.y);
-      ctx.stroke();
-      ctx.restore();
-    }
-    if (craft) drawPlane(craft.x, craft.y, Math.min(craft.s * 1.15, 90), pitch);
-    else drawPlane(width * 0.5, height * 0.62, 56, pitch);
-    gems.forEach(gem => {
-      if (!gem.ask || gem.gone) return;
-      const p = project({
-        x: Math.cos(gem.a) * RING,
-        y: gem.y,
-        z: Math.sin(gem.a) * RING
-      }, cam);
-      if (p) drawChoice(p, gem);
-    });
   };
 
   const drawShape = (kind, x, y, k) => {
@@ -743,39 +653,36 @@ export function mountGlide(root, { reduced, onScore, nextQuestion, onPrompt, onC
       ctx.lineTo(x, y + k);
       ctx.lineTo(x - k, y);
       ctx.closePath();
-    } else if (kind === 'star') ctx.arc(x, y, k * 0.72, 0, TAU);
-    else if (kind === 'hexagon') {
+    } else if (kind === 'star') {
+      for (let i = 0; i < 10; i++) {
+        const a = -Math.PI / 2 + i * Math.PI / 5;
+        const r = i % 2 ? k * 0.45 : k;
+        if (i) ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r);
+        else ctx.moveTo(x + Math.cos(a) * r, y + Math.sin(a) * r);
+      }
+      ctx.closePath();
+    } else if (kind === 'hexagon') {
       for (let i = 0; i < 6; i++) {
         const a = -Math.PI / 2 + i * Math.PI / 3;
-        const px = x + Math.cos(a) * k;
-        const py = y + Math.sin(a) * k;
-        if (i) ctx.lineTo(px, py);
-        else ctx.moveTo(px, py);
+        if (i) ctx.lineTo(x + Math.cos(a) * k, y + Math.sin(a) * k);
+        else ctx.moveTo(x + Math.cos(a) * k, y + Math.sin(a) * k);
       }
       ctx.closePath();
     } else ctx.rect(x - k, y - k * 0.7, k * 2, k * 1.4);
     ctx.fill();
   };
 
-  const drawChoice = (p, gem) => {
-    const s = Math.max(26, Math.min(52, p.s * 0.18));
-    ctx.save();
-    ctx.translate(p.x, p.y);
-    ctx.fillStyle = gem.fill || '#ffe14a';
-    ctx.strokeStyle = '#6a4630';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(0, -s);
-    ctx.lineTo(s * 0.72, 0);
-    ctx.lineTo(0, s * 0.85);
-    ctx.lineTo(-s * 0.72, 0);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    if (gem.shape) {
-      ctx.fillStyle = '#f7f3ea';
-      drawShape(gem.shape, 0, -s * 0.02, s * 0.32);
-    }
+  const screen = new THREE.Vector3();
+  const toScreen = (x, y, z) => {
+    screen.set(x, y, z).project(camera);
+    if (screen.z > 1) return null;
+    return { x: (screen.x * 0.5 + 0.5) * width, y: (-screen.y * 0.5 + 0.5) * height };
+  };
+
+  const drawLabel = gem => {
+    const w = gemWorld(gem);
+    const p = toScreen(w.x, w.y - 20, LANE_Z);
+    if (!p || p.x < -80 || p.x > width + 80) return;
     const text = gem.label;
     let size = 18;
     ctx.font = `700 ${size}px Outfit, sans-serif`;
@@ -783,46 +690,104 @@ export function mountGlide(root, { reduced, onScore, nextQuestion, onPrompt, onC
       size -= 1;
       ctx.font = `700 ${size}px Outfit, sans-serif`;
     }
-    const plateW = Math.max(56, ctx.measureText(text).width + 16);
-    const plateH = size + 10;
-    const plateY = s * 0.95;
-    rounded(-plateW / 2, plateY, plateW, plateH, 8);
-    ctx.fillStyle = '#faf7f0';
+    const shapeW = gem.shape ? size + 6 : 0;
+    const textW = text ? ctx.measureText(text).width : 0;
+    const plateW = Math.max(gem.shape && !text ? 36 : 56, textW + shapeW + 16);
+    const plateH = Math.max(size + 10, gem.shape ? 30 : 0);
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    rounded(-plateW / 2, 0, plateW, plateH, 8);
+    ctx.fillStyle = 'rgba(250, 247, 240, 0.95)';
     ctx.fill();
-    ctx.strokeStyle = '#24506d';
+    ctx.strokeStyle = '#59332e';
     ctx.lineWidth = 2;
     ctx.stroke();
-    ctx.fillStyle = '#1d3a4c';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(text, 0, plateY + plateH / 2);
+    let x = -plateW / 2 + 8;
+    if (gem.shape) {
+      ctx.fillStyle = gem.fill || '#59332e';
+      drawShape(gem.shape, x + shapeW / 2 - 3, plateH / 2, (size + 2) / 2);
+      x += shapeW;
+    }
+    if (text) {
+      ctx.fillStyle = '#23190f';
+      ctx.textAlign = gem.shape ? 'left' : 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, gem.shape ? x : 0, plateH / 2 + 1);
+    }
     ctx.restore();
   };
 
-  const overlay = () => {
-    if (mode === 'fly') return;
+  const scoreTag = () => {
+    ctx.save();
+    ctx.translate(width / 2, 12);
+    rounded(-62, 0, 124, 42, 21);
+    ctx.fillStyle = 'rgba(250, 247, 240, 0.9)';
+    ctx.fill();
+    ctx.fillStyle = '#edeb27';
+    ctx.strokeStyle = '#59332e';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-34, 21);
+    ctx.lineTo(-24, 9);
+    ctx.lineTo(-14, 21);
+    ctx.lineTo(-24, 33);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#59332e';
+    ctx.font = '800 24px Outfit, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(score), 14, 22);
+    ctx.restore();
+  };
+
+  const fuelBar = () => {
+    const w = Math.min(220, width * 0.34);
+    const x = width / 2 - w / 2;
+    const y = height - 28;
+    rounded(x - 28, y - 10, w + 56, 26, 13);
+    ctx.fillStyle = 'rgba(250, 247, 240, 0.9)';
+    ctx.fill();
+    ctx.fillStyle = '#59332e';
+    ctx.font = '700 11px Outfit, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Fuel', x - 18, y + 3);
+    rounded(x + 16, y - 2, w - 8, 10, 5);
+    ctx.fillStyle = '#e4e0ba';
+    ctx.fill();
+    const fill = Math.max(0, (w - 8) * fuel);
+    if (fill > 1) {
+      rounded(x + 16, y - 2, fill, 10, 5);
+      ctx.fillStyle = fuel > 0.28 ? '#68c3c0' : '#f25346';
+      ctx.fill();
+    }
+  };
+
+  const card = () => {
     const cardW = Math.min(336, width - 24);
-    const cardY = height * 0.58;
-    const cardH = Math.min(height * 0.38, height - cardY - 8);
-    ctx.fillStyle = 'rgba(18, 42, 58, 0.28)';
-    ctx.fillRect(0, 0, width, height);
+    const cardH = Math.min(176, height - 24);
+    const cardY = Math.max(12, height * 0.56 - cardH / 2);
     rounded(width / 2 - cardW / 2, cardY, cardW, cardH, 22);
     ctx.fillStyle = 'rgba(250, 247, 240, 0.94)';
     ctx.fill();
-    ctx.fillStyle = '#24506d';
-    ctx.font = '800 36px Outfit, sans-serif';
+    ctx.fillStyle = '#f25346';
+    ctx.font = '800 34px Outfit, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(mode === 'title' ? 'Island glide' : 'Flight over', width / 2, cardY + 36);
-    if (mode === 'over') {
-      ctx.font = '700 16px Outfit, sans-serif';
-      ctx.fillStyle = '#5a3a22';
-      ctx.fillText(fuel <= 0 ? 'The fuel ran out.' : 'The plane met the island.', width / 2, cardY + 68);
-    }
-    const by = cardY + cardH * 0.58;
+    ctx.fillText(mode === 'title' ? 'Island glide' : 'Flight over', width / 2, cardY + 34);
+    ctx.font = '700 15px Outfit, sans-serif';
+    ctx.fillStyle = '#59332e';
+    const gemCount = `${score} ${score === 1 ? 'gem' : 'gems'}`;
+    const line = mode === 'title'
+      ? 'Move and the plane follows. Miss the hills and storms.'
+      : lives <= 0 ? `Out of hearts. ${gemCount}.` : `The fuel ran out. ${gemCount}.`;
+    ctx.fillText(line, width / 2, cardY + 66);
+    const by = cardY + cardH - 46;
     ctx.beginPath();
-    ctx.arc(width / 2, by, 28, 0, TAU);
-    ctx.fillStyle = '#3c92d6';
+    ctx.arc(width / 2, by, 26, 0, TAU);
+    ctx.fillStyle = '#f25346';
     ctx.fill();
     ctx.fillStyle = '#fff';
     ctx.beginPath();
@@ -831,185 +796,273 @@ export function mountGlide(root, { reduced, onScore, nextQuestion, onPrompt, onC
     ctx.lineTo(width / 2 - 7, by + 12);
     ctx.closePath();
     ctx.fill();
-    ctx.font = '700 15px Outfit, sans-serif';
-    ctx.fillStyle = '#24506d';
-    const gemLine = `${score} ${score === 1 ? 'gem' : 'gems'}`;
-    ctx.fillText(mode === 'title' ? 'Grab the gem with the answer.' : gemLine, width / 2, cardY + cardH - 22);
   };
 
-  const paint = () => {
-    sky();
-    paintWorld();
+  const heart = (x, y, s, full) => {
+    ctx.beginPath();
+    ctx.moveTo(x, y + s * 0.9);
+    ctx.bezierCurveTo(x - s * 1.2, y + s * 0.1, x - s * 0.9, y - s * 0.9, x, y - s * 0.3);
+    ctx.bezierCurveTo(x + s * 0.9, y - s * 0.9, x + s * 1.2, y + s * 0.1, x, y + s * 0.9);
+    ctx.closePath();
+    ctx.fillStyle = full ? '#f25346' : 'rgba(89, 51, 46, 0.18)';
+    ctx.fill();
+  };
+
+  const hearts = () => {
+    rounded(12, 12, 24 + LIVES * 26, 42, 21);
+    ctx.fillStyle = 'rgba(250, 247, 240, 0.9)';
+    ctx.fill();
+    for (let i = 0; i < LIVES; i++) {
+      // The heart just lost shakes for a moment.
+      const lost = i === lives && bump > 0;
+      const shake = lost ? Math.sin(clock * 60) * 3 * bump : 0;
+      heart(37 + i * 26 + shake, 33, 10, i < lives);
+    }
+  };
+
+  const paintHud = () => {
+    ctx.clearRect(0, 0, width, height);
     if (mode === 'fly') {
-      banner(String(score));
+      gems.forEach(gem => { if (gem.ask && !gem.gone) drawLabel(gem); });
+      scoreTag();
+      hearts();
       fuelBar();
-      const clearance = Math.max(0, alt - ground(angle));
-      const lifted = Math.round(clearance);
-      ctx.save();
-      ctx.translate(16, height * 0.5);
-      rounded(0, -78, 44, 156, 12);
-      ctx.fillStyle = 'rgba(20, 48, 62, 0.82)';
-      ctx.fill();
-      const rise = Math.max(0, Math.min(1, clearance / 16));
-      ctx.fillStyle = clearance < 2.2 ? '#e23b3b' : '#f2c14b';
-      ctx.fillRect(10, 62 - rise * 120, 24, Math.max(6, rise * 120));
-      ctx.fillStyle = '#f6e7c1';
-      ctx.font = '700 13px Outfit, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(String(lifted), 22, 70);
-      ctx.restore();
-      if (bonus > 0) {
-        ctx.fillStyle = '#d24b3a';
+      if (bump > 0) {
+        ctx.globalAlpha = Math.min(1, bump * 1.5);
+        ctx.fillStyle = '#f25346';
+        ctx.font = '800 30px Outfit, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('Bump!', width / 2, height * 0.3);
+        ctx.globalAlpha = 1;
+      } else if (bonus > 0) {
+        ctx.fillStyle = '#f25346';
         ctx.font = '800 22px Outfit, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('Bonus!', width / 2, 78);
+        ctx.fillText('Bonus!', width / 2, 76);
+      }
+      // Fly too low and the ground warns first.
+      const { alt } = onLand(pos.x, pos.y);
+      if (alt < GROUND_CLEAR + 22 && safe <= 0) {
+        ctx.fillStyle = 'rgba(242, 83, 70, 0.9)';
+        ctx.font = '800 18px Outfit, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('Too low! Pull up!', width / 2, height - 56);
+      }
+    } else card();
+  };
+
+  // ---- Play ----
+  const step = dt => {
+    const paused = gamePaused();
+    if (paused) return;
+    const speed = TURN * calm * (mode === 'fly' ? 1 : 0.6);
+    turn += speed * dt;
+    world.rotation.z = turn;
+    sky.rotation.z = turn * 0.6;
+
+    // Arrow keys (and the controller's d-pad and left stick, which lib/pad.js sends as
+    // arrow keys) nudge the aim; the pointer and the controller's cursor set it outright.
+    const dx = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+    const dy = (keys.up ? 1 : 0) - (keys.down ? 1 : 0);
+    if (dx || dy) {
+      aim.x = Math.max(BOX.x0, Math.min(BOX.x1, aim.x + dx * 90 * dt));
+      aim.y = Math.max(BOX.y0, Math.min(BOX.y1, aim.y + dy * 150 * dt));
+    }
+    const want = mode === 'fly' ? aim : { x: -50, y: 115 + Math.sin(clock * 1.3) * 18 };
+    const next = chase(pos, want, dt);
+    pos.x = next.x;
+    pos.y = next.y;
+    plane.position.set(pos.x, pos.y, LANE_Z);
+    plane.rotation.set(next.rx, next.ry, next.rz);
+    if (bump > 0) plane.rotation.x += Math.sin(clock * 40) * 0.25 * bump;
+    plane.visible = safe <= 0 || Math.floor(safe * 10) % 2 === 0;
+    propeller.rotation.x += dt * 18 * calm;
+    pilot?.animate?.(dt, 0, clock);
+    gems.forEach(gem => {
+      gem.mesh.rotation.y += dt * 1.6;
+      gem.mesh.rotation.x += dt * 0.9;
+    });
+    obstacles.forEach(ob => {
+      if (ob.kind === 'storm') ob.mesh.children.forEach((m, i) => { if (i < 4) m.rotation.y += dt * 0.4; });
+    });
+
+    // The bump shake and blink wear off even after the flight ends.
+    safe = Math.max(0, safe - dt);
+    bump = Math.max(0, bump - dt * 1.4);
+    if (mode !== 'fly') return;
+    bonus = Math.max(0, bonus - dt);
+    fuel = Math.max(0, fuel - 0.03 * dt);
+    if (fuel <= 0) { end('fuel'); return; }
+
+    // Obstacles: one every so often, closer together as the score grows, never on an answer.
+    if (turn >= nextObstacle) {
+      const ahead = 0.85;
+      const near = askHeightsAt(ahead);
+      // Next to an answer only a storm fits, well above or below every labeled gem there.
+      const room = [55, 80, 105, 130, 155, 180].filter(h => near.every(g => Math.abs(g - h) >= 80));
+      if (near.length && !room.length) nextObstacle = turn + 0.12;
+      else {
+        if (near.length) addObstacle('storm', ahead, room[Math.floor(rand() * room.length)]);
+        else addObstacle(rand() < 0.45 ? 'hill' : 'storm', ahead);
+        const gap = Math.max(0.36, 0.7 - score * 0.02) * (reduced ? 1.25 : 1);
+        nextObstacle = turn + gap * (0.8 + rand() * 0.4);
       }
     }
-    overlay();
+    const here = onLand(pos.x, pos.y);
+    if (here.alt < GROUND_CLEAR) crash();
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+      const ob = obstacles[i];
+      const d = wrap(here.angle - (ob.a + turn)) * LAND_R;
+      if (ob.kind === 'hill') {
+        if (Math.abs(d) < ob.base + 12 && hitsHill(d, here.alt, ob)) crash();
+      } else {
+        const dy = here.alt - ob.height;
+        if (d * d + dy * dy < (ob.radius + 12) ** 2) {
+          // A storm cloud you bump puffs away, so it can't catch you twice.
+          crash();
+          ob.hit = true;
+        }
+      }
+      if (mode !== 'fly') return;
+      // d is positive ahead of the plane; gone once well behind it, or puffed away.
+      if (ob.hit || d < -220) { dropObstacle(ob); obstacles.splice(i, 1); }
+    }
+    askWait = Math.max(0, askWait - dt);
+    if (!asking && askWait <= 0) placeAsk();
+    const nextLap = Math.floor(turn / TAU);
+    if (nextLap > lap) {
+      lap = nextLap;
+      bonus = 4;
+      for (let i = 0; i < 5; i++) addGem(0.5 + i * 0.12, 80 + i * 18, { hot: true });
+    }
+
+    let tookAsk = false;
+    const hits = gem => {
+      const w = gemWorld(gem);
+      const reach = gem.ask ? 34 : 26;
+      return (w.x - pos.x) ** 2 + (w.y - pos.y) ** 2 < reach * reach;
+    };
+    gems.forEach(gem => {
+      if (!gem.ask || gem.gone || !hits(gem)) return;
+      tookAsk = true;
+      if (gem.ok) {
+        score += 1;
+        fuel = Math.min(1, fuel + 0.18);
+        gems.forEach(other => { if (other.ask) other.gone = true; });
+        asking = false;
+        askWait = 0.75;
+        tell();
+        call(onClear, !slipped);
+      } else {
+        gem.gone = true;
+        slipped = true;
+        call(onMiss);
+      }
+    });
+    // An answer that slipped past comes around again.
+    gems.filter(gem => gem.ask && !gem.gone && gemWorld(gem).x < pos.x - 90)
+      .forEach((gem, i) => { placeGem(gem, 0.75 + i * 0.42); makeRoom(gem); });
+    gems.forEach(gem => {
+      if (gem.ask || gem.gone) return;
+      if (!tookAsk && hits(gem)) {
+        score += gem.hot || bonus > 0 ? 2 : 1;
+        fuel = Math.min(1, fuel + 0.14);
+        tell();
+        if (gem.hot) { gem.gone = true; return; }
+        gem.height = fuelHeight();
+        placeGem(gem, 0.7 + rand() * 0.9);
+        return;
+      }
+      if (gemWorld(gem).x < pos.x - 120) {
+        if (gem.hot) { gem.gone = true; return; }
+        gem.height = fuelHeight();
+        placeGem(gem, 0.7 + rand() * 0.9);
+      }
+    });
+    for (let i = gems.length - 1; i >= 0; i--) {
+      if (gems[i].gone) { dropGem(gems[i]); gems.splice(i, 1); }
+    }
   };
 
   const tick = now => {
     if (session.dead) return;
     const dt = Math.min(0.033, last ? (now - last) / 1000 : 0.016);
     last = now;
-    spin += dt * (mode === 'fly' ? 18 : 6) * calm;
-    const paused = gamePaused();
-    if (!paused && mode === 'title') angle += dt * 0.12 * calm;
-    if (!paused && mode === 'fly') {
-      const lift = holding ? 1.35 : -1.15;
-      pitch = Math.max(-1.05, Math.min(0.95, pitch + lift * calm * dt));
-      alt += Math.sin(pitch) * 9 * calm * dt;
-      angle += 0.5 * calm * dt;
-      grace = Math.max(0, grace - dt);
-      bonus = Math.max(0, bonus - dt);
-      fuel = Math.max(0, fuel - 0.03 * dt);
-      const floor = ground(angle) + 0.7;
-      if (grace <= 0 && alt < floor) end('ground');
-      else if (fuel <= 0) end('fuel');
-      else {
-        askWait = Math.max(0, askWait - dt);
-        if (!asking && askWait <= 0) placeAsk();
-        const nextLap = Math.floor((angle - 0.4) / TAU);
-        if (nextLap > lap) {
-          lap = nextLap;
-          bonus = 4;
-          for (let i = 0; i < 5; i++) gems.push({ a: angle + 0.8 + i * 0.22, y: ground(angle) + 5 + i * 1.3, hot: true, ask: false });
-        }
-        const px = Math.cos(angle) * RING;
-        const pz = Math.sin(angle) * RING;
-        const near = gem => {
-          const dx = Math.cos(gem.a) * RING - px;
-          const dy = gem.y - alt;
-          const dz = Math.sin(gem.a) * RING - pz;
-          return dx * dx + dy * dy + dz * dz;
-        };
-        let tookAsk = false;
-        gems.forEach(gem => {
-          if (!gem.ask || gem.gone) return;
-          if (near(gem) > 22) return;
-          tookAsk = true;
-          if (gem.ok) {
-            score += 1;
-            fuel = Math.min(1, fuel + 0.18);
-            gems.forEach(other => { if (other.ask) other.gone = true; });
-            asking = false;
-            askWait = 0.75;
-            tell();
-            call(onClear, !slipped);
-          } else {
-            gem.gone = true;
-            slipped = true;
-            call(onMiss);
-          }
-        });
-        const behind = gems.filter(gem => {
-          if (!gem.ask || gem.gone) return false;
-          let passed = angle - gem.a;
-          while (passed > Math.PI) passed -= TAU;
-          while (passed < -Math.PI) passed += TAU;
-          return passed > 0.4;
-        });
-        const offsets = [-6, 0, 6, -3, 3];
-        behind.forEach((gem, i) => {
-          gem.a = angle + 1.55 + i * 0.62;
-          gem.y = Math.max(ground(gem.a) + 3.2, alt + offsets[i % offsets.length]);
-        });
-        if (!tookAsk) {
-          gems.forEach(gem => {
-            if (gem.ask || gem.gone) return;
-            if (near(gem) > 7) return;
-            score += gem.hot || bonus > 0 ? 2 : 1;
-            fuel = Math.min(1, fuel + 0.14);
-            gem.hot = bonus > 0;
-            gem.a = angle + 2.4 + Math.random() * 2.2;
-            gem.y = ground(gem.a) + 3.2 + Math.random() * 7;
-            tell();
-          });
-        }
-        for (let i = gems.length - 1; i >= 0; i--) if (gems[i].gone) gems.splice(i, 1);
-      }
-    }
-    if (!session.dead) paint();
+    clock += dt;
+    step(dt);
+    renderer.render(scene, camera);
+    paintHud();
     session.raf = requestAnimationFrame(tick);
   };
 
+  // ---- Input ----
+  const pointerAim = event => {
+    const rect = stage.getBoundingClientRect();
+    const px = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    const py = 1 - ((event.clientY - rect.top) / rect.height) * 2;
+    Object.assign(aim, aimFor(px, py));
+  };
   const down = event => {
     if (session.dead) return;
     if (event.button !== undefined && event.button !== 0) return;
     event.preventDefault();
-    if (mode !== 'fly') begin();
-    holding = true;
+    if (mode !== 'fly') { start(); return; }
+    pointerAim(event);
   };
-  const up = () => { holding = false; };
+  const move = event => {
+    if (mode !== 'fly') return;
+    if (event.pointerType !== 'mouse' && !event.buttons) return;
+    pointerAim(event);
+  };
   const typing = event => event.target && /^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName);
+  const KEYMAP = { ArrowUp: 'up', w: 'up', W: 'up', ArrowDown: 'down', s: 'down', S: 'down', ArrowLeft: 'left', a: 'left', A: 'left', ArrowRight: 'right', d: 'right', D: 'right' };
   const onKey = event => {
     if (document.querySelector('dialog[open]') || typing(event)) return;
-    if (event.key !== ' ' && event.key !== 'Enter') return;
-    event.preventDefault();
-    if (event.type === 'keydown' && !event.repeat) down(event);
-    if (event.type === 'keyup') up();
+    const dir = KEYMAP[event.key];
+    if (dir) {
+      event.preventDefault();
+      keys[dir] = event.type === 'keydown';
+      if (event.type === 'keydown' && mode !== 'fly' && !event.repeat) start();
+      return;
+    }
+    if ((event.key === ' ' || event.key === 'Enter') && event.type === 'keydown' && !event.repeat && mode !== 'fly') {
+      event.preventDefault();
+      start();
+    }
   };
+  const blur = () => { keys.up = keys.down = keys.left = keys.right = false; };
+
+  // For tests: where the plane and the gems are.
+  session.peek = () => ({
+    mode, score, fuel, lives, safe, plane: { ...pos }, alt: onLand(pos.x, pos.y).alt,
+    gems: gems.map(g => ({ ask: g.ask, ok: !!g.ok, ...gemWorld(g) })),
+    obstacles: obstacles.map(o => ({ kind: o.kind, d: wrap(onLand(pos.x, pos.y).angle - (o.a + turn)) * LAND_R, h: o.h, base: o.base, height: o.height }))
+  });
 
   seedGems();
   layout();
-  canvas.addEventListener('pointerdown', down);
-  window.addEventListener('pointerup', up);
-  window.addEventListener('pointercancel', up);
+  const resize = new ResizeObserver(layout);
+  resize.observe(stage);
+  view.addEventListener('pointerdown', down);
+  view.addEventListener('pointermove', move);
   document.addEventListener('keydown', onKey);
   document.addEventListener('keyup', onKey);
-  window.addEventListener('resize', layout);
+  window.addEventListener('blur', blur);
   session.cleanups.push(() => {
-    canvas.removeEventListener('pointerdown', down);
-    window.removeEventListener('pointerup', up);
-    window.removeEventListener('pointercancel', up);
+    resize.disconnect();
+    view.removeEventListener('pointerdown', down);
+    view.removeEventListener('pointermove', move);
     document.removeEventListener('keydown', onKey);
     document.removeEventListener('keyup', onKey);
-    window.removeEventListener('resize', layout);
+    window.removeEventListener('blur', blur);
+    scene.traverse(o => {
+      o.geometry?.dispose?.();
+      const mats = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
+      mats.forEach(m => m.dispose?.());
+    });
+    renderer.dispose();
   });
   session.raf = requestAnimationFrame(tick);
-  return { destroy: session.destroy };
-}
-
-function sub(a, b) { return { x: a.x - b.x, y: a.y - b.y, z: a.z - b.z }; }
-function mul(a, s) { return { x: a.x * s, y: a.y * s, z: a.z * s }; }
-function dot(a, b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
-function cross(a, b) {
-  return { x: a.y * b.z - a.z * b.y, y: a.z * b.x - a.x * b.z, z: a.x * b.y - a.y * b.x };
-}
-function norm(a) {
-  const l = Math.hypot(a.x, a.y, a.z) || 1;
-  return mul(a, 1 / l);
-}
-function tinted(hex, t, toward) {
-  const parse = color => {
-    if (color[0] === '#') return [parseInt(color.slice(1, 3), 16), parseInt(color.slice(3, 5), 16), parseInt(color.slice(5, 7), 16)];
-    const parts = String(color).match(/[\d.]+/g);
-    return parts ? parts.slice(0, 3).map(Number) : [40, 60, 50];
-  };
-  const amount = Math.max(0, Math.min(1, t));
-  const a = parse(hex);
-  const b = parse(toward);
-  const c = a.map((v, i) => Math.round(v + (b[i] - v) * amount));
-  return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
 }

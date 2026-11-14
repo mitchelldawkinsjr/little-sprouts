@@ -470,3 +470,25 @@ test('the worker reports one load failure and suppresses stale stored-line answe
   assert.equal(out.at(-1).model, 'failed');
   assert.equal(out.at(-1).cache.queued, 0);
 });
+
+test('every home shelf name has a baked clip, so tapping a shelf speaks at once', async () => {
+  const { SHELF_META } = await import('../lib/home-ui.mjs');
+  const { bakedTexts, speakable } = await import('../lib/speech-core.mjs');
+  for (const shelf of SHELF_META) assert.ok(bakedTexts().includes(speakable(shelf.label)), `${shelf.label} is not baked`);
+});
+
+test('every baked line has a clip for every voice, loaded from the site root', async () => {
+  const { existsSync } = await import('node:fs');
+  const { bakedTexts, bakedPath, voiceIds } = await import('../lib/speech-core.mjs');
+  const missing = [];
+  for (const voice of voiceIds) {
+    for (const text of bakedTexts()) {
+      const path = bakedPath({ voice, text });
+      if (!existsSync(new URL(`../${path}`, import.meta.url))) missing.push(`${voice}: ${text}`);
+    }
+  }
+  assert.deepEqual(missing, []);
+  // speech.js sits in lib/, and the clips are at the root: voice/<version>/<voice>/<hash>.m4a.
+  const source = readFileSync(new URL('../lib/speech.js', import.meta.url), 'utf8');
+  assert.match(source, /new URL\(`\.\.\/\$\{path\}`, import\.meta\.url\)/);
+});

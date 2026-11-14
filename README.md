@@ -96,6 +96,7 @@ Most of the pictures, questions, and games are Little Sprouts’ own. These crea
 
 - [Jake Gordon — javascript-racer](https://github.com/jakesgordon/javascript-racer) (MIT). Word lanes and Gas race use his road drawing.
 - [cnrasili — Hooked](https://github.com/cnrasili/Hooked). Hook the fish follows that cast-and-steer idea. The pictures and sounds here are new.
+- [Karim Maaloul (Yakudoo) — running CodePen](https://codepen.io/Yakudoo/pen/YGxYej). Garden dash follows that look and feel: the side view of a runner on a little turning planet, the misty trees with cube fruit, the jump, the chaser that closes in after each bump, and the sit-up munch when it catches you. The buddy, caterpillar, garden things, answer boards, and code are Little Sprouts’ own.
 - [Megafry — Toast Catcher](https://codepen.io/Megafry/pen/yyyZyYw). Toast pop uses that arc and the lives.
 - [Jamie Coulter — The Mine](https://codepen.io/jcoulterdesign/pen/NOMeEb). Market walk uses that aisle engine: one step per arrow, the shop follows, and you pick up what is in the spot you are standing in. The market and the shopper are drawn here.
 - [deeptoaster — Pure CSS Whac-A-Mole](https://codepen.io/deeptoaster/pen/eYdEPzj). Mole pop follows that peek from the holes. A tap on empty dirt misses. The moles and the questions are drawn here. MIT.
@@ -106,9 +107,10 @@ Most of the pictures, questions, and games are Little Sprouts’ own. These crea
 - [JS Planet Defense](https://freefrontend.com/javascript-games/#2025-11-02-js-planet-defense-game-l) on FreeFrontend. Planet guard follows that aim. It is drawn here.
 - [Glass Physics 3D Jigsaw](https://freefrontend.com/javascript-games/#2026-01-01-glass-physics-3d-jigsaw-puzzle-l) on FreeFrontend. Shape puzzle follows that glass-piece idea.
 - [Animated emoji memory game](https://freefrontend.com/javascript-games/#2025-09-09-emoji-memory-match-l) on FreeFrontend. Pair match follows that flip. The cards are new.
+- [Zultan — low-poly plane over a turning world](https://codepen.io/Zultan/pen/mwGZBP). Island glide follows that look and feel: the turning green world, orbiting clouds, low sun, and a plane that eases after the pointer. It is rebuilt here for current Three.js; the buddy pilot, gems, and questions are drawn here.
 - [TurdleTips — Paper City Glider](https://codepen.io/TurdleTips/pen/01a00355-5252-7ba3-b92d-90c79c3e616a). City glide follows that paper plane through downtown blocks. The plane, the rings, and the questions are drawn here.
 - [Jens Broecher — Airplane pulling a banner](https://codepen.io/jensbroecher/pen/wvZQdEa). Sky flight’s bush plane follows that blue-and-white utility look. The plane is rebuilt here; no CodePen bitmap is shipped.
-- [Ricardo Cabello and the Three.js authors](https://github.com/mrdoob/three.js) (MIT). Sky flight’s quiz gates and bush plane, Paint sphere, Garden gulp, Targets, Cube dash, and City glide draw with Three.js. The plane and gates are Little Sprouts’ own.
+- [Ricardo Cabello and the Three.js authors](https://github.com/mrdoob/three.js) (MIT). Sky flight’s quiz gates and bush plane, Paint sphere, Garden gulp, Targets, Cube dash, City glide, and Island glide draw with Three.js. The plane and gates are Little Sprouts’ own.
 - Hole games such as Hole.io, Donut County, and browser takes like Gulp City. Garden gulp follows that swallow-and-grow idea. The garden, holes, and friend-room play are drawn here.
 - [SimonDev — Quick_FPS1](https://github.com/simondevyoutube/Quick_FPS1) (MIT). Targets’ Walk mode follows that first-person paintball walk. The plaza, boards, and paint launcher are drawn here; no enemies or health came along.
 - [Quaternius — Ultimate Platformer Pack](https://quaternius.com) (CC0). The street lights, crates, fence, tanks, pipes, and gears in the Walk plaza, from the copy shipped with Quick_FPS1.

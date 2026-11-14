@@ -42,8 +42,8 @@ import {
   verseRecall,
   verseWithRef
 } from '../logic.mjs?v=offline1';
-import { canSpeak, warm } from '../lib/speech.js?v=ball2';
-import { mountCatch, mountLanes, mountRace, mountRocket, pokeRocket, stopArcade } from '../games/arcade.js?v=ball3';
+import { canSpeak, warm } from '../lib/speech.js?v=aviator1';
+import { mountCatch, mountLanes, mountRace, mountRocket, pokeRocket, stopArcade } from '../games/arcade.js?v=exp1';
 import { mountLunar } from '../games/lunar.js?v=moon-board2';
 import { mountHoop, stopHoop } from '../games/hoop.js?v=hoop-trio-r2';
 import { lightMarkSlots, mountLight, stopLight } from '../games/light.js?v=light-pace-icons';
@@ -55,9 +55,9 @@ import { mountMatch, stopMatch } from '../games/match.js?v=pair-match2';
 import { mountChase, stopChase } from '../games/chase.js?v=ball3';
 import { mountHop, stopHop } from '../games/hop.js?v=ball3';
 import { mountToast, stopToast } from '../games/toast.js?v=ask-first-r2';
-import { mountGlide, stopGlide } from '../games/glide.js?v=ask-first-r2';
+import { mountGlide, stopGlide } from '../games/glide.js?v=aviator1';
 import { mountCity, stopCity } from '../games/city.js?v=low-end1';
-import { mountAisle, stopAisle } from '../games/aisle.js?v=ball3';
+import { mountAisle, stopAisle } from '../games/aisle.js?v=exp1';
 import { mountLily, stopLily } from '../games/lily.js?v=ball3';
 import { mountBust, stopBust } from '../games/bust.js?v=ghost-same2-r2';
 import { mountMole, stopMole } from '../games/mole.js?v=mole-pop3';
@@ -78,7 +78,7 @@ import {
   sidecarGame,
   sidecarIsBuilt,
   stopSidecar
-} from '../lib/sidecar.js?v=ball3';
+} from '../lib/sidecar.js?v=exp1';
 import {
   SHELF_META,
   shelfOf as shelfIdOf,
@@ -89,10 +89,10 @@ import {
   shelfPanelHtml,
   starGardenHtml as gardenHtml,
   homePageHtml
-} from '../lib/home-ui.mjs?v=shop1';
+} from '../lib/home-ui.mjs?v=exp1';
 import { wornGear } from '../logic/shop.mjs?v=shop1';
 import { $, esc } from './runtime.mjs?v=lean-r2';
-import { ARCADE } from './arcade-modes.mjs?v=city-glide';
+import { ARCADE } from './arcade-modes.mjs?v=aviator1';
 
 const words = list => new Set(list.split(' '));
 const SCREEN = words('catch lanes');
@@ -605,7 +605,7 @@ export function registerMounts(rt) {
     const listed = listedGames();
     const available = SHELF_META.map(s => ({ ...s, games: listed.filter(g => shelfOf(g[0]) === s.id) })).filter(s => s.games.length);
     if (focus === 'style') rt.homeHowOpen = true;
-    if (!available.some(s => s.id === rt.homeShelf)) rt.homeShelf = shelfOf(next?.[0]) || available[0]?.id || 'adventures';
+    if (!available.some(s => s.id === rt.homeShelf)) rt.homeShelf = shelfOf(next?.[0]) || available[0]?.id || SHELF_META[0].id;
     const note = learner.sessions
       ? esc(roundsSentence(learner))
       : 'Most games wait for you. Rocket climb and Gas race keep going until they finish.';
@@ -621,7 +621,12 @@ export function registerMounts(rt) {
       note,
       storageOK: rt.storageOK
     });
-    document.querySelectorAll('[data-shelf]').forEach(b => b.onclick = () => { rt.homeShelf = b.dataset.shelf; home('shelf'); });
+    document.querySelectorAll('[data-shelf]').forEach(b => b.onclick = () => {
+      const label = b.textContent.trim();
+      rt.homeShelf = b.dataset.shelf;
+      home('shelf');
+      if (rt.data.sound) rt.say?.(label);
+    });
     const howToggle = $('#howToggle');
     if (howToggle) howToggle.onclick = () => { rt.homeHowOpen = !rt.homeHowOpen; home('how'); };
     document.querySelectorAll('[data-style]').forEach(b => b.onclick = () => { rt.p().style = b.dataset.style; rt.save(); home('style'); });
@@ -1286,15 +1291,15 @@ export function registerMounts(rt) {
           frame?.focus();
           if (rt.game?.mode === 'bike') postSidecar(rt.bikeConfig(rt.game));
           if (rt.game?.mode === 'quickmath') return;
-          if (rt.game?.freePlay && (rt.game.mode === 'flight' || rt.game.mode === 'walk' || rt.game.mode === 'skybound' || rt.game.mode === 'gulp' || rt.game.mode === 'blocks')) postSidecar({ type: 'arcade' });
+          if (rt.game?.freePlay && (rt.game.mode === 'flight' || rt.game.mode === 'walk' || rt.game.mode === 'skybound' || rt.game.mode === 'gulp' || rt.game.mode === 'blocks' || rt.game.mode === 'dash')) postSidecar({ type: 'arcade' });
           else if (rt.game) postSidecar(rt.rallyMessage(rt.game));
         },
         onProgress(info) {
           if (rt.game?.mode === 'bike' && Number.isFinite(+info?.travel)) rt.game.bikeTravel = +info.travel;
         },
         onShow() {
-          // Garden gulp keeps moving while the question is read, so just say it.
-          if (rt.game?.mode === 'gulp') { if (!rt.game.finished) rt.say(rt.game.prompt); return; }
+          // Garden gulp and Garden dash keep moving while the question is read, so just say it.
+          if (rt.game?.mode === 'gulp' || rt.game?.mode === 'dash') { if (!rt.game.finished) rt.say(rt.game.prompt); return; }
           if (rt.game && !rt.game.finished) rt.askBeforePlay(rt.game.prompt);
         },
         onReplay() {
@@ -2246,7 +2251,7 @@ export function registerMounts(rt) {
         onOver(reason) {
           if (rt.game !== g || g.finished) return;
           g.asked = g.index;
-          const title = reason === 'fuel' ? 'The tank is empty.' : 'The plane met the island.';
+          const title = reason === 'fuel' ? 'The tank is empty.' : reason === 'crash' ? 'Out of hearts.' : 'The plane met the island.';
           const grabbed = g.index ? `You grabbed ${g.index} ${g.index === 1 ? 'answer' : 'answers'}.` : 'Grab the gem with the answer.';
           rt.finishRun(g, title, grabbed);
         },

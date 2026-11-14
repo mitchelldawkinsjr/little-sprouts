@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <title>Garden dash</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7' fill='%237abf8e'/%3E%3Crect x='6' y='4' width='4' height='7' fill='%23dc5f45'/%3E%3C/svg%3E" />
+    <script src="/lib/device-tier-boot.js?v=low-end1"></script>
+    <script>window.SproutsSidecarOwnAsk = true;</script>
+    <script src="/lib/sidecar-guest.js?v=gulp13"></script>
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "../../vendor/three/build/three.module.js?v=r187"
+      }
+    }
+    </script>
+    <style>
+      /* The pen's palette and its tall, narrow capitals. Voltaire is used when the device has
+         it; otherwise a condensed system face gives the same feel with nothing to download. */
+      :root {
+        --sky: #dbe6e6;
+        --coral: #dc5f45;
+        --peach: #ffa873;
+        --blush: #ffc5a2;
+        --leaf: #5f9042;
+        --bark: #544027;
+        --ink: #100707;
+        --cap: 'Voltaire', 'Avenir Next Condensed', 'Arial Narrow', 'Roboto Condensed', 'Helvetica Neue', sans-serif;
+        --read: 'Trebuchet MS', 'Segoe UI', sans-serif;
+      }
+      html, body { margin: 0; height: 100%; overflow: hidden; background: var(--sky); color: var(--bark); font-family: var(--cap); -webkit-user-select: none; user-select: none; }
+      #world { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; background: var(--sky); }
+
+      #hud { position: fixed; inset: 0 0 auto; z-index: 2; pointer-events: none; }
+      #hud[hidden] { display: none; }
+      #dist { position: absolute; left: 50%; top: 22px; transform: translateX(-50%); text-align: center; }
+      .label { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--peach); margin-bottom: 4px; }
+      #distValue { font-size: 40px; color: var(--coral); line-height: 1; }
+      .corner { position: absolute; top: 22px; font-size: 20px; letter-spacing: 1px; color: var(--coral); }
+      #stars { left: 18px; }
+      #carrots { right: 18px; }
+      #stars[hidden] { display: none; }
+
+      #ask { position: fixed; left: 50%; top: 92px; z-index: 2; transform: translateX(-50%); width: min(560px, calc(100% - 24px)); box-sizing: border-box; padding: 10px 16px; border-radius: 6px; background: #fffaf3e6; color: var(--ink); border-bottom: 4px solid var(--coral); text-align: center; font: 800 clamp(18px, 3.6vw, 26px)/1.25 var(--read); pointer-events: none; }
+      #ask[hidden] { display: none; }
+      #ask.done { border-color: var(--leaf); color: var(--leaf); }
+      #ask.done::after { content: ' ✓'; }
+      #show { display: flex; justify-content: center; margin-top: 8px; }
+      #show:empty { display: none; }
+      #show .countrow, #show .numpath { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; }
+      #show .countrow.array { display: grid; grid-template-columns: repeat(var(--cols, 5), auto); }
+      #show .countrow span, #show .numpath span { min-width: 26px; padding: 2px 4px; border-radius: 4px; background: #fff; color: var(--ink); font-size: clamp(18px, 4.5vw, 24px); }
+      #show .numpath .here { outline: 3px solid var(--coral); }
+
+      #toast { position: fixed; left: 50%; top: 46%; z-index: 2; transform: translate(-50%, -50%); font-size: clamp(30px, 7vw, 56px); text-transform: uppercase; letter-spacing: 1px; pointer-events: none; white-space: nowrap; text-shadow: 0 2px 0 #fff8; }
+      #toast[hidden] { display: none; }
+      #toast.good { color: var(--leaf); }
+      #toast.bad { color: var(--coral); }
+
+      /* "Game over" from the pen: huge pale letters that drop in. */
+      #caught { position: fixed; left: 50%; top: 26%; z-index: 2; width: 100%; text-align: center; font-weight: bold; text-transform: uppercase; font-size: clamp(64px, 16vw, 120px); color: var(--blush); opacity: 0; transform: translate(-50%, -100%); transition: all 500ms ease-in-out; pointer-events: none; }
+      #caught.show { opacity: 1; transform: translate(-50%, -50%); }
+
+      #again { position: fixed; left: 0; right: 0; bottom: 40px; z-index: 2; text-align: center; text-transform: uppercase; pointer-events: none; }
+      #again[hidden] { display: none; }
+      #overStats { display: block; font-size: 22px; letter-spacing: 2px; color: var(--coral); }
+      #again .tap { display: block; margin-top: 6px; font-size: 16px; letter-spacing: 1px; color: var(--leaf); }
+      @media (prefers-reduced-motion: no-preference) { #again .tap { animation: pulse 1.4s ease-in-out infinite; } @keyframes pulse { 50% { opacity: 0.45; } } }
+      #instructions { position: fixed; left: 0; right: 0; bottom: 0; margin-bottom: 44px; z-index: 2; text-align: center; font-size: 16px; letter-spacing: 1px; text-transform: uppercase; color: var(--coral); pointer-events: none; padding: 0 12px; }
+      #instructions[hidden] { display: none; }
+      .light { color: var(--leaf); }
+
+      #overlay { position: fixed; inset: 0; z-index: 3; display: grid; place-items: center; padding: 20px; background: #dbe6e6aa; }
+      #overlay[hidden] { display: none; }
+      .card { width: min(430px, 100%); text-align: center; }
+      h1 { margin: 0 0 6px; font-weight: normal; font-size: clamp(44px, 11vw, 72px); line-height: 1; text-transform: uppercase; letter-spacing: 1px; color: var(--coral); }
+      #blurb { margin: 0 auto 10px; max-width: 380px; font: 600 16px/1.45 var(--read); color: var(--bark); }
+      #help { list-style: none; margin: 0 0 18px; padding: 0; font-size: 14px; letter-spacing: 1px; text-transform: uppercase; color: var(--leaf); line-height: 1.7; }
+      #verdict { margin: 0; font-size: clamp(60px, 16vw, 96px); line-height: 1; color: var(--coral); }
+      #reason { margin: 4px 0 18px; font-size: 14px; letter-spacing: 2px; text-transform: uppercase; color: var(--peach); }
+      #verdict[hidden], #reason[hidden], #blurb[hidden], #help[hidden] { display: none; }
+      .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+      .actions button { border: 0; border-radius: 4px; padding: 12px 22px; font: 20px var(--cap); letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; background: var(--coral); color: #fff; box-shadow: 0 4px 0 #b44b39; }
+      .actions button:active { transform: translateY(2px); box-shadow: 0 2px 0 #b44b39; }
+      .actions button.second { background: var(--leaf); box-shadow: 0 4px 0 #46702f; }
+      .actions button[hidden] { display: none; }
+      .actions button:disabled { opacity: 0.5; cursor: default; }
+      .actions button.pad-focus { outline: 4px solid var(--bark); outline-offset: 3px; }
+      @media (prefers-reduced-motion: reduce) { #caught { transition: none; } }
+      @media (prefers-reduced-motion: no-preference) {
+        #toast:not([hidden]) { animation: toastPop 260ms ease-out; }
+        @keyframes toastPop { from { transform: translate(-50%, -50%) scale(0.7); opacity: 0; } }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="world" aria-label="Garden dash: your garden buddy runs on a little round garden while a hungry caterpillar chases"></canvas>
+    <div id="hud" hidden>
+      <div id="stars" class="corner">⭐ 0</div>
+      <div id="dist"><div class="label">distance</div><div id="distValue">000</div></div>
+      <div id="carrots" class="corner">🥕 0</div>
+    </div>
+    <div id="ask" hidden aria-live="polite"><span id="askText"></span><div id="show"></div></div>
+    <div id="toast" hidden aria-live="assertive"></div>
+    <div id="caught" aria-hidden="true">Munch!</div>
+    <div id="again" hidden aria-live="polite"><span id="overStats"></span><span class="tap">Tap to run again</span></div>
+    <div id="instructions" hidden>Tap to jump<span class="light"> — grab the carrots and the right answer / jump the rocks</span></div>
+    <div id="overlay">
+      <div class="card">
+        <h1 id="title">Garden dash</h1>
+        <p id="verdict" hidden></p>
+        <p id="reason" hidden></p>
+        <p id="blurb">A hungry caterpillar is chasing your garden buddy round the garden. Jump to catch the right answer and zoom away!</p>
+        <ul id="help">
+          <li>Tap, space, ▲, or A to jump</li>
+          <li>Play: a round of questions as you run</li>
+          <li>Endless run: questions now and then, faster and faster</li>
+          <li>Carrots and right answers push the caterpillar back</li>
+        </ul>
+        <div class="actions">
+          <button id="play" type="button" disabled>Loading…</button>
+          <button id="endless" class="second" type="button" hidden>Endless run</button>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="./game.mjs?v=dash5"></script>
+  </body>
+</html>

@@ -37,8 +37,8 @@ import {
   bustBoard,
   verseWithRef
 } from '../logic.mjs?v=offline1';
-import { canSpeak, commonLines, prefetchSpeech } from '../lib/speech.js?v=ball2';
-import { stopArcade } from '../games/arcade.js?v=ball3';
+import { canSpeak, commonLines, prefetchSpeech } from '../lib/speech.js?v=aviator1';
+import { stopArcade } from '../games/arcade.js?v=exp1';
 import { stopHoop } from '../games/hoop.js?v=hoop-trio-r2';
 import { stopHook } from '../games/hook.js?v=ask-first2-r2';
 import { stopSky } from '../games/sky.js?v=ask-first2-r2';
@@ -48,9 +48,9 @@ import { stopMatch } from '../games/match.js?v=pair-match2';
 import { stopChase } from '../games/chase.js?v=ball3';
 import { stopHop } from '../games/hop.js?v=ball3';
 import { stopToast } from '../games/toast.js?v=ask-first-r2';
-import { stopGlide } from '../games/glide.js?v=ask-first-r2';
+import { stopGlide } from '../games/glide.js?v=aviator1';
 import { stopCity } from '../games/city.js?v=low-end1';
-import { stopAisle } from '../games/aisle.js?v=ball3';
+import { stopAisle } from '../games/aisle.js?v=exp1';
 import { stopLily } from '../games/lily.js?v=ball3';
 import { stopBust } from '../games/bust.js?v=ghost-same2-r2';
 import { stopMole } from '../games/mole.js?v=mole-pop3';
@@ -64,9 +64,9 @@ import { stopCrayon } from '../games/crayon.js?v=crayon-more';
 import { stopMarble } from '../games/marble.js?v=ball3';
 import { stopBridge } from '../games/bridge.js?v=ball3';
 import { stopMaze } from '../games/maze.js?v=ball3';
-import { postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=ball3';
+import { postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=exp1';
 import { $, esc } from './runtime.mjs?v=lean-r2';
-import { ARCADE } from './arcade-modes.mjs?v=arcade';
+import { ARCADE } from './arcade-modes.mjs?v=aviator1';
 
 const NO_WORD = new Set(['trace', 'sort', 'merge']);
 const SUBJECT_WORDS = new Set('rally flight range bike walk glide city rocket lunar hoop light hook sky planet bridge maze chase hop toast aisle lily mole bust stack lamp cube'.split(' '));
@@ -171,7 +171,7 @@ export function registerRound(rt) {
       message.gates = rallyGates(message.stops);
     }
     if (g.mode === 'flight' || g.mode === 'blocks') message.freeEvery = rallyClearCount(rt.questionCount());
-    if (g.mode === 'range' || g.mode === 'roll' || g.mode === 'grass' || g.mode === 'glow') message.total = rt.questionCount();
+    if (g.mode === 'range' || g.mode === 'roll' || g.mode === 'grass' || g.mode === 'glow' || g.mode === 'dash') message.total = rt.questionCount();
     return message;
   }
   function gradeRally(index) {
@@ -181,7 +181,7 @@ export function registerRound(rt) {
     const ok = !!token.ok;
     postSidecar({ type: 'mark', index, ok });
     // Sky flight and the range keep the same question up after a miss.
-    const flightMiss = (g.mode === 'flight' || g.mode === 'range' || g.mode === 'gulp' || g.mode === 'blocks' || g.mode === 'roll' || g.mode === 'grass' || g.mode === 'glow') && !ok;
+    const flightMiss = (g.mode === 'flight' || g.mode === 'range' || g.mode === 'gulp' || g.mode === 'blocks' || g.mode === 'roll' || g.mode === 'grass' || g.mode === 'glow' || g.mode === 'dash') && !ok;
     g.done = !flightMiss;
     if (!ok) g.missed = true;
     else if (!g.missed) g.firstCorrect++;
@@ -201,6 +201,8 @@ export function registerRound(rt) {
             ? (ok ? 'Yes! You found it.' : 'Not yet. Run to another sign.')
           : g.mode === 'glow'
             ? (ok ? 'Yes! Your light found it.' : 'Not yet. Light a path to another pocket.')
+          : g.mode === 'dash'
+            ? (ok ? 'Yes! Zoom!' : 'Not yet. Catch another one.')
           : g.mode === 'blocks'
             ? (ok ? 'Yes! A new block for you.' : 'Not yet. Pick another one.')
           : g.mode === 'skybound'
@@ -580,8 +582,8 @@ export function registerRound(rt) {
     }
     if (g.mode === 'glide') {
       g.howTo = g.freePlay
-        ? 'Hold to climb. Let go to dive. Yellow gems are fuel. Grab the gems.'
-        : 'Hold to climb. Let go to dive. Yellow gems are fuel. The labeled gems are answers. Grab the one that matches.';
+        ? 'Move and the plane follows. Miss the hills and storm clouds. Yellow gems are fuel. Grab the gems.'
+        : 'Move and the plane follows. Miss the hills and storm clouds. Yellow gems are fuel. The labeled gems are answers. Grab the one that matches.';
       g.started = true;
       g.phase = 'play';
       g.prompt = g.howTo;
@@ -778,6 +780,7 @@ export function registerRound(rt) {
       else if (g.mode === 'roll') rollAsk(g);
       else if (g.mode === 'grass') grassAsk(g);
       else if (g.mode === 'glow') glowAsk(g);
+      else if (g.mode === 'dash') dashAsk(g);
       else if (g.mode === 'paint') shellAsk(g);
       else {
         rallyAsk(g);
@@ -1131,6 +1134,14 @@ export function registerRound(rt) {
     else if (g.subject === 'shapes') g.prompt = `Roll to the ${g.target}.`;
     else if (g.subject === 'colors') g.prompt = `Roll to ${g.target}.`;
     else g.prompt = `${g.prompt} Roll to that answer.`;
+  }
+  function dashAsk(g) {
+    profileAsk(g, 'walk');
+    g.rallyKind = g.subject === 'math' ? 'math' : 'match';
+    if (g.subject === 'words') g.prompt = `Catch the word ${g.target}.`;
+    else if (g.subject === 'shapes') g.prompt = `Catch the ${g.target}.`;
+    else if (g.subject === 'colors') g.prompt = `Catch ${g.target}.`;
+    else g.prompt = `${g.prompt} Jump to catch it.`;
   }
   function grassAsk(g) {
     profileAsk(g, 'walk');
