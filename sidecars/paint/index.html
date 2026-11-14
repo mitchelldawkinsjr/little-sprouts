@@ -2,14 +2,29 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Paint Sphere</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7' fill='%23ff6a3d'/%3E%3C/svg%3E" />
     <script src="/lib/device-tier-boot.js?v=low-end1"></script>
     <script src="./link.js?v=friend2"></script>
     <script type="module" src="./buddy.js?v=gear2"></script>
+    <!-- Phones and tablets: touch sticks and buttons that the game sees as a controller
+         (lib/touch-controls.mjs). Left thumb runs, right thumb looks and paints. -->
+    <script type="module">
+      import { attachTouchGamepad } from '/lib/touch-controls.mjs?v=touch1';
+      attachTouchGamepad({
+        aim: true,
+        fire: 'rt',
+        buttons: [{ button: 'a', label: '⬆️', slot: 0 }, { button: 'lb', label: '💨', slot: 1 }],
+        hints: { move: 'Run', aim: 'Look + paint' },
+        tint: '#ff9a6a',
+        ignore: '#overlay, #menu-card',
+      });
+    </script>
     <script type="module" crossorigin src="./assets/index-BWzy7L7v-buddy1.js"></script>
     <link rel="stylesheet" crossorigin href="./assets/index-Cj79EYcE.css">
+    <!-- A phone on its side is shorter than the menu card: let the card scroll, starting at its top. -->
+    <style>#overlay{overflow-y:auto;align-items:safe center;touch-action:pan-y;-webkit-overflow-scrolling:touch}</style>
   </head>
   <body>
     <header id="hud" hidden>
@@ -32,6 +47,7 @@
           <li>WASD or left stick to run, Shift or LB to sprint, Space or A to jump</li>
           <li>Look for 5 seconds. Then throw paint for 10 seconds</li>
           <li>Start on a controller plays without the mouse</li>
+          <li>On a tablet: left thumb runs, right thumb looks and paints, ⬆️ jumps, 💨 sprints</li>
           <li>Paint the half with the answer you think is right</li>
           <li>The train on the middle circle sets you down beside the track</li>
         </ul>

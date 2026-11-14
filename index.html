@@ -232,6 +232,7 @@
     <div class="modal-scroll">
       <p>Most of the pictures, questions, and games are Little Sprouts’ own. The people below made work this app uses, or ideas it follows.</p>
       <ul class="credit-list">
+        <li><a href="https://github.com/kyh/vibedgames/tree/main/packages/gamepad" target="_blank" rel="noopener">Kaiyu Hsu — @vibedgames/gamepad</a><p>The touch thumb sticks and buttons on phones and tablets. MIT, copyright 2023 Kaiyu Hsu.</p></li>
         <li><a href="https://github.com/jakesgordon/javascript-racer" target="_blank" rel="noopener">Jake Gordon — javascript-racer</a><p>Word lanes and Gas race use his road drawing. MIT, copyright 2012–2016 Jake Gordon and contributors.</p></li>
         <li><a href="https://github.com/cnrasili/Hooked" target="_blank" rel="noopener">cnrasili — Hooked</a><p>Hook the fish follows that cast-and-steer idea. The pond, fish, and sounds here are new.</p></li>
         <li><a href="https://codepen.io/Yakudoo/pen/YGxYej" target="_blank" rel="noopener">Karim Maaloul (Yakudoo) — running CodePen</a><p>Garden dash follows that look and feel: a runner on a little turning planet seen from the side, misty trees with cube fruit, the jump, the chaser that closes in after each bump, and the sit-up munch when it catches you. The buddy, caterpillar, garden things, and answer boards here are new.</p></li>
@@ -274,7 +275,7 @@
   <script type="module">
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js?v=offline3').then(async () => {
-        const { warmOffline } = await import('./lib/offline-warm.mjs?v=night1');
+        const { warmOffline } = await import('./lib/offline-warm.mjs?v=touch1');
         warmOffline();
       }).catch(() => {});
     }

@@ -1,0 +1,199 @@
+const BUTTON_INDEX = {
+    a: 0,
+    b: 1,
+    down: 13,
+    lb: 4,
+    left: 14,
+    ls: 10,
+    lt: 6,
+    rb: 5,
+    right: 15,
+    rs: 11,
+    rt: 7,
+    select: 8,
+    start: 9,
+    up: 12,
+    x: 2,
+    y: 3,
+};
+const PAD_BUTTONS = [
+    "a",
+    "b",
+    "x",
+    "y",
+    "lb",
+    "rb",
+    "lt",
+    "rt",
+    "select",
+    "start",
+    "ls",
+    "rs",
+    "up",
+    "down",
+    "left",
+    "right",
+];
+const PAD_BUTTON_NAMES = new Set(PAD_BUTTONS);
+const isPadButton = (id) => PAD_BUTTON_NAMES.has(id);
+const DEFAULT_STICK_DEAD_ZONE = 0.15;
+const DEFAULT_TRIGGER_THRESHOLD = 0.05;
+const IDLE_STICK = {
+    active: false,
+    anchorX: 0,
+    anchorY: 0,
+    angle: 0,
+    curX: 0,
+    curY: 0,
+    distance: 0,
+    dx: 0,
+    dy: 0,
+    inDeadZone: true,
+    magnitude: 0,
+};
+const defaultPoll = () => typeof navigator !== "undefined" && "getGamepads" in navigator ? navigator.getGamepads() : [];
+/** True if any physical pad is currently connected — e.g. to decide whether
+ *  controller rows belong on an instructions screen. */
+export const isPadConnected = () => defaultPoll().some((pad) => pad?.connected ?? false);
+/**
+ * Physical controller input, API-mirroring {@link VirtualGamepad} so a game's
+ * read path works for both: `isButtonDown(id)` / `justPressed(id)` /
+ * `getStick()`. Poll-based — call `update()` once per frame; edges are
+ * published per update, matching the virtual pad's `nextFrame()` semantics.
+ * The first connected pad wins. No DOM, no engine, no listeners.
+ *
+ * ```ts
+ * const pad = new PhysicalGamepad({ bindings: { jump: ["a"], dash: ["b", "rb"] } });
+ * // in your game loop:
+ * pad.update();
+ * const dir = stickDirection4(pad.getStick());
+ * if (pad.justPressed("jump")) jump();
+ * ```
+ */
+export class PhysicalGamepad {
+    bindings;
+    stickDeadZone;
+    triggerThreshold;
+    onConnect;
+    onDisconnect;
+    poll;
+    wasConnected = false;
+    axes = [];
+    down = new Set();
+    prevDown = new Set();
+    /** Raw analog values (triggers), by button name. */
+    values = new Map();
+    constructor(options = {}) {
+        this.bindings = options.bindings ?? {};
+        this.stickDeadZone = options.stickDeadZone ?? DEFAULT_STICK_DEAD_ZONE;
+        this.triggerThreshold = options.triggerThreshold ?? DEFAULT_TRIGGER_THRESHOLD;
+        this.onConnect = options.onConnect;
+        this.onDisconnect = options.onDisconnect;
+        this.poll = options.poll ?? defaultPoll;
+    }
+    /** Poll the first connected pad and publish press edges for this frame. */
+    update() {
+        let pad = null;
+        for (const candidate of this.poll()) {
+            if (candidate?.connected) {
+                pad = candidate;
+                break;
+            }
+        }
+        const connected = pad !== null;
+        if (connected !== this.wasConnected) {
+            this.wasConnected = connected;
+            if (connected) {
+                this.onConnect?.();
+            }
+            else {
+                this.onDisconnect?.();
+            }
+        }
+        // Swap, then rebuild — prevDown keeps last frame's state for edge reads.
+        [this.prevDown, this.down] = [this.down, this.prevDown];
+        this.down.clear();
+        this.values.clear();
+        this.axes = pad ? [...pad.axes] : [];
+        if (!pad) {
+            return;
+        }
+        for (const name of PAD_BUTTONS) {
+            const button = pad.buttons[BUTTON_INDEX[name]];
+            if (!button) {
+                continue;
+            }
+            this.values.set(name, button.value);
+            // Triggers report analog values; some pads never set `pressed` for a
+            // light pull, so a value past the threshold also counts as down.
+            if (button.pressed || button.value > this.triggerThreshold) {
+                this.down.add(name);
+            }
+        }
+    }
+    /** A pad was connected as of the last `update()`. */
+    get connected() {
+        return this.wasConnected;
+    }
+    /** `id` is a binding action id or a raw {@link PadButton} name. */
+    isButtonDown(id) {
+        return this.resolve(id).some((b) => this.down.has(b));
+    }
+    /** Action went up→down since the previous `update()` (any bound button). */
+    justPressed(id) {
+        const buttons = this.resolve(id);
+        return buttons.some((b) => this.down.has(b)) && !buttons.some((b) => this.prevDown.has(b));
+    }
+    /** Action went down→up since the previous `update()` (all bound buttons up). */
+    justReleased(id) {
+        const buttons = this.resolve(id);
+        return buttons.some((b) => this.prevDown.has(b)) && !buttons.some((b) => this.down.has(b));
+    }
+    /** Raw analog value 0–1 (triggers are the interesting case). 0 when absent. */
+    buttonValue(button) {
+        return this.values.get(button) ?? 0;
+    }
+    /**
+     * A stick reading in {@link StickState} form (axes 0/1 left, 2/3 right;
+     * y-down matches screen space), so `stickDirection4/8` work unchanged.
+     * `active` while a pad is connected; dead-zoned like the virtual stick.
+     */
+    getStick(side = "left") {
+        if (!this.wasConnected) {
+            return { ...IDLE_STICK };
+        }
+        const base = side === "left" ? 0 : 2;
+        const dx = this.axes[base] ?? 0;
+        const dy = this.axes[base + 1] ?? 0;
+        const distance = Math.hypot(dx, dy);
+        const span = Math.max(1e-6, 1 - this.stickDeadZone);
+        return {
+            active: true,
+            anchorX: 0,
+            anchorY: 0,
+            angle: Math.atan2(dy, dx),
+            curX: dx,
+            curY: dy,
+            distance,
+            dx,
+            dy,
+            inDeadZone: distance <= this.stickDeadZone,
+            magnitude: Math.min(1, Math.max(0, (distance - this.stickDeadZone) / span)),
+        };
+    }
+    /** Release all state (the class holds no listeners — this just clears). */
+    destroy() {
+        this.down.clear();
+        this.prevDown.clear();
+        this.values.clear();
+        this.axes = [];
+        this.wasConnected = false;
+    }
+    resolve(id) {
+        const bound = this.bindings[id];
+        if (bound) {
+            return bound;
+        }
+        return isPadButton(id) ? [id] : [];
+    }
+}

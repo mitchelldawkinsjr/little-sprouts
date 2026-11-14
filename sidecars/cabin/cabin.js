@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { buddyKind, makeBuddy, savedLook } from '/lib/buddy3d.mjs?v=cabin1';
 import { readPad, actionDown, moveDirs } from '../../lib/pad-core.mjs?v=pad-rt';
+import { attachTouchControls, isTouchDevice } from '../../lib/touch-controls.mjs?v=touch1';
 import { BUSY_MAX, NAP_TIME, SEND_EVERY, SNAP_EVERY, outOfHearts, packSnap, pickTarget, readSnap, readSpot, readSpray, roomLine } from './friends.mjs?v=cabin1';
 
 // ===================================================================
@@ -1848,11 +1849,17 @@ window.addEventListener('keydown', e => {
   }
 });
 window.addEventListener('keyup', e => { keys[e.code] = false; });
+// After a tap, browsers send made-up mouse events too. Those aren't the mouse: the touch
+// controls already have that finger, so a tap never sprays or swings the aim.
+let lastTouchAt = -1e9;
+window.addEventListener('pointerdown', e => { if (e.pointerType === 'touch') lastTouchAt = performance.now(); }, true);
+const fromTouch = (e) => e.sourceCapabilities?.firesTouchEvents || performance.now() - lastTouchAt < 900;
 window.addEventListener('mousemove', e => {
+  if (fromTouch(e)) return;
   mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
   mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
 });
-window.addEventListener('mousedown', () => { if (!sidecar.asking) firing = true; });
+window.addEventListener('mousedown', e => { if (!sidecar.asking && !fromTouch(e)) firing = true; });
 window.addEventListener('mouseup', () => { firing = false; });
 window.addEventListener('contextmenu', e => e.preventDefault());
 
@@ -2245,7 +2252,41 @@ const padState = {
   dx: 0, dy: 0, fire: false, aimOn: false,
   move: { x: 0, z: 0 }, aim: { x: 0, y: 0 },
 };
+// ===================================================================
+// TOUCH — phones and tablets (lib/touch-controls.mjs): the left thumb walks, the right thumb
+// aims and sprays while it's held, and the big 🚰 button refills the can.
+// ===================================================================
+const touch = attachTouchControls({
+  move: true,
+  aim: true,
+  buttons: [{ id: 'refill', label: '🚰', slot: 0 }],
+  hints: { move: 'Walk', aim: 'Aim + spray' },
+  tint: '#7fd0ff',
+  ignore: '#picker, #ask, #menu, #pause, #death, #friendWrap, .overlay',
+  onFirstTouch: () => document.body.classList.add('touch'),
+});
+if (isTouchDevice()) document.body.classList.add('touch');
+function pollTouch() {
+  const playing = state.running && !state.paused && !sidecar.hold && !sidecar.asking && !state.choosing;
+  touch.setVisible(playing && !title.active);
+  touch.update();
+  if (!playing) return;
+  if (touch.move.active) { padState.move.x = touch.move.x; padState.move.z = touch.move.y; }
+  if (touch.aim.active) {
+    padState.aimOn = true;
+    padState.aim.x = touch.aim.x;
+    padState.aim.y = touch.aim.y;
+    // a thumb pushed out from the middle sprays; resting near the middle just turns
+    if (touch.aim.magnitude > 0.3) padState.fire = true;
+  }
+  if (touch.tapped('refill')) startReload();
+}
+
 function pollPad() {
+  pollController();
+  pollTouch();
+}
+function pollController() {
   let list = [];
   try { list = [...(navigator.getGamepads?.() || [])].filter(Boolean); } catch { list = []; }
   if (!list.length) {
@@ -3624,7 +3665,7 @@ function update(dt) {
         0.9,
         player.position.z + Math.cos(player.rotation.y) * 14
       );
-    } else {
+    } else if (!touch.isTouch) { // on a tablet, keep facing the last way the right thumb aimed
       raycaster.setFromCamera(mouse, camera);
       if (raycaster.ray.intersectPlane(aimPlane, aimPoint)) {
         const a = Math.atan2(aimPoint.x - player.position.x, aimPoint.z - player.position.z);
@@ -4223,4 +4264,4 @@ requestAnimationFrame(loop);
 // host that attached its listener after this module ran.
 bridge.ready();
 // Test hook for _test.html (?test=1) only; the shipped game doesn't expose its state.
-if (new URLSearchParams(location.search).has('test')) window.__cabin = { state, sidecar, raiders, die, friend, nap, bullets, hurtPlayer };
+if (new URLSearchParams(location.search).has('test')) window.__cabin = { state, sidecar, raiders, die, friend, nap, bullets, hurtPlayer, player, touch, padState };

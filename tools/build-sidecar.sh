@@ -22,10 +22,17 @@ const page = "dist/index.html";
 let html = readFileSync(page, "utf8");
 const tier = "<script src=\"/lib/device-tier-boot.js?v=low-end1\"></script>";
 const guest = "<script src=\"/lib/sidecar-guest.js?v=low-end1\"></script>";
+// Phones and tablets: touch sticks and buttons the game reads as a controller (lib/touch-controls.mjs).
+// Left thumb steers; the big buttons are go, brake, and back on the road. It runs before the game
+// module itself, so the game sees the touch controller from its first frame.
+const touch = "<script type=\"module\">import { attachTouchGamepad } from \"/lib/touch-controls.mjs?v=touch1\"; attachTouchGamepad({ buttons: [{ button: \"rt\", label: \"🚀\", slot: 0 }, { button: \"lt\", label: \"🛑\", slot: 2 }, { button: \"y\", label: \"↩️\", slot: 1 }], hints: { move: \"Steer\" }, tint: \"#f0b83f\" });</script>";
 if (!html.includes("device-tier-boot.js")) {
   html = html.includes("<head>")
     ? html.replace("<head>", "<head>\n    " + tier)
     : tier + html;
+}
+if (!html.includes("touch-controls.mjs")) {
+  html = html.includes("<head>") ? html.replace("<head>", "<head>\n    " + touch) : touch + html;
 }
 if (!html.includes(guest)) {
   html = html.includes("</body>") ? html.replace("</body>", guest + "</body>") : html + guest;
