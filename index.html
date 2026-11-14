@@ -12,16 +12,20 @@
   <link rel="icon" href="icons/icon-192.png" type="image/png">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
   <link rel="stylesheet" href="vendor/fonts/fonts.css?v=r187">
-  <link rel="stylesheet" href="style.css?v=bloom1">
+  <link rel="stylesheet" href="style.css?v=bloom2">
 </head>
 <body>
   <header>
     <a href="#" class="brand" aria-label="Little Sprouts home"><span class="logo" aria-hidden="true">✿</span> little sprouts<span class="brand-note">PLAY • DISCOVER • GROW</span></a>
-    <button id="parents" class="quiet" aria-label="Parent corner"><span aria-hidden="true">⚙</span> <span class="parent-long">Parent corner</span><span class="parent-short">Parents</span></button>
+    <div class="head-tools">
+      <b class="head-chip" id="headLearner" hidden></b>
+      <button type="button" class="head-read" id="readToMe" aria-pressed="true" hidden><i aria-hidden="true">🔊</i> <em>Read to me</em></button>
+      <button id="parents" class="quiet" aria-label="Parent corner"><span aria-hidden="true">🔒</span> <span class="parent-long">Parent corner</span><span class="parent-short">Parents</span></button>
+    </div>
   </header>
   <main id="app"></main>
   <noscript><p class="noscript">Little Sprouts needs JavaScript to run the games.</p></noscript>
-  <footer><span class="footer-note">Little steps. Big discoveries. <span>Made for curious little minds.</span></span><button type="button" id="creditsOpen" class="credit-link">Credits</button></footer>
+  <footer><span class="footer-note">Little steps. Big discoveries. <span>Made for curious little minds.</span></span><nav class="foot-links" aria-label="More"><button type="button" id="creditsOpen" class="credit-link">Credits</button><button type="button" id="keysOpen" class="credit-link">Keyboard help</button><b class="foot-offline"><i aria-hidden="true">📶</i> <em data-offline-title>Checking offline play…</em></b></nav></footer>
 
   <dialog id="settings" aria-labelledby="settingsTitle">
     <form id="parentForm">
@@ -271,11 +275,11 @@
     <button type="button" class="quiet" id="listenAgain">Hear it again</button>
     <button type="button" class="quiet" id="listenBack">← All games</button>
   </div>
-  <script type="module" src="app.js?v=sky1"></script>
+  <script type="module" src="app.js?v=bloom1"></script>
   <script type="module">
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js?v=offline3').then(async () => {
-        const { warmOffline } = await import('./lib/offline-warm.mjs?v=touch1');
+        const { warmOffline } = await import('./lib/offline-warm.mjs?v=bloom1');
         warmOffline();
       }).catch(() => {});
     }

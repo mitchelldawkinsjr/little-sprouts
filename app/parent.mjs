@@ -586,5 +586,10 @@ export function registerParent(rt) {
     rt.home();
   };
   $('#creditsOpen').onclick = () => $('#credits').showModal();
+  $('#keysOpen').onclick = () => {
+    if ($('#shortcuts')) { $('#shortcuts').scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+    rt.scrollToKeys = true;
+    rt.requestHome();
+  };
   $('#creditsClose').onclick = () => $('#credits').close();
 }

@@ -87,12 +87,16 @@ import {
   howWePlayHtml,
   gameCardHtml,
   upNextHeroHtml,
+  bodyPlayHtml,
+  helperBarsHtml,
+  subnavHtml,
+  spokenLine,
   ALL_SHELF,
   shelfChipsHtml,
   shelfPanelHtml,
   starGardenHtml as gardenHtml,
   homePageHtml
-} from '../lib/home-ui.mjs?v=bloom1';
+} from '../lib/home-ui.mjs?v=bloom2';
 import { wornGear } from '../logic/shop.mjs?v=shop3';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=aviator1';
@@ -647,6 +651,10 @@ export function registerMounts(rt) {
       learnerCount: rt.data.profiles.length,
       learnerMenu: rt.data.profiles.map((pr, i) => `<button type="button" class="switcher-item${i === rt.data.active ? ' mine' : ''}" data-learner="${i}"${i === rt.data.active ? ' aria-current="true"' : ''}>${esc(pr.name)}<span>${pr.stars === 1 ? '1 star' : `${pr.stars || 0} stars`}</span></button>`).join(''),
       upNextHero: next ? upNextHero(next[0], esc(learner.name)) : '',
+      progressLine: learner.total ? `${learner.correct / learner.total >= 0.8 ? 'Flourishing' : 'Growing'} (${Math.round(learner.correct / learner.total * 100)}% first tries)` : '',
+      subnav: subnavHtml(available, rt.homeShelf),
+      bodyPlay: bodyPlayHtml({ learnerName: esc(learner.name), styleId: rt.styleOf(''), styles: rt.styles, cameraOn: rt.data.camera, arcadeOn: !!rt.p().arcade }),
+      helperBars: helperBarsHtml(),
       shelfChips: shelfChipsHtml(available, rt.homeShelf),
       shelfPanel: shelfPanel(available, rt.homeShelf, next?.[0]),
       howWePlay: howWePlay(rt.homeHowOpen),
@@ -667,11 +675,20 @@ export function registerMounts(rt) {
     if ($('#printCards')) $('#printCards').onclick = rt.openPrint;
     if ($('#openShop')) $('#openShop').onclick = () => rt.openShop();
     document.querySelectorAll('[data-game]').forEach(b => b.onclick = () => start(b.dataset.game));
-    document.querySelectorAll('[data-hear]').forEach(b => b.onclick = () => rt.sayNow(b.dataset.hear));
+    document.querySelectorAll('[data-hear]').forEach(b => b.onclick = () => readAloud(b.dataset.hear));
     if ($('#listenHome')) $('#listenHome').onclick = () => {
       const upNext = next ? gameCardData(next[0]) : null;
-      rt.sayNow(`${hello}${upNext ? ` Up next: ${upNext.name}. ${upNext.blurb}` : ''}`);
+      readAloud(`${hello}${upNext ? ` Up next: ${spokenLine(upNext.name, upNext.blurb)}` : ''}`);
     };
+    if ($('#readAgain')) $('#readAgain').onclick = () => readAloud($('#readLine').textContent);
+    if ($('#readClose')) $('#readClose').onclick = () => { $('#readBar').hidden = true; rt.stopSpeech(); };
+    if ($('#addLearner')) $('#addLearner').onclick = () => $('#parents')?.click();
+    paintHeader();
+    window.sproutsPaintOffline?.();
+    if (rt.scrollToKeys) {
+      rt.scrollToKeys = false;
+      requestAnimationFrame(() => $('#shortcuts')?.scrollIntoView({ block: 'center' }));
+    }
     rt.focusHeading();
     if (rt.data.sound) warm(rt.data.voice);
     // Speak the Hi greeting once per learner per local calendar day.
@@ -683,6 +700,38 @@ export function registerMounts(rt) {
         rt.say(hello);
       }
     }
+  }
+  /** Show the words in the read-aloud strip and say them (Read to me off: words only). */
+  function readAloud(text) {
+    const bar = $('#readBar');
+    if (bar) {
+      $('#readLine').textContent = text;
+      bar.hidden = false;
+      bar.classList.toggle('muted', !rt.data.sound);
+    }
+    rt.sayNow(text);
+  }
+  /** Header learner chip and the Read to me switch (it is the same setting as Sound in Parent corner). */
+  function paintHeader() {
+    const chip = $('#headLearner');
+    const toggle = $('#readToMe');
+    const learner = rt.data.profiles?.length ? rt.p() : null;
+    if (chip) {
+      chip.hidden = !learner;
+      if (learner) chip.innerHTML = `<i aria-hidden="true">🪴</i> ${esc(learner.name)} <small>${esc(stageLabel(rt.band()))}</small>`;
+    }
+    if (!toggle) return;
+    toggle.hidden = !learner;
+    toggle.setAttribute('aria-pressed', String(!!rt.data.sound));
+    toggle.querySelector('i').textContent = rt.data.sound ? '🔊' : '🔇';
+    toggle.querySelector('em').textContent = rt.data.sound ? 'Read to me' : 'Reading off';
+    toggle.onclick = () => {
+      rt.data.sound = !rt.data.sound;
+      rt.save();
+      if (!rt.data.sound) rt.stopSpeech();
+      paintHeader();
+      if (rt.data.sound) rt.sayNow('Read to me is on.');
+    };
   }
   function pickLearner(index) {
     if (!Number.isInteger(index) || index === rt.data.active || !rt.data.profiles[index]) return;
