@@ -58,9 +58,9 @@ test('Gear works with the cut-down three.js that Skybound and Paint Sphere pass 
   for (const kind of BUDDIES) {
     for (const item of GEAR) {
       const a = makeBuddy(sky, kind, { shadow: false, gear: item.id });
-      assert.ok(a.head.getObjectByName(`gear-${item.id}`), `Skybound ${kind} wears ${item.id}`);
+      assert.ok(a.group.getObjectByName(`gear-${item.id}`), `Skybound ${kind} wears ${item.id}`);
       const b = makeBuddy(paint, kind, { shadow: false, gear: item.id, material: toon });
-      assert.ok(b.head.getObjectByName(`gear-${item.id}`), `Paint ${kind} wears ${item.id}`);
+      assert.ok(b.group.getObjectByName(`gear-${item.id}`), `Paint ${kind} wears ${item.id}`);
     }
   }
 });

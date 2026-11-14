@@ -7,7 +7,7 @@
  * builds its own climber. The buddy faces -z like the original climber and is
  * scaled up to the same height (about 2 units).
  */
-import { makeBuddy, buddyKind } from '/lib/buddy3d.mjs?v=ball3';
+import { makeBuddy, buddyKind } from '/lib/buddy3d.mjs?v=gear1';
 
 const SCALE = 1.6;
 

@@ -16,7 +16,7 @@ test('Star shop: every item has a name, a price, and a unique id', () => {
     assert.ok(Number.isInteger(item.price) && item.price > 0);
     assert.equal(gearItem(item.id), item);
   }
-  assert.equal(gearItem('cape'), null);
+  assert.equal(gearItem('jetpack'), null);
 });
 
 test('Star shop: an old profile with no shop fields has its stars to spend and no gear', () => {
@@ -63,8 +63,8 @@ test('Star shop: not enough stars is refused and nothing is spent', () => {
 
 test('Star shop: unknown items are refused', () => {
   const p = learner({ stars: 99 });
-  assert.equal(buyGear(p, 'cape').reason, 'unknown');
-  assert.equal(buyGear(p, 'cape').profile, p);
+  assert.equal(buyGear(p, 'jetpack').reason, 'unknown');
+  assert.equal(buyGear(p, 'jetpack').profile, p);
 });
 
 test('Star shop: a learner can wear and take off only gear they own', () => {
@@ -123,7 +123,7 @@ test('Star shop: games read the worn gear from saved data, only for the learner\
 test('Star shop: the buddy drawing shows the worn gear', () => {
   assert.match(spriteHtml('frog', 'crown'), /class="gear gear-crown"/);
   assert.doesNotMatch(spriteHtml('frog'), /gear/);
-  assert.doesNotMatch(spriteHtml('frog', 'cape'), /gear/);
+  assert.doesNotMatch(spriteHtml('frog', 'jetpack'), /gear/);
 });
 
 test('Star shop: #shop is its own view', () => {
@@ -141,10 +141,10 @@ test('Star shop: every buddy can wear every item in 3D and on canvas', async () 
   });
   for (const kind of BUDDIES) {
     const plain = makeBuddy(THREE, kind, { gear: '' });
-    assert.equal(plain.head.getObjectByName('gear-hat'), undefined);
+    assert.equal(plain.group.getObjectByName('gear-hat'), undefined);
     for (const item of GEAR) {
       const buddy = makeBuddy(THREE, kind, { gear: item.id });
-      assert.ok(buddy.head.getObjectByName(`gear-${item.id}`), `${kind} wears ${item.id} in 3D`);
+      assert.ok(buddy.group.getObjectByName(`gear-${item.id}`), `${kind} wears ${item.id} in 3D`);
       buddy.dispose();
       const before = calls.length;
       drawBuddy(ctx, kind, 50, 100, 80, { gear: item.id });
@@ -154,4 +154,40 @@ test('Star shop: every buddy can wear every item in 3D and on canvas', async () 
       assert.ok(withGear > calls.length - mark, `${kind} draws ${item.id} on canvas`);
     }
   }
+});
+
+test('Star shop: at least 20 items, each in a known spot, with fun lines', async () => {
+  const { SLOTS } = await import('../logic/shop.mjs');
+  assert.ok(GEAR.length >= 20);
+  for (const item of GEAR) {
+    assert.ok(SLOTS.includes(item.slot), `${item.id} has a spot`);
+    assert.ok(item.about, `${item.id} has a line`);
+  }
+  for (const id of ['chain67', 'kicks67', 'chain', 'grillz', 'jersey10', 'jersey7']) assert.ok(gearItem(id), id);
+});
+
+test('Star shop: one item per spot, a whole outfit at once, and old saves still work', async () => {
+  const { gearList, wornList } = await import('../logic/shop.mjs');
+  let p = learner({ stars: 200 });
+  for (const id of ['cap', 'chain67', 'kicks67', 'jersey10', 'grillz', 'shades', 'cape', 'flower']) p = wearGear(buyGear(p, id).profile, id);
+  assert.equal(wornList(p).length, 8);
+  // A new hat takes the old hat's place; everything else stays on.
+  p = wearGear(buyGear(p, 'crown').profile, 'crown');
+  assert.ok(wornList(p).includes('crown'));
+  assert.ok(!wornList(p).includes('cap'));
+  assert.equal(wornList(p).length, 8);
+  // Taking one thing off leaves the rest.
+  p = takeOffGear(p, 'grillz');
+  assert.equal(wornList(p).length, 7);
+  assert.equal(wornGear(takeOffGear(p)), '');
+  // A save from before outfits: one id as a string.
+  assert.equal(wornGear({ gear: ['hat'], wearing: 'hat' }), 'hat');
+  // Outfit strings keep one item per spot and drop unknown ids.
+  assert.deepEqual(gearList('cap crown jetpack kicks67'), ['kicks67', 'crown']);
+});
+
+test('Star shop: the buddy drawing shows a whole outfit', () => {
+  const html = spriteHtml('fox', 'cap chain67 kicks67 jersey7 cape icegrillz hearts flower');
+  for (const id of ['cap', 'chain67', 'kicks67', 'jersey7', 'cape', 'icegrillz', 'hearts', 'flower']) assert.match(html, new RegExp(`gear-${id}`));
+  assert.equal((html.match(/gear-kicks67 shoe/g) || []).length, 2, 'a shoe on each foot');
 });

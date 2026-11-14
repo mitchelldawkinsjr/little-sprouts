@@ -13,7 +13,7 @@
  * the learner's garden buddy flies the plane, and the gems and questions are Little Sprouts'.
  */
 import { gamePaused } from '../lib/hold.js?v=hold2';
-import { makeBuddy, buddyKind } from '../lib/buddy3d.mjs?v=ball3';
+import { makeBuddy, buddyKind } from '../lib/buddy3d.mjs?v=gear1';
 import {
   resolveAutoQuality, pixelRatioCap, rendererOptions, isPerformanceTier
 } from '../lib/device-tier.mjs?v=low-end1';

@@ -1,13 +1,39 @@
 /**
  * Star shop screen: spend learning stars on gear for the garden buddy.
  * Rules live in logic/shop.mjs; this file only draws the screen and saves.
+ * The buddy can wear one thing in each spot (a hat, glasses, a smile, a necklace, a jersey,
+ * a cape or wings, shoes, and a little extra), so a whole outfit shows in every game.
  */
-import { GEAR, buyGear, gearItem, ownedGear, starsToSpend, takeOffGear, wearGear, wornGear } from '../logic/shop.mjs?v=shop1';
+import { GEAR, SLOTS, SLOT_NAMES, buyGear, gearItem, ownedGear, starsToSpend, takeOffGear, wearGear, wornGear, wornList } from '../logic/shop.mjs?v=shop2';
 import { profileSprite } from '../logic/profiles.mjs?v=buddy1';
-import { spriteHtml } from '../lib/home-ui.mjs?v=exp1';
+import { drawBuddy } from '../lib/buddy2d.mjs?v=gear1';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 
 const starWord = (n) => (n === 1 ? '1 star' : `${n} stars`);
+// Shop order: things kids look for first.
+const SHOP_ORDER = ['hat', 'eyes', 'mouth', 'neck', 'body', 'feet', 'back', 'pin'];
+
+/** The outfit with `id` tried on in its spot. */
+function tryOn(profile, id) {
+  const slot = gearItem(id).slot;
+  return [...wornList(profile).filter(other => gearItem(other).slot !== slot), id].join(' ');
+}
+
+/** Draw the buddy in an outfit on a canvas, sharp on high-density screens. */
+function paintBuddy(canvas, kind, outfit) {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  const w = canvas.clientWidth || +canvas.width;
+  const h = canvas.clientHeight || +canvas.height;
+  const scale = Math.min(3, window.devicePixelRatio || 1);
+  canvas.width = Math.round(w * scale);
+  canvas.height = Math.round(h * scale);
+  ctx.setTransform(scale, 0, 0, scale, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  // Head to toe takes most of the box, with room above for tall hats.
+  const height = h * 0.66;
+  drawBuddy(ctx, kind, w / 2, h - h * 0.07, height, { gear: outfit });
+}
 
 export function registerShop(rt) {
   // One purchase at a time: taps while a confirm is open or a save runs are ignored.
@@ -18,9 +44,9 @@ export function registerShop(rt) {
     rt.save();
   }
 
-  function cardHtml(item, profile, kind) {
+  function cardHtml(item, profile) {
     const owned = ownedGear(profile).includes(item.id);
-    const worn = wornGear(profile) === item.id;
+    const worn = wornList(profile).includes(item.id);
     const have = starsToSpend(profile);
     let action;
     let state;
@@ -38,7 +64,7 @@ export function registerShop(rt) {
       state = `<span class="shop-price"><span aria-hidden="true">⭐</span> ${starWord(item.price)}</span>`;
       action = `<button type="button" class="quiet" disabled>Earn ${need} more ${need === 1 ? 'star' : 'stars'}</button>`;
     }
-    return `<li class="shop-item${worn ? ' worn' : ''}"><span class="shop-preview" style="--grow:3">${spriteHtml(kind, item.id)}</span><b>${esc(item.name)}</b>${state}${action}</li>`;
+    return `<li class="shop-item${worn ? ' worn' : ''}"><canvas class="shop-preview" data-try="${item.id}" width="96" height="104" aria-hidden="true"></canvas><b>${esc(item.name)}</b><span class="shop-about">${esc(item.about || '')}</span>${state}${action}</li>`;
   }
 
   function openShop({ syncHash = true, message = '' } = {}) {
@@ -50,17 +76,29 @@ export function registerShop(rt) {
     const profile = rt.p();
     const kind = profileSprite(profile, rt.data.active);
     const have = starsToSpend(profile);
-    const worn = wornGear(profile);
+    const worn = wornList(profile);
     const owned = ownedGear(profile);
     const wallet = have
       ? `You have <b>${starWord(have)}</b> to spend.`
       : 'You have no stars to spend yet. Play a game to earn some!';
     const closet = owned.length
-      ? `Your ${esc(kind)}’s gear: ${owned.map(id => esc(gearItem(id).name)).join(', ')}.`
+      ? `Your ${esc(kind)} owns ${owned.length === 1 ? '1 thing' : `${owned.length} things`}.`
       : `Your ${esc(kind)} has no gear yet. Pick something fun!`;
-    const wearing = worn ? `Wearing the ${esc(gearItem(worn).name)}.` : 'Not wearing anything.';
-    $('#app').innerHTML = `<div class="playtop shop-top"><button type="button" class="quiet" id="shopBack">← Home</button><div class="stars"><span aria-hidden="true">⭐</span> ${starWord(have)} to spend</div></div><section class="playarea shop"><h1>Star shop</h1><div class="shop-me"><span class="shop-preview big" style="--grow:5">${spriteHtml(kind, worn)}</span><div><p>${wallet}</p><p class="hint">${closet} ${wearing}</p></div></div><p class="feedback" id="shopNote" aria-live="polite">${esc(message)}</p><ul class="shop-list">${GEAR.map(item => cardHtml(item, profile, kind)).join('')}</ul>${rt.storageOK ? '' : '<p class="hint">Saving is unavailable in this browser, so gear goes away when the page closes.</p>'}</section>`;
+    const wearing = worn.length ? `Wearing: ${worn.map(id => esc(gearItem(id).name)).join(', ')}.` : 'Not wearing anything.';
+    const groups = SHOP_ORDER.filter(slot => SLOTS.includes(slot)).map(slot => {
+      const items = GEAR.filter(item => item.slot === slot);
+      if (!items.length) return '';
+      return `<h2 class="shop-group">${esc(SLOT_NAMES[slot])}</h2><ul class="shop-list">${items.map(item => cardHtml(item, profile)).join('')}</ul>`;
+    }).join('');
+    const allOff = worn.length ? '<button type="button" class="quiet" id="shopAllOff">Take everything off</button>' : '';
+    $('#app').innerHTML = `<div class="playtop shop-top"><button type="button" class="quiet" id="shopBack">← Home</button><div class="stars"><span aria-hidden="true">⭐</span> ${starWord(have)} to spend</div></div><section class="playarea shop"><h1>Star shop</h1><div class="shop-me"><canvas class="shop-preview big" id="shopMe" width="120" height="132" aria-label="Your ${esc(kind)}${worn.length ? ` wearing ${esc(worn.map(id => gearItem(id).name).join(', '))}` : ''}"></canvas><div><p>${wallet}</p><p class="hint">${closet} ${wearing}</p><p class="hint">Your buddy can wear one thing from each group at the same time.</p>${allOff}</div></div><p class="feedback" id="shopNote" aria-live="polite">${esc(message)}</p>${groups}${rt.storageOK ? '' : '<p class="hint">Saving is unavailable in this browser, so gear goes away when the page closes.</p>'}</section>`;
+    paintBuddy($('#shopMe'), kind, wornGear(profile));
+    document.querySelectorAll('canvas[data-try]').forEach(c => paintBuddy(c, kind, tryOn(profile, c.dataset.try)));
     $('#shopBack').onclick = () => rt.home();
+    if ($('#shopAllOff')) $('#shopAllOff').onclick = () => {
+      setProfile(takeOffGear(rt.p()));
+      openShop({ syncHash: false, message: `All off! Your ${kind} can put things on again any time.` });
+    };
     document.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => buy(b.dataset.buy, b));
     document.querySelectorAll('[data-wear]').forEach(b => b.onclick = () => {
       const item = gearItem(b.dataset.wear);
@@ -68,8 +106,9 @@ export function registerShop(rt) {
       openShop({ syncHash: false, message: `Your ${kind} has the ${item.name} on!` });
     });
     document.querySelectorAll('[data-off]').forEach(b => b.onclick = () => {
-      setProfile(takeOffGear(rt.p()));
-      openShop({ syncHash: false, message: `You took it off. Your ${kind} can put it on again any time.` });
+      const item = gearItem(b.dataset.off);
+      setProfile(takeOffGear(rt.p(), item.id));
+      openShop({ syncHash: false, message: `You took off the ${item.name}. Your ${kind} can put it on again any time.` });
     });
     rt.focusHeading();
   }
