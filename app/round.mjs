@@ -194,7 +194,7 @@ export function registerRound(rt) {
         : g.mode === 'walk'
           ? (ok ? 'You found it.' : 'Not yet. Walk to another one.')
           : g.mode === 'gulp'
-            ? (ok ? 'Yes! Gulp it all.' : 'Not yet. Find another bubble.')
+            ? (ok ? '' : 'Not yet. Find another bubble.')
           : g.mode === 'roll'
             ? (ok ? 'Yes! Right in the pocket.' : 'Not yet. Roll to another pocket.')
           : g.mode === 'grass'
@@ -210,11 +210,14 @@ export function registerRound(rt) {
             : g.mode === 'range'
               ? (ok ? (g.rallyKind === 'spell' ? `You spelled ${g.target}.` : 'Yes! Splat!') : 'Not yet. Paint another one.')
               : (ok ? 'Yes! Turbo!' : 'Not yet. The car slows down.');
-    const feedback = $('#feedback');
-    if (feedback) feedback.textContent = line;
-    const title = $('#app h1');
-    if (title) title.textContent = line;
-    rt.say(line);
+    // Garden gulp cheers a right answer in the game itself, so the app says nothing then.
+    if (line) {
+      const feedback = $('#feedback');
+      if (feedback) feedback.textContent = line;
+      const title = $('#app h1');
+      if (title) title.textContent = line;
+      rt.say(line);
+    }
     if (flightMiss) return;
     if (g.mode === 'flight') {
       g.flightRights = (g.flightRights || 0) + 1;
