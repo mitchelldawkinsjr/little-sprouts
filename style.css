@@ -712,3 +712,4 @@ body.listen-first header,body.listen-first .playtop{position:relative;z-index:31
 .basket .basket-buddy{position:absolute;left:50%;bottom:52%;transform:translateX(-50%);z-index:-1;pointer-events:none}
 .basket .basket-buddy .buddy-sprite{margin:0}
 @media(max-width:560px){.basket .basket-buddy .buddy-sprite{width:58px;height:68px}}
+.offline-status{font-size:13px;font-weight:600;margin:8px 0}.offline-status.offline-ready{color:var(--green)}.offline-bar{display:block;width:100%;height:9px;accent-color:#8caa6a;margin:0 0 4px}.offline-bar[hidden]{display:none}

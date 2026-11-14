@@ -114,38 +114,103 @@ function saveStamps(cache, stamps) {
   return cache.put(STAMPS, new Response(JSON.stringify(stamps), { headers: { 'content-type': 'application/json' } }));
 }
 
+/** Size in bytes from a "mtime-size" stamp. Files without one count as 1. */
+function bytes(stamp) {
+  const n = Number(String(stamp || '').split('-')[1]);
+  return n > 0 ? n : 1;
+}
+
+let last = null;
+
+const STATUS = './__offline-status.json';
+
+async function tell(state) {
+  last = state;
+  if (state.state !== 'saving') {
+    const cache = await caches.open(CACHE);
+    await cache.put(STATUS, new Response(JSON.stringify(state), { headers: { 'content-type': 'application/json' } }));
+  }
+  for (const client of await self.clients.matchAll({ includeUncontrolled: true })) {
+    client.postMessage({ type: 'offline-progress', ...state });
+  }
+}
+
 /**
  * Fetch files that are missing, or whose stamp changed since they were cached.
- * A warm cut short resumes on the next visit.
+ * Reports progress to every open page. Ready means every file on the build list
+ * (or, without one, every requested file) is saved. A warm cut short resumes on the next request.
  */
 async function warm(urls) {
   const cache = await caches.open(CACHE);
   const list = await shipped();
   const stamps = await readStamps(cache);
-  const todo = [...new Set([...urls, ...Object.keys(list)])];
+  const todo = [...new Set([...Object.keys(list), ...urls])];
+  // The build list is the truth. The page's own list only counts when there is no build list.
+  const needed = new Set(Object.keys(list).length ? Object.keys(list) : urls);
+  let total = 0;
+  for (const path of needed) total += bytes(list[path]);
+  let saved = 0;
+  let failed = 0;
+  let checked = 0;
   let next = 0;
-  let done = 0;
+  let sinceSave = 0;
+  let lastTell = 0;
+  const report = (force = false) => {
+    const now = Date.now();
+    if (!force && now - lastTell < 400) return;
+    lastTell = now;
+    return tell({ state: 'saving', saved, total, failed, checked, count: todo.length });
+  };
   async function lane() {
     while (next < todo.length) {
       const path = todo[next++];
       const stamp = list[path];
+      let ok = false;
       try {
         const req = new Request(path, { cache: 'no-cache' });
         const have = await cache.match(req, MATCH) || await cache.match(bare(req), MATCH);
-        if (have && (!stamp || stamps[path] === stamp)) continue;
-        const fresh = await fetch(req);
-        if (!fresh.ok || !keep(fresh)) continue;
-        await put(cache, req, fresh);
-        if (stamp) stamps[path] = stamp;
-        if (++done % 25 === 0) await saveStamps(cache, stamps);
+        if (have && (!stamp || stamps[path] === stamp)) {
+          ok = true;
+        } else {
+          const fresh = await fetch(req);
+          if (fresh.ok && keep(fresh)) {
+            await put(cache, req, fresh);
+            if (stamp) stamps[path] = stamp;
+            if (++sinceSave % 25 === 0) await saveStamps(cache, stamps);
+            ok = true;
+          }
+        }
       } catch {}
+      checked++;
+      if (needed.has(path)) {
+        if (ok) saved += bytes(stamp);
+        else failed++;
+      }
+      report();
     }
   }
+  await tell({ state: 'saving', saved, total, failed, checked, count: todo.length });
   await Promise.all(Array.from({ length: PARALLEL }, lane));
   await saveStamps(cache, stamps);
+  await tell({ state: failed ? 'partial' : 'ready', saved, total, failed, checked, count: todo.length });
 }
 
+let running = null;
+
 self.addEventListener('message', event => {
-  if (event.data?.type !== 'warm' || !Array.isArray(event.data.urls)) return;
-  event.waitUntil(warm(event.data.urls));
+  const type = event.data?.type;
+  if (type === 'offline-status') {
+    event.waitUntil((async () => {
+      let state = last;
+      if (!state) {
+        try { state = await (await (await caches.open(CACHE)).match(STATUS))?.json(); } catch {}
+      }
+      if (state) event.source?.postMessage({ type: 'offline-progress', ...state });
+    })());
+    return;
+  }
+  if (type !== 'warm' || !Array.isArray(event.data.urls)) return;
+  if (!running) running = warm(event.data.urls).finally(() => { running = null; });
+  else if (last) event.source?.postMessage({ type: 'offline-progress', ...last });
+  event.waitUntil(running);
 });

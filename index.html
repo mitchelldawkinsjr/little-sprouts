@@ -12,7 +12,7 @@
   <link rel="icon" href="icons/icon-192.png" type="image/png">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
   <link rel="stylesheet" href="vendor/fonts/fonts.css?v=r187">
-  <link rel="stylesheet" href="style.css?v=ball2">
+  <link rel="stylesheet" href="style.css?v=offline3">
 </head>
 <body>
   <header>
@@ -146,6 +146,10 @@
         <button type="button" class="quiet voice-preview" id="hearHosts">Hear the game voices</button>
         <p class="hint" id="voiceStatus"></p>
         <p class="hint">This voice is shared by every learner on this browser. It downloads once, about 90 MB, then stays on this device. The lines every game repeats are already included, so those play right away. A new word or question is saved on this device after the first time. Reading and math always use the voice above. With game hosts on, racing and arcade games use their own voices. While the voice is still downloading, if a new line is not ready within 2 seconds, or if it cannot run on this device, a new line uses the browser’s own voice. A repeated line still plays in this voice.</p>
+        <h3>Offline play</h3>
+        <p class="offline-status" id="offlineStatus" role="status" aria-live="polite">Checking which games are saved for offline play…</p>
+        <progress id="offlineBar" class="offline-bar" max="1" value="0"></progress>
+        <p class="hint">While the app is open and online, every game downloads to this device, about 240 MB in all. When this says ready, the games work with no internet. Updates download only what changed.</p>
         <h3>Moving & real-world play</h3>
         <p class="hint">Move and Hunt turn each game into a movement or find-it activity, and a grown-up confirms the answer. Print floor cards for Move.</p>
         <button type="button" class="quiet" id="printOpen"><span aria-hidden="true">🖨</span> Print floor cards</button>
@@ -267,8 +271,8 @@
   <script type="module" src="app.js?v=ball3"></script>
   <script type="module">
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js?v=offline2').then(async () => {
-        const { warmOffline } = await import('./lib/offline-warm.mjs?v=offline2');
+      navigator.serviceWorker.register('./sw.js?v=offline3').then(async () => {
+        const { warmOffline } = await import('./lib/offline-warm.mjs?v=offline3');
         warmOffline();
       }).catch(() => {});
     }
