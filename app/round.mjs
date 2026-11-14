@@ -64,7 +64,7 @@ import { stopCrayon } from '../games/crayon.js?v=crayon-more';
 import { stopMarble } from '../games/marble.js?v=gear2';
 import { stopBridge } from '../games/bridge.js?v=gear2';
 import { stopMaze } from '../games/maze.js?v=gear2';
-import { postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=hush1';
+import { postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=sky1';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=aviator1';
 
@@ -78,6 +78,7 @@ export function registerRound(rt) {
     bikeConfig,
     rallyMessage,
     gradeRally,
+    bankCabin,
     question,
     rallyPrefs,
     arcadeQuestion,
@@ -171,7 +172,7 @@ export function registerRound(rt) {
       message.gates = rallyGates(message.stops);
     }
     if (g.mode === 'flight' || g.mode === 'blocks') message.freeEvery = rallyClearCount(rt.questionCount());
-    if (g.mode === 'range' || g.mode === 'roll' || g.mode === 'grass' || g.mode === 'glow' || g.mode === 'dash') message.total = rt.questionCount();
+    if (g.mode === 'range' || g.mode === 'roll' || g.mode === 'grass' || g.mode === 'glow' || g.mode === 'dash' || g.mode === 'boss') message.total = rt.questionCount();
     return message;
   }
   function gradeRally(index) {
@@ -181,7 +182,7 @@ export function registerRound(rt) {
     const ok = !!token.ok;
     postSidecar({ type: 'mark', index, ok });
     // Sky flight and the range keep the same question up after a miss.
-    const flightMiss = (g.mode === 'flight' || g.mode === 'range' || g.mode === 'gulp' || g.mode === 'blocks' || g.mode === 'roll' || g.mode === 'grass' || g.mode === 'glow' || g.mode === 'dash') && !ok;
+    const flightMiss = (g.mode === 'flight' || g.mode === 'range' || g.mode === 'gulp' || g.mode === 'blocks' || g.mode === 'roll' || g.mode === 'grass' || g.mode === 'glow' || g.mode === 'dash' || g.mode === 'boss' || g.mode === 'cabin') && !ok;
     g.done = !flightMiss;
     if (!ok) g.missed = true;
     else if (!g.missed) g.firstCorrect++;
@@ -203,6 +204,10 @@ export function registerRound(rt) {
             ? (ok ? 'Yes! Your light found it.' : 'Not yet. Light a path to another pocket.')
           : g.mode === 'dash'
             ? (ok ? 'Yes! Zoom!' : 'Not yet. Catch another one.')
+          : g.mode === 'boss'
+            ? (ok ? 'Yes! Swim away!' : 'Not yet. Swim to another one.')
+          : g.mode === 'cabin'
+            ? (ok ? 'Yes! The cabin stays cozy.' : 'Not yet. Pick another one.')
           : g.mode === 'blocks'
             ? (ok ? 'Yes! A new block for you.' : 'Not yet. Pick another one.')
           : g.mode === 'skybound'
@@ -229,9 +234,39 @@ export function registerRound(rt) {
       if (g.blockRights >= rallyClearCount(rt.questionCount())) return;
     }
     if (g.mode === 'rally' && ok) g.rallyRights = (g.rallyRights || 0) + 1;
+    // Cabin camp asks once between rounds. Each full set of this learner's questions banks
+    // its stars right away, and the cabin keeps going (and keeps asking) until the raccoons win.
+    if (g.mode === 'cabin') {
+      g.index++;
+      const got = g.index >= rt.questionCount() ? bankCabin(g) : 0;
+      // Make the next question now. The game keeps it until the next round clears.
+      rt.question();
+      if (got) {
+        const line = `You earned ${got === 1 ? '1 learning star' : `${got} learning stars`}! Keep playing.`;
+        const feedback = $('#feedback');
+        if (feedback) feedback.textContent = line;
+        const title = $('#app h1');
+        if (title) title.textContent = line;
+        rt.say(line);
+      }
+      return;
+    }
     // Garden gulp leaves the other right bubbles up a little longer for a bonus gulp.
     if (g.mode === 'gulp') rt.continueAfter('rally', g, 3200, 2600);
     else rt.continueAfter('rally', g, 1200, 500);
+  }
+  /** Cabin camp: add the answers since the last bank to the learner's stars. Returns how many. */
+  function bankCabin(g) {
+    const answered = g.index | 0;
+    if (!answered) return 0;
+    const correct = Math.min(answered, g.firstCorrect | 0);
+    Object.assign(rt.p(), applyRound(rt.p(), g.mode, g.key, answered, correct));
+    rt.save();
+    g.cabinAsked = (g.cabinAsked | 0) + answered;
+    g.cabinFirst = (g.cabinFirst | 0) + correct;
+    g.index = 0;
+    g.firstCorrect = 0;
+    return answered;
   }
   function question() {
     const g = rt.game;
@@ -769,11 +804,12 @@ export function registerRound(rt) {
         g.tokens = [];
         g.options = [];
         g.show = '';
-      } else if (g.freePlay && (g.mode === 'gulp' || g.mode === 'flight' || g.mode === 'walk' || g.mode === 'bike' || g.mode === 'blocks')) {
+      } else if (g.freePlay && (g.mode === 'gulp' || g.mode === 'flight' || g.mode === 'walk' || g.mode === 'bike' || g.mode === 'blocks' || g.mode === 'cabin')) {
         g.prompt = g.mode === 'gulp' ? 'Swallow what fits. Clear the city or grow big before the clock runs out.'
           : g.mode === 'blocks' ? 'Build in the meadow.'
           : g.mode === 'flight' ? 'Fly the glider.'
           : g.mode === 'walk' ? 'Walk the meadow.'
+          : g.mode === 'cabin' ? 'Keep the cabin cozy.'
           : 'Ride the dirt bike.';
         g.tokens = [];
         g.options = [];
@@ -784,6 +820,8 @@ export function registerRound(rt) {
       else if (g.mode === 'grass') grassAsk(g);
       else if (g.mode === 'glow') glowAsk(g);
       else if (g.mode === 'dash') dashAsk(g);
+      else if (g.mode === 'boss') bossAsk(g);
+      else if (g.mode === 'cabin') cabinAsk(g);
       else if (g.mode === 'paint') shellAsk(g);
       else {
         rallyAsk(g);
@@ -1121,6 +1159,11 @@ export function registerRound(rt) {
     profileAsk(g, 'walk');
     g.rallyKind = g.subject === 'math' ? 'math' : 'match';
   }
+  // Cabin camp freezes the run between rounds for one question from the profile.
+  function cabinAsk(g) {
+    profileAsk(g, 'rally');
+    g.rallyKind = g.subject === 'math' ? 'math' : 'match';
+  }
   // Garden gulp: answer bubbles float over the city. Same profile mix as the meadow walk.
   function gulpAsk(g) {
     profileAsk(g, 'walk');
@@ -1145,6 +1188,14 @@ export function registerRound(rt) {
     else if (g.subject === 'shapes') g.prompt = `Catch the ${g.target}.`;
     else if (g.subject === 'colors') g.prompt = `Catch ${g.target}.`;
     else g.prompt = `${g.prompt} Jump to catch it.`;
+  }
+  function bossAsk(g) {
+    profileAsk(g, 'walk');
+    g.rallyKind = g.subject === 'math' ? 'math' : 'match';
+    if (g.subject === 'words') g.prompt = `Swim to the word ${g.target}.`;
+    else if (g.subject === 'shapes') g.prompt = `Swim to the ${g.target}.`;
+    else if (g.subject === 'colors') g.prompt = `Swim to ${g.target}.`;
+    else g.prompt = `${g.prompt} Swim to it.`;
   }
   function grassAsk(g) {
     profileAsk(g, 'walk');
@@ -1718,26 +1769,30 @@ export function registerRound(rt) {
     const flightEnd = g.mode === 'flight' && (detail === 'crash' || detail === 'flew');
     const stageEnd = g.mode === 'rally' && detail === 'stage';
     // Garden gulp asks for a whole timed round, so count the questions it actually finished.
-    const gulpEnd = g.mode === 'gulp' && !g.freePlay;
+    const gulpEnd = (g.mode === 'gulp' || (g.mode === 'boss' && g.bossEndless)) && !g.freePlay;
+    // Cabin camp banks its stars as it goes (bankCabin); the results show the whole game.
+    const cabinEnd = g.mode === 'cabin' && !g.freePlay;
+    if (cabinEnd) bankCabin(g);
     // Block meadow counts the gift boxes actually opened before free build.
     const blocksEnd = g.mode === 'blocks' && detail === 'build' && !g.freePlay;
-    const rounds = (g.mode === 'verse' || g.mode === 'clue') && g.deck?.length ? g.deck.length : flightEnd ? (g.flightRights || 5) : blocksEnd ? Math.max(1, g.blockRights || 1) : stageEnd ? Math.max(1, g.index || g.rallyRights || 1) : gulpEnd ? Math.max(1, g.index | 0, g.firstCorrect | 0) : rt.questionCount();
+    const rounds = cabinEnd ? (g.cabinAsked | 0) : (g.mode === 'verse' || g.mode === 'clue') && g.deck?.length ? g.deck.length : flightEnd ? (g.flightRights || 5) : blocksEnd ? Math.max(1, g.blockRights || 1) : stageEnd ? Math.max(1, g.index || g.rallyRights || 1) : gulpEnd ? Math.max(1, g.index | 0, g.firstCorrect | 0) : rt.questionCount();
     const bonus = (g.mode === 'verse' || g.mode === 'clue') ? (g.extraStars | 0) : 0;
-    Object.assign(rt.p(), applyRound(rt.p(), g.mode, g.key, rounds, g.firstCorrect));
+    const firstRight = cabinEnd ? (g.cabinFirst | 0) : g.firstCorrect;
+    if (!cabinEnd) Object.assign(rt.p(), applyRound(rt.p(), g.mode, g.key, rounds, g.firstCorrect));
     if (bonus) {
       rt.p().stars += bonus;
       rt.p().earned = (rt.p().earned | 0) + bonus;
     }
     rt.save();
-    const dots = Array.from({ length: rounds }, (_, i) => `<span class="${i < g.firstCorrect ? 'on' : ''}"></span>`).join('');
-    const played = rounds === 1 ? 'You played 1 question.' : `You played ${rounds}.`;
+    const dots = Array.from({ length: rounds }, (_, i) => `<span class="${i < firstRight ? 'on' : ''}"></span>`).join('');
+    const played = cabinEnd && !rounds ? 'The raccoons got the snacks!' : rounds === 1 ? 'You played 1 question.' : `You played ${rounds}.`;
     const heading = flightEnd ? (detail === 'crash' ? 'Game over.' : 'You flew for 2 minutes.') : stageEnd ? 'You finished the stage.' : played;
     const note = flightEnd && detail === 'crash' ? 'The glider hit the ground.' : stageEnd ? `${g.rallyRights || 0} right along the road` : 'First try';
     const spoken = flightEnd ? (detail === 'crash' ? 'Game over. The glider hit the ground.' : 'You flew for 2 minutes.') : stageEnd ? 'You finished the stage.' : played;
     const starTotal = rounds + bonus;
     const stars = starTotal === 1 ? '+1 learning star' : `+${starTotal} learning stars`;
     const bonusNote = bonus ? `<p class="hint">Includes +${bonus} for writing the verse.</p>` : '';
-    $('#app').innerHTML = `<section class="playarea"><div class="result-star" aria-hidden="true">${flightEnd && detail === 'crash' ? '✈' : '🌟'}</div><h1>${heading}</h1><p>${note}</p><div class="dots" aria-label="${g.firstCorrect} of ${rounds} first tries">${dots}</div><p class="hint">${stars}</p>${bonusNote}${rt.starGardenHtml()}<button class="primary" id="again">Play again</button> <button class="quiet" id="all">Choose a game</button></section>`;
+    $('#app').innerHTML = `<section class="playarea"><div class="result-star" aria-hidden="true">${flightEnd && detail === 'crash' ? '✈' : '🌟'}</div><h1>${heading}</h1><p>${note}</p><div class="dots" aria-label="${firstRight} of ${rounds} first tries">${dots}</div><p class="hint">${stars}</p>${bonusNote}${rt.starGardenHtml()}<button class="primary" id="again">Play again</button> <button class="quiet" id="all">Choose a game</button></section>`;
     $('#again').onclick = () => rt.start(g.mode);
     $('#all').onclick = rt.home;
     rt.say(spoken);

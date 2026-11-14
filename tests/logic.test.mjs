@@ -1048,7 +1048,7 @@ test('sidecar games stay a list a new bootstrapped game can join', async () => {
 });
 
 test('a sidecar opens its own page only when it sets alone', () => {
-  for (const [id, title] of [['rally', 'Backroad rally'], ['flight', 'Sky flight'], ['bike', 'Dirt ride'], ['walk', 'Garden walk'], ['paint', 'Paint sphere'], ['gulp', 'Garden gulp'], ['range', 'Targets']]) {
+  for (const [id, title] of [['rally', 'Backroad rally'], ['flight', 'Sky flight'], ['bike', 'Dirt ride'], ['walk', 'Garden walk'], ['paint', 'Paint sphere'], ['gulp', 'Garden gulp'], ['range', 'Targets'], ['cabin', 'Cabin camp']]) {
     const alone = sidecarAlone(sidecarGame(id));
     assert.equal(alone.title, title);
     assert.match(alone.href, new RegExp(`^sidecars/${id}/index\\.html$`));

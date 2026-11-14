@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <title>Boss chase</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7' fill='%231b7a8c'/%3E%3Crect x='4' y='5' width='8' height='6' fill='%237fbf3f'/%3E%3Crect x='9' y='6' width='2' height='2' fill='%23fff4d6'/%3E%3C/svg%3E" />
+    <script src="/lib/device-tier-boot.js?v=low-end1"></script>
+    <script>window.SproutsSidecarOwnAsk = true;</script>
+    <script src="/lib/sidecar-guest.js?v=gulp13"></script>
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "../../vendor/three/build/three.module.js?v=r187"
+      }
+    }
+    </script>
+    <style>
+      /* Under water, after Yakudoo's fish pen: deep teal fading to a bright top, with warm
+         coral and sunny yellow for the things that matter. */
+      :root {
+        --deep: #0d3f52;
+        --sea: #17708a;
+        --shallow: #4fb3c4;
+        --foam: #e8fbff;
+        --coral: #ff7a59;
+        --sun: #ffd25a;
+        --kelp: #7fbf3f;
+        --ink: #102028;
+        --cap: 'Avenir Next Condensed', 'Arial Narrow', 'Roboto Condensed', 'Helvetica Neue', sans-serif;
+        --read: 'Trebuchet MS', 'Segoe UI', sans-serif;
+      }
+      html, body { margin: 0; height: 100%; overflow: hidden; color: var(--foam); font-family: var(--cap); -webkit-user-select: none; user-select: none; background: linear-gradient(180deg, var(--shallow) 0%, var(--sea) 45%, var(--deep) 100%); }
+      #world { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+
+      #hud { position: fixed; inset: 0 0 auto; z-index: 2; pointer-events: none; }
+      #hud[hidden] { display: none; }
+      #dist { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); text-align: center; }
+      .label { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--sun); margin-bottom: 2px; }
+      #distValue { font-size: 34px; line-height: 1; }
+      .corner { position: absolute; top: 16px; font-size: 20px; letter-spacing: 1px; }
+      #stars { left: 16px; }
+      #shells { right: 16px; }
+      #stars[hidden] { display: none; }
+      /* How close the boss is: the buddy on the right, the boss creeping up from the left. */
+      #meter { position: absolute; left: 50%; top: 66px; transform: translateX(-50%); width: min(320px, calc(100% - 32px)); height: 14px; border-radius: 7px; background: #0d3f5299; outline: 2px solid #e8fbff66; }
+      #meterFill { position: absolute; inset: 0 auto 0 0; width: 70%; border-radius: 7px; background: linear-gradient(90deg, var(--coral), var(--sun) 60%, var(--kelp)); transition: width 200ms linear; }
+      #meter.near #meterFill { background: var(--coral); }
+      #meterBoss, #meterBuddy { position: absolute; top: 50%; font-size: 20px; transform: translate(-50%, -50%); }
+      #meterBoss { left: 0; }
+      #speedo { position: absolute; left: 16px; top: 50px; display: flex; align-items: center; gap: 6px; }
+      #speedo .label { margin: 0; }
+      #speedBar { position: relative; width: 70px; height: 8px; border-radius: 4px; background: #0d3f5299; outline: 2px solid #e8fbff55; overflow: hidden; }
+      #speedFill { position: absolute; inset: 0 auto 0 0; width: 50%; background: var(--sun); }
+      @media (max-width: 520px) { #speedo { top: 88px; left: 50%; transform: translateX(-50%); } #ask { top: 112px; } }
+      #meterBuddy { left: 100%; }
+
+      #ask { position: fixed; left: 50%; top: 92px; z-index: 2; transform: translateX(-50%); width: min(560px, calc(100% - 24px)); box-sizing: border-box; padding: 10px 16px; border-radius: 10px; background: #e8fbffeb; color: var(--ink); border-bottom: 4px solid var(--coral); text-align: center; font: 800 clamp(18px, 3.6vw, 26px)/1.25 var(--read); pointer-events: none; }
+      #ask[hidden] { display: none; }
+      #ask.done { border-color: var(--kelp); color: #3f7a1f; }
+      #ask.done::after { content: ' ✓'; }
+      #show { display: flex; justify-content: center; margin-top: 8px; }
+      #show:empty { display: none; }
+      #show .countrow, #show .numpath { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; }
+      #show .countrow.array { display: grid; grid-template-columns: repeat(var(--cols, 5), auto); }
+      #show .countrow span, #show .numpath span { min-width: 26px; padding: 2px 4px; border-radius: 4px; background: #fff; color: var(--ink); font-size: clamp(18px, 4.5vw, 24px); }
+      #show .numpath .here { outline: 3px solid var(--coral); }
+
+      #toast { position: fixed; left: 50%; top: 48%; z-index: 2; transform: translate(-50%, -50%); font-size: clamp(30px, 7vw, 54px); text-transform: uppercase; letter-spacing: 1px; pointer-events: none; white-space: nowrap; text-shadow: 0 2px 0 #0d3f5299; }
+      #toast[hidden] { display: none; }
+      #toast.good { color: var(--sun); }
+      #toast.bad { color: var(--coral); }
+
+      #caught { position: fixed; left: 50%; top: 24%; z-index: 2; width: 100%; text-align: center; font-weight: bold; text-transform: uppercase; font-size: clamp(64px, 16vw, 120px); color: var(--coral); text-shadow: 0 4px 0 #0d3f52aa; opacity: 0; transform: translate(-50%, -100%); transition: all 500ms ease-in-out; pointer-events: none; }
+      #caught.show { opacity: 1; transform: translate(-50%, -50%); }
+      #caught.free { color: var(--sun); }
+
+      #again { position: fixed; left: 0; right: 0; bottom: 36px; z-index: 2; text-align: center; text-transform: uppercase; pointer-events: none; text-shadow: 0 2px 4px #0d3f52, 0 0 2px #0d3f52; }
+      #again[hidden] { display: none; }
+      #overStats { display: block; font-size: 22px; letter-spacing: 2px; }
+      #again .tap { display: block; margin-top: 6px; font-size: 16px; letter-spacing: 1px; color: var(--sun); }
+      @media (prefers-reduced-motion: no-preference) { #again .tap { animation: pulse 1.4s ease-in-out infinite; } @keyframes pulse { 50% { opacity: 0.45; } } }
+      #instructions { position: fixed; left: 0; right: 0; bottom: 0; margin-bottom: 30px; z-index: 2; text-align: center; font-size: 16px; letter-spacing: 1px; text-transform: uppercase; pointer-events: none; padding: 0 12px; text-shadow: 0 2px 4px #0d3f52, 0 0 2px #0d3f52; }
+      #instructions[hidden] { display: none; }
+      .light { color: var(--sun); }
+
+      /* Menu card and builder share the overlay. */
+      #overlay { position: fixed; inset: 0; z-index: 3; display: grid; place-items: center; padding: 16px; box-sizing: border-box; pointer-events: none; }
+      #overlay[hidden] { display: none; }
+      .card { pointer-events: auto; width: min(430px, 100%); text-align: center; padding: 18px 16px; border-radius: 16px; background: #0d3f52cc; box-shadow: 0 6px 0 #0a2f3d88; box-sizing: border-box; }
+      .card[hidden] { display: none; }
+      h1 { margin: 0 0 6px; font-weight: 800; font-size: clamp(40px, 10vw, 64px); line-height: 1; text-transform: uppercase; letter-spacing: 1px; color: var(--sun); }
+      #blurb { margin: 0 auto 10px; max-width: 380px; font: 600 16px/1.45 var(--read); }
+      #help { list-style: none; margin: 0 0 16px; padding: 0; font-size: 14px; letter-spacing: 1px; text-transform: uppercase; color: #bfeaf2; line-height: 1.7; }
+      #bossLine { margin: 0 0 14px; font: 700 16px var(--read); color: var(--sun); }
+      #verdict { margin: 0; font-size: clamp(56px, 15vw, 90px); line-height: 1; color: var(--sun); }
+      #reason { margin: 4px 0 16px; font-size: 14px; letter-spacing: 2px; text-transform: uppercase; color: #bfeaf2; }
+      #verdict[hidden], #reason[hidden], #blurb[hidden], #help[hidden], #bossLine[hidden] { display: none; }
+      .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+      .actions button, .pick button { border: 0; border-radius: 8px; padding: 12px 20px; font: 800 18px var(--cap); letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; background: var(--coral); color: #fff; box-shadow: 0 4px 0 #c4553a; }
+      .actions button:active, .pick button:active { transform: translateY(2px); box-shadow: 0 2px 0 #c4553a; }
+      .actions button.second { background: var(--kelp); box-shadow: 0 4px 0 #5a9a2e; }
+      .actions button.third { background: var(--sea); box-shadow: 0 4px 0 #0d3f52; outline: 2px solid #e8fbff55; }
+      .actions button[hidden] { display: none; }
+      .actions button:disabled { opacity: 0.5; cursor: default; }
+      .pad-focus { outline: 4px solid var(--sun) !important; outline-offset: 3px; }
+
+      /* The builder sits low on a phone and to the left on a wide screen, so the boss shows. */
+      #builder { width: min(380px, 100%); }
+      #builder h1 { font-size: clamp(32px, 8vw, 46px); }
+      #bossName { margin: 0 0 10px; font: 800 20px var(--read); color: var(--foam); }
+      .presets { display: flex; justify-content: center; gap: 6px; margin: 0 0 10px; flex-wrap: wrap; }
+      .preset { pointer-events: auto; width: 44px; height: 44px; border: 0; border-radius: 10px; font-size: 24px; line-height: 1; cursor: pointer; background: #17708a; box-shadow: 0 3px 0 #0a2f3d; }
+      .preset.on { background: var(--sun); box-shadow: 0 3px 0 #c49a2a; }
+      .preset:active { transform: translateY(2px); box-shadow: 0 1px 0 #0a2f3d; }
+      .pick { display: grid; grid-template-columns: 48px 1fr 48px; align-items: center; gap: 8px; margin: 0 0 8px; }
+      .pick button { padding: 8px 0; font-size: 22px; line-height: 1; background: var(--sea); box-shadow: 0 3px 0 #0a2f3d; }
+      .pick .what { font: 700 17px var(--read); }
+      .pick .what small { display: block; font: 600 11px var(--cap); letter-spacing: 2px; text-transform: uppercase; color: #bfeaf2; }
+      @media (min-width: 760px) {
+        #overlay.building { place-items: center start; padding-left: 4vw; }
+      }
+      @media (max-width: 759px) {
+        #overlay.building { place-items: end center; }
+        #builder { padding: 12px; }
+        #builder h1 { display: none; }
+        .pick { margin-bottom: 5px; }
+        .pick .what { font-size: 15px; }
+      }
+      @media (max-height: 640px) and (max-width: 759px) {
+        .pick .what small { display: none; }
+      }
+      @media (prefers-reduced-motion: reduce) { #caught { transition: none; } }
+      @media (prefers-reduced-motion: no-preference) {
+        #toast:not([hidden]) { animation: toastPop 260ms ease-out; }
+        @keyframes toastPop { from { transform: translate(-50%, -50%) scale(0.7); opacity: 0; } }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="world" aria-label="Boss chase: your garden buddy swims under water while the boss you built chases"></canvas>
+    <div id="hud" hidden>
+      <div id="stars" class="corner">⭐ 0</div>
+      <div id="dist"><div class="label">distance</div><div id="distValue">000</div></div>
+      <div id="shells" class="corner">🐚 0</div>
+      <div id="meter" aria-hidden="true"><div id="meterFill"></div><span id="meterBoss">🐛</span><span id="meterBuddy">🫧</span></div>
+      <div id="speedo" aria-hidden="true"><span class="label">speed</span><div id="speedBar"><div id="speedFill"></div></div></div>
+    </div>
+    <div id="ask" hidden aria-live="polite"><span id="askText"></span><div id="show"></div></div>
+    <div id="toast" hidden aria-live="assertive"></div>
+    <div id="caught" aria-hidden="true">Chomp!</div>
+    <div id="again" hidden aria-live="polite"><span id="overStats"></span><span class="tap" id="againTap">Tap to swim again</span></div>
+    <div id="instructions" hidden>Up and down to swim, further right to go faster<span class="light"> — tap jellyfish, puffers, and crates to trip up the boss</span></div>
+    <div id="overlay">
+      <div class="card" id="menu">
+        <h1 id="title">Boss chase</h1>
+        <p id="verdict" hidden></p>
+        <p id="reason" hidden></p>
+        <p id="blurb">Build a boss: a caterpillar, spider, shark, squid, gator, octopus, or a mix of them. Then swim away from it! Swim into the right answer to zoom ahead.</p>
+        <p id="bossLine" hidden></p>
+        <ul id="help">
+          <li>Drag, move the mouse, or ▲ ▼ to swim</li>
+          <li>Further right or ► swims faster, ◄ slower</li>
+          <li>Tap jellyfish, puffers, and crates, or press A</li>
+          <li>Play: get away with every question</li>
+          <li>Endless: just don't get caught</li>
+        </ul>
+        <div class="actions">
+          <button id="play" type="button" disabled>Loading…</button>
+          <button id="endless" class="second" type="button">Endless</button>
+          <button id="build" class="third" type="button">Build boss</button>
+        </div>
+      </div>
+      <div class="card" id="builder" hidden>
+        <h1>Build your boss</h1>
+        <p id="bossName" aria-live="polite"></p>
+        <div id="presets" class="presets" aria-label="Ready-made bosses"></div>
+        <div id="picks"></div>
+        <div class="actions">
+          <button id="surprise" class="third" type="button">Surprise me</button>
+          <button id="done" type="button">Done</button>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="./game.mjs?v=boss2"></script>
+  </body>
+</html>

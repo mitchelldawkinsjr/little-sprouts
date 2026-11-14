@@ -28,6 +28,8 @@ COPY sidecars/roll /usr/share/nginx/html/sidecars/roll
 COPY sidecars/grass /usr/share/nginx/html/sidecars/grass
 COPY sidecars/glow /usr/share/nginx/html/sidecars/glow
 COPY sidecars/dash /usr/share/nginx/html/sidecars/dash
+COPY sidecars/boss /usr/share/nginx/html/sidecars/boss
+COPY sidecars/cabin /usr/share/nginx/html/sidecars/cabin
 COPY index.html style.css app.js logic.mjs sheet.csv manifest.webmanifest sw.js /usr/share/nginx/html/
 COPY icons /usr/share/nginx/html/icons
 COPY app /usr/share/nginx/html/app

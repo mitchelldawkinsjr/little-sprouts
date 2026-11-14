@@ -1,13 +1,13 @@
-import './lib/pad.js?v=grass-pad';
+import './lib/pad.js?v=cabin1';
 import './lib/tilt.js?v=ask-first';
 import { roundCount, stageOf, profileSprite, SPRITES } from './logic.mjs?v=offline1';
 import { knownVoice } from './lib/speech.js?v=night1';
-import { findBuiltSidecars } from './lib/sidecar.js?v=hush1';
+import { findBuiltSidecars } from './lib/sidecar.js?v=sky1';
 import { rt } from './app/runtime.mjs?v=lean-r2';
-import { registerHelpers } from './app/helpers.mjs?v=hush1';
-import { registerRound } from './app/round.mjs?v=gear2';
-import { registerMounts } from './app/mounts.mjs?v=gear2';
-import { registerParent } from './app/parent.mjs?v=gear2';
+import { registerHelpers } from './app/helpers.mjs?v=sky1';
+import { registerRound } from './app/round.mjs?v=sky1';
+import { registerMounts } from './app/mounts.mjs?v=sky1';
+import { registerParent } from './app/parent.mjs?v=sky1';
 import { registerShop } from './app/shop.mjs?v=gear2';
 import { registerRouter } from './app/router.mjs?v=shop1';
 

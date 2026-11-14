@@ -31,7 +31,7 @@ import {
   voiceFor,
   voices
 } from '../lib/speech.js?v=night1';
-import { sidecarGame, sidecarIsBuilt } from '../lib/sidecar.js?v=hush1';
+import { sidecarGame, sidecarIsBuilt } from '../lib/sidecar.js?v=sky1';
 import { spriteHtml } from '../lib/home-ui.mjs?v=gear2';
 import { voiceStatusText } from '../lib/parent-ui.mjs?v=structure2';
 import { $, esc } from './runtime.mjs?v=lean-r2';

@@ -79,7 +79,7 @@ import {
   sidecarGame,
   sidecarIsBuilt,
   stopSidecar
-} from '../lib/sidecar.js?v=hush1';
+} from '../lib/sidecar.js?v=sky1';
 import {
   SHELF_META,
   shelfOf as shelfIdOf,
@@ -510,6 +510,26 @@ export function registerMounts(rt) {
         const doneAsking = (g.rallyRights || 0) >= rallyClearCount(rounds) || g.index >= stops;
         paintRallyChrome(g);
         if (doneAsking) postSidecar({ type: 'clear' });
+        else rt.question();
+        return;
+      }
+      // Skybound: after this learner's questions the climb goes on with no more stops.
+      // The stars come when the portal is reached (onFinish below), not here.
+      if (g.mode === 'skybound' && g.index >= rounds) {
+        postSidecar({ type: 'clear' });
+        const line = 'All questions done! Reach the portal to earn your stars.';
+        const feedback = $('#feedback');
+        if (feedback) feedback.textContent = line;
+        const title = $('#app h1');
+        if (title) title.textContent = line;
+        rt.say(line);
+        return;
+      }
+      // Boss chase: Play gets away after the last question (the game finishes the round when
+      // the getaway is done); Endless keeps asking until the boss catches the buddy.
+      if (g.mode === 'boss') {
+        if (g.bossEndless) rt.question();
+        else if (g.index >= rounds) postSidecar({ type: 'clear' });
         else rt.question();
         return;
       }
@@ -1292,15 +1312,23 @@ export function registerMounts(rt) {
           frame?.focus();
           if (rt.game?.mode === 'bike') postSidecar(rt.bikeConfig(rt.game));
           if (rt.game?.mode === 'quickmath') return;
-          if (rt.game?.freePlay && (rt.game.mode === 'flight' || rt.game.mode === 'walk' || rt.game.mode === 'skybound' || rt.game.mode === 'gulp' || rt.game.mode === 'blocks' || rt.game.mode === 'dash')) postSidecar({ type: 'arcade' });
+          if (rt.game?.freePlay && (rt.game.mode === 'flight' || rt.game.mode === 'walk' || rt.game.mode === 'skybound' || rt.game.mode === 'gulp' || rt.game.mode === 'blocks' || rt.game.mode === 'dash' || rt.game.mode === 'boss' || rt.game.mode === 'cabin')) postSidecar({ type: 'arcade' });
           else if (rt.game) postSidecar(rt.rallyMessage(rt.game));
+        },
+        // Skybound reloads its page for the next world: tell the new page arcade or the current question again.
+        onReload() {
+          const g = rt.game;
+          if (!g || g.finished || g.mode !== 'skybound') return;
+          if (g.freePlay) postSidecar({ type: 'arcade' });
+          else if (g.index >= rt.questionCount()) postSidecar({ type: 'clear' });
+          else postSidecar(rt.rallyMessage(g));
         },
         onProgress(info) {
           if (rt.game?.mode === 'bike' && Number.isFinite(+info?.travel)) rt.game.bikeTravel = +info.travel;
         },
         onShow() {
           // Garden gulp and Garden dash keep moving while the question is read, so just say it.
-          if (rt.game?.mode === 'gulp' || rt.game?.mode === 'dash') { if (!rt.game.finished) rt.say(rt.game.prompt); return; }
+          if (rt.game?.mode === 'gulp' || rt.game?.mode === 'dash' || rt.game?.mode === 'boss') { if (!rt.game.finished) rt.say(rt.game.prompt); return; }
           if (rt.game && !rt.game.finished) rt.askBeforePlay(rt.game.prompt);
         },
         onReplay() {
@@ -1308,6 +1336,13 @@ export function registerMounts(rt) {
         },
         onNeed(data) {
           if (!rt.game || rt.game.finished || rt.game.freePlay) return;
+          // Boss chase says which way the round goes when it starts: Play or Endless.
+          if (rt.game.mode === 'boss' && typeof data?.endless === 'boolean') rt.game.bossEndless = data.endless;
+          // Skybound: this world has had all its questions; let the climb go on to the portal.
+          if (rt.game.mode === 'skybound' && rt.game.index >= rt.questionCount()) {
+            postSidecar({ type: 'clear' });
+            return;
+          }
           if (rt.game.mode === 'rally' && ((rt.game.rallyRights || 0) >= rallyClearCount(rt.questionCount()) || rt.game.index >= (rt.game.rallyStops || rallyQuestionCount(rt.questionCount())))) {
             postSidecar({ type: 'clear' });
             return;
@@ -1382,6 +1417,27 @@ export function registerMounts(rt) {
             }, 4500);
             return;
           }
+          if (round.mode === 'boss') {
+            if (round.freePlay) return;
+            clearTimers('rally');
+            rt.rallyTimer = setTimeout(() => {
+              rt.rallyTimer = 0;
+              if (rt.game !== round || round.finished) return;
+              rt.finish(detail || 'round');
+            }, 400);
+            return;
+          }
+          if (round.mode === 'cabin') {
+            if (round.freePlay) return;
+            // The raccoons got the snacks. Let the little "time to rest" card land, then show results.
+            clearTimers('rally');
+            rt.rallyTimer = setTimeout(() => {
+              rt.rallyTimer = 0;
+              if (rt.game !== round || round.finished) return;
+              rt.finish(detail || 'round');
+            }, 2000);
+            return;
+          }
           if (round.mode === 'blocks') {
             const line = 'Great building!';
             const feedback = $('#feedback');
@@ -1397,17 +1453,31 @@ export function registerMounts(rt) {
             return;
           }
           if (round.mode === 'skybound') {
-            const line = 'Portal reached. Great climb!';
+            // The world is finished: that is when its stars count. The game celebrates, then
+            // loads the next, harder world, and the questions start again from the top.
+            if (round.freePlay) return;
+            clearTimers('rally');
+            // index counts answers already moved past; done means the last one is answered but not yet counted.
+            const answered = Math.min(rt.questionCount(), Math.max(0, (round.index | 0) + (round.done ? 1 : 0)));
+            const correct = Math.min(answered, round.firstCorrect | 0);
+            if (answered) {
+              Object.assign(rt.p(), applyRound(rt.p(), round.mode, round.key, answered, correct));
+              rt.save();
+            }
+            round.worlds = (round.worlds | 0) + 1;
+            round.index = 0;
+            round.firstCorrect = 0;
+            round.done = false;
+            round.missed = false;
+            // Get the next world's first question ready; the new page asks for it at its first checkpoint.
+            rt.question();
+            const earned = answered === 1 ? '1 learning star' : `${answered} learning stars`;
+            const line = answered ? `World clear! You earned ${earned}.` : 'World clear!';
             const feedback = $('#feedback');
-            if (feedback) feedback.textContent = line;
+            if (feedback) feedback.textContent = `${line} The next world is harder.`;
             const title = $('#app h1');
             if (title) title.textContent = line;
-            clearTimers('rally');
-            rt.rallyTimer = setTimeout(() => {
-              rt.rallyTimer = 0;
-              if (rt.game !== round || round.finished) return;
-              rt.finish(detail || 'course');
-            }, 900);
+            rt.say(`${line} On to the next world!`);
             return;
           }
           if (round.mode !== 'flight') return;
