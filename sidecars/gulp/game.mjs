@@ -836,8 +836,20 @@ function sproutsSettings() {
   try { return JSON.parse(localStorage.getItem('sprouts-v1')) || {}; } catch { return {}; }
 }
 
+// While the join-a-friend card (lib/friend-panel.mjs) is up, the game holds still and stays quiet,
+// so the only sound is the card's own: it talks to the other device by sound.
+const joiningFriend = () => !!document.querySelector('[data-friend-panel]');
+let joinHold = false;
+function holdForJoin(on) {
+  if (on === joinHold) return;
+  joinHold = on;
+  if (on) hush();
+  // Inside Little Sprouts, the app stops talking too.
+  if (window.parent !== window) window.parent.postMessage({ source: 'sprouts-sidecar', type: 'hush', on }, '*');
+}
+
 function speak(text) {
-  if (!text) return;
+  if (!text || joinHold) return;
   const data = sproutsSettings();
   if (data.sound === false) return;
   if (sproutsVoice) {
@@ -1278,8 +1290,12 @@ function boot() {
     const now = t * 0.001;
     const dt = Math.min(0.05, session.last ? now - session.last : 0.016);
     session.last = now;
-    pollPad(t);
-    session.tick(dt);
+    const joining = joiningFriend();
+    holdForJoin(joining);
+    if (!joining) {
+      pollPad(t);
+      session.tick(dt);
+    }
     renderer.render(scene, camera);
   };
   session.raf = requestAnimationFrame(loop);

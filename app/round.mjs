@@ -64,7 +64,7 @@ import { stopCrayon } from '../games/crayon.js?v=crayon-more';
 import { stopMarble } from '../games/marble.js?v=ball3';
 import { stopBridge } from '../games/bridge.js?v=ball3';
 import { stopMaze } from '../games/maze.js?v=ball3';
-import { postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=night1';
+import { postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=hush1';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=aviator1';
 

@@ -79,7 +79,7 @@ import {
   sidecarGame,
   sidecarIsBuilt,
   stopSidecar
-} from '../lib/sidecar.js?v=night1';
+} from '../lib/sidecar.js?v=hush1';
 import {
   SHELF_META,
   shelfOf as shelfIdOf,
@@ -1326,6 +1326,12 @@ export function registerMounts(rt) {
           postSidecar(rt.rallyMessage(rt.game));
         },
         onPick(data) { rt.gradeRally(data.index | 0); },
+        // The game's join-a-friend card is up: stop talking, so its sound link is the only sound.
+        // The hush ends with the card, or by itself when this game's frame goes away.
+        onHush(on, frame) {
+          rt.hushed = on ? frame : null;
+          if (on) rt.stopSpeech();
+        },
         // A game's own spoken line, such as Block meadow's night warnings. Only lines with a baked clip.
         onSay(text) {
           if (rt.game && !rt.game.finished && bakedLines.includes(text)) rt.say(text);

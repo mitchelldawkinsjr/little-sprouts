@@ -140,7 +140,7 @@ let audio = null;
 let soundOn = true;
 let ducked = false;
 function blip(freq, length = 0.08, kind = 'triangle', gain = 0.12) {
-  if (!soundOn) return;
+  if (!soundOn || joinHold) return;
   try {
     audio = audio || new (window.AudioContext || window.webkitAudioContext)();
     if (audio.state === 'suspended') audio.resume();
@@ -548,7 +548,7 @@ const bugsOff = new URLSearchParams(location.search).get('bugs') === 'off';
 let sproutsVoice = null;
 if (solo) import('../../lib/speech.js?v=night1').then(mod => { sproutsVoice = mod; }).catch(() => {});
 function speakLine(text) {
-  if (!soundOn) return;
+  if (!soundOn || joinHold) return;
   if (!solo) { send('say', { text }); return; }
   let data = {};
   try { data = JSON.parse(localStorage.getItem('sprouts-v1')) || {}; } catch { /* no settings */ }
@@ -1337,11 +1337,35 @@ if (roomParam) {
 let started = false;
 let last = 0;
 let needAt = 0;
+// ---- Joining a friend: while the join card (lib/friend-panel.mjs) is up, the game holds still
+// and goes quiet, so the only sound is the card's own (it talks to the other device by sound).
+// The night clock, the bugs, power-ups, and gift boxes all wait. The friend link keeps going.
+const joiningFriend = () => !!document.querySelector('[data-friend-panel]');
+let joinHold = false;
+function holdForJoin(on) {
+  if (on === joinHold) return;
+  joinHold = on;
+  if (on) {
+    try { sproutsVoice?.stop?.(); } catch { /* nothing playing */ }
+    try { speechSynthesis.cancel(); } catch { /* no voice here */ }
+    audio?.suspend?.().catch(() => {});
+    keys.clear();
+    jumpHeld = false;
+    Object.assign(player.input, { moveX: 0, moveZ: 0, jump: false, lookX: 0, lookY: 0 });
+  } else {
+    audio?.resume?.().catch(() => {});
+  }
+  // Inside Little Sprouts, the app stops talking too.
+  send('hush', { on });
+}
+
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = last ? Math.min(1 / 30, (now - last) / 1000) : 0;
   last = now;
-  gatherInput(dt);
+  const joining = joiningFriend();
+  holdForJoin(joining);
+  if (!joining) gatherInput(dt);
   em.Update(dt);
   if (!started && !player.waiting_) {
     started = true;
@@ -1349,7 +1373,9 @@ function frame(now) {
     send('ready');
     note(quest.free ? 'Free build.' : 'Walk to the glowing gift box.', 3);
   }
-  if (started) {
+  if (started && joining) {
+    stepFriend(dt);
+  } else if (started) {
     stepNight(dt, now);
     stepPowers(dt);
     stepFriend(dt);

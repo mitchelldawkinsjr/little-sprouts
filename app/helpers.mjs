@@ -12,7 +12,7 @@ import {
   versePack
 } from '../logic.mjs?v=offline1';
 import { contextFor, onSpeechStatus, prefetchSpeech, speak, stop, voiceFor } from '../lib/speech.js?v=night1';
-import { postSidecar, sidecarRows } from '../lib/sidecar.js?v=night1';
+import { postSidecar, sidecarRows } from '../lib/sidecar.js?v=hush1';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 
 export function registerHelpers(rt) {
@@ -178,12 +178,14 @@ export function registerHelpers(rt) {
   function voiceNow(mode = rt.game?.mode) {
     return voiceFor(contextFor(mode), rt.data.voice, rt.data.characterVoices);
   }
+  // A game's join-a-friend card is up (see onHush in mounts.mjs). Ends when its frame is gone.
+  const hushed = () => !!rt.hushed?.isConnected;
   function say(t) {
-    if (rt.data.sound) speak(t, voiceNow(), { context: contextFor(rt.game?.mode), queue: true });
+    if (rt.data.sound && !hushed()) speak(t, voiceNow(), { context: contextFor(rt.game?.mode), queue: true });
   }
   // For a tap on Hear it again: cut in instead of waiting behind the line already playing.
   function sayNow(t) {
-    if (rt.data.sound) return speak(t, voiceNow(), { context: contextFor(rt.game?.mode) });
+    if (rt.data.sound && !hushed()) return speak(t, voiceNow(), { context: contextFor(rt.game?.mode) });
     return Promise.resolve();
   }
   function releaseListen() {
@@ -191,7 +193,7 @@ export function registerHelpers(rt) {
     document.body.classList.remove('listen-first');
   }
   function askBeforePlay(text) {
-    if (!rt.data.sound || !text || rt.game?.finished) return Promise.resolve();
+    if (!rt.data.sound || !text || rt.game?.finished || hushed()) return Promise.resolve();
     const token = ++rt.listenToken;
     const line = $('#listenLine');
     if (line) line.textContent = text;
