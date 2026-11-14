@@ -36,4 +36,14 @@ COPY games /usr/share/nginx/html/games
 COPY voice /usr/share/nginx/html/voice
 COPY vendor /usr/share/nginx/html/vendor
 
+# Every shipped file with a version stamp, so the service worker can cache all
+# sidecars for offline play and re-fetch only what changed.
+RUN cd /usr/share/nginx/html \
+ && find sidecars vendor lib app logic games icons -type f \
+      ! -name '.*' ! -name '*.md' ! -name '*LICENSE*' ! -name 'NOTICE' ! -name '*.test.*' ! -name '*.map' \
+      -exec stat -c '%Y-%s %n' {} + \
+  | sort -k2 \
+  | awk 'BEGIN { printf "{" } { printf "%s\"./%s\":\"%s\"", (NR > 1 ? "," : ""), $2, $1 } END { print "}" }' \
+  > offline-files.json
+
 EXPOSE 80

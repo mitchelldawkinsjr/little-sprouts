@@ -267,8 +267,8 @@
   <script type="module" src="app.js?v=ball3"></script>
   <script type="module">
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js?v=offline1').then(async () => {
-        const { warmOffline } = await import('./lib/offline-warm.mjs?v=shop1');
+      navigator.serviceWorker.register('./sw.js?v=offline2').then(async () => {
+        const { warmOffline } = await import('./lib/offline-warm.mjs?v=offline2');
         warmOffline();
       }).catch(() => {});
     }

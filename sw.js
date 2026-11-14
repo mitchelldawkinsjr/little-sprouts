@@ -1,4 +1,8 @@
-const CACHE = 'sprouts-offline-v1';
+const PREFIX = 'sprouts-offline-';
+const CACHE = `${PREFIX}v1`;
+/** Written at image build: every shipped file, so sidecars with hashed names stay current. */
+const LIST = './offline-files.json';
+const PARALLEL = 6;
 const MAX = 20_000_000;
 const SHELL = [
   './',
@@ -23,7 +27,10 @@ self.addEventListener('install', event => {
 
 self.addEventListener('activate', event => {
   event.waitUntil(caches.keys()
-    .then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key))))
+    .then(keys => Promise.all(keys
+      // Skybound keeps its own cache from its own worker. Only drop ours.
+      .filter(key => key.startsWith(PREFIX) && key !== CACHE)
+      .map(key => caches.delete(key))))
     .then(() => self.clients.claim()));
 });
 
@@ -41,13 +48,21 @@ function keep(response) {
   const length = Number(response.headers.get('content-length') || 0);
   if (length > MAX) return false;
   if (!type) return true;
-  return /javascript|css|html|json|svg|png|jpe?g|webp|gif|csv|manifest|wasm|woff2?|ttf|otf|glb|gltf|octet-stream|webmanifest|audio|wav|mp3|ogg|opus|mpeg|mp4|aac|m4a/.test(type);
+  return /javascript|css|html|json|svg|png|jpe?g|webp|gif|csv|manifest|wasm|woff2?|ttf|otf|glb|gltf|octet-stream|webmanifest|audio|wav|mp3|ogg|opus|mpeg|mp4|aac|m4a|gzip|model|font|image|text/.test(type);
 }
 
 async function put(cache, req, response) {
   const key = bare(req);
   await cache.put(key, response.clone());
   if (key.url !== req.url) await cache.put(req, response.clone());
+}
+
+const MATCH = { ignoreVary: true };
+
+/** The app page itself, not a sidecar loading in its frame. */
+function isShell(req, url) {
+  return req.mode === 'navigate' && req.destination === 'document'
+    && /^\/(index\.html)?$/.test(url.pathname);
 }
 
 self.addEventListener('fetch', event => {
@@ -60,28 +75,77 @@ self.addEventListener('fetch', event => {
     try {
       const fresh = await fetch(req);
       if (fresh.ok && keep(fresh)) await put(cache, req, fresh);
-      if (fresh.ok && req.mode === 'navigate') await cache.put('./index.html', fresh.clone());
+      if (fresh.ok && isShell(req, url)) await cache.put('./index.html', fresh.clone());
       return fresh;
     } catch (error) {
-      const hit = await cache.match(req)
-        || await cache.match(bare(req))
-        || (req.mode === 'navigate' ? await cache.match('./index.html') : undefined);
+      const hit = await cache.match(req, MATCH)
+        || await cache.match(bare(req), MATCH)
+        || (req.mode === 'navigate' && !url.pathname.startsWith('/sidecars/')
+          ? await cache.match('./index.html', MATCH) : undefined);
       if (hit) return hit;
       throw error;
     }
   })());
 });
 
+/** Path → version stamp (mtime-size) for every shipped file. Empty when there is no list, as in local dev. */
+async function shipped() {
+  try {
+    const res = await fetch(`${LIST}?t=${Date.now()}`, { cache: 'no-store' });
+    if (!res.ok) return {};
+    const list = await res.json();
+    return list && typeof list === 'object' && !Array.isArray(list) ? list : {};
+  } catch {
+    return {};
+  }
+}
+
+const STAMPS = './__offline-stamps.json';
+
+async function readStamps(cache) {
+  try {
+    return (await (await cache.match(STAMPS))?.json()) || {};
+  } catch {
+    return {};
+  }
+}
+
+function saveStamps(cache, stamps) {
+  return cache.put(STAMPS, new Response(JSON.stringify(stamps), { headers: { 'content-type': 'application/json' } }));
+}
+
+/**
+ * Fetch files that are missing, or whose stamp changed since they were cached.
+ * A warm cut short resumes on the next visit.
+ */
+async function warm(urls) {
+  const cache = await caches.open(CACHE);
+  const list = await shipped();
+  const stamps = await readStamps(cache);
+  const todo = [...new Set([...urls, ...Object.keys(list)])];
+  let next = 0;
+  let done = 0;
+  async function lane() {
+    while (next < todo.length) {
+      const path = todo[next++];
+      const stamp = list[path];
+      try {
+        const req = new Request(path, { cache: 'no-cache' });
+        const have = await cache.match(req, MATCH) || await cache.match(bare(req), MATCH);
+        if (have && (!stamp || stamps[path] === stamp)) continue;
+        const fresh = await fetch(req);
+        if (!fresh.ok || !keep(fresh)) continue;
+        await put(cache, req, fresh);
+        if (stamp) stamps[path] = stamp;
+        if (++done % 25 === 0) await saveStamps(cache, stamps);
+      } catch {}
+    }
+  }
+  await Promise.all(Array.from({ length: PARALLEL }, lane));
+  await saveStamps(cache, stamps);
+}
+
 self.addEventListener('message', event => {
   if (event.data?.type !== 'warm' || !Array.isArray(event.data.urls)) return;
-  event.waitUntil((async () => {
-    const cache = await caches.open(CACHE);
-    await Promise.all(event.data.urls.map(async path => {
-      try {
-        const req = new Request(path, { cache: 'reload' });
-        const fresh = await fetch(req);
-        if (fresh.ok && keep(fresh)) await put(cache, req, fresh);
-      } catch {}
-    }));
-  })());
+  event.waitUntil(warm(event.data.urls));
 });
