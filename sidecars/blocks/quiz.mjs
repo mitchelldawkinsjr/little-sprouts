@@ -125,6 +125,8 @@ export function readSave(raw, { starter, all }) {
     yaw: Number.isFinite(data.yaw) ? data.yaw : 0,
     pitch: Number.isFinite(data.pitch) ? Math.max(-1.4, Math.min(1.4, data.pitch)) : 0,
     unlocked,
-    selected: all.includes(data.selected) ? data.selected : starter[0]
+    selected: all.includes(data.selected) ? data.selected : starter[0],
+    // Build kits won and not put down yet. The page keeps only the ones it knows.
+    kits: Array.isArray(data.kits) ? data.kits.filter(k => typeof k === 'string').slice(0, 20) : []
   };
 }

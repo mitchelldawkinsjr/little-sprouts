@@ -1,5 +1,5 @@
 // From SimonDev's Quick_MinecraftClone2 (MIT, see LICENSE). Unchanged apart from import paths.
-import {simplex} from './simplex-noise.js?v=blocks4';
+import {simplex} from './simplex-noise.js?v=blocks5';
 
 
 export const noise = (function() {

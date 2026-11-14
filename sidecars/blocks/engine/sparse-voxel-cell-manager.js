@@ -1,12 +1,12 @@
 import * as THREE from '../../../vendor/three/build/three.module.js?v=r187';
 
-import {entity} from './entity.js?v=blocks4';
-import {utils} from './utils.js?v=blocks4';
-import {voxel_builder_threaded} from './voxel-builder-threaded.js?v=blocks4';
-import {voxel_shader} from './voxel-shader.js?v=blocks4';
-import {textures} from './textures.js?v=blocks4';
-import {texture_defs} from './texture-defs.js?v=blocks4';
-import {defs} from './defs.js?v=blocks4';
+import {entity} from './entity.js?v=blocks5';
+import {utils} from './utils.js?v=blocks5';
+import {voxel_builder_threaded} from './voxel-builder-threaded.js?v=blocks5';
+import {voxel_shader} from './voxel-shader.js?v=blocks5';
+import {textures} from './textures.js?v=blocks5';
+import {texture_defs} from './texture-defs.js?v=blocks5';
+import {defs} from './defs.js?v=blocks5';
 
 // Forked from SimonDev's Quick_MinecraftClone2 (MIT). Changes for Little Sprouts:
 // - Textures are painted in code (textures.js) instead of loading Minecraft-style PNGs.
@@ -33,6 +33,10 @@ export const sparse_voxel_cell_manager = (() => {
       this.edits_ = new Map(params.edits || []);
       this.replaying_ = false;
       this.onEdit = () => {};
+      // One block changed by this player (not a friend's change coming in). Friend rooms send it on.
+      this.onChange = () => {};
+      this.daylight = 1;
+      this.fogNow_ = new THREE.Color();
     }
 
     InitEntity() {
@@ -50,6 +54,7 @@ export const sparse_voxel_cell_manager = (() => {
             fogTime: { value: 0.0 },
             fade: { value: 1.0 },
             flow: { value: 0.0 },
+            daylight: { value: 1.0 },
           },
           vertexShader: voxel_shader.VOXEL.VS,
           fragmentShader: voxel_shader.VOXEL.PS,
@@ -171,10 +176,28 @@ export const sparse_voxel_cell_manager = (() => {
       return true;
     }
 
-    Remember_(pos, type) {
+    Remember_(pos, type, remote = false) {
       const k = this.Key_(...pos);
       this.edits_.delete(k);
       this.edits_.set(k, type);
+      this.onEdit(this.edits_);
+      if (!remote) this.onChange(pos, type);
+    }
+
+    // A friend's change. Where that patch of world is not loaded here, it is only remembered,
+    // and goes in when the patch is built.
+    ApplyEdit(pos, type) {
+      if (type) this.InsertVoxelAt(pos, type, false);
+      else if (this.VoxelTypeAt(...pos)) this.RemoveVoxelAt(pos);
+      this.Remember_(pos, type, true);
+    }
+
+    // Swap the whole world for another set of changes (joining a friend's world, or going back
+    // to your own). Every patch is built again from fresh terrain with these changes on top.
+    ResetEdits(edits) {
+      this.edits_ = new Map(edits);
+      this.builder_.ScheduleDestroy(Object.values(this.blocks_));
+      this.blocks_ = {};
       this.onEdit(this.edits_);
     }
 
@@ -293,13 +316,18 @@ export const sparse_voxel_cell_manager = (() => {
       const player = this.FindEntity('player');
       const under = player.Position.y < defs.OCEAN_LEVEL + 0.4 &&
           this.VoxelTypeAt(Math.round(player.Position.x), defs.OCEAN_LEVEL, Math.round(player.Position.z)) === 'ocean';
-      const range = under ? defs.UNDERWATER_RANGE : this.fogRange_;
-      const colour = under ? defs.UNDERWATER_COLOUR : defs.FOG_COLOUR;
+      // Night (Little Sprouts): the page sets `daylight` (1 day, 0 night). The fog closes in and darkens.
+      const dark = 1 - this.daylight;
+      const near = under ? defs.UNDERWATER_RANGE : this.fogRange_;
+      const range = under ? near : [near[0] + (defs.NIGHT_RANGE[0] - near[0]) * dark, near[1] + (defs.NIGHT_RANGE[1] - near[1]) * dark];
+      const colour = this.fogNow_.copy(under ? defs.UNDERWATER_COLOUR : defs.FOG_COLOUR).lerp(defs.NIGHT_FOG_COLOUR, dark * (under ? 0.8 : 1));
       for (const m of [this.materialOpaque_, this.materialTransparent_]) {
         m.uniforms.fogRange.value.set(...range);
         m.uniforms.fogColour.value.copy(colour);
+        m.uniforms.daylight.value = this.daylight;
       }
       threejs.sky_.material.uniforms.bottomColor.value.copy(colour);
+      threejs.sky_.material.uniforms.topColor.value.copy(defs.SKY_COLOUR).lerp(defs.NIGHT_SKY_COLOUR, dark);
     }
 
     UpdateTerrain_() {

@@ -11,8 +11,8 @@ import {
   wordsFor,
   versePack
 } from '../logic.mjs?v=offline1';
-import { contextFor, onSpeechStatus, prefetchSpeech, speak, stop, voiceFor } from '../lib/speech.js?v=aviator1';
-import { postSidecar, sidecarRows } from '../lib/sidecar.js?v=exp1';
+import { contextFor, onSpeechStatus, prefetchSpeech, speak, stop, voiceFor } from '../lib/speech.js?v=night1';
+import { postSidecar, sidecarRows } from '../lib/sidecar.js?v=night1';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 
 export function registerHelpers(rt) {

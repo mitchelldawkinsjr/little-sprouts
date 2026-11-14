@@ -1,11 +1,12 @@
-import {entity} from './entity.js?v=blocks4';
-import {texture_defs} from './texture-defs.js?v=blocks4';
-import {textures} from './textures.js?v=blocks4';
+import {entity} from './entity.js?v=blocks5';
+import {texture_defs} from './texture-defs.js?v=blocks5';
+import {textures} from './textures.js?v=blocks5';
 
 // Forked from SimonDev's Quick_MinecraftClone2 (MIT). The original drew a fixed icon bar from PNGs
 // and cycled it with [ and ]. Here the bar shows only blocks this player has unlocked, each button
 // is big enough to tap, and the controller shoulders cycle it. The first button is a shovel, so
 // digging sits right next to the blocks: slot 0 digs, slots 1.. build with a block.
+// Build kits won from gift boxes come last, one button each, used up when put down.
 export const ui_controller = (() => {
 
   class UIController extends entity.Component {
@@ -22,6 +23,10 @@ export const ui_controller = (() => {
       this.iconIndex_ = 1;
       this.blockIndex_ = 0;
       this.onMode = params.onMode || (() => {});
+      this.onKit = params.onKit || (() => {});
+      this.kitInfo_ = params.kitInfo || {};
+      this.kits_ = [...(params.kits || [])].filter(id => this.kitInfo_[id]);
+      this.kitIndex_ = -1;
       this.swatches_ = {};
     }
 
@@ -61,7 +66,47 @@ export const ui_controller = (() => {
         e.addEventListener('click', () => this.Select(index));
         this.iconBar_.appendChild(e);
         return e;
+      }), ...this.kits_.map((id, i) => {
+        const index = this.unlocked_.length + 1 + i;
+        const info = this.kitInfo_[id];
+        const e = document.createElement('button');
+        e.type = 'button';
+        e.className = 'icon-bar-item kit-slot';
+        e.textContent = info.icon;
+        e.setAttribute('aria-label', info.label);
+        e.title = info.label;
+        e.dataset.kit = id;
+        e.addEventListener('click', () => this.Select(index));
+        this.iconBar_.appendChild(e);
+        return e;
       })];
+    }
+
+    get Kits() {
+      return [...this.kits_];
+    }
+
+    // The kit picked in the bar, or null while a block or the shovel is picked.
+    get Kit() {
+      return this.kitIndex_ >= 0 ? this.kits_[this.kitIndex_] : null;
+    }
+
+    AddKit(id) {
+      if (!this.kitInfo_[id]) return false;
+      this.kits_.push(id);
+      this.Paint_();
+      this.Select(this.icons_.length - 1);
+      this.icons_[this.iconIndex_].classList.add('new');
+      return true;
+    }
+
+    // The picked kit was put down: take it off the bar and go back to the last block.
+    UseKit() {
+      if (this.kitIndex_ < 0) return;
+      this.kits_.splice(this.kitIndex_, 1);
+      this.kitIndex_ = -1;
+      this.Paint_();
+      this.Select(this.blockIndex_ + 1);
     }
 
     get Unlocked() {
@@ -85,6 +130,14 @@ export const ui_controller = (() => {
     Select(index) {
       if (!this.icons_.length) return;
       this.iconIndex_ = (index + this.icons_.length) % this.icons_.length;
+      const kit = this.iconIndex_ - 1 - this.unlocked_.length;
+      this.kitIndex_ = kit >= 0 ? kit : -1;
+      this.onKit(this.Kit);
+      if (this.kitIndex_ >= 0) {
+        this.Highlight_();
+        this.onMode('build');
+        return;
+      }
       if (this.iconIndex_ === 0) {
         this.Highlight_();
         this.onMode('dig');
@@ -100,9 +153,14 @@ export const ui_controller = (() => {
 
     // The Build/Dig button changed the mode: move the highlight to match, nothing else.
     ShowMode(mode) {
+      if (mode === 'build' && this.kitIndex_ >= 0) return;
       const index = mode === 'dig' ? 0 : this.blockIndex_ + 1;
       if (index === this.iconIndex_) return;
       this.iconIndex_ = index;
+      if (mode === 'dig' && this.kitIndex_ >= 0) {
+        this.kitIndex_ = -1;
+        this.onKit(null);
+      }
       this.Highlight_();
     }
 

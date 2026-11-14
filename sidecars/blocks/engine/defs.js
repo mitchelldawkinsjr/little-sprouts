@@ -9,6 +9,10 @@ export const defs = (() => {
       FOG_COLOUR: new THREE.Color(0xd4e8f4),
       UNDERWATER_COLOUR: new THREE.Color(0x3a7fc0),
       SKY_COLOUR: new THREE.Color(0x7cc0ee),
+      // Night in Block meadow: a short, dark fog so the bugs come out of the dark.
+      NIGHT_RANGE: [16, 46],
+      NIGHT_FOG_COLOUR: new THREE.Color(0x141b33),
+      NIGHT_SKY_COLOUR: new THREE.Color(0x070b1c),
       OCEAN_LEVEL: 6,
   };
 })();

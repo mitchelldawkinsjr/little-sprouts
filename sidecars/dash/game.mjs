@@ -641,7 +641,7 @@ const munch = () => [0, 0.14, 0.28].forEach(t => tone(200, t, 0.1, 'square', 0.0
 /* ---------- voice (on its own page; inside Sprouts the host reads) ---------- */
 
 let sproutsVoice = null;
-import('../../lib/speech.js?v=aviator1').then((mod) => { sproutsVoice = mod; }).catch(() => {});
+import('../../lib/speech.js?v=night1').then((mod) => { sproutsVoice = mod; }).catch(() => {});
 function speak(text) {
   if (!text || embedded) return;
   const data = sproutsSettings();

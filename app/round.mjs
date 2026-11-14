@@ -37,7 +37,7 @@ import {
   bustBoard,
   verseWithRef
 } from '../logic.mjs?v=offline1';
-import { canSpeak, commonLines, prefetchSpeech } from '../lib/speech.js?v=aviator1';
+import { canSpeak, commonLines, prefetchSpeech } from '../lib/speech.js?v=night1';
 import { stopArcade } from '../games/arcade.js?v=exp1';
 import { stopHoop } from '../games/hoop.js?v=hoop-trio-r2';
 import { stopHook } from '../games/hook.js?v=ask-first2-r2';
@@ -64,7 +64,7 @@ import { stopCrayon } from '../games/crayon.js?v=crayon-more';
 import { stopMarble } from '../games/marble.js?v=ball3';
 import { stopBridge } from '../games/bridge.js?v=ball3';
 import { stopMaze } from '../games/maze.js?v=ball3';
-import { postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=exp1';
+import { postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=night1';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=aviator1';
 

@@ -569,6 +569,7 @@ uniform vec2 fogRange;
 uniform float fogTime;
 uniform float fade;
 uniform float flow;
+uniform float daylight;
 
 uniform sampler2DArray diffuseMap;
 uniform sampler2D noiseMap;
@@ -627,6 +628,8 @@ void main() {
   vec3 sunLightDir = normalize(vec3(0.1, 1.0, 0.0));
   vec3 lighting = saturate(dot(vNormal, sunLightDir)) * 0.18 + vColour * 0.8;
   vec4 outColour = vec4(diffuse.xyz * lighting, 0.75 * fade);
+  // Night: Block meadow dims the world to a cool blue (daylight 1 by day, 0 at night).
+  outColour.xyz *= mix(vec3(0.17, 0.21, 0.38), vec3(1.0), daylight);
 
   vec3 noiseDir = abs(vNormal);
   vec2 noiseCoords = (

@@ -42,7 +42,8 @@ import {
   verseRecall,
   verseWithRef
 } from '../logic.mjs?v=offline1';
-import { canSpeak, warm } from '../lib/speech.js?v=aviator1';
+import { canSpeak, warm } from '../lib/speech.js?v=night1';
+import { bakedLines } from '../lib/speech-core.mjs?v=night1';
 import { mountCatch, mountLanes, mountRace, mountRocket, pokeRocket, stopArcade } from '../games/arcade.js?v=exp1';
 import { mountLunar } from '../games/lunar.js?v=moon-board2';
 import { mountHoop, stopHoop } from '../games/hoop.js?v=hoop-trio-r2';
@@ -78,7 +79,7 @@ import {
   sidecarGame,
   sidecarIsBuilt,
   stopSidecar
-} from '../lib/sidecar.js?v=exp1';
+} from '../lib/sidecar.js?v=night1';
 import {
   SHELF_META,
   shelfOf as shelfIdOf,
@@ -1305,19 +1306,30 @@ export function registerMounts(rt) {
         onReplay() {
           if (rt.game && !rt.game.finished) rt.askBeforePlay(rt.game.prompt);
         },
-        onNeed() {
+        onNeed(data) {
           if (!rt.game || rt.game.finished || rt.game.freePlay) return;
           if (rt.game.mode === 'rally' && ((rt.game.rallyRights || 0) >= rallyClearCount(rt.questionCount()) || rt.game.index >= (rt.game.rallyStops || rallyQuestionCount(rt.questionCount())))) {
             postSidecar({ type: 'clear' });
             return;
           }
           if (rt.game.mode === 'blocks' && (rt.game.blockRights || 0) >= rallyClearCount(rt.questionCount())) {
+            // Free build already, but a new morning in the meadow brings gift boxes back:
+            // ask a fresh question (or the one still unanswered).
+            if (data?.more) {
+              if (rt.game.done) { rt.game.index++; rt.question(); }
+              else postSidecar(rt.rallyMessage(rt.game));
+              return;
+            }
             postSidecar({ type: 'clear' });
             return;
           }
           postSidecar(rt.rallyMessage(rt.game));
         },
         onPick(data) { rt.gradeRally(data.index | 0); },
+        // A game's own spoken line, such as Block meadow's night warnings. Only lines with a baked clip.
+        onSay(text) {
+          if (rt.game && !rt.game.finished && bakedLines.includes(text)) rt.say(text);
+        },
         onSlip() {
           const round = rt.game;
           if (!round || round.finished || round.done) return;

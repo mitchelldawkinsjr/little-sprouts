@@ -2,10 +2,10 @@
 // Block meadow skips the clouds on low-power devices.
 import * as THREE from '../../../vendor/three/build/three.module.js?v=r187';
 
-import {entity} from './entity.js?v=blocks4';
-import {math} from './math.js?v=blocks4';
+import {entity} from './entity.js?v=blocks5';
+import {math} from './math.js?v=blocks5';
 
-import {voxel_shader} from './voxel-shader.js?v=blocks4';
+import {voxel_shader} from './voxel-shader.js?v=blocks5';
 
 
 export const cloud_controller = (function() {

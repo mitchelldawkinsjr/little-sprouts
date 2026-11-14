@@ -1,7 +1,7 @@
 import * as THREE from '../../../vendor/three/build/three.module.js?v=r187';
-import {entity} from './entity.js?v=blocks4';
-import {defs} from './defs.js?v=blocks4';
-import {texture_defs} from './texture-defs.js?v=blocks4';
+import {entity} from './entity.js?v=blocks5';
+import {defs} from './defs.js?v=blocks5';
+import {texture_defs} from './texture-defs.js?v=blocks5';
 
 // Forked from SimonDev's Quick_MinecraftClone2 (MIT). The velocity, damping, and sphere-against-voxel
 // collision come from the original. Changes for Little Sprouts:
@@ -25,7 +25,9 @@ export const player_controller = (() => {
       super();
       this.params_ = params;
       // move: x right, z forward (-1..1). look: radians to add this frame. jump: true while held.
-      this.input = { moveX: 0, moveZ: 0, lookX: 0, lookY: 0, jump: false, frozen: false };
+      this.input = { moveX: 0, moveZ: 0, lookX: 0, lookY: 0, jump: false, frozen: false, held: false };
+      // Power-ups from the page: how much higher to jump and how much faster to walk (1 is normal).
+      this.boost = { jump: 1, speed: 1 };
     }
 
     InitEntity() {
@@ -69,8 +71,41 @@ export const player_controller = (() => {
       return this.Hits_([_BOX], this.camera_.position);
     }
 
+    // An open door is one block wide and the body nearly fills it, so walking at it even a little
+    // off the middle catches the frame. Heading into an open door, steer onto its middle line
+    // instead of sliding along the wall. `step` is this frame's move on the ground, changed in place.
+    GuideThroughDoor_(near, voxelManager, position, step) {
+      const len = Math.hypot(step.x, step.z);
+      if (len < 1e-5) return;
+      const feetY = Math.round(position.y - this.eye_ + 0.5);
+      let best = null;
+      for (const v of near) {
+        if (v.type !== 'door_open' || v.position[1] !== feetY) continue;
+        const [x, , z] = v.position;
+        // The way through runs between the door's side walls. A door with no walls takes either way.
+        const wallsOnX = voxelManager.IsSolidAt(x - 1, feetY, z) || voxelManager.IsSolidAt(x + 1, feetY, z);
+        const wallsOnZ = voxelManager.IsSolidAt(x, feetY, z - 1) || voxelManager.IsSolidAt(x, feetY, z + 1);
+        let alongZ = wallsOnX && !wallsOnZ;
+        if (wallsOnX === wallsOnZ) alongZ = Math.abs(step.z) >= Math.abs(step.x);
+        const ahead = alongZ ? z - position.z : x - position.x;   // along the way through
+        const side = alongZ ? x - position.x : z - position.z;    // off its middle line
+        const go = alongZ ? step.z : step.x;
+        // Moving mostly along the way through, toward the door or still inside it, and lined up with it.
+        if (Math.abs(go) < len * 0.35 || Math.abs(side) > 0.95 || Math.abs(ahead) > 1.9) continue;
+        if (go * ahead <= 0 && Math.abs(ahead) > 0.55) continue;
+        const far = Math.hypot(ahead, side);
+        if (!best || far < best.far) best = { alongZ, side, far };
+      }
+      if (!best) return;
+      // Replace the sideways part of the move with a slide toward the middle line.
+      const slide = Math.sign(best.side) * Math.min(Math.abs(best.side), len);
+      if (best.alongZ) step.x = slide;
+      else step.z = slide;
+    }
+
     Teleport(pos) {
       this.camera_.position.copy(pos);
+      this.ApplyLook_();
       this.velocity_.set(0, 0, 0);
       this.waiting_ = true;
       this.Parent.SetPosition(this.camera_.position);
@@ -80,6 +115,16 @@ export const player_controller = (() => {
       const input = this.input;
       const position = this.camera_.position;
       const voxelManager = this.FindEntity('voxels').GetComponent('SparseVoxelCellManager');
+
+      // Held by a night bug: the page moves the camera itself until it lets go.
+      if (input.held) {
+        input.lookX = 0;
+        input.lookY = 0;
+        this.velocity_.set(0, 0, 0);
+        this.Parent.SetPosition(position);
+        this.Parent.SetQuaternion(this.camera_.quaternion);
+        return;
+      }
 
       if (!input.frozen) {
         this.yaw_ -= input.lookX;
@@ -121,15 +166,16 @@ export const player_controller = (() => {
       velocity.y = Math.max(velocity.y, inWater ? -4 : -30);
 
       if (!input.frozen) {
-        velocity.z -= this.acceleration_.z * input.moveZ * timeInSeconds;
-        velocity.x += this.acceleration_.x * input.moveX * timeInSeconds;
+        velocity.z -= this.acceleration_.z * this.boost.speed * input.moveZ * timeInSeconds;
+        velocity.x += this.acceleration_.x * this.boost.speed * input.moveX * timeInSeconds;
         if (input.jump && (this.standing || inWater)) {
-          velocity.y = inWater ? 5 : this.acceleration_.y;
+          velocity.y = inWater ? 5 : this.acceleration_.y * this.boost.jump;
           this.standing = false;
         }
       }
 
-      const boxes = voxelManager.FindVoxelsNear(position, 3)
+      const near = voxelManager.FindVoxelsNear(position, 3);
+      const boxes = near
           .filter(v => texture_defs.solid(v.type))
           .map(v => new THREE.Box3(
               new THREE.Vector3(v.position[0] - 0.5, v.position[1] - 0.5, v.position[2] - 0.5),
@@ -140,6 +186,7 @@ export const player_controller = (() => {
       const sideways = new THREE.Vector3(1, 0, 0).applyAxisAngle(_UP, this.yaw_);
       const step = forward.multiplyScalar(velocity.z * timeInSeconds)
           .add(sideways.multiplyScalar(velocity.x * timeInSeconds));
+      this.GuideThroughDoor_(near, voxelManager, position, step);
 
       const alreadyIntersecting = this.Hits_(boxes, position);
       const tryMove = (dx, dz, lift = 0) => {
