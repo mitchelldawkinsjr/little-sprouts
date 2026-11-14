@@ -86,11 +86,13 @@ import {
   gameBlurb as blurbFor,
   howWePlayHtml,
   gameCardHtml,
+  upNextHeroHtml,
+  ALL_SHELF,
   shelfChipsHtml,
   shelfPanelHtml,
   starGardenHtml as gardenHtml,
   homePageHtml
-} from '../lib/home-ui.mjs?v=gear2';
+} from '../lib/home-ui.mjs?v=bloom1';
 import { wornGear } from '../logic/shop.mjs?v=shop3';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=aviator1';
@@ -345,23 +347,30 @@ export function registerMounts(rt) {
       arcadeOn: !!rt.p().arcade
     });
   }
-  function gameCard(id, opts = {}) {
+  function gameCardData(id) {
     const row = rt.games.find(g => g[0] === id);
-    if (!row) return '';
-    const [gid, name, desc, icon, tint] = row;
-    return gameCardHtml({
+    if (!row) return null;
+    const [gid, name, desc, icon, tint, kicker] = row;
+    return {
       gid,
       name,
       blurb: gameBlurb(gid, desc),
       icon,
       tint,
+      kicker: kicker || '',
       stageLabel: stageLabel(rt.band()),
       level: rt.skillLevel(gid),
       state: skillState(rt.record(gid)),
-      featured: !!opts.featured,
-      next: !!opts.next,
       esc
-    });
+    };
+  }
+  function gameCard(id, opts = {}) {
+    const card = gameCardData(id);
+    return card ? gameCardHtml({ ...card, next: !!opts.next }) : '';
+  }
+  function upNextHero(id, learnerName) {
+    const card = gameCardData(id);
+    return card ? upNextHeroHtml({ ...card, learnerName }) : '';
   }
   function shelfPanel(available, openId, nextId) {
     return shelfPanelHtml(available, openId, nextId, gameCard);
@@ -626,15 +635,18 @@ export function registerMounts(rt) {
     const listed = listedGames();
     const available = SHELF_META.map(s => ({ ...s, games: listed.filter(g => shelfOf(g[0]) === s.id) })).filter(s => s.games.length);
     if (focus === 'style') rt.homeHowOpen = true;
-    if (!available.some(s => s.id === rt.homeShelf)) rt.homeShelf = shelfOf(next?.[0]) || available[0]?.id || SHELF_META[0].id;
+    if (rt.homeShelf !== ALL_SHELF.id && !available.some(s => s.id === rt.homeShelf)) rt.homeShelf = ALL_SHELF.id;
     const note = learner.sessions
       ? esc(roundsSentence(learner))
       : 'Most games wait for you. Rocket climb and Gas race keep going until they finish.';
     $('#app').innerHTML = homePageHtml({
       learnerName: esc(learner.name),
       avatar,
+      stageLabel: esc(stageLabel(rt.band())),
       starsChip: esc(starChip(learner)),
-      upNextCard: next ? gameCard(next[0], { featured: true, next: true }) : '',
+      learnerCount: rt.data.profiles.length,
+      learnerMenu: rt.data.profiles.map((pr, i) => `<button type="button" class="switcher-item${i === rt.data.active ? ' mine' : ''}" data-learner="${i}"${i === rt.data.active ? ' aria-current="true"' : ''}>${esc(pr.name)}<span>${pr.stars === 1 ? '1 star' : `${pr.stars || 0} stars`}</span></button>`).join(''),
+      upNextHero: next ? upNextHero(next[0], esc(learner.name)) : '',
       shelfChips: shelfChipsHtml(available, rt.homeShelf),
       shelfPanel: shelfPanel(available, rt.homeShelf, next?.[0]),
       howWePlay: howWePlay(rt.homeHowOpen),
@@ -643,7 +655,7 @@ export function registerMounts(rt) {
       storageOK: rt.storageOK
     });
     document.querySelectorAll('[data-shelf]').forEach(b => b.onclick = () => {
-      const label = b.textContent.trim();
+      const label = (b.querySelector('.subject-label') || b).textContent.trim();
       rt.homeShelf = b.dataset.shelf;
       home('shelf');
       if (rt.data.sound) rt.say?.(label);
@@ -655,6 +667,11 @@ export function registerMounts(rt) {
     if ($('#printCards')) $('#printCards').onclick = rt.openPrint;
     if ($('#openShop')) $('#openShop').onclick = () => rt.openShop();
     document.querySelectorAll('[data-game]').forEach(b => b.onclick = () => start(b.dataset.game));
+    document.querySelectorAll('[data-hear]').forEach(b => b.onclick = () => rt.sayNow(b.dataset.hear));
+    if ($('#listenHome')) $('#listenHome').onclick = () => {
+      const upNext = next ? gameCardData(next[0]) : null;
+      rt.sayNow(`${hello}${upNext ? ` Up next: ${upNext.name}. ${upNext.blurb}` : ''}`);
+    };
     rt.focusHeading();
     if (rt.data.sound) warm(rt.data.voice);
     // Speak the Hi greeting once per learner per local calendar day.

@@ -31,6 +31,7 @@ export function registerHelpers(rt) {
     versePack: learnerVerse,
     voiceNow,
     say,
+    sayNow,
     releaseListen,
     askBeforePlay,
     wordPrompt,
