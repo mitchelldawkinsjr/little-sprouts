@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Paint the Plan · Little Sprouts</title>
+<link rel="stylesheet" href="./lessons/lesson.css">
+<script type="importmap">{"imports":{"three":"./vendor/three/build/three.module.js","three/addons/":"./vendor/three/jsm/"}}</script>
+<style>
+html,body,#app{margin:0;width:100%;height:100%;overflow:hidden;background:#173545}#app{background:radial-gradient(ellipse at 75% 40%,#376879,#183b4f 65%);position:relative}
+.court-canvas{position:absolute;inset:0;width:100%;height:100%}.court-keys{position:absolute;inset:0;pointer-events:none}.court-keys[hidden]{display:none!important}
+.court-keys button{position:absolute;transform:translate(-50%,-50%);pointer-events:auto;background:#ffffff25;color:#123941;border:1px solid #ffffff6e;border-radius:9px;padding:0;font:800 16px/1 system-ui;min-width:42px;min-height:42px;cursor:pointer}
+.court-keys button.filled{background:#ffb3488a;color:#74370b}.court-keys button:hover,.court-keys button:focus-visible{outline:3px solid #bff442;outline-offset:2px}
+.flat .court-keys{position:absolute;top:auto;bottom:14px;right:12px;left:auto;display:grid;grid-template-columns:repeat(var(--court-columns),minmax(44px,1fr));gap:5px;pointer-events:auto}
+.flat .court-keys button{position:static;transform:none;background:#e6ede7}.flat .court-keys button.filled{background:#ffb348}
+@media(max-width:680px){.court-keys button{min-width:35px;min-height:35px;font-size:13px}}
+</style></head><body><div id="app"></div><script type="module" src="./lessons/court.mjs"></script></body></html>

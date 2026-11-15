@@ -64,7 +64,7 @@ import { stopCrayon } from '../games/crayon.js?v=crayon-more';
 import { stopMarble } from '../games/marble.js?v=gear2';
 import { stopBridge } from '../games/bridge.js?v=gear2';
 import { stopMaze } from '../games/maze.js?v=gear2';
-import { postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=sky1';
+import { lessonResult, postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=lessons1';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=aviator1';
 
@@ -175,6 +175,10 @@ export function registerRound(rt) {
     if (g.mode === 'range' || g.mode === 'roll' || g.mode === 'grass' || g.mode === 'glow' || g.mode === 'dash' || g.mode === 'boss') message.total = rt.questionCount();
     return message;
   }
+  /** Games that ask at moments in their own play and bank stars as they go (`banks` in lib/sidecar.js). */
+  function banks(mode) {
+    return !!sidecarGame(mode)?.banks;
+  }
   function gradeRally(index) {
     const g = rt.game;
     const token = g?.tokens?.[index];
@@ -182,7 +186,7 @@ export function registerRound(rt) {
     const ok = !!token.ok;
     postSidecar({ type: 'mark', index, ok });
     // Sky flight and the range keep the same question up after a miss.
-    const flightMiss = (g.mode === 'flight' || g.mode === 'range' || g.mode === 'gulp' || g.mode === 'blocks' || g.mode === 'roll' || g.mode === 'grass' || g.mode === 'glow' || g.mode === 'dash' || g.mode === 'boss' || g.mode === 'cabin') && !ok;
+    const flightMiss = (g.mode === 'flight' || g.mode === 'range' || g.mode === 'gulp' || g.mode === 'blocks' || g.mode === 'roll' || g.mode === 'grass' || g.mode === 'glow' || g.mode === 'dash' || g.mode === 'boss' || banks(g.mode)) && !ok;
     g.done = !flightMiss;
     if (!ok) g.missed = true;
     else if (!g.missed) g.firstCorrect++;
@@ -208,6 +212,14 @@ export function registerRound(rt) {
             ? (ok ? 'Yes! Swim away!' : 'Not yet. Swim to another one.')
           : g.mode === 'cabin'
             ? (ok ? 'Yes! The cabin stays cozy.' : 'Not yet. Pick another one.')
+          : g.mode === 'inkwave'
+            ? (ok ? 'Yes! Super ink!' : 'Not yet. Pick another one.')
+          : g.mode === 'fishing'
+            ? (ok ? 'Yes! Fish on!' : 'Not yet. Pick another one.')
+          : g.mode === 'station'
+            ? (ok ? 'Yes! You can buy it.' : 'Not yet. Pick another one.')
+          : g.mode === 'deliveries'
+            ? (ok ? 'Yes! A double gift!' : 'Not yet. Pick another one.')
           : g.mode === 'blocks'
             ? (ok ? 'Yes! A new block for you.' : 'Not yet. Pick another one.')
           : g.mode === 'skybound'
@@ -234,9 +246,9 @@ export function registerRound(rt) {
       if (g.blockRights >= rallyClearCount(rt.questionCount())) return;
     }
     if (g.mode === 'rally' && ok) g.rallyRights = (g.rallyRights || 0) + 1;
-    // Cabin camp asks once between rounds. Each full set of this learner's questions banks
-    // its stars right away, and the cabin keeps going (and keeps asking) until the raccoons win.
-    if (g.mode === 'cabin') {
+    // Cabin camp, Inkwave, and Tidewater ask at moments in their play. Each full set of this learner's
+    // questions banks its stars right away, and the game keeps going (and keeps asking) until it ends.
+    if (banks(g.mode)) {
       g.index++;
       const got = g.index >= rt.questionCount() ? bankCabin(g) : 0;
       // Make the next question now. The game keeps it until the next round clears.
@@ -799,17 +811,21 @@ export function registerRound(rt) {
       g.started = true;
       g.phase = 'play';
       if (g.mode === 'rally') g.rallyStops = g.rallyStops || rallyQuestionCount(rt.questionCount());
-      if (g.mode === 'quickmath') {
+      if (g.mode === 'quickmath' || sideSpec.lesson) {
         g.prompt = 'Pick a mission.';
         g.tokens = [];
         g.options = [];
         g.show = '';
-      } else if (g.freePlay && (g.mode === 'gulp' || g.mode === 'flight' || g.mode === 'walk' || g.mode === 'bike' || g.mode === 'blocks' || g.mode === 'cabin')) {
+      } else if (g.freePlay && (g.mode === 'gulp' || g.mode === 'flight' || g.mode === 'walk' || g.mode === 'bike' || g.mode === 'blocks' || g.mode === 'cabin' || g.mode === 'inkwave' || g.mode === 'fishing' || g.mode === 'station' || g.mode === 'deliveries')) {
         g.prompt = g.mode === 'gulp' ? 'Swallow what fits. Clear the city or grow big before the clock runs out.'
           : g.mode === 'blocks' ? 'Build in the meadow.'
           : g.mode === 'flight' ? 'Fly the glider.'
           : g.mode === 'walk' ? 'Walk the meadow.'
           : g.mode === 'cabin' ? 'Keep the cabin cozy.'
+          : g.mode === 'inkwave' ? 'Paint the plaza with your team.'
+          : g.mode === 'fishing' ? 'Fish the island.'
+          : g.mode === 'station' ? 'Help the town.'
+          : g.mode === 'deliveries' ? 'Grow the sky garden.'
           : 'Ride the dirt bike.';
         g.tokens = [];
         g.options = [];
@@ -821,7 +837,7 @@ export function registerRound(rt) {
       else if (g.mode === 'glow') glowAsk(g);
       else if (g.mode === 'dash') dashAsk(g);
       else if (g.mode === 'boss') bossAsk(g);
-      else if (g.mode === 'cabin') cabinAsk(g);
+      else if (banks(g.mode)) cabinAsk(g);
       else if (g.mode === 'paint') shellAsk(g);
       else {
         rallyAsk(g);
@@ -829,9 +845,9 @@ export function registerRound(rt) {
         if (g.mode === 'range') rangeAsk(g);
       }
       // The card opens a few seconds later, when the ride reaches it. Make the line now so it plays the moment it shows.
-      if (rt.data.sound && g.prompt && g.mode !== 'quickmath') prefetchSpeech([{ text: g.prompt, voiceId: rt.voiceNow(g.mode) }], { priority: 'next' });
+      if (rt.data.sound && g.prompt && g.mode !== 'quickmath' && !sideSpec.lesson) prefetchSpeech([{ text: g.prompt, voiceId: rt.voiceNow(g.mode) }], { priority: 'next' });
       if (document.querySelector('iframe.sidecar-frame')) {
-        if (g.mode === 'quickmath' || (g.mode === 'gulp' && g.freePlay)) return;
+        if (g.mode === 'quickmath' || sideSpec.lesson || (g.mode === 'gulp' && g.freePlay)) return;
         rt.paintRallyChrome(g);
         postSidecar(rallyMessage(g));
       } else rt.renderGame();
@@ -1438,6 +1454,7 @@ export function registerRound(rt) {
       return 'Tell what this verse teaches you about God.';
     }
     if (g.mode === 'quickmath') return 'Pick a mission. Answer as many as you can in three minutes.';
+    if (sidecarGame(g.mode)?.lesson) return 'Pick a mission, then save it to your Star Garden.';
     if (g.mode === 'paint') return 'Paint the half with the right answer.';
     if (g.mode === 'walk') return g.subject === 'words' ? 'Listen for the word, then walk to it.' : 'Walk to the one that matches.';
     if (g.mode === 'flight') return g.rallyKind === 'spell' ? 'Listen for the word, then fly through each letter or type it.' : 'Steer through the gate that matches.';
@@ -1771,11 +1788,14 @@ export function registerRound(rt) {
     // Garden gulp asks for a whole timed round, so count the questions it actually finished.
     const gulpEnd = (g.mode === 'gulp' || (g.mode === 'boss' && g.bossEndless)) && !g.freePlay;
     // Cabin camp banks its stars as it goes (bankCabin); the results show the whole game.
-    const cabinEnd = g.mode === 'cabin' && !g.freePlay;
+    const cabinEnd = banks(g.mode) && !g.freePlay;
     if (cabinEnd) bankCabin(g);
     // Block meadow counts the gift boxes actually opened before free build.
     const blocksEnd = g.mode === 'blocks' && detail === 'build' && !g.freePlay;
-    const rounds = cabinEnd ? (g.cabinAsked | 0) : (g.mode === 'verse' || g.mode === 'clue') && g.deck?.length ? g.deck.length : flightEnd ? (g.flightRights || 5) : blocksEnd ? Math.max(1, g.blockRights || 1) : stageEnd ? Math.max(1, g.index || g.rallyRights || 1) : gulpEnd ? Math.max(1, g.index | 0, g.firstCorrect | 0) : rt.questionCount();
+    // Mission games send how the mission went; it is worth 3 to 5 stars by difficulty.
+    const lesson = sidecarGame(g.mode)?.lesson ? lessonResult(detail, g.lessonMission) : null;
+    if (lesson) g.firstCorrect = lesson.firstRight;
+    const rounds = lesson ? lesson.stars : cabinEnd ? (g.cabinAsked | 0) : (g.mode === 'verse' || g.mode === 'clue') && g.deck?.length ? g.deck.length : flightEnd ? (g.flightRights || 5) : blocksEnd ? Math.max(1, g.blockRights || 1) : stageEnd ? Math.max(1, g.index || g.rallyRights || 1) : gulpEnd ? Math.max(1, g.index | 0, g.firstCorrect | 0) : rt.questionCount();
     const bonus = (g.mode === 'verse' || g.mode === 'clue') ? (g.extraStars | 0) : 0;
     const firstRight = cabinEnd ? (g.cabinFirst | 0) : g.firstCorrect;
     if (!cabinEnd) Object.assign(rt.p(), applyRound(rt.p(), g.mode, g.key, rounds, g.firstCorrect));
@@ -1785,10 +1805,10 @@ export function registerRound(rt) {
     }
     rt.save();
     const dots = Array.from({ length: rounds }, (_, i) => `<span class="${i < firstRight ? 'on' : ''}"></span>`).join('');
-    const played = cabinEnd && !rounds ? 'The raccoons got the snacks!' : rounds === 1 ? 'You played 1 question.' : `You played ${rounds}.`;
-    const heading = flightEnd ? (detail === 'crash' ? 'Game over.' : 'You flew for 2 minutes.') : stageEnd ? 'You finished the stage.' : played;
-    const note = flightEnd && detail === 'crash' ? 'The glider hit the ground.' : stageEnd ? `${g.rallyRights || 0} right along the road` : 'First try';
-    const spoken = flightEnd ? (detail === 'crash' ? 'Game over. The glider hit the ground.' : 'You flew for 2 minutes.') : stageEnd ? 'You finished the stage.' : played;
+    const played = cabinEnd && g.mode !== 'cabin' ? (rounds === 1 ? 'You answered 1 question.' : `You answered ${rounds} questions.`) : cabinEnd && !rounds ? 'The raccoons got the snacks!' : rounds === 1 ? 'You played 1 question.' : `You played ${rounds}.`;
+    const heading = lesson ? 'Mission complete!' : flightEnd ? (detail === 'crash' ? 'Game over.' : 'You flew for 2 minutes.') : stageEnd ? 'You finished the stage.' : played;
+    const note = lesson ? 'First try' : flightEnd && detail === 'crash' ? 'The glider hit the ground.' : stageEnd ? `${g.rallyRights || 0} right along the road` : 'First try';
+    const spoken = lesson ? `Mission complete! You earned ${rounds} learning stars.` : flightEnd ? (detail === 'crash' ? 'Game over. The glider hit the ground.' : 'You flew for 2 minutes.') : stageEnd ? 'You finished the stage.' : played;
     const starTotal = rounds + bonus;
     const stars = starTotal === 1 ? '+1 learning star' : `+${starTotal} learning stars`;
     const bonusNote = bonus ? `<p class="hint">Includes +${bonus} for writing the verse.</p>` : '';

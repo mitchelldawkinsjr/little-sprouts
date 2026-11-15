@@ -1,0 +1,6 @@
+/* OFL subset of Noto Sans JP for the in-game signs. See LICENSE-OFL-notosansjp.txt. */
+@font-face{font-family:'Noto Sans JP';font-style:normal;font-weight:400 900;font-display:swap;src:url(./station/sprouts-station-glyphs.ttf) format('truetype');}
+@font-face{font-family:'Noto Serif JP';font-style:normal;font-weight:400 900;font-display:swap;src:url(./station/sprouts-station-glyphs.ttf) format('truetype');}
+@font-face{font-family:'Yuji Syuku';font-style:normal;font-weight:400 900;font-display:swap;src:url(./station/sprouts-station-glyphs.ttf) format('truetype');}
+@font-face{font-family:'Yusei Magic';font-style:normal;font-weight:400 900;font-display:swap;src:url(./station/sprouts-station-glyphs.ttf) format('truetype');}
+@font-face{font-family:'Zen Maru Gothic';font-style:normal;font-weight:400 900;font-display:swap;src:url(./station/sprouts-station-glyphs.ttf) format('truetype');}

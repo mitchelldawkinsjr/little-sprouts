@@ -1,0 +1,14 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Field Guide Fishing · Little Sprouts</title>
+<link rel="stylesheet" href="./lessons/lesson.css">
+<style>
+body{margin:0;background:#3d9b9c;overflow:hidden}canvas{position:fixed;inset:0;width:100%;height:100%}
+#water-status{position:absolute;right:12px;bottom:12px;background:#164a49;color:white;padding:6px 12px;border-radius:99px;font:700 14px system-ui;max-width:46%}
+.field-journal{max-height:22vh;overflow:auto}.field-entry{border-top:1px solid #cce0c7;padding:5px 0}.field-entry p{margin:0}
+.fish-chip{display:inline-block;width:33px;height:15px;border-radius:100% 80% 90% 80%;background:#75a9b0;margin-right:6px;vertical-align:middle}
+.fish-chip[data-mark="dark stripes"]{background:repeating-linear-gradient(100deg,#86acb7 0 4px,#203f52 5px 7px,#86acb7 8px 11px)}
+.fish-chip[data-mark="blue stripes"]{background:repeating-linear-gradient(0deg,#e5c263 0 2px,#318cba 2px 4px)}
+.fish-chip[data-mark="a yellow stripe"]{background:linear-gradient(#90aeb4 35%,#ffe254 35% 60%,#aebbb3 60%)}
+</style></head><body>
+<canvas id="water" aria-label="Animated pier and reef fishing scene"></canvas><div id="water-status">Choose a mission</div>
+<script type="module" src="./lessons/field.mjs"></script></body></html>

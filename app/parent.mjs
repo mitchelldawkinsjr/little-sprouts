@@ -32,7 +32,7 @@ import {
   voiceFor,
   voices
 } from '../lib/speech.js?v=night1';
-import { sidecarGame, sidecarIsBuilt } from '../lib/sidecar.js?v=sky1';
+import { sidecarGame, sidecarIsBuilt } from '../lib/sidecar.js?v=lessons1';
 import { spriteHtml } from '../lib/home-ui.mjs?v=gear2';
 import { wornGear } from '../logic/shop.mjs?v=shop3';
 import { voiceStatusText } from '../lib/parent-ui.mjs?v=structure2';
@@ -122,7 +122,8 @@ export function registerParent(rt) {
     $('#error').textContent = '';
     const stage = stageOf(x, +$('#editProfile').value);
     const formGames = rt.games.filter(([id]) => (!rt.hidesReading(stage) || !rt.READING_GAMES.has(id)) && (!sidecarGame(id) || sidecarIsBuilt(id)));
-    const skillGames = formGames.filter(([id]) => !sidecarGame(id));
+    // Mission games get a level too: Level 1 is the Discover mission, 2 Practice, 3 Challenge.
+    const skillGames = formGames.filter(([id]) => !sidecarGame(id) || sidecarGame(id).lesson);
     $('#skillSettings').innerHTML = skillGames.map(([id, name]) => {
       const lv = x.levels?.[id] || x.level;
       return `<div class="skill-setting"><label>${name}<select data-skill="${id}">${[1, 2, 3].map(n => `<option value="${n}" ${n === +lv ? 'selected' : ''}>Level ${n}</option>`).join('')}</select></label><span data-stat>${esc(skillStatText(x, id, +lv))}</span></div>`;

@@ -73,13 +73,14 @@ import { mountMarble, stopMarble } from '../games/marble.js?v=gear2';
 import { mountBridge, stopBridge } from '../games/bridge.js?v=gear2';
 import { mountMaze, stopMaze } from '../games/maze.js?v=gear2';
 import {
+  lessonMission,
   mountSidecar,
   postSidecar,
   sidecarAlone,
   sidecarGame,
   sidecarIsBuilt,
   stopSidecar
-} from '../lib/sidecar.js?v=sky1';
+} from '../lib/sidecar.js?v=lessons1';
 import {
   SHELF_META,
   shelfOf as shelfIdOf,
@@ -1197,12 +1198,12 @@ export function registerMounts(rt) {
     const scene = NO_SCENE.has(g.mode) || side ? '' : g.show;
     const height = Math.round(Math.min(1, Math.max(0, g.altitude || 0)) * 100);
     const paceMark = g.mode === 'lanes' && g.started && g.style !== 'reach' ? `${lanePaceName(g)} · ` : '';
-    const tally = light ? '<span id="lightTally">Pick a speed</span>' : g.mode === 'quickmath' ? '<span>Missions</span>' : freePlay ? '<span>Arcade</span>' : rallyDrive ? `<span id="rallyTally">${rallyRights >= rallyNeed ? 'Finish the stage' : `${g.rallyRights || 0} / ${rallyNeed}`}</span>` : side ? `<span id="rallyTally">${g.index + 1} / ${rounds}</span>` : race ? '<span>Full tank</span>' : glide ? `<span id="glideTally">${g.index + 1} / ${rounds}</span>` : city ? `<span id="cityTally">${g.index + 1} / ${rounds}</span>` : marble ? '<span id="runTally">Level 1 · 0</span>' : maze ? `<span id="runTally">${g.clock?.seconds || 0}s · 1 / ${rounds}</span>` : hop ? `<span id="hopTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : toast ? `<span id="toastTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 5} left</span>` : aisle ? `<span id="aisleTally">${g.index + 1} / ${rounds} · ${g.board?.seconds || 32}s</span>` : lily ? `<span id="lilyTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : cube ? `<span id="cubeTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : mole ? `<span id="moleTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 5} left</span>` : bust ? `<span id="bustTally">${g.index + 1} / ${rounds} · ${g.board?.seconds || 15}s</span>` : stack ? `<span id="stackTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : lamp ? `<span id="lampTally">${g.index + 1} / ${rounds}</span>` : bridge ? `<span id="bridgeTally">${g.index + 1} / ${rounds} · ${g.lives || 1} ${(g.lives || 1) === 1 ? 'life' : 'lives'}</span>` : rocket ? `<span id="rocketTally">${esc(rocketZone(g.altitude || 0.32))}</span>` : `<span>${paceMark}${g.index + 1} / ${rounds}</span>`;
+    const tally = light ? '<span id="lightTally">Pick a speed</span>' : g.mode === 'quickmath' ? '<span>Missions</span>' : side?.lesson ? '<span id="rallyTally">Mission</span>' : freePlay ? '<span>Arcade</span>' : rallyDrive ? `<span id="rallyTally">${rallyRights >= rallyNeed ? 'Finish the stage' : `${g.rallyRights || 0} / ${rallyNeed}`}</span>` : side ? `<span id="rallyTally">${g.index + 1} / ${rounds}</span>` : race ? '<span>Full tank</span>' : glide ? `<span id="glideTally">${g.index + 1} / ${rounds}</span>` : city ? `<span id="cityTally">${g.index + 1} / ${rounds}</span>` : marble ? '<span id="runTally">Level 1 · 0</span>' : maze ? `<span id="runTally">${g.clock?.seconds || 0}s · 1 / ${rounds}</span>` : hop ? `<span id="hopTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : toast ? `<span id="toastTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 5} left</span>` : aisle ? `<span id="aisleTally">${g.index + 1} / ${rounds} · ${g.board?.seconds || 32}s</span>` : lily ? `<span id="lilyTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : cube ? `<span id="cubeTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : mole ? `<span id="moleTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 5} left</span>` : bust ? `<span id="bustTally">${g.index + 1} / ${rounds} · ${g.board?.seconds || 15}s</span>` : stack ? `<span id="stackTally">${g.index + 1} / ${rounds} · ${g.board?.lives || 4} left</span>` : lamp ? `<span id="lampTally">${g.index + 1} / ${rounds}</span>` : bridge ? `<span id="bridgeTally">${g.index + 1} / ${rounds} · ${g.lives || 1} ${(g.lives || 1) === 1 ? 'life' : 'lives'}</span>` : rocket ? `<span id="rocketTally">${esc(rocketZone(g.altitude || 0.32))}</span>` : `<span>${paceMark}${g.index + 1} / ${rounds}</span>`;
     const barMax = rallyDrive ? rallyNeed : marble ? (g.track?.step || 8) : maze ? (g.clock?.seconds || 50) : rocket ? 100 : rounds;
     const barNow = rallyDrive ? rallyRights : marble ? 0 : maze ? barMax : rocket ? height : g.index;
     const barLabel = rallyDrive ? 'Right answers before the open road' : marble ? 'Points to the next level' : maze ? 'Time left' : rocket ? 'Height toward space' : 'Questions completed';
     const barPct = rallyDrive ? (rallyNeed ? rallyRights / rallyNeed * 100 : 0) : marble ? 0 : maze ? 100 : rocket ? height : (rounds ? g.index / rounds * 100 : 0);
-    const bar = race || freePlay || g.mode === 'quickmath' ? '' : `<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="${barMax}" aria-valuenow="${barNow}" aria-label="${barLabel}"><div style="width:${barPct}%"></div></div>`;
+    const bar = race || freePlay || g.mode === 'quickmath' || side?.lesson ? '' : `<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="${barMax}" aria-valuenow="${barNow}" aria-label="${barLabel}"><div style="width:${barPct}%"></div></div>`;
     const alone = aloneBar(side);
     const raceEars = race && g.level >= 2 && rt.data.sound && canSpeak() && raceKinds(rt.p().race).includes('words');
     const reveal = race
@@ -1372,6 +1373,18 @@ export function registerMounts(rt) {
     if ($('#clear')) $('#clear').onclick = () => { if (!g.done) { g.built = ''; renderGame(); } };
     $('#next').onclick = () => { g.index++; if (g.index >= rounds) rt.finish(); else rt.question(); };
     if (reach && !arcade) cam();
+    // Mission games pick their own missions: tell them which one fits this learner.
+    const sendLessonConfig = () => {
+      const learner = rt.p();
+      rt.game.lessonMission = lessonMission(learner.stage, learner.level, learner.levels?.[rt.game.mode]);
+      postSidecar({
+        type: 'lesson-config',
+        stage: learner.stage || '',
+        level: rt.game.lessonMission,
+        buddy: profileSprite(learner, rt.data.active),
+        sound: rt.data.sound !== false
+      });
+    };
     if (side && g.phase === 'play') {
       mountSidecar($('#arcade'), side, {
         onReady() {
@@ -1379,7 +1392,8 @@ export function registerMounts(rt) {
           frame?.focus();
           if (rt.game?.mode === 'bike') postSidecar(rt.bikeConfig(rt.game));
           if (rt.game?.mode === 'quickmath') return;
-          if (rt.game?.freePlay && (rt.game.mode === 'flight' || rt.game.mode === 'walk' || rt.game.mode === 'skybound' || rt.game.mode === 'gulp' || rt.game.mode === 'blocks' || rt.game.mode === 'dash' || rt.game.mode === 'boss' || rt.game.mode === 'cabin')) postSidecar({ type: 'arcade' });
+          if (rt.game && side.lesson) { sendLessonConfig(); return; }
+          if (rt.game?.freePlay && (rt.game.mode === 'flight' || rt.game.mode === 'walk' || rt.game.mode === 'skybound' || rt.game.mode === 'gulp' || rt.game.mode === 'blocks' || rt.game.mode === 'dash' || rt.game.mode === 'boss' || rt.game.mode === 'cabin' || rt.game.mode === 'inkwave' || rt.game.mode === 'fishing' || rt.game.mode === 'station' || rt.game.mode === 'deliveries')) postSidecar({ type: 'arcade' });
           else if (rt.game) postSidecar(rt.rallyMessage(rt.game));
         },
         // Skybound reloads its page for the next world: tell the new page arcade or the current question again.
@@ -1392,6 +1406,12 @@ export function registerMounts(rt) {
         },
         onProgress(info) {
           if (rt.game?.mode === 'bike' && Number.isFinite(+info?.travel)) rt.game.bikeTravel = +info.travel;
+          if (side.lesson && typeof info?.label === 'string') {
+            const tally = $('#rallyTally');
+            if (tally) tally.textContent = info.label === 'Mission complete' ? 'Done!' : 'Mission';
+            const feedback = $('#feedback');
+            if (feedback) feedback.textContent = info.label.slice(0, 160);
+          }
         },
         onShow() {
           // Garden gulp and Garden dash keep moving while the question is read, so just say it.
@@ -1402,6 +1422,7 @@ export function registerMounts(rt) {
           if (rt.game && !rt.game.finished) rt.askBeforePlay(rt.game.prompt);
         },
         onNeed(data) {
+          if (side.lesson) { if (data?.lesson && rt.game && !rt.game.finished) sendLessonConfig(); return; }
           if (!rt.game || rt.game.finished || rt.game.freePlay) return;
           // Boss chase says which way the round goes when it starts: Play or Endless.
           if (rt.game.mode === 'boss' && typeof data?.endless === 'boolean') rt.game.bossEndless = data.endless;
@@ -1464,6 +1485,10 @@ export function registerMounts(rt) {
         onFinish(detail) {
           const round = rt.game;
           if (!round || round.finished) return;
+          if (side.lesson) {
+            if (/^lesson:\d+:\d+$/.test(String(detail || ''))) rt.finish(detail);
+            return;
+          }
           if (round.mode === 'rally') {
             clearTimers('rally');
             rt.rallyTimer = setTimeout(() => {
@@ -1494,9 +1519,9 @@ export function registerMounts(rt) {
             }, 400);
             return;
           }
-          if (round.mode === 'cabin') {
+          if (side.banks) {
             if (round.freePlay) return;
-            // The raccoons got the snacks. Let the little "time to rest" card land, then show results.
+            // The raccoons got the snacks, or the match ended. Let the game's own card land, then show results.
             clearTimers('rally');
             rt.rallyTimer = setTimeout(() => {
               rt.rallyTimer = 0;
