@@ -3,24 +3,29 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Sketchbook Trail · Little Sprouts</title>
-  <link rel="stylesheet" href="./trail.css?v=trail6a">
+  <title>Sketchbook Mega Ramp · Little Sprouts</title>
+  <link rel="stylesheet" href="./trail.css?v=trail7">
 </head>
 <body data-trail-paused>
   <header id="trail-hud" data-touch-ignore>
-    <strong>Sketchbook Trail</strong>
+    <strong>Sketchbook Mega Ramp</strong>
     <p id="trail-mode">Opening the playground…</p>
   </header>
-  <button type="button" id="trail-menu" aria-controls="trail-panel" aria-expanded="false" hidden>
-    <span aria-hidden="true">☰</span> Menu
-  </button>
+  <div id="trail-shortcuts" data-touch-ignore>
+    <button type="button" id="trail-menu" aria-haspopup="dialog" aria-controls="trail-panel" aria-expanded="false" hidden>
+      <span aria-hidden="true">☰</span> Menu
+    </button>
+    <button type="button" id="trail-quick-starts" aria-haspopup="dialog" aria-controls="trail-picker" aria-expanded="false" hidden>
+      <span aria-hidden="true">🗺️</span> Starting places
+    </button>
+  </div>
   <div id="trail-guide" aria-label="Direction and distance to next beacon" hidden>
     <span id="trail-arrow" aria-hidden="true">↑</span>
     <span id="trail-distance"></span>
   </div>
   <p id="trail-notice" role="status" aria-live="polite" hidden></p>
   <section id="trail-panel" role="dialog" aria-modal="true" aria-labelledby="trail-panel-title" hidden data-pad-menu data-touch-ignore>
-    <span class="trail-kicker">🌱 SKETCHBOOK TRAIL</span>
+    <span class="trail-kicker">🌱 SKETCHBOOK MEGA RAMP</span>
     <h2 id="trail-panel-title">Trail menu</h2>
     <p class="trail-panel-intro">Take a break or pick your next adventure.</p>
     <div id="trail-actions">
@@ -66,6 +71,6 @@
   <p id="trail-boarding" role="status" hidden></p>
   <p id="trail-help" hidden></p>
   <script src="./build/sketchbook.min.js?v=trail1"></script>
-  <script type="module" src="./trail.mjs?v=trail6"></script>
+  <script type="module" src="./trail.mjs?v=trail7"></script>
 </body>
 </html>

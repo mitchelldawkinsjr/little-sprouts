@@ -8,6 +8,7 @@ const pos = ([x, y, z]) => ({ x, y, z });
 
 test('Sketchbook uses the shared question reward and controller conventions', () => {
   const game = sidecarGame('sketchbook');
+  assert.equal(game.title, 'Sketchbook Mega Ramp');
   assert.equal(game.banks, true);
   assert.equal(game.lesson, undefined);
   const save = globalThis.location;

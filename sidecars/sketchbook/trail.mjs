@@ -13,7 +13,7 @@ const runtime = globalThis.Sketchbook;
 const supported = !!runtime?.World;
 const performanceTier = isPerformanceTier(resolveAutoQuality());
 const state = { world: null, buddy: null, ready: false, arcade: !quiz.live, responded: false, finished: false };
-let fromHost, paused, driving, flightHint, onRamp = false, returningToTrail = false, timer = 0, motion = 0, touch, touchDevice = false;
+let fromHost, paused, driving, flightHint, onRamp = false, returningToTrail = false, pickerFromMenu = false, timer = 0, motion = 0, touch, touchDevice = false;
 const touchCodes = new Map();
 const movementCodes = new Set();
 const touchPanel = $('trail-touch');
@@ -122,6 +122,7 @@ function paintMode() {
     : trail.done ? `All ${STOPS.length} beacons lit! Keep exploring or finish.`
     : `${trail.index} of ${STOPS.length} beacons lit · Next: ${onRamp ? 'Mega Ramp landing' : LANDMARKS[trail.index].name}`;
   $('trail-menu').hidden = false;
+  $('trail-quick-starts').hidden = false;
   $('trail-starts').hidden = false;
   $('trail-return').hidden = state.arcade || trail.done;
   $('trail-finish').hidden = state.arcade || trail.index === 0;
@@ -277,7 +278,8 @@ function panel(name) {
   for (const id of panelIds) $(id).hidden = id !== name;
   // The shared touch helper disables page panning while playing. Restore it for scrollable cards.
   document.documentElement.style.touchAction = document.body.style.touchAction = name ? 'auto' : 'none';
-  $('trail-menu').setAttribute('aria-expanded', String(!!name));
+  $('trail-menu').setAttribute('aria-expanded', String(name === 'trail-panel'));
+  $('trail-quick-starts').setAttribute('aria-expanded', String(name === 'trail-picker'));
   if (name) {
     $(name).scrollTop = 0;
     $(name).querySelector('button:not([hidden])')?.focus({ preventScroll: true });
@@ -299,8 +301,22 @@ function resumeGame() {
 
 $('trail-menu').onclick = openMenu;
 $('trail-resume').onclick = resumeGame;
-$('trail-starts').onclick = () => panel('trail-picker');
-$('trail-close').onclick = () => panel('trail-panel');
+function openStartingPlaces(fromMenu) {
+  if (!state.ready || trail.pending || state.finished) return;
+  pickerFromMenu = fromMenu;
+  $('trail-close').textContent = fromMenu ? '← Back to menu' : '← Keep playing';
+  pause(true);
+  panel('trail-picker');
+}
+
+function closeStartingPlaces() {
+  if (pickerFromMenu) panel('trail-panel');
+  else resumeGame();
+}
+
+$('trail-quick-starts').onclick = () => openStartingPlaces(false);
+$('trail-starts').onclick = () => openStartingPlaces(true);
+$('trail-close').onclick = closeStartingPlaces;
 addEventListener('keydown', event => {
   if (event.repeat || !['KeyM', 'Escape'].includes(event.code)) return;
   const wifi = document.querySelector('[data-friend-panel]');
@@ -308,7 +324,8 @@ addEventListener('keydown', event => {
     wifi.shadowRoot?.querySelector('[data-k="cancel"], [data-id="cancel"], [data-id="later"]')?.click();
     return;
   }
-  if (!$('trail-picker').hidden || !$('trail-friend-panel').hidden) panel('trail-panel');
+  if (!$('trail-picker').hidden) closeStartingPlaces();
+  else if (!$('trail-friend-panel').hidden) panel('trail-panel');
   else if (!$('trail-panel').hidden) resumeGame();
   else openMenu();
 });
@@ -575,12 +592,12 @@ try {
   if (!supported) throw new Error('Sketchbook bundle missing');
   state.world = new runtime.World('./build/assets/world-lite.glb', {
     performance: performanceTier,
-    onReady() { void loaded().catch(() => error('Sketchbook Trail could not start. Reload once online, then try again.')); },
-    onError() { error('Sketchbook Trail could not load its world. Save it again while online, then try again.'); }
+    onReady() { void loaded().catch(() => error('Sketchbook Mega Ramp could not start. Reload once online, then try again.')); },
+    onError() { error('Sketchbook Mega Ramp could not load its world. Save it again while online, then try again.'); }
   });
   const view = canvas();
   view.tabIndex = 0;
-  view.setAttribute('aria-label', 'Sketchbook Trail playground');
+  view.setAttribute('aria-label', 'Sketchbook Mega Ramp playground');
   touch = attachTouchControls({
     aim: true,
     hints: { move: 'Move', aim: 'Look' },
@@ -590,7 +607,7 @@ try {
   if (isTouchDevice()) showTouchControls();
   if (!quiz.live) {
     document.documentElement.setAttribute('data-pad-standalone', '');
-    void import('../../lib/pad.js?v=trail6');
+    void import('../../lib/pad.js?v=trail7');
   }
   pause(true);
   state.world.registerUpdatable({ updateOrder: 99, update: tick });
@@ -602,5 +619,5 @@ try {
   });
 } catch (cause) {
   console.error(cause);
-  error('Sketchbook Trail needs WebGL and its local game files. Reload once online, then try again.');
+  error('Sketchbook Mega Ramp needs WebGL and its local game files. Reload once online, then try again.');
 }
