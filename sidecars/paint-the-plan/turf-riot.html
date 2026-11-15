@@ -17,6 +17,8 @@
   #fade { position: fixed; inset: 0; background: #0d1020; opacity: 1; pointer-events: all; z-index: 50; transition: opacity 600ms ease; }
   #boot-error { display: none; position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 60; color: #fff; font: 600 16px/1.4 system-ui, sans-serif; background: #c0263d; padding: 16px 20px; border-radius: 12px; max-width: 520px; }
 </style>
+<!-- Friend rooms: the /link WebSocket goes through lib/friend-link.mjs (relay, direct, or same Wi-Fi). -->
+<script src="./link.js?v=f1"></script>
 <script type="importmap">
 { "imports": { "three": "./vendor/three/build/three.module.js", "three/addons/": "./vendor/three/jsm/" } }
 </script>
@@ -30,7 +32,9 @@
   // fade in once the loading screen is mounted
   window.addEventListener('DOMContentLoaded', () => setTimeout(() => { const f = document.getElementById('fade'); if (f) { f.style.opacity = '0'; f.style.pointerEvents = 'none'; } }, 60));
 </script>
-<script type="module" src="./src/main.js"></script>
+<!-- Little Sprouts touch sticks and buttons, shown to the match as a controller. -->
+<script type="module" src="./sprouts-touch.mjs?v=touch3"></script>
+<script type="module" src="./src/main.js?v=mouse1"></script>
 <a id="practice-link" href="./index.html" style="position:fixed;right:9px;top:9px;z-index:9999;background:#173d36;color:white;border-radius:30px;padding:7px 12px;font:700 13px system-ui">← Practice court</a>
 <script>if (/[?&]sprouts\b/.test(location.search)) document.getElementById('practice-link').remove();</script>
 </body>

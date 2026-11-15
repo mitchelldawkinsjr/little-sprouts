@@ -12,7 +12,7 @@ import {
   strokeSegments, lidSegments, pickAnswerPocket, worldWidth, inkFor
 } from './logic.mjs?v=glow1';
 import { RadianceField } from './radiance.mjs?v=glow1';
-import { localQuestion, normalizeQuestion, LOCAL_ROUND } from './quiz.mjs?v=glow1';
+import { arcadeGoal, localQuestion, normalizeQuestion, LOCAL_ROUND } from './quiz.mjs?v=arcade1';
 import { resolveAutoQuality, isPerformanceTier } from '../../lib/device-tier.mjs?v=low-end1';
 import { readPad, actionDown } from '../../lib/pad-core.mjs?v=pad-rt';
 import { drawBuddyBall, buddyKind } from '../../lib/buddy2d.mjs?v=gear2';
@@ -411,7 +411,7 @@ function toast(text, kind) {
 }
 
 function paintHud() {
-  const total = state.q?.total || (state.source === 'local' ? LOCAL_ROUND : 0);
+  const total = state.arcade ? 0 : state.q?.total || (state.source === 'local' ? LOCAL_ROUND : 0);
   countEl.textContent = total ? `Board ${Math.min(total, state.step + 1)} / ${total}` : `Board ${state.step + 1}`;
   starsEl.textContent = `⭐ ${state.stars}`;
   livesEl.textContent = '❤️'.repeat(Math.max(0, state.lives)) + '🖤'.repeat(Math.max(0, LIVES - state.lives));
@@ -446,11 +446,14 @@ function present(q) {
 }
 
 function nextLocal() {
+  // Arcade play: a star to reach, maze after maze, no questions.
+  if (state.arcade) { present(normalizeQuestion(arcadeGoal(Math.random, state.localIndex++))); return; }
   if (state.step >= LOCAL_ROUND) { endRound(); return; }
   present(normalizeQuestion(localQuestion(Math.random, state.localIndex++)));
 }
 
 function hostAsk(msg) {
+  if (state.arcade) return;
   const q = normalizeQuestion(msg);
   if (!q) return;
   if ('sound' in msg) state.sound = msg.sound !== false;
@@ -554,9 +557,17 @@ addEventListener('message', (event) => {
   const data = event.data;
   if (!data || data.source !== SIDECAR_SOURCE) return;
   if (data.type === 'ask') hostAsk(data);
-  else if (data.type === 'clear' || data.type === 'arcade') {
+  else if (data.type === 'clear') {
     askEl.hidden = true;
     toast('Great lighting!', 'good');
+  }
+  else if (data.type === 'arcade' && !state.arcade) {
+    // Arcade play: no questions. Each maze has a star to reach instead, and they keep coming.
+    state.arcade = true;
+    state.source = 'local';
+    state.pending = null;
+    state.hostKey = '';
+    if (state.phase === 'wait' || state.phase === 'play' || state.phase === 'look') nextLocal();
   }
 });
 if (embedded) call(window.SproutsSidecar?.need);

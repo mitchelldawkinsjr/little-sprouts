@@ -22,7 +22,8 @@ import { CameraRig } from './game/cameraRig.js';
 import { Match } from './game/match.js';
 import { Minimap } from './game/minimap.js';
 import { Showcase } from './game/showcase.js';
-import { initSprouts } from './sprouts.js?v=ink2';
+import { initSprouts } from './sprouts.js?v=ink3';
+import { initFriend } from './friend.js?v=f1';
 
 const params = new URLSearchParams(location.search);
 // Inside Little Sprouts: straight into a Chill match, with questions worked in (src/sprouts.js).
@@ -76,6 +77,13 @@ class Game {
     this.input = G.input = new Input(this.R.renderer.domElement);
     this.input.onKey = (e, repeat) => this._onKey(e, repeat);
     this.input.onUnlock = () => this._onPointerUnlock();
+    // The mouse works whenever one is connected: the browser only lets the page take the mouse after a
+    // click, so a match that started by itself (Little Sprouts), or picks up after a question card, takes
+    // it on the first click on the game. That click only takes the mouse; it doesn't shoot.
+    this.R.renderer.domElement.addEventListener('mousedown', (e) => {
+      if (this.input.locked || e.button !== 0 || e.sourceCapabilities?.firesTouchEvents) return;
+      if (G.mode === 'match' && this.match && !this.match.attract && !this.match.paused && !this.menus?.current && !this.sprouts?.busy) this.input.requestLock();
+    });
 
     // modules built by other authors
     const [charMod, fxMod, envMod, audioMod, musicMod] = await Promise.all([
@@ -142,6 +150,8 @@ class Game {
     this.menus?.show(params.has('skipTitle') ? 'main' : 'title');
     this._applyAudioVolumes();
     requestAnimationFrame(() => this._loop());
+    // 👫 Friend: head to head through a friend room (src/friend.js).
+    this.friend = initFriend(this);
     if (SPROUTS) {
       this.sprouts = initSprouts(this);
       this.api.startMatch({ mapId: map.id, difficulty: 'easy', duration: this.settings.matchLength });
@@ -645,6 +655,7 @@ class Game {
     this.input.pollPad();
     this._padMenus();
     this.sprouts?.tick(dt);
+    this.friend?.tick(dt);
     const m = this.match;
     if (m) {
       m.updateController(dt);
@@ -813,7 +824,10 @@ class Game {
     let prompt = null;
     const inkF = a.ink / PLAYER.inkMax;
     if (m.state === 'playing' && a.alive) {
-      if (m.controller?.mapHeld) prompt = 'Press 1 – 3 to Super Jump to a teammate  ·  4 to jump home';
+      // A mouse that isn't captured yet (the match started by itself, or a question card freed it).
+      const inp = this.input;
+      if (!inp.locked && !(inp.pad && inp.lastDevice === 'pad') && matchMedia('(any-pointer: fine)').matches) prompt = 'Click the game to aim with the mouse';
+      else if (m.controller?.mapHeld) prompt = 'Press 1 – 3 to Super Jump to a teammate  ·  4 to jump home';
       else if (a.superJumpState) prompt = null;
       else if (this._lowInkFlash > 0) { this._lowInkFlash -= dt; prompt = 'Low ink! Hold SHIFT in your ink to refill'; }
       else if (a.specialReady() && (this._hints.specialT = (this._hints.specialT || 0) + dt) > 2) prompt = `Special ready! Press F`;

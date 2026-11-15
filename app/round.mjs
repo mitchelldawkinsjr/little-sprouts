@@ -64,7 +64,7 @@ import { stopCrayon } from '../games/crayon.js?v=crayon-more';
 import { stopMarble } from '../games/marble.js?v=gear2';
 import { stopBridge } from '../games/bridge.js?v=gear2';
 import { stopMaze } from '../games/maze.js?v=gear2';
-import { lessonResult, postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=lessons2';
+import { lessonResult, postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=arcade1';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=aviator1';
 
@@ -185,6 +185,22 @@ export function registerRound(rt) {
     if (!g || g.finished || g.done || !token) return;
     const ok = !!token.ok;
     postSidecar({ type: 'mark', index, ok });
+    // Arcade picture rounds keep coming with no questions and no end; the game is left from All games.
+    if (g.freePlay) {
+      g.done = true;
+      const cheer = g.mode === 'range' ? 'Splat!' : 'Nice painting!';
+      const title = $('#app h1');
+      if (title) title.textContent = cheer;
+      rt.say(cheer);
+      clearTimeout(rt.rallyTimer);
+      rt.rallyTimer = setTimeout(() => {
+        rt.rallyTimer = 0;
+        if (rt.game !== g || g.finished) return;
+        g.index++;
+        question();
+      }, 1400);
+      return;
+    }
     // Sky flight and the range keep the same question up after a miss.
     const flightMiss = (g.mode === 'flight' || g.mode === 'range' || g.mode === 'gulp' || g.mode === 'blocks' || g.mode === 'roll' || g.mode === 'grass' || g.mode === 'glow' || g.mode === 'dash' || g.mode === 'boss' || banks(g.mode)) && !ok;
     g.done = !flightMiss;
@@ -816,20 +832,20 @@ export function registerRound(rt) {
         g.tokens = [];
         g.options = [];
         g.show = '';
-      } else if (g.freePlay && (g.mode === 'gulp' || g.mode === 'flight' || g.mode === 'walk' || g.mode === 'bike' || g.mode === 'blocks' || g.mode === 'cabin' || g.mode === 'inkwave' || g.mode === 'fishing' || g.mode === 'station' || g.mode === 'deliveries')) {
-        g.prompt = g.mode === 'gulp' ? 'Swallow what fits. Clear the city or grow big before the clock runs out.'
-          : g.mode === 'blocks' ? 'Build in the meadow.'
-          : g.mode === 'flight' ? 'Fly the glider.'
-          : g.mode === 'walk' ? 'Walk the meadow.'
-          : g.mode === 'cabin' ? 'Keep the cabin cozy.'
-          : g.mode === 'inkwave' ? 'Paint the plaza with your team.'
-          : g.mode === 'fishing' ? 'Fish the island.'
-          : g.mode === 'station' ? 'Help the town.'
-          : g.mode === 'deliveries' ? 'Grow the sky garden.'
-          : 'Ride the dirt bike.';
-        g.tokens = [];
-        g.options = [];
+      } else if (g.freePlay && sideSpec.arcade) {
+        // Arcade play: the game's goal and no question. A game with no question-free mode of its own
+        // gets a round of pictures where every choice is right.
+        g.prompt = sideSpec.arcade;
         g.show = '';
+        g.target = '';
+        if (sideSpec.arcadeVia === 'pictures') {
+          g.rallyKind = 'match';
+          g.tokens = arcadePictures(g.mode === 'paint' ? 2 : 3, g.index | 0);
+          g.options = g.tokens.map(t => t.label);
+        } else {
+          g.tokens = [];
+          g.options = [];
+        }
       } else if (g.mode === 'walk') walkAsk(g);
       else if (g.mode === 'gulp') gulpAsk(g);
       else if (g.mode === 'roll') rollAsk(g);
@@ -847,12 +863,14 @@ export function registerRound(rt) {
       // The card opens a few seconds later, when the ride reaches it. Make the line now so it plays the moment it shows.
       if (rt.data.sound && g.prompt && g.mode !== 'quickmath' && !sideSpec.lesson) prefetchSpeech([{ text: g.prompt, voiceId: rt.voiceNow(g.mode) }], { priority: 'next' });
       if (document.querySelector('iframe.sidecar-frame')) {
-        if (g.mode === 'quickmath' || sideSpec.lesson || (g.mode === 'gulp' && g.freePlay)) return;
+        if (g.mode === 'quickmath' || sideSpec.lesson || (g.freePlay && sideSpec.arcade && sideSpec.arcadeVia !== 'pictures')) return;
         rt.paintRallyChrome(g);
         postSidecar(rallyMessage(g));
       } else rt.renderGame();
       return;
     }
+    // Arcade play: these games go for a star instead of an answer, with a decoy or two to dodge.
+    if (g.freePlay && STAR_GOAL[g.mode]) starGoal(g);
     hybrid(g);
     g.options = rt.shuffle(g.options);
     if (g.mode === 'rocket' && g.launched && !g.flightOver && $('#rocketShow')) {
@@ -886,7 +904,7 @@ export function registerRound(rt) {
     else if (g.mode === 'lamp' && g.phase === 'play') { /* light the lamp speaks each stone */ }
     else if (g.mode === 'cube' && g.phase === 'play') { /* cube dash speaks each cube */ }
     else if (g.mode === 'glide' || g.mode === 'city') rt.say(g.howTo);
-    else if (g.mode === 'catch' && g.phase === 'ready') rt.say(g.style === 'reach' ? 'Reach up and catch the number with your hand.' : 'Slide the basket under the number.');
+    else if (g.mode === 'catch' && g.phase === 'ready' && !g.freePlay) rt.say(g.style === 'reach' ? 'Reach up and catch the number with your hand.' : 'Slide the basket under the number.');
     else if (!gatesPlay) rt.say(g.prompt);
   }
   function loadScreenMath(g, l, fromProfile) {
@@ -1238,6 +1256,30 @@ export function registerRound(rt) {
     if (g.rallyKind === 'spell') g.prompt = `Paint the letters of ${g.target}.`;
     else if (g.rallyKind === 'match' && g.subject === 'words') g.prompt = `Paint the word ${g.target}.`;
     else if (g.rallyKind === 'match') g.prompt = `Paint the ${g.target}.`;
+  }
+  // Arcade play for built-in games that otherwise go for the right answer: the star is the goal.
+  const STAR_GOAL = {
+    catch: 'Catch the stars. Leave the leaves.',
+    lanes: 'Drive into the star.',
+    hook: 'Hook the star fish.',
+    sky: 'Shoot the star rock.',
+    planet: 'Shoot the star rocks to keep the planet safe.'
+  };
+  function starGoal(g) {
+    const decoys = ['🍂', '🪨', '🐌', '🌵'];
+    const n = Math.max(2, Math.min(4, g.options?.length || 3));
+    g.target = '⭐';
+    g.options = ['⭐', ...decoys.slice(0, n - 1)];
+    g.prompt = STAR_GOAL[g.mode];
+    g.show = '';
+    g.math = null;
+    g.render = x => esc(String(x));
+  }
+  /** Arcade picture rounds (Paint Sphere, Targets): `count` different pictures, every one right. */
+  function arcadePictures(count, round = 0) {
+    const all = ['🍓', '🌈', '⭐', '🦋', '🌻', '🐞', '🍉', '🎈', '🐠', '🍄'];
+    const start = (round * count) % all.length;
+    return Array.from({ length: count }, (_, i) => ({ label: all[(start + i) % all.length], ok: true }));
   }
   function arcadePack(pack, prompt) {
     const g = rt.game;
@@ -1783,6 +1825,16 @@ export function registerRound(rt) {
     const g = rt.game;
     g.finished = true;
     rt.camOff();
+    // Arcade play asks nothing, so it banks no learning stars (the same as the arcade games built in here).
+    if (g.freePlay && g.mode !== 'quickmath') {
+      const line = detail === 'crash' ? 'Game over. Nice flying!' : 'Nice playing!';
+      $('#app').innerHTML = `<section class="playarea"><div class="result-star" aria-hidden="true">🎮</div><h1>${line}</h1><p>Arcade play: no questions this time.</p>${rt.starGardenHtml()}<button class="primary" id="again">Play again</button> <button class="quiet" id="all">Choose a game</button></section>`;
+      $('#again').onclick = () => rt.start(g.mode);
+      $('#all').onclick = rt.home;
+      rt.say(line);
+      rt.focusHeading();
+      return;
+    }
     const flightEnd = g.mode === 'flight' && (detail === 'crash' || detail === 'flew');
     const stageEnd = g.mode === 'rally' && detail === 'stage';
     // Garden gulp asks for a whole timed round, so count the questions it actually finished.
