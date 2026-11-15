@@ -317,11 +317,11 @@
     <button type="button" class="quiet" id="listenAgain">Hear it again</button>
     <button type="button" class="quiet" id="listenBack">← All games</button>
   </div>
-  <script type="module" src="app.js?v=en1"></script>
+  <script type="module" src="app.js?v=ink1"></script>
   <script type="module">
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js?v=offline3').then(async () => {
-        const { warmOffline } = await import('./lib/offline-warm.mjs?v=en1');
+        const { warmOffline } = await import('./lib/offline-warm.mjs?v=ink1');
         warmOffline();
       }).catch(() => {});
     }

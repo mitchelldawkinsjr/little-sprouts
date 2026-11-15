@@ -14,6 +14,6 @@ sunglasses, gold crown) for their garden buddy (`logic/shop.mjs`, `app/shop.mjs`
 ids), and `wearing`. Stars to spend = `stars - spent`. Every buddy renderer shows the
 worn gear.
 
-**Boss** — in Boss chase, the creature a learner builds from caterpillar and spider parts
-(head, body, legs, color, eyes, something on top, size), then swims away from. Saved in
-this browser as `sprouts-boss-v1` (`sidecars/boss/logic.mjs`). It is never the player.
+**Boss** — the creature a learner builds by picking a head, body, legs, color, eyes,
+topper, and size. The same design can chase the garden buddy in Boss Chase or Ink Trail.
+Saved in this browser as `sprouts-boss-v1` (`lib/boss-design.mjs`). It is never the player.

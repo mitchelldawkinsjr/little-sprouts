@@ -22,10 +22,11 @@ import * as THREE from 'three';
 import {
   BAND, BUDDY_X, SPAWN_X, GONE_X, GAP, SAFE_AFTER_BUMP, BUDDY_R,
   SPEED, swimSpeed, bossSpeed, throttleAt, speedNow, creepRate, stepGap, gapAfter, isCaught, swimToward, touching,
-  columnYs, answerColumn, bossAim, trimTrail, meters,
-  PARTS, PART_NAMES, PRESETS, BOSS_EMOJI, cyclePart, randomBoss, bossName, readBoss, saveBoss, DEFAULT_BOSS, saveBest
+  columnYs, answerColumn, bossAim, trimTrail, meters, saveBest
 } from './logic.mjs?v=boss2';
-import { makeBoss } from './parts.mjs?v=boss2';
+import { makeBoss } from '../../lib/boss-model.mjs';
+import { BOSS_EMOJI, DEFAULT_BOSS, bossName, readBoss } from '../../lib/boss-design.mjs';
+import { makeBossBuilder } from '../../lib/boss-builder.mjs';
 import { localQuestion, normalizeQuestion, LOCAL_ROUND } from './quiz.mjs?v=boss2';
 import { makeBuddy, buddyKind, BUDDIES } from '../../lib/buddy3d.mjs?v=gear2';
 import { resolveAutoQuality, pixelRatioCap, rendererOptions, isPerformanceTier } from '../../lib/device-tier.mjs?v=low-end1';
@@ -778,6 +779,8 @@ function pressMenu() {
 addEventListener('keydown', (e) => {
   wakeAudio();
   if (!overlay.hidden) {
+    // Let a focused button receive the keyboard's native click.
+    if (e.isTrusted && e.target?.closest?.('button') && ['Enter', 'Space'].includes(e.code)) return;
     if (e.code === 'Enter' || e.code === 'Space' || e.code === 'KeyW') { e.preventDefault(); if (!e.repeat) pressMenu(); }
     else if (e.code === 'ArrowUp') { e.preventDefault(); focusMenu(-1); }
     else if (e.code === 'ArrowDown') { e.preventDefault(); focusMenu(1); }
@@ -894,46 +897,24 @@ function speak(text) {
 
 /* ---------- builder ---------- */
 
-const PICK_LABELS = { head: 'Head', body: 'Body', legs: 'Legs', color: 'Color', eyes: 'Eyes', extra: 'On top', size: 'Size' };
+const bossBuilder = makeBossBuilder({
+  presets: presetsEl, picks: picksEl, name: bossNameEl, surprise: $('surprise'), done: $('done'),
+  onChange(next, reason) {
+    design = next;
+    buildBoss(design);
+    seedBossPath(bossPos.x, bossPos.y);
+    if (reason === 'part') blip(); else whoosh();
+    paintFocus();
+  },
+  onSave(next) {
+    design = next;
+    speak(`Meet ${bossName(design)}!`);
+    showMenu();
+    buildBtn.focus();
+  }
+});
 
-function paintPresets() {
-  presetsEl.innerHTML = Object.keys(PRESETS).map(kind =>
-    `<button type="button" class="preset" data-kind="${kind}" aria-label="${PART_NAMES.head[kind]}" title="${PART_NAMES.head[kind]}">${BOSS_EMOJI[kind]}</button>`).join('');
-  presetsEl.querySelectorAll('.preset').forEach(b => b.addEventListener('click', () => usePreset(b.dataset.kind)));
-}
-
-/** One tap: a whole ready-made boss, which the rows below can still change. */
-function usePreset(kind) {
-  design = { ...PRESETS[kind] };
-  buildBoss(design);
-  seedBossPath(bossPos.x, bossPos.y);
-  whoosh();
-  paintBuilder();
-}
-
-function paintBuilder() {
-  const d = design || DEFAULT_BOSS;
-  bossNameEl.textContent = bossName(d);
-  presetsEl.querySelectorAll('.preset').forEach(b => b.classList.toggle('on', Object.keys(PRESETS[b.dataset.kind]).every(k => String(PRESETS[b.dataset.kind][k]) === String(d[k]))));
-  picksEl.innerHTML = Object.keys(PARTS).map(key => `
-    <div class="pick" data-key="${key}">
-      <button type="button" data-step="-1" aria-label="Previous ${PICK_LABELS[key]}">‹</button>
-      <div class="what"><small>${PICK_LABELS[key]}</small>${PART_NAMES[key][d[key]]}</div>
-      <button type="button" data-step="1" aria-label="Next ${PICK_LABELS[key]}">›</button>
-    </div>`).join('');
-  picksEl.querySelectorAll('.pick button').forEach(b => {
-    b.addEventListener('click', () => changePart(b.closest('.pick').dataset.key, +b.dataset.step));
-  });
-  paintFocus();
-}
-
-function changePart(key, step) {
-  design = cyclePart(design || DEFAULT_BOSS, key, step);
-  buildBoss(design);
-  seedBossPath(bossPos.x, bossPos.y);
-  blip();
-  paintBuilder();
-}
+function changePart(key, step) { bossBuilder.cycle(key, step); }
 
 function openBuilder() {
   state.phase = 'build';
@@ -946,25 +927,11 @@ function openBuilder() {
   hud.hidden = true;
   askEl.hidden = true;
   menuFocus = 0;
-  paintBuilder();
+  bossBuilder.set(design);
+  paintFocus();
   seedBossPath(bossPos.x, bossPos.y);
 }
 
-function closeBuilder() {
-  design = saveBoss(design || DEFAULT_BOSS);
-  speak(`Meet ${bossName(design)}!`);
-  showMenu();
-}
-
-$('surprise').addEventListener('click', () => {
-  design = randomBoss();
-  buildBoss(design);
-  seedBossPath(bossPos.x, bossPos.y);
-  whoosh();
-  paintBuilder();
-});
-$('done').addEventListener('click', closeBuilder);
-paintPresets();
 buildBtn.addEventListener('click', openBuilder);
 
 function showMenu() {

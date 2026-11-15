@@ -31,8 +31,8 @@ import {
   speakAndWait,
   voiceFor,
   voices
-} from '../lib/speech.js?v=en1';
-import { sidecarGame, sidecarIsBuilt } from '../lib/sidecar.js?v=arcade1';
+} from '../lib/speech.js?v=ink1';
+import { sidecarGame, sidecarIsBuilt } from '../lib/sidecar.js?v=ink1';
 import { spriteHtml } from '../lib/home-ui.mjs?v=gear2';
 import { wornGear } from '../logic/shop.mjs?v=shop3';
 import { voiceStatusText } from '../lib/parent-ui.mjs?v=structure2';

@@ -42,8 +42,8 @@ import {
   verseRecall,
   verseWithRef
 } from '../logic.mjs?v=offline1';
-import { canSpeak, warm } from '../lib/speech.js?v=en1';
-import { bakedLines } from '../lib/speech-core.mjs?v=night1';
+import { canSpeak, warm } from '../lib/speech.js?v=ink1';
+import { bakedLines } from '../lib/speech-core.mjs?v=ink1';
 import { mountCatch, mountLanes, mountRace, mountRocket, pokeRocket, stopArcade } from '../games/arcade.js?v=gear2';
 import { mountLunar } from '../games/lunar.js?v=moon-board2';
 import { mountHoop, stopHoop } from '../games/hoop.js?v=hoop-trio-r2';
@@ -80,7 +80,7 @@ import {
   sidecarGame,
   sidecarIsBuilt,
   stopSidecar
-} from '../lib/sidecar.js?v=arcade1';
+} from '../lib/sidecar.js?v=ink1';
 import {
   SHELF_META,
   shelfOf as shelfIdOf,
@@ -551,6 +551,12 @@ export function registerMounts(rt) {
       if (g.mode === 'boss') {
         if (g.bossEndless) rt.question();
         else if (g.index >= rounds) postSidecar({ type: 'clear' });
+        else rt.question();
+        return;
+      }
+      // Ink Trail runs a final stretch after its last checkpoint and owns the finish screen.
+      if (g.mode === 'ink-trail') {
+        if (g.index >= rounds) postSidecar({ type: 'clear' });
         else rt.question();
         return;
       }
@@ -1539,6 +1545,10 @@ export function registerMounts(rt) {
               if (rt.game !== round || round.finished) return;
               rt.finish(detail || 'round');
             }, 4500);
+            return;
+          }
+          if (round.mode === 'ink-trail') {
+            if (!round.freePlay && detail === 'escape') rt.finish(detail);
             return;
           }
           if (round.mode === 'boss') {

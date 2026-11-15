@@ -37,7 +37,7 @@ import {
   bustBoard,
   verseWithRef
 } from '../logic.mjs?v=offline1';
-import { canSpeak, commonLines, prefetchSpeech } from '../lib/speech.js?v=en1';
+import { canSpeak, commonLines, prefetchSpeech } from '../lib/speech.js?v=ink1';
 import { stopArcade } from '../games/arcade.js?v=gear2';
 import { stopHoop } from '../games/hoop.js?v=hoop-trio-r2';
 import { stopHook } from '../games/hook.js?v=ask-first2-r2';
@@ -64,7 +64,7 @@ import { stopCrayon } from '../games/crayon.js?v=crayon-more';
 import { stopMarble } from '../games/marble.js?v=gear2';
 import { stopBridge } from '../games/bridge.js?v=gear2';
 import { stopMaze } from '../games/maze.js?v=gear2';
-import { lessonResult, postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=arcade1';
+import { lessonResult, postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=ink1';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=aviator1';
 
@@ -172,7 +172,7 @@ export function registerRound(rt) {
       message.gates = rallyGates(message.stops);
     }
     if (g.mode === 'flight' || g.mode === 'blocks') message.freeEvery = rallyClearCount(rt.questionCount());
-    if (g.mode === 'pinecone-trail' || g.mode === 'range' || g.mode === 'roll' || g.mode === 'grass' || g.mode === 'glow' || g.mode === 'dash' || g.mode === 'boss') message.total = rt.questionCount();
+    if (g.mode === 'ink-trail' || g.mode === 'pinecone-trail' || g.mode === 'range' || g.mode === 'roll' || g.mode === 'grass' || g.mode === 'glow' || g.mode === 'dash' || g.mode === 'boss') message.total = rt.questionCount();
     return message;
   }
   /** Games that ask at moments in their own play and bank stars as they go (`banks` in lib/sidecar.js). */
@@ -202,7 +202,7 @@ export function registerRound(rt) {
       return;
     }
     // Sky flight and the range keep the same question up after a miss.
-    const flightMiss = (g.mode === 'flight' || g.mode === 'range' || g.mode === 'gulp' || g.mode === 'blocks' || g.mode === 'roll' || g.mode === 'grass' || g.mode === 'glow' || g.mode === 'dash' || g.mode === 'boss' || banks(g.mode)) && !ok;
+    const flightMiss = (g.mode === 'flight' || g.mode === 'range' || g.mode === 'gulp' || g.mode === 'blocks' || g.mode === 'roll' || g.mode === 'grass' || g.mode === 'glow' || g.mode === 'dash' || g.mode === 'boss' || g.mode === 'ink-trail' || banks(g.mode)) && !ok;
     g.done = !flightMiss;
     if (!ok) g.missed = true;
     else if (!g.missed) g.firstCorrect++;
@@ -226,6 +226,8 @@ export function registerRound(rt) {
             ? (ok ? 'Yes! Zoom!' : 'Not yet. Catch another one.')
           : g.mode === 'boss'
             ? (ok ? 'Yes! Swim away!' : 'Not yet. Swim to another one.')
+          : g.mode === 'ink-trail'
+            ? (ok ? 'Yes! Golden ink!' : 'Oops! Wobbly ink. Keep drawing.')
           : g.mode === 'pinecone-trail'
             ? (ok ? 'Yes! Your trail shield is ready.' : 'Not yet. Pick another one.')
           : g.mode === 'pebble'
@@ -857,7 +859,7 @@ export function registerRound(rt) {
       else if (g.mode === 'glow') glowAsk(g);
       else if (g.mode === 'dash') dashAsk(g);
       else if (g.mode === 'boss') bossAsk(g);
-      else if (banks(g.mode)) cabinAsk(g);
+      else if (g.mode === 'ink-trail' || banks(g.mode)) cabinAsk(g);
       else if (g.mode === 'paint') shellAsk(g);
       else {
         rallyAsk(g);
