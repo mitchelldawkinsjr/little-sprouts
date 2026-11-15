@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, statSync } from 'node:fs';
-import { ARRIVAL_RADIUS, atBeacon, distanceTo, HOME, makeTrail, STOPS } from '../sidecars/sketchbook/checkpoints.mjs';
+import { ARRIVAL_RADIUS, atBeacon, distanceTo, HOME, LANDMARKS, makeTrail, STOPS } from '../sidecars/sketchbook/checkpoints.mjs';
 import { padMapFor, sidecarArcadeIds, sidecarGame } from '../lib/sidecar.js';
 
 const pos = ([x, y, z]) => ({ x, y, z });
@@ -32,8 +32,8 @@ test('The trail spans both sides of the map with distinct northern and southern 
   const route = [HOME, ...STOPS];
   const lengths = STOPS.map((stop, i) => distanceTo(pos(route[i]), stop));
   assert.equal(STOPS.length, 5);
-  assert.ok(lengths.every(length => length > 24));
-  assert.ok(lengths.reduce((a, b) => a + b) > 240);
+  assert.ok(lengths[0] > 12 && lengths.slice(1).every(length => length > 45));
+  assert.ok(lengths.reduce((a, b) => a + b) > 330);
   assert.ok(STOPS.some(([x]) => x <= -20) && STOPS.some(([x]) => x >= 20));
   assert.ok(STOPS.some(([, , z]) => z < -65) && STOPS.some(([, , z]) => z > 65));
 });
@@ -92,4 +92,33 @@ test('Back to the trail restarts at the last lit beacon, never at an unanswered 
   assert.equal(trail.reach(pos(STOPS[1])), true);
   assert.equal(trail.settle(false), false);
   assert.deepEqual(trail.resumePosition, [x, y + 0.65, z]);
+});
+
+test('The tunnel direction advances without opening extra questions and resets on return', () => {
+  const trail = makeTrail();
+  for (const stop of STOPS.slice(0, 2)) {
+    assert.equal(trail.reach(pos(stop)), true);
+    assert.equal(trail.settle(true), true);
+  }
+  for (const stop of LANDMARKS[2].via) {
+    assert.equal(trail.guide, stop);
+    assert.equal(trail.reach(pos(stop)), false);
+    trail.updateGuide(pos(stop));
+  }
+  assert.equal(trail.guide, STOPS[2]);
+  trail.restartLeg();
+  assert.equal(trail.guide, LANDMARKS[2].via[0]);
+});
+
+test('The last two named stops are within easy range of their original ground-level aircraft spawns', () => {
+  const model = readFileSync(new URL('../sidecars/sketchbook/build/assets/world-lite.glb', import.meta.url));
+  const { nodes } = JSON.parse(model.toString('utf8', 20, 20 + model.readUInt32LE(12)));
+  const air = nodes.find(n => n.name === 'air_vehicles');
+  for (const i of [3, 4]) {
+    const spawn = air.children.map(j => nodes[j]).find(n => n.name.replaceAll('.', '') === LANDMARKS[i].aircraft);
+    assert.equal(spawn.extras.type, i === 3 ? 'airplane' : 'heli');
+    const [x, y, z] = spawn.translation.map((n, axis) => n + air.translation[axis]);
+    assert.ok(distanceTo({ x, z }, STOPS[i]) < 4);
+    assert.ok(Math.abs(y - STOPS[i][1]) < .35);
+  }
 });

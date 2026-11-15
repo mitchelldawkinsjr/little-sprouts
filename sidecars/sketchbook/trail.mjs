@@ -2,7 +2,7 @@ import { makeQuiz } from '../../lib/sidecar-quiz.mjs';
 import { attachTouchControls, isTouchDevice } from '../../lib/touch-controls.mjs?v=touch1';
 import { buddyKind, makeBuddy } from '../../lib/buddy3d.mjs';
 import { isPerformanceTier, resolveAutoQuality } from '../../lib/device-tier.mjs';
-import { distanceTo, makeTrail, STOPS } from './checkpoints.mjs?v=trail3';
+import { distanceTo, LANDMARKS, makeTrail, STOPS } from './checkpoints.mjs?v=trail4';
 
 const $ = id => document.getElementById(id);
 const quiz = makeQuiz();
@@ -11,7 +11,7 @@ const runtime = globalThis.Sketchbook;
 const supported = !!runtime?.World;
 const performanceTier = isPerformanceTier(resolveAutoQuality());
 const state = { world: null, buddy: null, ready: false, arcade: !quiz.live, responded: false, finished: false };
-let fromHost, paused, driving, timer = 0, motion = 0, touch, touchDevice = false;
+let fromHost, paused, driving, flightHint, timer = 0, motion = 0, touch, touchDevice = false;
 const touchCodes = new Map();
 const movementCodes = new Set();
 const touchPanel = $('trail-touch');
@@ -112,8 +112,8 @@ function paintLights() {
 
 function paintMode() {
   $('trail-mode').textContent = state.arcade ? 'Free roam · No questions'
-    : trail.done ? 'All 5 beacons lit! Keep exploring or finish.'
-    : `${trail.index} of ${STOPS.length} beacons lit · Follow the arrow`;
+    : trail.done ? `All ${STOPS.length} beacons lit! Keep exploring or finish.`
+    : `${trail.index} of ${STOPS.length} beacons lit · Next: ${LANDMARKS[trail.index].name}`;
   $('trail-menu').hidden = false;
   $('trail-starts').hidden = !state.arcade;
   $('trail-return').hidden = state.arcade || trail.done;
@@ -235,11 +235,12 @@ async function activateBeacon() {
   const reward = trail.index + 1;
   pause(true);
   try {
-    const ok = await quiz.ask({ title: 'Light a beacon', note: 'Pick the right answer to switch this trail light on.' });
+    const landmark = LANDMARKS[trail.index];
+    const ok = await quiz.ask({ title: 'Light a beacon', note: `${landmark.name} · Pick the right answer to light this stop.` });
     if (trail.settle(ok && !quiz.cleared && !state.arcade)) {
       paintLights();
       paintMode();
-      notice(trail.done ? 'Trail complete! All five beacons are lit.' : `Beacon ${reward} lit! Follow the next arrow.`);
+      notice(trail.done ? `Trail complete! ${landmark.hint}` : landmark.hint, 6);
       quiz.progress(`${reward} of ${STOPS.length} beacons lit`);
     }
   } finally {
@@ -252,6 +253,7 @@ function resetTrailPosition() {
   if (!state.ready || !world || trail.pending) return;
   hideMenus();
   state.ready = false;
+  trail.restartLeg();
   pause(true);
   // Relaunch to recover the player and vehicles even if the player was in a seat or flying.
   world.launchScenario('default');
@@ -327,13 +329,24 @@ function tick(dt, wallDt) {
     gem.position.y = y + 1.35 + Math.sin(motion * 3 + i) * 0.18;
     gem.rotation.y = motion * 1.5;
   });
-  if (state.arcade || trail.done || !character || state.finished) return;
+  if (state.arcade || !character || state.finished) return;
   const pos = character.getWorldPosition(v);
-  const dx = trail.target[0] - pos.x, dz = trail.target[2] - pos.z;
+  const nearby = !character.controlledObject && LANDMARKS.find(({ aircraft }, i) => {
+    if (!aircraft || distanceTo(pos, STOPS[i]) > 5 || Math.abs(pos.y - STOPS[i][1]) > 2.2) return false;
+    return world.vehicles.some(vehicle => vehicle.spawnPoint.name === aircraft && vehicle.position.distanceTo(pos) < 7);
+  });
+  if (nearby !== flightHint) {
+    flightHint = nearby;
+    $('trail-boarding').hidden = !nearby;
+    $('trail-boarding').textContent = nearby ? nearby.hint : '';
+  }
+  if (trail.done) return;
+  const target = trail.updateGuide(pos);
+  const dx = target[0] - pos.x, dz = target[2] - pos.z;
   world.camera.getWorldDirection(forward);
   const angle = Math.atan2(dx, -dz) - Math.atan2(forward.x, -forward.z);
   $('trail-arrow').style.transform = `rotate(${angle}rad)`;
-  $('trail-distance').textContent = `${Math.round(distanceTo(pos, trail.target))} m`;
+  $('trail-distance').textContent = `${Math.round(distanceTo(pos, target))} m`;
   if (!quiz.cleared && trail.reach(pos)) void activateBeacon();
 }
 
@@ -357,11 +370,15 @@ async function loaded() {
     }
   }
   setBuddy();
+  flightHint = undefined;
+  $('trail-boarding').hidden = true;
   driving = player()?.controlledObject;
   paintControls(driving);
   if (!state.arcade) {
-    player()?.setPosition(...trail.resumePosition);
-    state.world.cameraOperator.theta = 0;
+    const start = trail.resumePosition;
+    const target = trail.guide;
+    player()?.setPosition(...start);
+    if (target) state.world.cameraOperator.theta = Math.atan2(start[0] - target[0], start[2] - target[2]) * 180 / Math.PI;
     state.world.cameraOperator.phi = 18;
     state.world.cameraOperator.targetRadius = 4.4;
   }
@@ -391,7 +408,7 @@ try {
   if (isTouchDevice()) showTouchControls();
   if (!quiz.live) {
     document.documentElement.setAttribute('data-pad-standalone', '');
-    void import('../../lib/pad.js?v=trail3');
+    void import('../../lib/pad.js?v=trail4');
   }
   pause(true);
   state.world.registerUpdatable({ updateOrder: 99, update: tick });

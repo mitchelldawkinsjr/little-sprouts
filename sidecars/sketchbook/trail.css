@@ -4,12 +4,12 @@ body { margin: 0; overflow: hidden; background: #b7dbaa; }
 #canvas { position: fixed; inset: 0; display: block; touch-action: none; }
 #loading-screen { z-index: 5; }
 #ui-container, .dg.ac { display: none !important; }
-#trail-hud, #trail-guide, #trail-help, #trail-notice, #trail-panel, #trail-panel, #trail-picker {
+#trail-hud, #trail-guide, #trail-help, #trail-notice, #trail-boarding, #trail-panel, #trail-picker {
   position: fixed; z-index: 25; color: #163d36; text-shadow: none;
   font: 650 clamp(12px, 2.3vw, 15px)/1.35 system-ui, sans-serif;
   box-sizing: border-box;
 }
-#trail-hud, #trail-guide, #trail-help, #trail-notice {
+#trail-hud, #trail-guide, #trail-help, #trail-notice, #trail-boarding {
   padding: 7px 12px; background: #fffdf3f5; border: 1px solid #e6f0d9;
   border-radius: 14px; box-shadow: 0 4px 18px #162d332b;
 }
@@ -73,3 +73,6 @@ body[data-trail-touch] #trail-help, .pad-cursor, .pad-note { display: none !impo
     bottom: max(12px, env(safe-area-inset-bottom)) !important;
   }
 }
+
+#trail-boarding { bottom: max(50px, calc(env(safe-area-inset-bottom) + 44px)); left: 10px; max-width: min(48%, 21rem); margin: 0; pointer-events: none; }
+body[data-trail-paused] #trail-boarding { display: none !important; }
