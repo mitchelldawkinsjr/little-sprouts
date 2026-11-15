@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Pinecone Trail · Little Sprouts</title>
+  <link rel="stylesheet" href="./trail.css?v=1">
+  <script type="importmap">{"imports":{"three":"../../vendor/three/build/three.module.js?v=r187"}}</script>
+</head>
+<body>
+  <canvas id="trail" aria-hidden="true"></canvas>
+  <div id="hud" hidden>
+    <div class="metrics">
+      <div class="pill distance"><span class="caption">DISTANCE</span> <strong id="meters">0 m</strong></div>
+      <div class="pill" id="hearts" role="img" aria-label="3 hearts">♥ ♥ ♥</div>
+      <div class="pill" id="seeds" hidden><span aria-hidden="true">🌱</span> <strong id="seed-count">0</strong></div>
+      <div class="pill" id="shield" hidden>🛡 <strong id="shield-time">6s</strong></div>
+    </div>
+    <button id="pause" type="button" aria-label="Pause" title="Pause (P)">Ⅱ</button>
+  </div>
+  <p id="toast" role="status" hidden></p>
+  <div id="touch-controls" aria-label="Trail controls" hidden>
+    <div class="steer">
+      <button type="button" data-move="-1" aria-label="Move left">←</button>
+      <button type="button" data-move="1" aria-label="Move right">→</button>
+    </div>
+    <button id="jump" type="button" aria-label="Jump"><span aria-hidden="true">↑</span><small>JUMP</small></button>
+  </div>
+  <div id="panel" data-pad-menu>
+    <section class="card" aria-labelledby="title">
+      <p class="eyebrow"><span aria-hidden="true">✦</span> <span id="tag">LITTLE SPROUTS ARCADE</span></p>
+      <h1 id="title" tabindex="-1">Pinecone Trail</h1>
+      <p id="copy">Roll with your garden buddy, switch lanes around pines, and hop over fallen logs.</p>
+      <p id="keys">← → Switch lanes <span aria-hidden="true">·</span> Space to jump <span aria-hidden="true">·</span> P to pause</p>
+      <div class="actions">
+        <button type="button" id="primary" disabled>Loading…</button>
+        <button type="button" id="secondary" hidden>All games</button>
+      </div>
+      <p id="best" hidden></p>
+    </section>
+  </div>
+  <script type="module" src="./game.mjs?v=1"></script>
+</body>
+</html>
