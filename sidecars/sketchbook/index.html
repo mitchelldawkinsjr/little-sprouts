@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Sketchbook Mega Ramp · Little Sprouts</title>
+  <link rel="stylesheet" href="./trail.css?v=trail8">
+</head>
+<body data-trail-paused>
+  <header id="trail-hud" data-touch-ignore>
+    <strong>Sketchbook Mega Ramp</strong>
+    <p id="trail-mode">Opening the playground…</p>
+  </header>
+  <div id="trail-shortcuts" data-touch-ignore>
+    <button type="button" id="trail-menu" aria-haspopup="dialog" aria-controls="trail-panel" aria-expanded="false" hidden>
+      <span aria-hidden="true">☰</span> Menu
+    </button>
+    <button type="button" id="trail-quick-starts" aria-haspopup="dialog" aria-controls="trail-picker" aria-expanded="false" hidden>
+      <span aria-hidden="true">🗺️</span> Starting places
+    </button>
+  </div>
+  <div id="trail-guide" aria-label="Direction and distance to next beacon" hidden>
+    <span id="trail-arrow" aria-hidden="true">↑</span>
+    <span id="trail-distance"></span>
+  </div>
+  <p id="trail-notice" role="status" aria-live="polite" hidden></p>
+  <section id="trail-panel" role="dialog" aria-modal="true" aria-labelledby="trail-panel-title" hidden data-pad-menu data-touch-ignore>
+    <span class="trail-kicker">🌱 SKETCHBOOK MEGA RAMP</span>
+    <h2 id="trail-panel-title">Trail menu</h2>
+    <p class="trail-panel-intro">Take a break or pick your next adventure.</p>
+    <div id="trail-actions">
+      <button type="button" id="trail-resume" class="trail-card trail-primary" data-trail-back><span class="trail-icon" aria-hidden="true">▶</span><strong>Keep playing</strong></button>
+      <button type="button" id="trail-starts" class="trail-card" hidden><span class="trail-icon" aria-hidden="true">🗺️</span><strong>Starting places</strong><small>Pick a ramp, race, or runway</small></button>
+      <button type="button" id="trail-friends" class="trail-card"><span class="trail-icon" aria-hidden="true">🤝</span><strong id="trail-friends-label">Play with a friend</strong><small>Explore together</small></button>
+      <button type="button" id="trail-return" class="trail-card" hidden><span class="trail-icon" aria-hidden="true">🧭</span><strong>Back to the trail</strong><small>Return to your last stop</small></button>
+      <button type="button" id="trail-finish" class="trail-card" hidden><span class="trail-icon" aria-hidden="true">⭐</span><strong>Finish trail</strong><small>Save your stars</small></button>
+    </div>
+  </section>
+  <section id="trail-picker" role="dialog" aria-modal="true" aria-labelledby="trail-picker-title" hidden data-pad-menu data-touch-ignore>
+    <span class="trail-kicker">📍 EXPLORE THE MAP</span>
+    <h2 id="trail-picker-title">Where should we start?</h2>
+    <p class="trail-panel-intro">Pick a place. Your lit beacons stay lit.</p>
+    <div id="trail-scenarios"></div>
+    <button type="button" id="trail-close" class="trail-back" data-trail-back>← Back to menu</button>
+  </section>
+  <section id="trail-friend-panel" role="dialog" aria-modal="true" aria-labelledby="trail-friend-title" hidden data-pad-menu data-touch-ignore>
+    <span class="trail-kicker">🤝 TWO PLAYERS</span>
+    <h2 id="trail-friend-title">Play with a friend</h2>
+    <p>Explore the same playground together. Questions and stars stay with each learner.</p>
+    <p id="trail-friend-status" role="status"></p>
+    <a id="trail-invite" hidden></a>
+    <div id="trail-friend-actions">
+      <button type="button" id="trail-host">Start an online room</button>
+      <button type="button" id="trail-wifi">Play on this Wi-Fi</button>
+      <button type="button" id="trail-copy" hidden>Copy invite link</button>
+      <button type="button" id="trail-leave" hidden>Leave room</button>
+      <button type="button" id="trail-friend-back" class="trail-back" data-trail-back>Back to trail menu</button>
+    </div>
+  </section>
+  <div id="trail-touch" role="group" aria-label="Touch controls" hidden data-touch-ignore>
+    <button type="button" data-control="KeyQ" hidden>Yaw left</button>
+    <button type="button" data-control="KeyE" hidden>Yaw right</button>
+    <button type="button" data-control="KeyV" hidden>View</button>
+    <button type="button" data-control="KeyX" hidden>Switch seat</button>
+    <button type="button" data-control="KeyB" hidden>Wheel brake</button>
+    <button type="button" data-control="KeyG" hidden>Passenger</button>
+    <button type="button" data-control="KeyF">Vehicle</button>
+    <button type="button" data-control="KeyW" hidden>Gas</button>
+    <button type="button" data-control="ShiftLeft">Run</button>
+    <button type="button" data-control="Space">Jump</button>
+  </div>
+  <p id="trail-boarding" role="status" hidden></p>
+  <p id="trail-help" hidden></p>
+  <script src="./build/sketchbook.min.js?v=trail1"></script>
+  <script type="module" src="./trail.mjs?v=trail8"></script>
+</body>
+</html>

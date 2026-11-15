@@ -1,13 +1,13 @@
-import './lib/pad.js?v=arcade1';
+import './lib/pad.js?v=trail8';
 import './lib/tilt.js?v=ask-first';
 import { roundCount, stageOf, profileSprite, SPRITES } from './logic.mjs?v=offline1';
 import { knownVoice } from './lib/speech.js?v=en1';
-import { findBuiltSidecars } from './lib/sidecar.js?v=arcade1';
+import { findBuiltSidecars } from './lib/sidecar.js?v=trail8';
 import { rt } from './app/runtime.mjs?v=lean-r2';
-import { registerHelpers } from './app/helpers.mjs?v=en1';
-import { registerRound } from './app/round.mjs?v=en1';
-import { registerMounts } from './app/mounts.mjs?v=en1';
-import { registerParent } from './app/parent.mjs?v=en1';
+import { registerHelpers } from './app/helpers.mjs?v=trail8';
+import { registerRound } from './app/round.mjs?v=trail8';
+import { registerMounts } from './app/mounts.mjs?v=trail8';
+import { registerParent } from './app/parent.mjs?v=trail8';
 import { registerShop } from './app/shop.mjs?v=bloom1';
 import { registerRouter } from './app/router.mjs?v=shop1';
 

@@ -305,6 +305,7 @@
         <li><a href="https://codepen.io/cassie-codes/pen/zWJxXj" target="_blank" rel="noopener">Cassie Evans — CSS / SVG Blobby Background</a><p>Merge jar uses that gooey blur, so matching circles melt together when they touch. The jar, the tokens, and the questions are drawn here.</p></li>
         <li><a href="https://codepen.io/dipscom/pen/amxYvB" target="_blank" rel="noopener">Pedro Tavares — Shooting Hoops</a><p>Shooting hoops follows that flick: drag the ball, let go, and it arcs at the rim. Three hoops show the answers. The gym, the ball, and the questions are drawn here.</p></li>
         <li><a href="https://codepen.io/amit_sheen/pen/dyQGQLr" target="_blank" rel="noopener">Amit Sheen — Catch That Light!</a><p>Catch the light follows that ring and the tap when the moving light meets the green bulb. Rush gets faster after every catch. The questions are Little Sprouts’ own.</p></li>
+        <li><a href="https://github.com/swift502/Sketchbook" target="_blank" rel="noopener">swift502 (Jakub Bláha) — Sketchbook</a><p>Sketchbook Mega Ramp uses the original playground, physics, and vehicles (MIT). Its lightweight paint, garden buddy, and learning beacons are Little Sprouts additions.</p></li>
         <li><a href="https://fonts.google.com/specimen/Outfit" target="_blank" rel="noopener">Outfit</a> and <a href="https://fonts.google.com/specimen/DM+Sans" target="_blank" rel="noopener">DM Sans</a><p>The type on this site. Outfit is by Rodrigo Fuenzalida. DM Sans is by Colophon Foundry. Copies live in vendor/fonts so the PWA keeps the look offline.</p></li>
       </ul>
     </div>
@@ -317,11 +318,11 @@
     <button type="button" class="quiet" id="listenAgain">Hear it again</button>
     <button type="button" class="quiet" id="listenBack">← All games</button>
   </div>
-  <script type="module" src="app.js?v=en1"></script>
+  <script type="module" src="app.js?v=trail8"></script>
   <script type="module">
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js?v=offline3').then(async () => {
-        const { warmOffline } = await import('./lib/offline-warm.mjs?v=en1');
+        const { warmOffline } = await import('./lib/offline-warm.mjs?v=trail6');
         warmOffline();
       }).catch(() => {});
     }
