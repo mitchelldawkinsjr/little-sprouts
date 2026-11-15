@@ -12,7 +12,7 @@ import {
   versePack
 } from '../logic.mjs?v=offline1';
 import { contextFor, onSpeechStatus, prefetchSpeech, speak, stop, voiceFor } from '../lib/speech.js?v=night1';
-import { postSidecar, sidecarRows } from '../lib/sidecar.js?v=trail1';
+import { postSidecar, sidecarArcadeIds, sidecarRows } from '../lib/sidecar.js?v=trail1';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 
 export function registerHelpers(rt) {
@@ -68,7 +68,9 @@ export function registerHelpers(rt) {
   const countItems = [['🍎', 'apples'], ['⭐', 'stars'], ['🐞', 'ladybugs'], ['🌼', 'flowers'], ['🐟', 'fish'], ['🎈', 'balloons']];
   const huntThings = [['sock', 'socks'], ['spoon', 'spoons'], ['toy', 'toys'], ['book', 'books'], ['block', 'blocks'], ['crayon', 'crayons']];
   const styles = [['tap', '👆', 'Tap', 'Tap the answer on the screen.'], ['move', '🦘', 'Move', 'Spread floor cards out. The game calls the moves and a grown-up taps ✓.'], ['hunt', '🔎', 'Hunt', 'Find real things around you. A grown-up taps ✓. What’s missing? plays as Move.'], ['reach', '📷', 'Reach', 'Stand back so the camera sees shoulders and hands. Hold one hand on an answer until it fills. Video stays on this device and is never recorded.']];
-  const ARCADE_PLAY = new Set(['bike', 'flight', 'walk', 'skybound', 'gulp', 'blocks', 'cabin', 'inkwave', 'fishing', 'station', 'deliveries', 'sketchbook', 'lunar', 'hoop', 'light', 'bridge', 'maze', 'chase', 'hop', 'toast', 'glide', 'city', 'aisle', 'lily', 'mole', 'bust', 'stack', 'lamp', 'cube', 'crayon']);
+  // Games that play without questions for a learner with Arcade play on. Sidecars say so themselves
+  // (the `arcade` line in lib/sidecar.js).
+  const ARCADE_PLAY = new Set([...sidecarArcadeIds(), 'catch', 'lanes', 'hook', 'sky', 'planet', 'lunar', 'hoop', 'light', 'bridge', 'maze', 'chase', 'hop', 'toast', 'glide', 'city', 'aisle', 'lily', 'mole', 'bust', 'stack', 'lamp', 'cube', 'crayon']);
   const moves = [['Hop like a bunny', '🐰'], ['Stomp like an elephant', '🐘'], ['Tiptoe like a mouse', '🐭'], ['Waddle like a penguin', '🐧'], ['Gallop like a horse', '🐴'], ['Crawl like a turtle', '🐢'], ['Leap like a frog', '🐸']];
   const breaks = ['Run to the door and back!', 'Spin around three times!', 'Do five big jumps!', 'March in a circle and come back!'];
   const listen = {

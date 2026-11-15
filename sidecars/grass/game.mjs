@@ -8,7 +8,7 @@ import {
   BLOCK, RUN_SPEED,
   makeField, moveRunner, pickupUnder, heightMask, isSolid
 } from './logic.mjs?v=grass1';
-import { localQuestion, normalizeQuestion, LOCAL_ROUND } from './quiz.mjs?v=grass1';
+import { arcadeGoal, localQuestion, normalizeQuestion, LOCAL_ROUND } from './quiz.mjs?v=arcade1';
 import { makeGrass } from './grass.mjs?v=grass1';
 import { makeBuddy, buddyKind, BUDDIES } from '../../lib/buddy3d.mjs?v=gear2';
 import { resolveAutoQuality, pixelRatioCap, rendererOptions, isPerformanceTier } from '../../lib/device-tier.mjs?v=low-end1';
@@ -540,7 +540,7 @@ function toast(text, kind) {
 }
 
 function paintHud() {
-  const total = state.q?.total || (state.source === 'local' ? LOCAL_ROUND : 0);
+  const total = state.arcade ? 0 : state.q?.total || (state.source === 'local' ? LOCAL_ROUND : 0);
   countEl.textContent = total ? `Maze ${Math.min(total, state.step + 1)} / ${total}` : `Maze ${state.step + 1}`;
   starsEl.textContent = `⭐ ${state.stars}`;
 }
@@ -563,11 +563,14 @@ function present(q) {
 }
 
 function nextLocal() {
+  // Arcade play: a star to reach, maze after maze, no questions.
+  if (state.arcade) { present(normalizeQuestion(arcadeGoal(Math.random, state.localIndex++))); return; }
   if (state.step >= LOCAL_ROUND) { endRound(); return; }
   present(normalizeQuestion(localQuestion(Math.random, state.localIndex++)));
 }
 
 function hostAsk(msg) {
+  if (state.arcade) return;
   const q = normalizeQuestion(msg);
   if (!q) return;
   // The host's own markup: things to count, or a number path.
@@ -650,9 +653,17 @@ addEventListener('message', (event) => {
   const data = event.data;
   if (!data || data.source !== SIDECAR_SOURCE) return;
   if (data.type === 'ask') hostAsk(data);
-  else if (data.type === 'clear' || data.type === 'arcade') {
+  else if (data.type === 'clear') {
     askEl.hidden = true;
     toast('Great running!', 'good');
+  }
+  else if (data.type === 'arcade' && !state.arcade) {
+    // Arcade play: no questions. Each maze has a star to reach instead, and they keep coming.
+    state.arcade = true;
+    state.source = 'local';
+    state.pending = null;
+    state.hostKey = '';
+    if (state.phase === 'wait' || state.phase === 'play' || state.phase === 'look') nextLocal();
   }
 });
 if (embedded) call(window.SproutsSidecar?.need);

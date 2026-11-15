@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, statSync } from 'node:fs';
 import { ARRIVAL_RADIUS, atBeacon, HOME, makeTrail, STOPS } from '../sidecars/sketchbook/checkpoints.mjs';
-import { padMapFor, sidecarGame } from '../lib/sidecar.js';
+import { padMapFor, sidecarArcadeIds, sidecarGame } from '../lib/sidecar.js';
 
 const pos = ([x, y, z]) => ({ x, y, z });
 
@@ -49,7 +49,7 @@ test('A checkpoint needs ground-level proximity and gives its reward only once',
 test('Sketchbook ships after deployment and all of its runtime assets fit the offline cache', () => {
   const read = name => readFileSync(new URL('../' + name, import.meta.url), 'utf8');
   assert.match(read('Dockerfile'), /COPY sidecars\/sketchbook \/usr\/share\/nginx\/html\/sidecars\/sketchbook/);
-  assert.match(read('app/helpers.mjs'), /ARCADE_PLAY = new Set\([^\n]*'sketchbook'/);
+  assert.ok(sidecarArcadeIds().includes('sketchbook'));
   const warm = read('lib/offline-warm.mjs');
   const files = ['index.html','trail.css','trail.mjs','checkpoints.mjs','build/sketchbook.min.js',
     ...['world-lite','boxman','car','heli','airplane'].map(x => 'build/assets/' + x + '.glb')];

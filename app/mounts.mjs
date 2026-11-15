@@ -353,20 +353,26 @@ export function registerMounts(rt) {
       arcadeOn: !!rt.p().arcade
     });
   }
+  // Games that never stop for a question (puzzles and matching), so arcade play changes nothing there.
+  const NO_QUESTIONS = new Set(['match', 'trace', 'sort', 'merge', 'marble']);
   function gameCardData(id) {
     const row = rt.games.find(g => g[0] === id);
     if (!row) return null;
     const [gid, name, desc, icon, tint, kicker] = row;
+    // Arcade play shows on every card: ARCADE for games that drop their questions, and a plain note on
+    // the learning games that are the questions themselves.
+    const arcade = !!rt.p()?.arcade && !NO_QUESTIONS.has(gid);
+    const free = arcade && rt.ARCADE_PLAY.has(gid);
     return {
       gid,
       name,
       blurb: gameBlurb(gid, desc),
       icon,
       tint,
-      kicker: kicker || '',
+      kicker: free ? 'ARCADE' : kicker || '',
       stageLabel: stageLabel(rt.band()),
       level: rt.skillLevel(gid),
-      state: skillState(rt.record(gid)),
+      state: arcade && !free ? 'Asks questions' : skillState(rt.record(gid)),
       esc
     };
   }
@@ -562,6 +568,16 @@ export function registerMounts(rt) {
     clearTimers(mode);
     stopFn();
     camOff();
+    if (g.freePlay) {
+      // Arcade play asks nothing, so it banks no learning stars.
+      $('#app').innerHTML = `<section class="playarea"><div class="result-star" aria-hidden="true">🎮</div><h1>Game over</h1><p>Nice playing! Arcade play: no questions this time.</p>${starGardenHtml()}<button class="primary" id="again">Play again</button> <button class="quiet" id="all">Choose a game</button></section>`;
+      $('#again').onclick = () => start(mode);
+      $('#all').onclick = home;
+      const line = 'Game over. Nice playing!';
+      rt.say(line);
+      rt.focusHeading();
+      return;
+    }
     const played = Math.max(1, (g.index | 0) + 1);
     const correct = Math.min(played, g.firstCorrect || 0);
     Object.assign(rt.p(), applyRound(rt.p(), g.mode, g.key, played, correct));
@@ -1143,8 +1159,8 @@ export function registerMounts(rt) {
     const howTo = HAS_READY.has(g.mode)
       ? g.howTo
       : g.mode === 'catch'
-      ? (reach ? 'Reach up and catch the number with your hand.' : 'Slide the basket under the number.')
-      : (reach && g.mode === 'lanes' ? 'Step into the lane with the word. You get 10 seconds to get there.' : 'Drive to the word.');
+      ? (reach ? 'Reach up and catch the number with your hand.' : g.freePlay ? 'Slide the basket under the stars.' : 'Slide the basket under the number.')
+      : (reach && g.mode === 'lanes' ? 'Step into the lane with the word. You get 10 seconds to get there.' : g.freePlay ? 'Drive into the star.' : 'Drive to the word.');
     if (race && g.phase === 'ready') body = raceReadyBody();
     else if (rocket) body = `<div id="rocketShow">${g.show || ''}</div><div id="arcade"></div><div class="choices" id="rocketChoices">${picks}</div>`;
     else if (lunar) {
@@ -1393,7 +1409,9 @@ export function registerMounts(rt) {
           if (rt.game?.mode === 'bike') postSidecar(rt.bikeConfig(rt.game));
           if (rt.game?.mode === 'quickmath') return;
           if (rt.game && side.lesson) { sendLessonConfig(); return; }
-          if (rt.game?.freePlay && (side.banks || ['flight', 'walk', 'skybound', 'gulp', 'blocks', 'dash', 'boss'].includes(rt.game.mode))) postSidecar({ type: 'arcade' });
+          // Arcade play: tell the game there are no questions (or, for a game with no arcade of its own,
+          // send it the first round of pictures where every choice is right).
+          if (rt.game?.freePlay && side.arcade && side.arcadeVia !== 'pictures') postSidecar({ type: side.arcadeVia === 'clear' ? 'clear' : 'arcade' });
           else if (rt.game) postSidecar(rt.rallyMessage(rt.game));
         },
         // Skybound reloads its page for the next world: tell the new page arcade or the current question again.
@@ -1414,6 +1432,8 @@ export function registerMounts(rt) {
           }
         },
         onShow() {
+          // Arcade picture rounds: the goal was said at the start; don't stop play to read it each time.
+          if (rt.game?.freePlay && side.arcadeVia === 'pictures') return;
           // Garden gulp and Garden dash keep moving while the question is read, so just say it.
           if (rt.game?.mode === 'gulp' || rt.game?.mode === 'dash' || rt.game?.mode === 'boss' || rt.game?.mode === 'deliveries') { if (!rt.game.finished) rt.say(rt.game.prompt); return; }
           if (rt.game && !rt.game.finished) rt.askBeforePlay(rt.game.prompt);
@@ -1423,7 +1443,19 @@ export function registerMounts(rt) {
         },
         onNeed(data) {
           if (side.lesson) { if (data?.lesson && rt.game && !rt.game.finished) sendLessonConfig(); return; }
-          if (!rt.game || rt.game.finished || rt.game.freePlay) return;
+          if (!rt.game || rt.game.finished) return;
+          if (rt.game.freePlay) {
+            // A picture round for a game with no arcade of its own; the rally hears "nothing to ask" again.
+            // A game that asks for a question in arcade play hears "arcade" once more: it may have
+            // loaded its listener after the first one was sent. Once only, since a repeat restarts
+            // some games' free play (Sky flight's timer).
+            if (side.arcadeVia === 'pictures') { if (!rt.game.done) postSidecar(rt.rallyMessage(rt.game)); }
+            else if (side.arcade && !rt.game.arcadeAgain) {
+              rt.game.arcadeAgain = true;
+              postSidecar({ type: side.arcadeVia === 'clear' ? 'clear' : 'arcade' });
+            }
+            return;
+          }
           // Boss chase says which way the round goes when it starts: Play or Endless.
           if (rt.game.mode === 'boss' && typeof data?.endless === 'boolean') rt.game.bossEndless = data.endless;
           // Skybound: this world has had all its questions; let the climb go on to the portal.
@@ -1448,7 +1480,7 @@ export function registerMounts(rt) {
           }
           postSidecar(rt.rallyMessage(rt.game));
         },
-        onPick(data) { if (!rt.game?.freePlay) rt.gradeRally(data.index | 0); },
+        onPick(data) { rt.gradeRally(data.index | 0); },
         // The game's join-a-friend card is up: stop talking, so its sound link is the only sound.
         // The hush ends with the card, or by itself when this game's frame goes away.
         onHush(on, frame) {

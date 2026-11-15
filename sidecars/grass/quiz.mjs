@@ -49,3 +49,15 @@ export function localQuestion(rnd, index = 0) {
     choices: picks.map(name => ({ label: name, shape: name, fill: '#5d7a45', ok: name === target }))
   };
 }
+
+/** Arcade play (no questions): one ⭐ to reach, and a decoy or two that send you back. */
+export function arcadeGoal(rnd, index = 0) {
+  const decoys = ['🍂', '🐌', '🪨'];
+  const n = index < 2 ? 2 : 3;
+  const star = Math.floor(rnd() * n);
+  let d = 0;
+  return {
+    prompt: 'Run to the star sign.',
+    choices: Array.from({ length: n }, (_, i) => (i === star ? { label: '⭐', ok: true } : { label: decoys[d++ % decoys.length], ok: false })),
+  };
+}

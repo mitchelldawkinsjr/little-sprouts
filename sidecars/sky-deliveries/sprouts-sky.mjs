@@ -47,19 +47,35 @@ const CSS = `
 #ac-cheer.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
 `;
 
-/** Which nearby creatures carry the answers: each choice still needing a creature gets the nearest free one. */
-export function assignTags(creatures, ship, tags, count, near = NEAR, recent = new Set()) {
+/**
+ * Which nearby creatures carry the answers: each choice still needing a creature gets the nearest free
+ * one. The answers go on different kinds of creature when there are some about (a bird, a koi, a ray…),
+ * and kinds that carried the last question's answers wait their turn, so every kind gets a go.
+ */
+export function assignTags(creatures, ship, tags, count, near = NEAR, recent = new Set(), lastKinds = new Set()) {
   const alive = new Set(creatures.map(c => c.id));
   for (const [id] of tags) if (!alive.has(id)) tags.delete(id);
   const used = new Set(tags.values());
+  const byId = new Map(creatures.map(c => [c.id, c]));
+  const kinds = new Set([...tags.keys()].map(id => byId.get(id)?.species).filter(Boolean));
   const free = creatures.filter(c => !tags.has(c.id) && c.mode !== 'capturing')
     .map(c => ({ c, d: Math.hypot(c.pos.x - ship.x, c.pos.y - ship.y, c.pos.z - ship.z) }))
     .sort((a, b) => recent.has(a.c.id) - recent.has(b.c.id) || (a.d > near) - (b.d > near) || a.d - b.d);
+  // A creature of a kind not carrying an answer yet (and, better still, not last time either).
+  const fresh = (x) => !x.c.species || !kinds.has(x.c.species);
+  const pick = () => {
+    const nearOk = (x) => x.d <= near || !free.some(y => y.d <= near);
+    let at = free.findIndex(x => nearOk(x) && fresh(x) && !lastKinds.has(x.c.species));
+    if (at < 0) at = free.findIndex(x => nearOk(x) && fresh(x));
+    if (at < 0) at = 0;
+    return free.splice(at, 1)[0];
+  };
   for (let i = 0; i < count; i++) {
     if (used.has(i)) continue;
-    const next = free.shift();
+    const next = pick();
     if (!next) break;
     tags.set(next.c.id, i);
+    if (next.c.species) kinds.add(next.c.species);
     used.add(i);
   }
   return tags;
@@ -70,6 +86,21 @@ if (embedded) {
   style.textContent = CSS;
   document.head.append(style);
 
+  // Sound: the flight starts by itself here, and a browser only lets a page start its sound after a
+  // real tap, click, or key press on it. The first one turns the game's sound on (unless the app's
+  // sound is off, or the game's own sound button was set off).
+  let soundOk = true;
+  const wakeSound = (e) => {
+    if (!e.isTrusted || !soundOk) return;
+    const audio = window.__skyAudio;
+    if (!audio || !audio.enabled) return;
+    if (audio.context?.state === 'running') { off(); return; }
+    audio.start().then(on => { window.__skyUi?.setSound?.(on); if (audio.context?.state === 'running') off(); }).catch(() => {});
+  };
+  const wakeOn = ['pointerdown', 'keydown', 'touchend'];
+  const off = () => wakeOn.forEach(t => removeEventListener(t, wakeSound, true));
+  wakeOn.forEach(t => addEventListener(t, wakeSound, true));
+
   // No title screen: begin the flight as soon as the sky is ready.
   const begin = setInterval(() => {
     const go = document.querySelector('.start-button');
@@ -79,7 +110,7 @@ if (embedded) {
   const banner = document.createElement('div');
   banner.id = 'ac-banner';
   banner.hidden = true;
-  banner.innerHTML = '<div><span class="q"></span><div class="show"></div><small class="how">Fly into it to grab it, or hold Q (or X) to catch it.</small></div><button type="button">🔊 Hear</button>';
+  banner.innerHTML = '<div><span class="q"></span><div class="show"></div><small class="how">Fly into it, or hold Q (or X) near it, to catch it.</small></div><button type="button">🔊 Hear</button>';
   banner.querySelector('button').onclick = () => send('replay');
   const cheerEl = document.createElement('div');
   cheerEl.id = 'ac-cheer';
@@ -101,6 +132,7 @@ if (embedded) {
   const crossed = new Set(); // choices caught wrong this question
   const labels = [];        // one label element per choice
   let recent = new Set();   // creatures that carried the last question's answers
+  let lastKinds = new Set(); // and what kinds of creature they were
 
   function face(c) {
     if (c.shape) return `<span class="sh ${esc(c.shape)}" style="--f:${esc(c.fill || '#5d7a45')}"></span>${esc(c.label)}`;
@@ -131,6 +163,7 @@ if (embedded) {
     active = false;
     recent = new Set(tags.keys());
     const sim = window.__skySim;
+    lastKinds = new Set([...tags.keys()].map(id => sim?.creatures.find(x => x.id === id)?.species).filter(Boolean));
     for (const [id] of tags) { const c = sim?.creatures.find(x => x.id === id); if (c) goHome(c); }
     tags.clear();
     labels.splice(0).forEach(el => el.remove());
@@ -160,6 +193,11 @@ if (embedded) {
   addEventListener('message', e => {
     if (e.source !== window.parent || e.data?.source !== SOURCE) return;
     const data = e.data;
+    if ('sound' in data) soundOk = data.sound !== false;
+    if (data.type === 'duck') {
+      const audio = window.__skyAudio;
+      if (audio?.context && audio.enabled) audio.master.gain.setTargetAtTime(data.on ? 0.2 : 0.68, audio.context.currentTime, 0.1);
+    }
     if (data.type === 'ask' && Array.isArray(data.choices) && data.choices.length) {
       // A new question arrives after a right catch (or at the start); it goes out after some free flying.
       question = { prompt: data.prompt || '', show: data.show || '', choices: data.choices };
@@ -213,7 +251,7 @@ if (embedded) {
     // Crossed-off answers keep no creature; the rest always have one, even after creatures fly off or get caught.
     for (const [id, i] of tags) if (crossed.has(i)) { const c = sim.creatures.find(x => x.id === id); if (c) goHome(c); tags.delete(id); }
     const need = count;
-    assignTags(sim.creatures, sim.pos, tags, need, NEAR, recent);
+    assignTags(sim.creatures, sim.pos, tags, need, NEAR, recent, lastKinds);
     for (const [id, i] of tags) if (crossed.has(i)) tags.delete(id);
     const byIndex = new Map([...tags].map(([id, i]) => [i, sim.creatures.find(c => c.id === id)]));
     // Answer creatures gather in a ring around the ship, so they are easy to reach and grab.
@@ -225,10 +263,10 @@ if (embedded) {
       const spot = { x: ship.x + Math.sin(a) * COME, y: Math.max(9, Math.min(38, ship.y + (i % 2 ? 2 : -1))), z: ship.z + Math.cos(a) * COME };
       c.home = spot;
       if (Math.hypot(c.wander.x - spot.x, c.wander.z - spot.z) > 6) c.wander = { ...spot };
-      // Flying into an answer creature grabs it, just like holding capture does.
-      if (Math.hypot(c.pos.x - ship.x, c.pos.y - ship.y, c.pos.z - ship.z) < GRAB) {
-        const where = { ...c.pos };
-        grab(c, () => sim.releaseCoins(where, 6, 3), true);
+      // Flying into an answer creature catches it with the airship's own capture: it spirals into the
+      // intake and gives its coins, the same as holding capture. The catch is the pick (__sproutsGift).
+      if (!pending && !sim.autoCapture && c.mode !== 'capturing' && Math.hypot(c.pos.x - ship.x, c.pos.y - ship.y, c.pos.z - ship.z) < GRAB) {
+        sim.autoCapture = c.id;
       }
     }
     labels.forEach((el, i) => {

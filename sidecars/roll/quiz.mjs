@@ -74,3 +74,15 @@ export function normalizeQuestion(msg) {
     total: Number.isFinite(+msg.total) ? +msg.total : 0
   };
 }
+
+/** Arcade play (no questions): one ⭐ to reach, and a decoy or two that send you back. */
+export function arcadeGoal(rnd, index = 0) {
+  const decoys = ['🍂', '🐌', '🪨'];
+  const n = index < 2 ? 2 : 3;
+  const star = Math.floor(rnd() * n);
+  let d = 0;
+  return {
+    prompt: 'Roll the marble to the star.',
+    choices: Array.from({ length: n }, (_, i) => (i === star ? { label: '⭐', ok: true } : { label: decoys[d++ % decoys.length], ok: false })),
+  };
+}

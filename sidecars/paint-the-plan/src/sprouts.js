@@ -36,7 +36,10 @@ export function initSprouts(game) {
   /** Pause the match, show the question, and resume once it is answered right. */
   async function askPaused(title, note) {
     const match = game.match;
-    match.paused = true;
+    // Playing a friend: the match can't stop for one player, so the card holds this player still
+    // and safe instead (src/friend.js) while the match goes on.
+    const shared = !!game.friend?.live;
+    if (!shared) match.paused = true;
     game.input.exitLock();
     G.audio?.duck?.(0.4, 99);
     await quiz.ask({ title, note });
