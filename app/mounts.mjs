@@ -80,7 +80,7 @@ import {
   sidecarGame,
   sidecarIsBuilt,
   stopSidecar
-} from '../lib/sidecar.js?v=lessons2';
+} from '../lib/sidecar.js?v=trail1';
 import {
   SHELF_META,
   shelfOf as shelfIdOf,
@@ -1393,7 +1393,7 @@ export function registerMounts(rt) {
           if (rt.game?.mode === 'bike') postSidecar(rt.bikeConfig(rt.game));
           if (rt.game?.mode === 'quickmath') return;
           if (rt.game && side.lesson) { sendLessonConfig(); return; }
-          if (rt.game?.freePlay && (rt.game.mode === 'flight' || rt.game.mode === 'walk' || rt.game.mode === 'skybound' || rt.game.mode === 'gulp' || rt.game.mode === 'blocks' || rt.game.mode === 'dash' || rt.game.mode === 'boss' || rt.game.mode === 'cabin' || rt.game.mode === 'inkwave' || rt.game.mode === 'fishing' || rt.game.mode === 'station' || rt.game.mode === 'deliveries')) postSidecar({ type: 'arcade' });
+          if (rt.game?.freePlay && (side.banks || ['flight', 'walk', 'skybound', 'gulp', 'blocks', 'dash', 'boss'].includes(rt.game.mode))) postSidecar({ type: 'arcade' });
           else if (rt.game) postSidecar(rt.rallyMessage(rt.game));
         },
         // Skybound reloads its page for the next world: tell the new page arcade or the current question again.
@@ -1448,7 +1448,7 @@ export function registerMounts(rt) {
           }
           postSidecar(rt.rallyMessage(rt.game));
         },
-        onPick(data) { rt.gradeRally(data.index | 0); },
+        onPick(data) { if (!rt.game?.freePlay) rt.gradeRally(data.index | 0); },
         // The game's join-a-friend card is up: stop talking, so its sound link is the only sound.
         // The hush ends with the card, or by itself when this game's frame goes away.
         onHush(on, frame) {

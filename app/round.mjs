@@ -64,7 +64,7 @@ import { stopCrayon } from '../games/crayon.js?v=crayon-more';
 import { stopMarble } from '../games/marble.js?v=gear2';
 import { stopBridge } from '../games/bridge.js?v=gear2';
 import { stopMaze } from '../games/maze.js?v=gear2';
-import { lessonResult, postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=lessons2';
+import { lessonResult, postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=trail1';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=aviator1';
 
@@ -218,6 +218,8 @@ export function registerRound(rt) {
             ? (ok ? 'Yes! Fish on!' : 'Not yet. Pick another one.')
           : g.mode === 'station'
             ? (ok ? 'Yes! You can buy it.' : 'Not yet. Pick another one.')
+          : g.mode === 'sketchbook'
+            ? (ok ? 'Yes! You lit the beacon.' : 'Not yet. Pick another one.')
           : g.mode === 'deliveries'
             ? (ok ? 'Yes! A double gift!' : 'Not yet. Pick another one.')
           : g.mode === 'blocks'
@@ -816,7 +818,7 @@ export function registerRound(rt) {
         g.tokens = [];
         g.options = [];
         g.show = '';
-      } else if (g.freePlay && (g.mode === 'gulp' || g.mode === 'flight' || g.mode === 'walk' || g.mode === 'bike' || g.mode === 'blocks' || g.mode === 'cabin' || g.mode === 'inkwave' || g.mode === 'fishing' || g.mode === 'station' || g.mode === 'deliveries')) {
+      } else if (g.freePlay && (g.mode === 'gulp' || g.mode === 'flight' || g.mode === 'walk' || g.mode === 'bike' || g.mode === 'blocks' || banks(g.mode))) {
         g.prompt = g.mode === 'gulp' ? 'Swallow what fits. Clear the city or grow big before the clock runs out.'
           : g.mode === 'blocks' ? 'Build in the meadow.'
           : g.mode === 'flight' ? 'Fly the glider.'
@@ -826,6 +828,7 @@ export function registerRound(rt) {
           : g.mode === 'fishing' ? 'Fish the island.'
           : g.mode === 'station' ? 'Help the town.'
           : g.mode === 'deliveries' ? 'Grow the sky garden.'
+          : g.mode === 'sketchbook' ? 'Explore the playground.'
           : 'Ride the dirt bike.';
         g.tokens = [];
         g.options = [];

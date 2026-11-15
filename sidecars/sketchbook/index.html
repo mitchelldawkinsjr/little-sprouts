@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Sketchbook Trail · Little Sprouts</title>
+  <link rel="stylesheet" href="./trail.css">
+</head>
+<body>
+  <header id="trail-hud">
+    <strong>Sketchbook Trail</strong>
+    <p id="trail-mode">Opening the playground…</p>
+    <div id="trail-actions" hidden>
+      <button type="button" id="trail-starts" hidden>Starting places</button>
+      <button type="button" id="trail-return" hidden>Back to the trail</button>
+      <button type="button" id="trail-finish" hidden>Finish trail</button>
+    </div>
+  </header>
+  <div id="trail-guide" aria-label="Direction and distance to next beacon" hidden>
+    <span id="trail-arrow" aria-hidden="true">↑</span>
+    <span id="trail-distance"></span>
+  </div>
+  <p id="trail-notice" role="status" aria-live="polite" hidden></p>
+  <section id="trail-picker" aria-label="Starting places" hidden data-pad-menu data-touch-ignore>
+    <h2>Where should we start?</h2>
+    <div id="trail-scenarios"></div>
+    <button type="button" id="trail-close">Cancel</button>
+  </section>
+  <p id="trail-help" hidden></p>
+  <script src="./build/sketchbook.min.js?v=trail1"></script>
+  <script type="module" src="./trail.mjs?v=trail1"></script>
+</body>
+</html>
