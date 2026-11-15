@@ -1,3 +1,4 @@
+import { englishLine } from '../../lib/english-voice.mjs?v=en1';
 /**
  * Light lines — draw glowing lines on a dark board, then drop a ball that rolls down
  * (the learner's garden buddy in a clear ball, ADR 0001)
@@ -380,7 +381,7 @@ const zap = () => { tone(180, 0, 0.3, 'sawtooth', 0.12, -120); tone(90, 0.1, 0.3
 /* ---------- voice (on its own page; inside Sprouts the host reads) ---------- */
 
 let sproutsVoice = null;
-import('../../lib/speech.js?v=night1').then((mod) => { sproutsVoice = mod; }).catch(() => {});
+import('../../lib/speech.js?v=en1').then((mod) => { sproutsVoice = mod; }).catch(() => {});
 
 function speak(text) {
   if (!text || embedded) return;
@@ -395,7 +396,7 @@ function speak(text) {
   }
   try {
     speechSynthesis.cancel();
-    speechSynthesis.speak(new SpeechSynthesisUtterance(String(text).replace(/\s*\+\s*/g, ' plus ').replace(/\s*−\s*/g, ' minus ')));
+    speechSynthesis.speak(englishLine(String(text).replace(/\s*\+\s*/g, ' plus ').replace(/\s*−\s*/g, ' minus ')));
   } catch { /* no voice here */ }
 }
 

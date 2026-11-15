@@ -1,3 +1,4 @@
+import { englishLine } from '../../lib/english-voice.mjs?v=en1';
 /**
  * Garden gulp — drag to move a hole through a garden. Swallow what fits.
  * Friend rooms use the same /link relay as Paint Sphere: host simulates, guest sends input.
@@ -820,7 +821,7 @@ let sproutsVoice = null;
 
 function loadSproutsVoice() {
   // Loading it early also lets it prime audio on the first tap, which iOS requires.
-  import('../../lib/speech.js?v=night1')
+  import('../../lib/speech.js?v=en1')
     .then((mod) => {
       sproutsVoice = mod;
       // The first question is made ahead too, while the menu is up.
@@ -864,7 +865,7 @@ function speak(text) {
   if (!synth || typeof SpeechSynthesisUtterance === 'undefined') return;
   try {
     synth.cancel();
-    synth.speak(new SpeechSynthesisUtterance(String(text).replace(/\s*\+\s*/g, ' plus ').replace(/\s*[−]\s*/g, ' minus ')));
+    synth.speak(englishLine(String(text).replace(/\s*\+\s*/g, ' plus ').replace(/\s*[−]\s*/g, ' minus ')));
   } catch { /* no voice on this device */ }
 }
 

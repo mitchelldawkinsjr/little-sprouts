@@ -1,3 +1,4 @@
+import { englishLine } from '../../lib/english-voice.mjs?v=en1';
 // Block meadow: an open voxel world on the Little Sprouts adventures shelf.
 // The world engine in ./engine is forked from SimonDev's Quick_MinecraftClone2 (MIT, see engine/LICENSE):
 // streamed 16-block chunks built in workers, biomes, trees, ambient occlusion, clouds, and the
@@ -546,7 +547,7 @@ function paintHud() {
 // ?bugs=off keeps the day going with no bugs, for a calm world.
 const bugsOff = new URLSearchParams(location.search).get('bugs') === 'off';
 let sproutsVoice = null;
-if (solo) import('../../lib/speech.js?v=night1').then(mod => { sproutsVoice = mod; }).catch(() => {});
+if (solo) import('../../lib/speech.js?v=en1').then(mod => { sproutsVoice = mod; }).catch(() => {});
 function speakLine(text) {
   if (!soundOn || joinHold) return;
   if (!solo) { send('say', { text }); return; }
@@ -560,7 +561,7 @@ function speakLine(text) {
       return;
     }
     speechSynthesis.cancel();
-    speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+    speechSynthesis.speak(englishLine(text));
   } catch { /* no voice here */ }
 }
 

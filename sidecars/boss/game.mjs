@@ -1,3 +1,4 @@
+import { englishLine } from '../../lib/english-voice.mjs?v=en1';
 /**
  * Boss chase — build a boss from caterpillar and spider parts, then swim away from it.
  *
@@ -873,7 +874,7 @@ const fanfare = () => [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, i * 
 /* ---------- voice (on its own page; inside Sprouts the host reads) ---------- */
 
 let sproutsVoice = null;
-import('../../lib/speech.js?v=night1').then((mod) => { sproutsVoice = mod; }).catch(() => {});
+import('../../lib/speech.js?v=en1').then((mod) => { sproutsVoice = mod; }).catch(() => {});
 function speak(text) {
   if (!text || embedded) return;
   const data = sproutsSettings();
@@ -887,7 +888,7 @@ function speak(text) {
   }
   try {
     speechSynthesis.cancel();
-    speechSynthesis.speak(new SpeechSynthesisUtterance(String(text).replace(/\s*\+\s*/g, ' plus ').replace(/\s*−\s*/g, ' minus ')));
+    speechSynthesis.speak(englishLine(String(text).replace(/\s*\+\s*/g, ' plus ').replace(/\s*−\s*/g, ' minus ')));
   } catch { /* no voice here */ }
 }
 

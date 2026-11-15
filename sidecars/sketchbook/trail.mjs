@@ -2,7 +2,7 @@ import { makeQuiz } from '../../lib/sidecar-quiz.mjs';
 import { attachTouchControls, isTouchDevice } from '../../lib/touch-controls.mjs?v=touch1';
 import { buddyKind, makeBuddy } from '../../lib/buddy3d.mjs';
 import { isPerformanceTier, resolveAutoQuality } from '../../lib/device-tier.mjs';
-import { distanceTo, HOME, makeTrail, STOPS } from './checkpoints.mjs';
+import { distanceTo, makeTrail, STOPS } from './checkpoints.mjs?v=trail3';
 
 const $ = id => document.getElementById(id);
 const quiz = makeQuiz();
@@ -360,7 +360,7 @@ async function loaded() {
   driving = player()?.controlledObject;
   paintControls(driving);
   if (!state.arcade) {
-    player()?.setPosition(...HOME);
+    player()?.setPosition(...trail.resumePosition);
     state.world.cameraOperator.theta = 0;
     state.world.cameraOperator.phi = 18;
     state.world.cameraOperator.targetRadius = 4.4;
@@ -391,7 +391,7 @@ try {
   if (isTouchDevice()) showTouchControls();
   if (!quiz.live) {
     document.documentElement.setAttribute('data-pad-standalone', '');
-    void import('../../lib/pad.js?v=trail2');
+    void import('../../lib/pad.js?v=trail3');
   }
   pause(true);
   state.world.registerUpdatable({ updateOrder: 99, update: tick });

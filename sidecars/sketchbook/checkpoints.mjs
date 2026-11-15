@@ -24,6 +24,11 @@ export function makeTrail(stops = STOPS) {
   let index = 0, pending = false;
   return {
     get index() { return index; },
+    get resumePosition() {
+      if (!index) return HOME;
+      const [x, y, z] = stops[index - 1];
+      return [x, y + 0.65, z];
+    },
     get target() { return stops[index] || null; },
     get done() { return index === stops.length; },
     get pending() { return pending; },

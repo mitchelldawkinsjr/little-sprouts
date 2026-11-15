@@ -80,3 +80,16 @@ test('Sketchbook ships after deployment and all of its runtime assets fit the of
   assert.ok(scene.nodes.some(n => n.extras?.default === 'true'));
   assert.ok(scene.nodes.some(n => n.extras?.data === 'physics'));
 });
+
+test('Back to the trail restarts at the last lit beacon, never at an unanswered one', () => {
+  const trail = makeTrail();
+  assert.deepEqual(trail.resumePosition, HOME);
+  const [x, y, z] = STOPS[0];
+  assert.equal(trail.reach(pos(STOPS[0])), true);
+  assert.deepEqual(trail.resumePosition, HOME);
+  assert.equal(trail.settle(true), true);
+  assert.deepEqual(trail.resumePosition, [x, y + 0.65, z]);
+  assert.equal(trail.reach(pos(STOPS[1])), true);
+  assert.equal(trail.settle(false), false);
+  assert.deepEqual(trail.resumePosition, [x, y + 0.65, z]);
+});
