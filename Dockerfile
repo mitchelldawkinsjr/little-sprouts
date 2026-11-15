@@ -28,6 +28,7 @@ COPY sidecars/roll /usr/share/nginx/html/sidecars/roll
 COPY sidecars/grass /usr/share/nginx/html/sidecars/grass
 COPY sidecars/glow /usr/share/nginx/html/sidecars/glow
 COPY sidecars/dash /usr/share/nginx/html/sidecars/dash
+COPY sidecars/pinecone-trail /usr/share/nginx/html/sidecars/pinecone-trail
 COPY sidecars/pebble /usr/share/nginx/html/sidecars/pebble
 COPY sidecars/boss /usr/share/nginx/html/sidecars/boss
 COPY sidecars/cabin /usr/share/nginx/html/sidecars/cabin
