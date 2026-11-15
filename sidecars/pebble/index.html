@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pebble roll</title>
+<style>
+:root { color-scheme: light; font: 700 16px/1.35 system-ui,sans-serif; color: #153c35; background: #dcefea }
+* { box-sizing: border-box }
+[hidden] { display: none !important }
+body { margin: 0; overflow: hidden }
+#world, #world canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block }
+#world canvas { touch-action: none }
+.hud, .controls { position: fixed; left: max(12px,env(safe-area-inset-left)); right: max(12px,env(safe-area-inset-right)); display: flex; align-items: center; justify-content: space-between; gap: 8px; pointer-events: none }
+.hud { top: max(10px,env(safe-area-inset-top)); flex-wrap: wrap }
+.controls { bottom: max(10px,env(safe-area-inset-bottom)) }
+.controls div { display: flex; gap: 6px }
+.pill, button { border: 1px solid #c8dbcd; border-radius: 99px; padding: 7px 12px; background: #f9fff2; box-shadow: 0 2px 0 #163d342c }
+button { min-height: 44px; min-width: 46px; pointer-events: auto; font: inherit; color: inherit; cursor: pointer; touch-action: manipulation }
+button:focus-visible { outline: 3px solid #9b4706; outline-offset: 3px }
+.overlay { position: fixed; inset: 0; display: grid; place-items: center; padding: 12px; background: #163e3666 }
+.card { width: min(440px,100%); max-height: 100%; overflow: auto; text-align: center; padding: clamp(14px,4vw,28px); border-radius: 24px; background: #f9fff2; box-shadow: 0 8px 34px #163e366b }
+.card h1 { margin: 0; font-size: clamp(1.5rem,5vw,2.5rem) }
+.card p { margin: 8px 0 14px }
+.card button:first-of-type { background: #275e47; color: white }
+#notice { position: fixed; bottom: max(65px,18%); width: 100%; text-align: center; pointer-events: none }
+#notice span { display: inline-block }
+#sprouts-quiz .choice:focus-visible, #sprouts-quiz .soft:focus-visible { outline: 3px solid #9b4706 }
+@media (max-width:400px) {
+  .hud { font-size: .86rem; gap: 4px }
+  .pill, button { padding-inline: 8px }
+}
+</style>
+</head>
+<body>
+  <div id="world" aria-hidden="true"></div>
+  <div class="hud" id="hud" hidden>
+    <span class="pill" id="distance">0 m</span>
+    <span class="pill" id="hearts" aria-live="polite">3 hearts</span>
+    <span class="pill" id="shield" hidden>🛡 Shield ready</span>
+    <button type="button" id="pause">Pause</button>
+  </div>
+  <p id="notice" hidden role="status"><span class="pill"></span></p>
+  <div class="controls" id="controls" hidden>
+    <div><button type="button" id="left" aria-label="Move left">◀</button><button type="button" id="right" aria-label="Move right">▶</button></div>
+    <button type="button" id="jump">Jump ↑</button>
+  </div>
+  <section class="overlay" id="menu" data-pad-menu aria-label="Pebble roll menu">
+    <div class="card">
+      <h1 id="title">Pebble roll</h1>
+      <p id="hint">Roll through the pines. Switch lanes to dodge rocks, or jump right over them.</p>
+      <button type="button" id="play" hidden>Roll!</button>
+      <button type="button" id="leave" hidden>All games</button>
+    </div>
+  </section>
+  <script type="module" src="./game.mjs"></script>
+</body>
+</html>
