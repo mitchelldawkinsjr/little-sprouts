@@ -27,6 +27,9 @@ button { min-height: 44px; min-width: 46px; pointer-events: auto; font: inherit;
 button:focus-visible { outline: 3px solid #9b4706; outline-offset: 3px }
 .overlay { position: fixed; inset: 0; display: grid; place-items: center; padding: 12px; background: #fffafa26 }
 .card { width: min(340px,100%); max-height: 100%; overflow: auto; text-align: center; padding: clamp(14px,4vw,28px); border: 1px solid #d3d9ca; border-radius: 13px; background: #fffafaf5; box-shadow: 0 3px 15px #28382920 }
+#countdown { pointer-events: none; background: #fffafa26 }
+.countdown-card { display: grid; justify-items: center; gap: 2px; border-radius: 15px; padding: 11px 24px 14px; background: #fffafaf5; box-shadow: 0 3px 15px #28382932; text-align: center }
+#countdownDigit { color: #275e47; font-size: clamp(2.5rem, 12vmin, 5rem); font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums }
 .card h1 { margin: 0; font-size: clamp(1.5rem,5vw,2.5rem) }
 .card p { margin: 8px 0 14px }
 .card button:first-of-type { background: #275e47; color: white }
@@ -55,6 +58,12 @@ button:focus-visible { outline: 3px solid #9b4706; outline-offset: 3px }
     <div><button type="button" id="left" aria-label="Move left">◀</button><button type="button" id="right" aria-label="Move right">▶</button></div>
     <button type="button" id="jump">Jump ↑</button>
   </div>
+  <div class="overlay" id="countdown" hidden>
+    <div class="countdown-card">
+      <strong role="status">Shield charged. Get ready!</strong>
+      <span id="countdownDigit" aria-hidden="true">2</span>
+    </div>
+  </div>
   <section class="overlay" id="menu" data-pad-menu aria-label="Pebble roll menu">
     <div class="card">
       <h1 id="title">Pebble roll</h1>
@@ -63,6 +72,6 @@ button:focus-visible { outline: 3px solid #9b4706; outline-offset: 3px }
       <button type="button" id="leave" hidden>All games</button>
     </div>
   </section>
-  <script type="module" src="./game.mjs?v=2"></script>
+  <script type="module" src="./game.mjs?v=3"></script>
 </body>
 </html>

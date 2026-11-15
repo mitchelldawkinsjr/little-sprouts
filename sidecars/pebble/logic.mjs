@@ -6,12 +6,13 @@ export const FIRST_ROW = ROW_GAP * 2;
 export const FIRST_CHECKPOINT = FIRST_ROW + ROW_GAP * 1.5;
 export const CHECKPOINT_GAP = ROW_GAP * 12;
 export const START_HEARTS = 3;
+export const CHECKPOINT_COUNTDOWN_MS = 2000;
 
 export function makeRun({ seed = 0, learning = false } = {}) {
   return {
     seed, learning, distance: 0, lane: 0, x: 0, lift: 0, vy: 0,
     hearts: learning ? START_HEARTS : 1, shield: false, nextGate: FIRST_CHECKPOINT,
-    gatePending: false, ended: false
+    gatePending: false, resumeAt: null, ended: false
   };
 }
 
@@ -74,9 +75,21 @@ export function step(run, dt) {
   return '';
 }
 
-export function chargeShield(run) {
+// A right answer charges the shield now, but leaves the course frozen.
+export function startCheckpointCountdown(run, now) {
   if (!run.gatePending || run.ended) return;
   run.shield = true;
-  run.nextGate += CHECKPOINT_GAP;
-  run.gatePending = false;
+  run.resumeAt = now + CHECKPOINT_COUNTDOWN_MS;
+}
+
+// The rendered number is the number of seconds still showing. Zero resumes play.
+export function checkpointSeconds(run, now) {
+  if (run.resumeAt === null) return null;
+  const seconds = Math.max(0, Math.ceil((run.resumeAt - now) / 1000));
+  if (seconds === 0) {
+    run.resumeAt = null;
+    run.nextGate += CHECKPOINT_GAP;
+    run.gatePending = false;
+  }
+  return seconds;
 }

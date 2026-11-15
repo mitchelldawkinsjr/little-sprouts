@@ -1,6 +1,6 @@
 import { buddyKind } from '../../lib/buddy3d.mjs';
 import { makeQuiz } from '../../lib/sidecar-quiz.mjs';
-import { chargeShield, hop, makeRun, score, steer, step } from './logic.mjs';
+import { checkpointSeconds, hop, makeRun, score, startCheckpointCountdown, steer, step } from './logic.mjs';
 import { createPebbleView } from './view.mjs';
 
 const $ = id => document.getElementById(id);
@@ -11,8 +11,10 @@ const leave = $('leave');
 const hud = $('hud');
 const controls = $('controls');
 const notice = $('notice');
+const countdown = $('countdown');
+const digit = $('countdownDigit');
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const modes = { intro: 'intro', play: 'play', paused: 'paused', impact: 'impact', question: 'question', end: 'end' };
+const modes = { intro: 'intro', play: 'play', paused: 'paused', impact: 'impact', question: 'question', countdown: 'countdown', end: 'end' };
 let mode = modes.intro;
 let run = makeRun();
 let learning = false;
@@ -44,7 +46,9 @@ function setMode(next) {
   mode = next;
   dirty = true;
   const running = next === modes.play;
-  menu.hidden = running || next === modes.question || next === modes.impact;
+  const counting = next === modes.countdown;
+  countdown.hidden = !counting;
+  menu.hidden = running || counting || next === modes.question || next === modes.impact;
   hud.hidden = !running && next !== modes.impact;
   $('pause').disabled = !running;
   controls.hidden = !running;
@@ -81,10 +85,9 @@ async function checkpoint() {
   setMode(modes.question);
   await quiz.ask({ title: 'Shield checkpoint', note: 'Get it right to block the next bump.' });
   if (mode !== modes.question) return;
-  chargeShield(run);
-  setMode(modes.play);
-  $('world').focus({ preventScroll: true });
-  flash('Shield charged!');
+  digit.textContent = '2';
+  setMode(modes.countdown);
+  startCheckpointCountdown(run, performance.now());
 }
 
 function end() {
@@ -131,7 +134,14 @@ if (view) {
     else return;
     e.preventDefault();
   });
-  document.addEventListener('visibilitychange', () => { if (document.hidden && mode === modes.play) pause(); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && mode === modes.play) pause();
+    // Give the learner the full countdown if they return from another tab or app.
+    if (!document.hidden && mode === modes.countdown) {
+      digit.textContent = '2';
+      startCheckpointCountdown(run, performance.now());
+    }
+  });
   view.setBuddy(buddyKind());
   quiz.ready().then(ready => {
     if (mode !== modes.intro) return;
@@ -156,6 +166,15 @@ if (view) {
       if (result === 'end') end();
       if (noteTime > 0 && (noteTime -= dt) <= 0) notice.hidden = true;
       paintHud();
+    } else if (mode === modes.countdown && !document.hidden) {
+      const seconds = checkpointSeconds(run, now);
+      if (seconds === 0) {
+        setMode(modes.play);
+        paintHud();
+        $('world').focus({ preventScroll: true });
+      } else if (seconds !== null && digit.textContent !== String(seconds)) {
+        digit.textContent = String(seconds);
+      }
     }
     if (dirty || run.distance !== from || mode === modes.impact) {
       view.draw(run, dt, run.distance - from, reduced);

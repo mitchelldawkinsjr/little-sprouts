@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { chargeShield, hop, makeRun, ROW_GAP, rowDistance, rowLanes, score, steer, step } from '../sidecars/pebble/logic.mjs';
+import { checkpointSeconds, hop, makeRun, ROW_GAP, rowDistance, rowLanes, score, startCheckpointCountdown, steer, step } from '../sidecars/pebble/logic.mjs';
 import { createPebbleScene } from '../sidecars/pebble/view.mjs';
 import { Vector3 } from '../vendor/three/build/three.module.js?v=r187';
 
@@ -51,15 +51,41 @@ test('only learning stops for a question, and the shield absorbs exactly one hit
   arcade.distance = arcade.nextGate - .1;
   assert.equal(step(arcade, .02), '');
   assert.equal(arcade.gatePending, false);
-  chargeShield(run);
-  assert.equal(run.gatePending, false);
+  startCheckpointCountdown(run, 5000);
   assert.equal(run.shield, true);
+  assert.equal(checkpointSeconds(run, 5000), 2);
+  assert.equal(checkpointSeconds(run, 5999), 2);
+  assert.equal(checkpointSeconds(run, 6000), 1);
+  assert.equal(checkpointSeconds(run, 6999), 1);
+  step(run, .05);
+  steer(run, -1);
+  hop(run);
+  assert.equal(run.distance, stop);
+  assert.equal(run.lane, 0);
+  assert.equal(run.vy, 0);
+  assert.equal(checkpointSeconds(run, 7000), 0);
+  assert.equal(run.gatePending, false);
+  assert.equal(checkpointSeconds(run, 7001), null);
   assert.ok(run.nextGate > stop);
   aimAtTree(run, 4);
   assert.equal(step(run, .02), 'shield');
   assert.equal(run.hearts, 3);
   assert.equal(run.shield, false);
   assert.equal(step(run, .02), '', 'the same tree cannot hit twice');
+});
+
+test('a countdown restarted on return to the game gives a fresh two seconds', () => {
+  const run = makeRun({ learning: true });
+  run.distance = run.nextGate - .1;
+  assert.equal(step(run, .02), 'gate');
+  startCheckpointCountdown(run, 5000);
+  assert.equal(checkpointSeconds(run, 6100), 1);
+  startCheckpointCountdown(run, 10000);
+  assert.equal(checkpointSeconds(run, 10000), 2);
+  assert.equal(checkpointSeconds(run, 11999), 1);
+  assert.equal(run.gatePending, true);
+  assert.equal(checkpointSeconds(run, 12000), 0);
+  assert.equal(run.gatePending, false);
 });
 
 test('an open lane or a jump avoids the tree, while a single unshielded hit ends Arcade Play', () => {
