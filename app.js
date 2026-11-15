@@ -1,13 +1,13 @@
-import './lib/pad.js?v=pods1';
+import './lib/pad.js?v=pods2';
 import './lib/tilt.js?v=ask-first';
 import { roundCount, stageOf, profileSprite, SPRITES } from './logic.mjs?v=offline1';
 import { knownVoice } from './lib/speech.js?v=en1';
-import { findBuiltSidecars } from './lib/sidecar.js?v=pods1';
+import { findBuiltSidecars } from './lib/sidecar.js?v=pods2';
 import { rt } from './app/runtime.mjs?v=lean-r2';
-import { registerHelpers } from './app/helpers.mjs?v=pods1';
-import { registerRound } from './app/round.mjs?v=pods1';
-import { registerMounts } from './app/mounts.mjs?v=pods1';
-import { registerParent } from './app/parent.mjs?v=pods1';
+import { registerHelpers } from './app/helpers.mjs?v=pods2';
+import { registerRound } from './app/round.mjs?v=pods2';
+import { registerMounts } from './app/mounts.mjs?v=pods2';
+import { registerParent } from './app/parent.mjs?v=pods2';
 import { registerShop } from './app/shop.mjs?v=bloom1';
 import { registerRouter } from './app/router.mjs?v=shop1';
 

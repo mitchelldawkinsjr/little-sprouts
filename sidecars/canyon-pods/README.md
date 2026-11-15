@@ -4,7 +4,7 @@ An original Little Sprouts sidecar inspired by the desert pod-racing idea from [
 
 Run `node server/serve.mjs` and pick **Canyon Pods** under **Drive, Fly & Aim**. Opening the sidecar by itself starts Arcade Play.
 
-- Select one of three pod colors and race two laps against three rivals.
+- Select one of three pod colors and race two laps against three rival garden buddies. All four drivers are visible 3D characters seated in their pods. The course includes a start/finish gantry, checkpoints, and canyon scenery modeled in Three.js.
 - The pod accelerates automatically. Hold left or right to steer. Brake to line up for a gap, and use boost on a clear stretch.
 - Learning Play pauses at four gates. A correct answer earns a boost charge, a one-hit shield, and a learning star through the shared Questions API. Wrong answers can be retried. A two-second countdown precedes re-entry.
 - Arcade Play skips questions and stars. Gates provide boost charges.

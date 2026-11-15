@@ -82,3 +82,31 @@ test('Two-finger brake and steering stay responsive and hazards can be avoided o
   const safe={...makeRace(false), d:b.d-.15, x:-b.x, speed:40};
   assert.equal(step(safe,.02), '');
 });
+
+test('All four pod cockpits use different Three.js garden-buddy drivers', async () => {
+  const THREE = await import('../vendor/three/build/three.module.js?v=r187');
+  const { BUDDIES } = await import('../lib/buddy3d.mjs');
+  const { rivalDrivers, seatDriver } = await import('../sidecars/canyon-pods/view.mjs');
+  for (const kind of BUDDIES) {
+    const grid = [kind, ...rivalDrivers(kind)];
+    assert.equal(new Set(grid).size, 4);
+    for (const [i, driver] of grid.entries()) {
+      const racer = { chassis: new THREE.Group(), buddy: null };
+      seatDriver(racer, driver, i !== 0);
+      assert.equal(racer.buddy.kind, driver);
+      assert.equal(racer.chassis.children[0], racer.buddy.group);
+      assert.ok(racer.buddy.group.position.y > 0.5);
+      seatDriver(racer, BUDDIES.find(other => other !== driver), true);
+      assert.equal(racer.chassis.children.length, 1);
+      racer.buddy.dispose();
+    }
+  }
+});
+
+test('The Canyon Pods catalog entry maps to the Drive, Fly & Aim shelf', async () => {
+  const { sidecarRows } = await import('../lib/sidecar.js');
+  const { shelfOf, SHELF_META } = await import('../lib/home-ui.mjs');
+  const game = sidecarGame('canyon-pods');
+  assert.deepEqual(sidecarRows().find(([id]) => id === game.id)?.slice(0, 2), ['canyon-pods', 'Canyon Pods']);
+  assert.equal(SHELF_META.find(({ id }) => id === shelfOf(game.id, game.shelf))?.label, 'Drive, Fly & Aim');
+});

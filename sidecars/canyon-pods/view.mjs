@@ -1,5 +1,5 @@
 import * as THREE from '../../vendor/three/build/three.module.js?v=r187';
-import { buddyKind, makeBuddy } from '../../lib/buddy3d.mjs';
+import { BUDDIES, buddyKind, makeBuddy } from '../../lib/buddy3d.mjs';
 import { resolveAutoQuality, isPerformanceTier } from '../../lib/device-tier.mjs';
 import { BARRIERS, GATES, LAP, WIDTH, sampleTrack, rivalAt } from './logic.mjs';
 
@@ -9,14 +9,37 @@ export const PODS = [
   { name: 'Plum Comet', body: 0xad70c8, trim: 0xffc0f2 }
 ];
 
+// Keep the learner's racer unique and use three different garden buddies as rivals.
+export function rivalDrivers(playerKind) {
+  return BUDDIES.filter(kind => kind !== playerKind).slice(0, 3);
+}
+
+export function seatDriver(racer, kind, rival = false) {
+  if (racer.buddy?.kind === kind) return;
+  if (racer.buddy) {
+    racer.chassis.remove(racer.buddy.group);
+    racer.buddy.dispose();
+  }
+  const buddy = makeBuddy(THREE, kind, { shadow: false, ...(rival ? { gear: '' } : {}) });
+  // The cockpit deliberately stays open. Raise the driver enough to show the head,
+  // arms and ears above the nose of the pod even on a small screen.
+  buddy.group.scale.setScalar(.89);
+  buddy.group.position.set(0, .63, -.62);
+  buddy.legs.forEach(leg => { leg.rotation.x = -Math.PI * .36; });
+  racer.chassis.add(buddy.group);
+  racer.buddy = buddy;
+}
+
 const setTrack = (object, d, offset = 0, y = 0) => {
   const p = sampleTrack(d, offset);
   object.position.set(p.x, y, p.z);
   object.rotation.set(0, p.yaw, 0);
 };
 
-function buildPod(scene, paint) {
+function buildPod(scene, paint, name) {
   const pod = new THREE.Group(), chassis = new THREE.Group();
+  pod.name = name;
+  chassis.name = 'pod-cockpit';
   pod.add(chassis);
   scene.add(pod);
   const mat = new THREE.MeshStandardMaterial({ color: paint.body, metalness: .32, roughness: .38 });
@@ -182,8 +205,42 @@ export function createView(host, onLost) {
     return {g,glow};
   });
 
-  const player = buildPod(scene,PODS[0]);
-  const rivals = [PODS[1],PODS[2],{body:0x677acf,trim:0xc1d3ff}].map(p=>buildPod(scene,p));
+  // Start/finish gantry and trackside flags are world geometry, not HUD sprites.
+  const gantry = new THREE.Group();
+  setTrack(gantry, 0);
+  const postMaterial = new THREE.MeshStandardMaterial({ color: 0x3c2945, roughness: .66 });
+  const flagMaterial = new THREE.MeshStandardMaterial({ color: 0xf7be75, roughness: .9, side: THREE.DoubleSide });
+  const framePart = (w, h, x, y) => {
+    const part = new THREE.Mesh(new THREE.BoxGeometry(w, h, .68), postMaterial);
+    part.position.set(x, y, 0); gantry.add(part);
+  };
+  framePart(.75, 7, -WIDTH - .85, 3.5);
+  framePart(.75, 7, WIDTH + .85, 3.5);
+  framePart(WIDTH * 2 + 2.5, .76, 0, 6.7);
+  const banner = new THREE.Mesh(new THREE.BoxGeometry(8, 1.4, .74), flagMaterial);
+  banner.position.set(0, 6.65, 0);
+  gantry.add(banner);
+  for (let i = 0; i < 9; i++) for (let j = 0; j < 2; j++) {
+    if ((i + j) % 2 === 0) continue;
+    const square = new THREE.Mesh(new THREE.BoxGeometry(.85, .64, .025), postMaterial);
+    square.position.set((i - 4) * .86, 6.65 + (j - .5) * .66, -.38);
+    gantry.add(square);
+  }
+  scene.add(gantry);
+  for (let i = 1; i <= 14; i++) {
+    const marker = new THREE.Group();
+    const flag = new THREE.Mesh(new THREE.PlaneGeometry(1.65, .82), flagMaterial);
+    flag.position.set(.82, 2.78, 0);
+    const post = new THREE.Mesh(new THREE.BoxGeometry(.12, 3.2, .12), postMaterial);
+    post.position.y = 1.6;
+    marker.add(post, flag);
+    setTrack(marker, i * LAP / 15, i % 2 ? WIDTH + 1.7 : -WIDTH - 1.7);
+    scene.add(marker);
+  }
+
+  const player = buildPod(scene, PODS[0], 'player-pod');
+  const rivals = [PODS[1], PODS[2], {body:0x677acf, trim:0xc1d3ff}]
+    .map((paint, i) => buildPod(scene, paint, `rival-pod-${i + 1}`));
   const target = new THREE.Vector3();
   const cameraPosition = new THREE.Vector3();
   const shadowGeo = new THREE.CircleGeometry(1,18);
@@ -200,7 +257,12 @@ export function createView(host, onLost) {
       shield.visible = i === 0 && run.shield;
       const jet = !i && run.boost ? 1.6 : .5 + Math.min(1,run.speed/70);
       jets.forEach(m=>m.scale.y=jet);
-      if (buddy) buddy.animate(0,0,run.time);
+      if (buddy) {
+        buddy.animate(0, 0, reduced ? 0 : run.time);
+        buddy.legs.forEach(leg => { leg.rotation.x = -Math.PI * .36; });
+        buddy.arms.forEach(arm => { arm.rotation.x = -.48; });
+        buddy.body.rotation.x = i === 0 && run.boost ? .16 : .05;
+      }
       shadows[i].position.set(pod.position.x,.04,pod.position.z);
     });
     barriers.forEach((g,i)=>{ const b=BARRIERS[i]; g.visible=b.d>run.d-38 && b.d<run.d+195; });
@@ -223,13 +285,9 @@ export function createView(host, onLost) {
   return {
     setPod(i) { const p=PODS[i];player.mat.color.set(p.body);player.trim.color.set(p.trim);player.glow.color.set(p.trim); },
     setBuddy(kind) {
-      const k=buddyKind(kind);
-      if (player.buddy?.kind===k) return;
-      if(player.buddy){player.chassis.remove(player.buddy.group);player.buddy.dispose();}
-      const buddy=makeBuddy(THREE,k,{shadow:false});
-      buddy.group.scale.setScalar(.67);buddy.group.position.set(0,.44,-.53);
-      player.chassis.add(buddy.group);
-      player.buddy=buddy;
+      const k = buddyKind(kind);
+      seatDriver(player, k);
+      rivalDrivers(k).forEach((kind, i) => seatDriver(rivals[i], kind, true));
     },
     draw
   };

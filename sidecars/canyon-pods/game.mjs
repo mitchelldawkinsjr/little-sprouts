@@ -1,6 +1,6 @@
 import { makeQuiz } from '../../lib/sidecar-quiz.mjs';
 import { boost, clearGate, LAP, makeRace, position, step } from './logic.mjs';
-import { createView, PODS } from './view.mjs';
+import { createView, PODS } from './view.mjs?v=2';
 
 const $ = id => document.getElementById(id);
 const quiz = makeQuiz();
@@ -181,8 +181,8 @@ try {
     learning = ready;
     view.setBuddy(kind);
     menu('intro','Canyon Pods', learning
-      ? 'Pick your pod. Race two laps and answer at the glowing gates to charge your boost and shield.'
-      : 'Pick your pod. Race two laps and collect boosts at the glowing gates.', 'Race!');
+      ? 'Pick your pod. Race two laps against three garden buddies and answer at the glowing gates to charge your boost and shield.'
+      : 'Pick your pod. Race two laps against three garden buddies and collect boosts at the glowing gates.', 'Race!');
   });
   const isDown = code => [...held].some(key => movement[key] === code) || [...touch.values()].includes(code);
   function frame(now) {
