@@ -64,7 +64,7 @@ import { stopCrayon } from '../games/crayon.js?v=crayon-more';
 import { stopMarble } from '../games/marble.js?v=gear2';
 import { stopBridge } from '../games/bridge.js?v=gear2';
 import { stopMaze } from '../games/maze.js?v=gear2';
-import { lessonResult, postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=trail8';
+import { lessonResult, postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=pods1';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=aviator1';
 
@@ -238,6 +238,8 @@ export function registerRound(rt) {
             ? (ok ? 'Yes! Fish on!' : 'Not yet. Pick another one.')
           : g.mode === 'station'
             ? (ok ? 'Yes! You can buy it.' : 'Not yet. Pick another one.')
+          : g.mode === 'canyon-pods'
+            ? (ok ? 'Yes! Boost and shield ready.' : 'Not yet. Pick another one.')
           : g.mode === 'sketchbook'
             ? (ok ? 'Yes! You lit the beacon.' : 'Not yet. Pick another one.')
           : g.mode === 'deliveries'

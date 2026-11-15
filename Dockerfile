@@ -36,6 +36,7 @@ COPY sidecars/paint-the-plan /usr/share/nginx/html/sidecars/paint-the-plan
 COPY sidecars/station-scout /usr/share/nginx/html/sidecars/station-scout
 COPY sidecars/sky-deliveries /usr/share/nginx/html/sidecars/sky-deliveries
 COPY sidecars/field-guide-fishing /usr/share/nginx/html/sidecars/field-guide-fishing
+COPY sidecars/canyon-pods /usr/share/nginx/html/sidecars/canyon-pods
 COPY sidecars/sketchbook /usr/share/nginx/html/sidecars/sketchbook
 COPY index.html style.css app.js logic.mjs sheet.csv manifest.webmanifest sw.js /usr/share/nginx/html/
 COPY icons /usr/share/nginx/html/icons

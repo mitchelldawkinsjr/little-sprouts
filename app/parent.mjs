@@ -32,7 +32,7 @@ import {
   voiceFor,
   voices
 } from '../lib/speech.js?v=en1';
-import { sidecarGame, sidecarIsBuilt } from '../lib/sidecar.js?v=trail8';
+import { sidecarGame, sidecarIsBuilt } from '../lib/sidecar.js?v=pods1';
 import { spriteHtml } from '../lib/home-ui.mjs?v=gear2';
 import { wornGear } from '../logic/shop.mjs?v=shop3';
 import { voiceStatusText } from '../lib/parent-ui.mjs?v=structure2';

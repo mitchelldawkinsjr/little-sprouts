@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Canyon Pods · Little Sprouts</title>
+  <link rel="stylesheet" href="./pods.css">
+</head>
+<body>
+  <main id="world" tabindex="-1" aria-label="Canyon race"></main>
+  <header id="hud" hidden>
+    <div class="meters">
+      <span id="lap">LAP 1 / 2</span><span id="place">4 / 4</span>
+      <span id="speed">0 m/s</span><span id="shield" hidden>🛡 Shield</span>
+    </div>
+    <button id="pause" type="button" aria-label="Pause race">Ⅱ</button>
+  </header>
+  <div id="toast" role="status" hidden></div>
+  <div id="controls" hidden data-touch-ignore>
+    <div class="steer">
+      <button id="left" type="button" aria-label="Steer left">‹</button>
+      <button id="right" type="button" aria-label="Steer right">›</button>
+    </div>
+    <div class="power">
+      <button id="brake" type="button">Brake</button>
+      <button id="boost" type="button">⚡ Boost <span id="charges">1</span></button>
+    </div>
+  </div>
+  <div id="countdown" hidden><div><span id="count-label" role="status">Get ready!</span><strong id="digit" aria-hidden="true">3</strong></div></div>
+  <section id="panel" role="dialog" aria-label="Canyon Pods menu" data-pad-menu data-touch-ignore>
+    <div class="card">
+      <div class="eyebrow"><span>🏁</span> LITTLE SPROUTS RACING</div>
+      <h1 id="heading">Canyon Pods</h1>
+      <p id="description">Getting the race ready…</p>
+      <div id="pods" aria-label="Pick your pod" hidden></div>
+      <div class="menu-actions">
+        <button id="start" type="button" hidden>Race!</button>
+        <button id="leave" type="button" hidden>All games</button>
+      </div>
+      <p id="instructions" class="help">Auto-throttle · Hold a direction to steer · Brake to line up · Boost on a straight</p>
+    </div>
+  </section>
+  <script type="module" src="./game.mjs"></script>
+</body>
+</html>
