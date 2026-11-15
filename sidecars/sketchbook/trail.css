@@ -4,8 +4,31 @@ body { margin: 0; overflow: hidden; background: #b7dbaa; }
 #canvas { position: fixed; inset: 0; display: block; touch-action: none; }
 #loading-screen { z-index: 5; }
 #ui-container, .dg.ac { display: none !important; }
-#trail-hud, #trail-guide, #trail-help, #trail-notice, #trail-boarding, #trail-menu {
+#trail-hud, #trail-guide, #trail-help, #trail-notice, #trail-boarding, #trail-panel, #trail-picker, #trail-friend-panel {
   position: fixed;
+  z-index: 25;
+  color: #163d36;
+  text-shadow: none;
+  font: 650 clamp(12px, 2.3vw, 15px)/1.35 system-ui, sans-serif;
+  box-sizing: border-box;
+}
+#trail-hud, #trail-guide, #trail-help, #trail-notice, #trail-boarding {
+  padding: 7px 12px;
+  background: #fffdf3f5;
+  border: 1px solid #e6f0d9;
+  border-radius: 14px;
+  box-shadow: 0 4px 18px #162d332b;
+}
+#trail-hud { top: max(9px, env(safe-area-inset-top)); left: max(9px, env(safe-area-inset-left)); max-width: min(calc(100% - 112px), 22rem); }
+#trail-hud strong { color: #245449; font-size: 1.07em; }
+#trail-mode { margin: 3px 0 0; }
+#trail-guide { top: calc(max(9px, env(safe-area-inset-top)) + 60px); right: max(9px, env(safe-area-inset-right)); display: flex; align-items: center; gap: 5px; pointer-events: none; }
+#trail-arrow { display: inline-block; color: #206748; font-size: 1.65em; line-height: 1; }
+#trail-notice { top: calc(max(9px, env(safe-area-inset-top)) + 100px); left: 50%; transform: translateX(-50%); max-width: 75%; min-width: 8rem; text-align: center; pointer-events: none; }
+#trail-help { bottom: max(8px, env(safe-area-inset-bottom)); left: 10px; max-width: min(75%, 35rem); margin: 0; pointer-events: none; }
+#trail-menu {
+  position: fixed;
+  text-shadow: none;
   z-index: 32;
   top: max(9px, env(safe-area-inset-top));
   right: max(9px, env(safe-area-inset-right));
