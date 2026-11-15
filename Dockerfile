@@ -30,6 +30,10 @@ COPY sidecars/glow /usr/share/nginx/html/sidecars/glow
 COPY sidecars/dash /usr/share/nginx/html/sidecars/dash
 COPY sidecars/boss /usr/share/nginx/html/sidecars/boss
 COPY sidecars/cabin /usr/share/nginx/html/sidecars/cabin
+COPY sidecars/paint-the-plan /usr/share/nginx/html/sidecars/paint-the-plan
+COPY sidecars/station-scout /usr/share/nginx/html/sidecars/station-scout
+COPY sidecars/sky-deliveries /usr/share/nginx/html/sidecars/sky-deliveries
+COPY sidecars/field-guide-fishing /usr/share/nginx/html/sidecars/field-guide-fishing
 COPY index.html style.css app.js logic.mjs sheet.csv manifest.webmanifest sw.js /usr/share/nginx/html/
 COPY icons /usr/share/nginx/html/icons
 COPY app /usr/share/nginx/html/app
@@ -41,8 +45,11 @@ COPY vendor /usr/share/nginx/html/vendor
 
 # Every shipped file with a version stamp, so the service worker can cache all
 # sidecars for offline play and re-fetch only what changed.
+# Tidewater (field-guide-fishing, ~57 MB, WebGPU only) is left out: it plays online, and devices
+# that cannot run it would otherwise download it all for nothing.
 RUN cd /usr/share/nginx/html \
  && find sidecars vendor lib app logic games icons -type f \
+      ! -path 'sidecars/field-guide-fishing/*' \
       ! -name '.*' ! -name '*.md' ! -name '*LICENSE*' ! -name 'NOTICE' ! -name '*.test.*' ! -name '*.map' \
       -exec stat -c '%Y-%s %n' {} + \
   | sort -k2 \

@@ -22,7 +22,7 @@ import { CameraRig } from './game/cameraRig.js';
 import { Match } from './game/match.js';
 import { Minimap } from './game/minimap.js';
 import { Showcase } from './game/showcase.js';
-import { initSprouts } from './sprouts.js';
+import { initSprouts } from './sprouts.js?v=ink2';
 
 const params = new URLSearchParams(location.search);
 // Inside Little Sprouts: straight into a Chill match, with questions worked in (src/sprouts.js).
