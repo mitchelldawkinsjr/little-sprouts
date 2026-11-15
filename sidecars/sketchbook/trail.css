@@ -4,7 +4,7 @@ body { margin: 0; overflow: hidden; background: #b7dbaa; }
 #canvas { position: fixed; inset: 0; display: block; touch-action: none; }
 #loading-screen { z-index: 5; }
 #ui-container, .dg.ac { display: none !important; }
-#trail-hud, #trail-guide, #trail-help, #trail-notice, #trail-picker {
+#trail-hud, #trail-guide, #trail-help, #trail-notice, #trail-panel, #trail-panel, #trail-picker {
   position: fixed; z-index: 25; color: #163d36; text-shadow: none;
   font: 650 clamp(12px, 2.3vw, 15px)/1.35 system-ui, sans-serif;
   box-sizing: border-box;
@@ -21,17 +21,55 @@ body { margin: 0; overflow: hidden; background: #b7dbaa; }
 #trail-arrow { display: inline-block; color: #206748; font-size: 1.65em; line-height: 1; }
 #trail-notice { top: max(83px, calc(env(safe-area-inset-top) + 72px)); left: 50%; transform: translateX(-50%); max-width: 75%; min-width: 8rem; text-align: center; pointer-events: none; }
 #trail-help { bottom: max(8px, env(safe-area-inset-bottom)); left: 10px; max-width: min(75%, 35rem); margin: 0; pointer-events: none; }
-#trail-picker {
+#trail-panel, #trail-picker {
   z-index: 50; left: 50%; top: 50%; transform: translate(-50%, -50%);
   padding: 16px; width: min(460px, 90%); max-height: 88vh; overflow: auto; background: #fffdf3;
   border-radius: 18px; box-shadow: 0 0 0 100vmax #153a3fa8;
 }
-#trail-picker h2 { margin: 0 0 6px; font-size: 1.3em; }
-#trail-hud button, #trail-picker button {
+#trail-panel h2, #trail-picker h2 { margin: 0 0 6px; font-size: 1.3em; }
+#trail-hud button, #trail-panel button, #trail-picker button {
   cursor: pointer; background: #e6f3d8; border: 1px solid #baccab; border-radius: 9px;
   padding: 5px 9px; min-height: 36px; color: #20453a; font: inherit;
 }
-#trail-picker button { min-height: 44px; }
+#trail-panel button, #trail-picker button, #trail-menu { min-height: 44px; }
 #trail-picker #trail-close { margin-top: 10px; }
-#trail-hud button:focus-visible, #trail-picker button:focus-visible { outline: 3px solid #0b8069; outline-offset: 2px; }
+button:focus-visible, button.pad-focus { outline: 3px solid #0b8069; outline-offset: 2px; }
+#trail-menu { margin-top: 5px; }
+#trail-actions { align-items: flex-start; }
+.touch-hints > :last-child {
+  right: max(12px, env(safe-area-inset-right)) !important;
+  bottom: calc(115px + env(safe-area-inset-bottom)) !important;
+}
+body[data-trail-flight] .touch-hints > :last-child { bottom: calc(220px + env(safe-area-inset-bottom)) !important; }
+#trail-touch {
+  position: fixed; z-index: 42;
+  right: max(10px, env(safe-area-inset-right));
+  bottom: max(10px, env(safe-area-inset-bottom));
+  display: grid; grid-template-columns: repeat(2, minmax(56px, auto)); gap: 5px;
+  touch-action: none;
+}
+#trail-touch button {
+  touch-action: none; -webkit-tap-highlight-color: transparent;
+  border: 2px solid #d5f2a9; border-radius: 14px; padding: 4px 8px;
+  min-height: 48px; background: #183b31ec; color: white;
+  font: 750 13px/1.15 system-ui, sans-serif;
+}
+#trail-touch button[data-held] { background: #d5f2a9; color: #183b31; }
+#trail-touch button[data-control="Space"] { grid-column: 1 / -1; }
+body[data-trail-paused] .touch-hints, body[data-trail-paused] .vg-gamepad,
+body[data-trail-paused] #trail-touch, body[data-trail-paused] #trail-menu,
+body[data-trail-touch] #trail-help, .pad-cursor, .pad-note { display: none !important; }
 @media (pointer: coarse) { #trail-help { display: none; } }
+
+@media (max-height: 320px) and (orientation: portrait) {
+  .touch-hints { display: none; }
+}
+@media (max-height: 320px) {
+  #trail-touch { grid-template-columns: repeat(3, minmax(54px, auto)); }
+  #trail-touch button[data-control="Space"] { grid-column: auto; }
+  #trail-touch button { min-height: 44px; }
+  .touch-hints > :last-child, body[data-trail-flight] .touch-hints > :last-child {
+    right: calc(205px + env(safe-area-inset-right)) !important;
+    bottom: max(12px, env(safe-area-inset-bottom)) !important;
+  }
+}

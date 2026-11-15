@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, statSync } from 'node:fs';
-import { ARRIVAL_RADIUS, atBeacon, HOME, makeTrail, STOPS } from '../sidecars/sketchbook/checkpoints.mjs';
+import { ARRIVAL_RADIUS, atBeacon, distanceTo, HOME, makeTrail, STOPS } from '../sidecars/sketchbook/checkpoints.mjs';
 import { padMapFor, sidecarArcadeIds, sidecarGame } from '../lib/sidecar.js';
 
 const pos = ([x, y, z]) => ({ x, y, z });
@@ -18,9 +18,24 @@ test('Sketchbook uses the shared question reward and controller conventions', ()
     assert.equal(pad.lookOn, '#canvas');
     assert.equal(pad.keys.a, 'Space');
     assert.equal(pad.keys.x, 'KeyF');
+    assert.equal(pad.menuOpen, '#trail-menu');
+    assert.equal(pad.menuBack, '[data-trail-back]');
+    assert.equal(pad.keys.rs, 'KeyV');
+    assert.equal(pad.keys.ls, 'KeyG');
+    assert.equal(pad.keys.rt, 'KeyB');
   } finally {
     if (save) globalThis.location = save; else delete globalThis.location;
   }
+});
+
+test('The trail spans both sides of the map with distinct northern and southern stretches', () => {
+  const route = [HOME, ...STOPS];
+  const lengths = STOPS.map((stop, i) => distanceTo(pos(route[i]), stop));
+  assert.equal(STOPS.length, 5);
+  assert.ok(lengths.every(length => length > 24));
+  assert.ok(lengths.reduce((a, b) => a + b) > 240);
+  assert.ok(STOPS.some(([x]) => x <= -20) && STOPS.some(([x]) => x >= 20));
+  assert.ok(STOPS.some(([, , z]) => z < -65) && STOPS.some(([, , z]) => z > 65));
 });
 
 test('A checkpoint needs ground-level proximity and gives its reward only once', () => {

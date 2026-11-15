@@ -1,10 +1,10 @@
-/** Roomy stops around the start platform of the pinned Sketchbook world. */
+/** A walkable route across the north, west, and south of the pinned Sketchbook map. */
 export const STOPS = Object.freeze([
-  Object.freeze([9, 14.804, -11.5]),
-  Object.freeze([15, 14.804, -14.5]),
-  Object.freeze([13, 14.804, -21]),
-  Object.freeze([9, 14.804, -25]),
-  Object.freeze([13, 14.804, -30])
+  Object.freeze([22, 14.804, -32]),
+  Object.freeze([22, 14.804, -79]),
+  Object.freeze([-24, 14.804, -78]),
+  Object.freeze([-12, 14.804, 19]),
+  Object.freeze([-25, 14.804, 66])
 ]);
 export const HOME = Object.freeze([9, 15.38, -5.17]);
 export const ARRIVAL_RADIUS = 2.05;

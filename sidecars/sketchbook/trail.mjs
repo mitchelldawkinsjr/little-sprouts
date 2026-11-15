@@ -1,5 +1,5 @@
 import { makeQuiz } from '../../lib/sidecar-quiz.mjs';
-import { attachTouchControls } from '../../lib/touch-controls.mjs?v=touch1';
+import { attachTouchControls, isTouchDevice } from '../../lib/touch-controls.mjs?v=touch1';
 import { buddyKind, makeBuddy } from '../../lib/buddy3d.mjs';
 import { isPerformanceTier, resolveAutoQuality } from '../../lib/device-tier.mjs';
 import { distanceTo, HOME, makeTrail, STOPS } from './checkpoints.mjs';
@@ -11,7 +11,12 @@ const runtime = globalThis.Sketchbook;
 const supported = !!runtime?.World;
 const performanceTier = isPerformanceTier(resolveAutoQuality());
 const state = { world: null, buddy: null, ready: false, arcade: !quiz.live, responded: false, finished: false };
-let fromHost, paused, driving, timer = 0, motion = 0, touch, heldCodes = new Set();
+let fromHost, paused, driving, timer = 0, motion = 0, touch, touchDevice = false;
+const touchCodes = new Map();
+const movementCodes = new Set();
+const touchPanel = $('trail-touch');
+const touchButtons = [...touchPanel.querySelectorAll('button')];
+const menuOpen = () => !$('trail-panel').hidden || !$('trail-picker').hidden;
 const lights = [];
 const canvas = () => state.world?.renderer.domElement;
 const player = () => {
@@ -76,6 +81,7 @@ function setBuddy() {
   for (const child of character.modelContainer.children) child.visible = false;
   const rig = makeBuddy(three, kind, { shadow: false });
   // Sprouts art faces +Z, the same direction as the Sketchbook character.
+  rig.group.scale.setScalar(0.65);
   character.modelContainer.add(rig.group);
   state.buddy = { character, rig };
 }
@@ -108,7 +114,7 @@ function paintMode() {
   $('trail-mode').textContent = state.arcade ? 'Free roam · No questions'
     : trail.done ? 'All 5 beacons lit! Keep exploring or finish.'
     : `${trail.index} of ${STOPS.length} beacons lit · Follow the arrow`;
-  $('trail-actions').hidden = false;
+  $('trail-menu').hidden = false;
   $('trail-starts').hidden = !state.arcade;
   $('trail-return').hidden = state.arcade || trail.done;
   $('trail-finish').hidden = state.arcade || trail.index === 0;
@@ -118,6 +124,7 @@ function paintMode() {
 function pause(on) {
   if (paused === on) return;
   paused = on;
+  document.body.toggleAttribute('data-trail-paused', on);
   const world = state.world;
   if (world) {
     if (on) {
@@ -129,34 +136,94 @@ function pause(on) {
     }
     world.inputPaused = on;
   }
-  touch?.setVisible(!on);
   if (on) touch?.reset();
+  touch?.setVisible(!on);
+  touch?.update();
   if (!on) canvas()?.focus({ preventScroll: true });
 }
 
 function sendKey(code, down) {
   document.dispatchEvent(new KeyboardEvent(down ? 'keydown' : 'keyup', { code, bubbles: true, cancelable: true }));
 }
+
+function releaseTouchButton(id) {
+  const button = touchCodes.get(id);
+  if (!button) return;
+  touchCodes.delete(id);
+  button.removeAttribute('data-held');
+  sendKey(button.dataset.control, false);
+}
+
+for (const button of touchButtons) {
+  button.addEventListener('pointerdown', event => {
+    if (paused || button.hasAttribute('data-held') || event.button !== 0) return;
+    event.preventDefault();
+    try { button.setPointerCapture(event.pointerId); } catch { /* The pointer may already be gone. */ }
+    touchCodes.set(event.pointerId, button);
+    button.setAttribute('data-held', '');
+    sendKey(button.dataset.control, true);
+  });
+  for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+    button.addEventListener(type, event => releaseTouchButton(event.pointerId));
+  }
+  // Keyboard and assistive-technology clicks have no pointer to hold/release the action.
+  button.addEventListener('click', event => {
+    if (paused || event.detail !== 0) return;
+    sendKey(button.dataset.control, true);
+    sendKey(button.dataset.control, false);
+  });
+}
+
 function clearTouch() {
-  for (const code of heldCodes) sendKey(code, false);
-  heldCodes.clear();
+  for (const code of movementCodes) sendKey(code, false);
+  movementCodes.clear();
+  for (const id of touchCodes.keys()) releaseTouchButton(id);
+}
+
+function showTouchControls() {
+  touchDevice = true;
+  touchPanel.hidden = false;
+  document.body.setAttribute('data-trail-touch', '');
+}
+
+function paintControls(vehicle) {
+  const actions = vehicle?.actions;
+  document.body.toggleAttribute('data-trail-flight', !!actions?.yawLeft);
+  const labels = {
+    KeyQ: actions?.yawLeft && 'Yaw left',
+    KeyE: actions?.yawRight && 'Yaw right',
+    KeyV: actions?.view && 'View',
+    KeyX: actions?.seat_switch && 'Switch seat',
+    KeyB: actions?.wheelBrake && 'Wheel brake',
+    KeyG: !vehicle && 'Passenger',
+    KeyF: vehicle ? 'Exit vehicle' : 'Vehicle',
+    ShiftLeft: !vehicle ? 'Run' : actions.ascend ? 'Rise' : actions.pitchUp && 'Throttle',
+    Space: !vehicle ? 'Jump' : actions.descend ? 'Descend' : 'Brake'
+  };
+  for (const button of touchButtons) {
+    const label = labels[button.dataset.control];
+    if (!label) {
+      for (const [id, held] of touchCodes) if (held === button) releaseTouchButton(id);
+    }
+    button.hidden = !label;
+    if (label) button.textContent = label;
+  }
+  $('trail-help').textContent = vehicle
+    ? 'WASD / left stick to drive or steer · F / X to exit · M / Start for menu'
+    : 'WASD / left stick to walk · drag / right stick to look · Space / A to jump · M / Start for menu';
 }
 
 function touchStep(dt) {
   if (!touch || paused) return;
   touch.update();
+  if (!touchDevice) return;
   const x = touch.move.x, y = touch.move.y;
-  const codes = new Set();
-  if (x < -0.27) codes.add('KeyA');
-  if (x > 0.27) codes.add('KeyD');
-  if (y < -0.27) codes.add('KeyW');
-  if (y > 0.27) codes.add('KeyS');
-  for (const [id, code] of [['jump', 'Space'], ['enter', 'KeyF'], ['boost', 'ShiftLeft']]) {
-    if (touch.down(id)) codes.add(code);
+  for (const [code, held] of [['KeyA', x < -0.27], ['KeyD', x > 0.27], ['KeyW', y < -0.27], ['KeyS', y > 0.27]]) {
+    if (held === movementCodes.has(code)) continue;
+    if (held) movementCodes.add(code);
+    else movementCodes.delete(code);
+    sendKey(code, held);
   }
-  for (const code of heldCodes) if (!codes.has(code)) sendKey(code, false);
-  for (const code of codes) if (!heldCodes.has(code)) sendKey(code, true);
-  heldCodes = codes;
   if (touch.aim.active) {
     const e = new MouseEvent('mousemove', { movementX: touch.aim.x * 900 * dt, movementY: touch.aim.y * 900 * dt });
     e.sproutsLook = true;
@@ -176,13 +243,15 @@ async function activateBeacon() {
       quiz.progress(`${reward} of ${STOPS.length} beacons lit`);
     }
   } finally {
-    if (!document.hidden && !state.finished) pause(false);
+    if (!document.hidden && !state.finished && !menuOpen()) pause(false);
   }
 }
 
 function resetTrailPosition() {
   const world = state.world;
   if (!state.ready || !world || trail.pending) return;
+  hideMenus();
+  state.ready = false;
   pause(true);
   // Relaunch to recover the player and vehicles even if the player was in a seat or flying.
   world.launchScenario('default');
@@ -192,29 +261,50 @@ $('trail-return').onclick = resetTrailPosition;
 $('trail-finish').onclick = () => {
   if (state.arcade || state.finished || trail.pending || trail.index === 0) return;
   state.finished = true;
+  hideMenus();
   pause(true);
   quiz.finish('trail');
 };
 
-function chooseStart(open) {
-  if (!state.ready || !state.arcade) return;
-  $('trail-picker').hidden = !open;
-  pause(open);
-  if (open) $('trail-scenarios').querySelector('button')?.focus();
+function panel(name) {
+  $('trail-panel').hidden = name !== 'trail-panel';
+  $('trail-picker').hidden = name !== 'trail-picker';
+  $('trail-menu').setAttribute('aria-expanded', String(!!name));
+  if (name) $(name).querySelector('button:not([hidden])')?.focus({ preventScroll: true });
 }
-$('trail-starts').onclick = () => chooseStart(true);
-$('trail-close').onclick = () => chooseStart(false);
+
+function hideMenus() { panel(null); }
+
+function openMenu() {
+  if (!state.ready || trail.pending || state.finished) return;
+  pause(true);
+  panel('trail-panel');
+}
+
+function resumeGame() {
+  hideMenus();
+  if (!document.hidden) pause(false);
+}
+
+$('trail-menu').onclick = openMenu;
+$('trail-resume').onclick = resumeGame;
+$('trail-starts').onclick = () => { if (state.arcade) panel('trail-picker'); };
+$('trail-close').onclick = () => panel('trail-panel');
 addEventListener('keydown', event => {
-  if (event.code === 'Escape' && !$('trail-picker').hidden) chooseStart(false);
+  if (event.repeat || !['KeyM', 'Escape'].includes(event.code)) return;
+  if (!$('trail-picker').hidden) panel('trail-panel');
+  else if (!$('trail-panel').hidden) resumeGame();
+  else if (event.code === 'KeyM') openMenu();
 });
 addEventListener('blur', () => {
   clearTouch();
+  touch?.reset();
   player()?.resetControls();
   player()?.controlledObject?.resetControls?.();
 });
 addEventListener('visibilitychange', () => {
   if (document.hidden) pause(true);
-  else if (state.ready && !trail.pending && !state.finished && $('trail-picker').hidden) pause(false);
+  else if (state.ready && !trail.pending && !state.finished && !menuOpen()) pause(false);
 });
 
 function tick(dt, wallDt) {
@@ -225,13 +315,11 @@ function tick(dt, wallDt) {
   motion += reduced ? 0 : dt;
   if (timer > 0 && (timer -= dt) <= 0) $('trail-notice').hidden = true;
   if (character && state.buddy) {
-    const inVehicle = !!character.controlledObject, vel = character.characterCapsule.body.velocity;
-    state.buddy.rig.animate(dt, inVehicle ? 0 : Math.min(1, Math.hypot(vel.x, vel.z) / 4), motion);
-    if (driving !== inVehicle) {
-      driving = inVehicle;
-      $('trail-help').textContent = driving
-        ? 'WASD / stick to drive or steer · F / X to exit · Shift / RB to power aircraft'
-        : 'WASD / stick to walk · drag / right stick to look · Space / A to jump · F / X for vehicles';
+    const vehicle = character.controlledObject, vel = character.characterCapsule.body.velocity;
+    state.buddy.rig.animate(dt, vehicle ? 0 : Math.min(1, Math.hypot(vel.x, vel.z) / 4), motion);
+    if (driving !== vehicle) {
+      driving = vehicle;
+      paintControls(vehicle);
     }
   }
   lights.forEach(({ gem, y }, i) => {
@@ -260,7 +348,8 @@ async function loaded() {
       b.type = 'button';
       b.textContent = scenario.name;
       b.onclick = () => {
-        $('trail-picker').hidden = true;
+        hideMenus();
+        state.ready = false;
         pause(true);
         state.world.launchScenario(scenario.id);
       };
@@ -268,7 +357,8 @@ async function loaded() {
     }
   }
   setBuddy();
-  driving = undefined;
+  driving = player()?.controlledObject;
+  paintControls(driving);
   if (!state.arcade) {
     player()?.setPosition(...HOME);
     state.world.cameraOperator.theta = 0;
@@ -294,10 +384,15 @@ try {
   view.setAttribute('aria-label', 'Sketchbook Trail playground');
   touch = attachTouchControls({
     aim: true,
-    buttons: [{ id: 'jump', label: '⬆️', slot: 0, radius: 25 },
-      { id: 'enter', label: '🚙', slot: 1, radius: 25 }, { id: 'boost', label: '⚡', slot: 2, radius: 25 }],
-    hints: { move: 'Move', aim: 'Look' }, ignore: '#trail-picker, #sprouts-quiz, #loading-screen'
+    hints: { move: 'Move', aim: 'Look' },
+    ignore: '#trail-hud, #sprouts-quiz, #loading-screen',
+    onFirstTouch: showTouchControls
   });
+  if (isTouchDevice()) showTouchControls();
+  if (!quiz.live) {
+    document.documentElement.setAttribute('data-pad-standalone', '');
+    void import('../../lib/pad.js?v=trail2');
+  }
   pause(true);
   state.world.registerUpdatable({ updateOrder: 99, update: tick });
   view.addEventListener('webglcontextlost', event => {
