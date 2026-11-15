@@ -228,6 +228,8 @@ export function registerRound(rt) {
             ? (ok ? 'Yes! Swim away!' : 'Not yet. Swim to another one.')
           : g.mode === 'pinecone-trail'
             ? (ok ? 'Yes! Your trail shield is ready.' : 'Not yet. Pick another one.')
+          : g.mode === 'pebble'
+            ? (ok ? 'Yes! Shield charged.' : 'Not yet. Pick another one.')
           : g.mode === 'cabin'
             ? (ok ? 'Yes! The cabin stays cozy.' : 'Not yet. Pick another one.')
           : g.mode === 'inkwave'
