@@ -1415,7 +1415,7 @@ export function registerMounts(rt) {
         },
         onShow() {
           // Garden gulp and Garden dash keep moving while the question is read, so just say it.
-          if (rt.game?.mode === 'gulp' || rt.game?.mode === 'dash' || rt.game?.mode === 'boss') { if (!rt.game.finished) rt.say(rt.game.prompt); return; }
+          if (rt.game?.mode === 'gulp' || rt.game?.mode === 'dash' || rt.game?.mode === 'boss' || rt.game?.mode === 'deliveries') { if (!rt.game.finished) rt.say(rt.game.prompt); return; }
           if (rt.game && !rt.game.finished) rt.askBeforePlay(rt.game.prompt);
         },
         onReplay() {

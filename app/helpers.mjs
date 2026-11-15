@@ -208,6 +208,8 @@ export function registerHelpers(rt) {
       clearTimeout(cap);
       if (token !== rt.listenToken) return;
       document.body.classList.remove('listen-first');
+      // A game in a frame gets the keyboard back, so its controls work again after the line.
+      document.querySelector('iframe.sidecar-frame')?.focus();
     });
   }
   window.addEventListener('keydown', event => {

@@ -16,6 +16,8 @@ const embedded = typeof window !== 'undefined' && window.parent !== window;
 const NEXT_AFTER = 7000;   // ms of free flying between questions
 const FIRST_AFTER = 6000;  // ms before the first one
 const NEAR = 70;           // prefer creatures this close to the ship
+const GRAB = 6.5;          // fly this close to an answer creature to grab it
+const COME = 12;           // answer creatures gather this far around the ship
 
 const send = (type, extra = {}) => { if (embedded) window.parent.postMessage({ source: SOURCE, type, ...extra }, location.origin); };
 const esc = v => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -77,7 +79,7 @@ if (embedded) {
   const banner = document.createElement('div');
   banner.id = 'ac-banner';
   banner.hidden = true;
-  banner.innerHTML = '<div><span class="q"></span><div class="show"></div><small class="how">Fly to it and hold Q (or X) to catch it.</small></div><button type="button">🔊 Hear</button>';
+  banner.innerHTML = '<div><span class="q"></span><div class="show"></div><small class="how">Fly into it to grab it, or hold Q (or X) to catch it.</small></div><button type="button">🔊 Hear</button>';
   banner.querySelector('button').onclick = () => send('replay');
   const cheerEl = document.createElement('div');
   cheerEl.id = 'ac-cheer';
@@ -128,6 +130,8 @@ if (embedded) {
   function stop() {
     active = false;
     recent = new Set(tags.keys());
+    const sim = window.__skySim;
+    for (const [id] of tags) { const c = sim?.creatures.find(x => x.id === id); if (c) goHome(c); }
     tags.clear();
     labels.splice(0).forEach(el => el.remove());
     banner.hidden = true;
@@ -136,12 +140,22 @@ if (embedded) {
   // Each catch passes through here (patched into the game's capture). Coins come out as usual.
   window.__sproutsGift = (release, creature) => {
     release();
-    if (!active || !creature || !tags.has(creature.id) || pending) return;
+    if (creature) grab(creature, release, false);
+  };
+  /** An answer creature was caught (held capture) or flown into: that is the pick. */
+  function grab(creature, release, flown) {
+    if (!active || !tags.has(creature.id) || pending) return;
     const index = tags.get(creature.id);
     tags.delete(creature.id);
+    goHome(creature);
+    if (flown) release();
     pending = { index, release };
     send('pick', { index });
-  };
+  }
+  /** While a creature carries an answer it flies near the ship; afterwards it goes back to its own spot. */
+  function goHome(c) {
+    if (c.__home) { c.home = c.__home; c.wander = { ...c.__home }; delete c.__home; }
+  }
 
   addEventListener('message', e => {
     if (e.source !== window.parent || e.data?.source !== SOURCE) return;
@@ -156,6 +170,11 @@ if (embedded) {
       const { index, release } = pending;
       pending = null;
       if (data.ok) {
+        // No more grabs for this question: the app has already moved on to the next one.
+        active = false;
+        const sim = window.__skySim;
+        for (const [id] of tags) { const c = sim?.creatures.find(x => x.id === id); if (c) goHome(c); }
+        tags.clear();
         release(); // double gift
         cheer('✨ Yes! Double sky coins!');
         banner.classList.add('good');
@@ -192,11 +211,26 @@ if (embedded) {
     if (!active) return;
     const count = question.choices.length;
     // Crossed-off answers keep no creature; the rest always have one, even after creatures fly off or get caught.
-    for (const [id, i] of tags) if (crossed.has(i)) tags.delete(id);
+    for (const [id, i] of tags) if (crossed.has(i)) { const c = sim.creatures.find(x => x.id === id); if (c) goHome(c); tags.delete(id); }
     const need = count;
     assignTags(sim.creatures, sim.pos, tags, need, NEAR, recent);
     for (const [id, i] of tags) if (crossed.has(i)) tags.delete(id);
     const byIndex = new Map([...tags].map(([id, i]) => [i, sim.creatures.find(c => c.id === id)]));
+    // Answer creatures gather in a ring around the ship, so they are easy to reach and grab.
+    const ship = sim.pos;
+    for (const [i, c] of byIndex) {
+      if (!c) continue;
+      if (!c.__home) c.__home = { ...c.home };
+      const a = (sim.yaw || 0) + Math.PI + (i - (count - 1) / 2) * 0.9;
+      const spot = { x: ship.x + Math.sin(a) * COME, y: Math.max(9, Math.min(38, ship.y + (i % 2 ? 2 : -1))), z: ship.z + Math.cos(a) * COME };
+      c.home = spot;
+      if (Math.hypot(c.wander.x - spot.x, c.wander.z - spot.z) > 6) c.wander = { ...spot };
+      // Flying into an answer creature grabs it, just like holding capture does.
+      if (Math.hypot(c.pos.x - ship.x, c.pos.y - ship.y, c.pos.z - ship.z) < GRAB) {
+        const where = { ...c.pos };
+        grab(c, () => sim.releaseCoins(where, 6, 3), true);
+      }
+    }
     labels.forEach((el, i) => {
       const c = byIndex.get(i);
       if (!c || crossed.has(i)) { el.hidden = true; return; }
