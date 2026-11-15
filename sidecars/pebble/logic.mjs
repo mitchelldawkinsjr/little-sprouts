@@ -1,52 +1,73 @@
-export const LANE_WIDTH = 1.8;
-export const ROW_GAP = 12;
-export const CHECKPOINT_GAP = 56;
+export const LANE_WIDTH = 1;
+export const WORLD_RADIUS = 26;
+export const SPEED = WORLD_RADIUS * .48;
+export const ROW_GAP = SPEED / 2;
+export const FIRST_ROW = ROW_GAP * 2;
+export const FIRST_CHECKPOINT = FIRST_ROW + ROW_GAP * 1.5;
+export const CHECKPOINT_GAP = ROW_GAP * 12;
 export const START_HEARTS = 3;
-export const WORLD_RADIUS = 34;
 
-export function makeRun() {
+export function makeRun({ seed = 0, learning = false } = {}) {
   return {
-    distance: 0, lane: 0, x: 0, lift: 0, vy: 0,
-    hearts: START_HEARTS, shield: false, nextGate: CHECKPOINT_GAP,
+    seed, learning, distance: 0, lane: 0, x: 0, lift: 0, vy: 0,
+    hearts: learning ? START_HEARTS : 1, shield: false, nextGate: FIRST_CHECKPOINT,
     gatePending: false, ended: false
   };
 }
 
-// One or two occupied lanes per row, so there is always a way through.
-export function rowLanes(index) {
-  const first = (index * 5 + Math.floor(index / 4)) % 3;
-  const second = (first + 1 + index % 2) % 3;
-  return index % 4 < 2 ? [first - 1] : [first - 1, second - 1];
+function hash(n) {
+  n = Math.imul(n ^ (n >>> 16), 0x45d9f3b);
+  n = Math.imul(n ^ (n >>> 16), 0x45d9f3b);
+  return (n ^ (n >>> 16)) >>> 0;
+}
+
+// Each row has one or two trees. Visual placement and collision use the same seeded layout.
+export function rowLanes(index, seed = 0) {
+  const pattern = hash((index + 1) ^ seed);
+  const first = pattern % 3;
+  if (pattern & 4) return [first - 1];
+  return [first - 1, (first + 1 + (pattern & 1)) % 3 - 1];
+}
+
+export const rowDistance = index => FIRST_ROW + index * ROW_GAP;
+export const rowAt = distance => Math.floor((distance - FIRST_ROW) / ROW_GAP + 1e-9);
+export const score = run => Math.floor(run.distance / ROW_GAP + 1e-9);
+
+function grounded(run) {
+  return !run.ended && !run.gatePending && run.lift === 0 && run.vy === 0;
 }
 
 export function steer(run, dir) {
-  if (!run.ended && !run.gatePending) run.lane = Math.max(-1, Math.min(1, run.lane + dir));
+  if (!grounded(run)) return;
+  const lane = Math.max(-1, Math.min(1, run.lane + dir));
+  if (lane === run.lane) return;
+  run.lane = lane;
+  run.vy = 3.6;
 }
 
 export function hop(run) {
-  if (!run.ended && !run.gatePending && run.lift === 0 && run.vy === 0) run.vy = 8.5;
+  if (grounded(run)) run.vy = 6.6;
 }
 
-// Fixed-size frames come from the renderer (at most 50 ms). A row is judged once at crossing.
-export function step(run, dt, { learning = false, level = 1 } = {}) {
+// Called with a frame step of at most 50 ms. A tree row is judged once, at crossing.
+export function step(run, dt) {
   if (run.ended || run.gatePending) return '';
-  const speed = Math.min(14, 7.5 + (level - 1) * 1.1 + run.distance / 95);
   const from = run.distance;
-  run.distance += speed * dt;
-  run.x += (run.lane * LANE_WIDTH - run.x) * Math.min(1, dt * 15);
+  run.distance += SPEED * dt;
+  run.x += (run.lane * LANE_WIDTH - run.x) * (1 - Math.exp(-dt * 13));
   if (run.vy || run.lift) {
-    run.lift += run.vy * dt - 11 * dt * dt;
-    run.vy -= 22 * dt;
+    run.lift += run.vy * dt - 9 * dt * dt;
+    run.vy -= 18 * dt;
     if (run.lift <= 0) run.lift = run.vy = 0;
   }
-  const row = Math.floor(run.distance / ROW_GAP);
-  if (row !== Math.floor(from / ROW_GAP) && run.lift < 0.66
-    && rowLanes(row).some(lane => Math.abs(lane * LANE_WIDTH - run.x) < 0.82)) {
+  const row = rowAt(run.distance);
+  if (row >= 0 && row !== rowAt(from) && run.lift < .75
+    && rowLanes(row, run.seed).some(lane => Math.abs(lane * LANE_WIDTH - run.x) < .58)) {
     if (run.shield) { run.shield = false; return 'shield'; }
     run.ended = --run.hearts === 0;
     return run.ended ? 'end' : 'bump';
   }
-  if (learning && run.distance >= run.nextGate) {
+  if (run.learning && run.distance >= run.nextGate) {
     run.gatePending = true;
     return 'gate';
   }
