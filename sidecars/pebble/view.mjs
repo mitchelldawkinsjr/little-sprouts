@@ -1,6 +1,6 @@
 import * as THREE from '../../vendor/three/build/three.module.js?v=r187';
 import { makeBuddyBall } from '../../lib/buddy3d.mjs';
-import { LANE_WIDTH, rowAt, rowDistance, rowLanes, WORLD_RADIUS } from './logic.mjs';
+import { LANE_BOB_SECONDS, LANE_WIDTH, rowAt, rowDistance, rowLanes, WORLD_RADIUS } from './logic.mjs';
 
 const SKY = 0xfffafa;
 const BALL_RADIUS = .2;
@@ -195,7 +195,8 @@ export function createPebbleScene() {
       for (let i = used; i < hazards.length; i++) hazards[i].visible = false;
 
       const groundY = PLANET_Y + Math.cos(PLAYER_ANGLE) * WORLD_RADIUS;
-      const bob = reduced ? 0 : Math.abs(Math.sin(run.distance * 2.3)) * .045;
+      const laneBob = Math.sin(Math.PI * run.laneBob / LANE_BOB_SECONDS) * .12;
+      const bob = reduced ? 0 : Math.abs(Math.sin(run.distance * 2.3)) * .045 + laneBob;
       buddy.group.visible = !run.ended;
       buddy.group.position.set(run.x, groundY + BALL_RADIUS + run.lift + bob, 4.8);
       buddy.roll(ROLL_AXIS, di * 1.0);

@@ -121,7 +121,9 @@ if (view) {
   $('right').onclick = () => steer(run, 1);
   $('jump').onclick = () => hop(run);
   document.addEventListener('keydown', e => {
-    if (e.repeat || (e.target?.closest?.('button') && e.code === 'Space')) return;
+    // The host's held stick and D-pad arrive as repeated directional keys.
+    const lateral = ['ArrowLeft', 'ArrowRight', 'KeyA', 'KeyD'].includes(e.code);
+    if ((e.repeat && !lateral) || (e.target?.closest?.('button') && e.code === 'Space')) return;
     if ((e.code === 'KeyP' || e.code === 'Escape') && (mode === modes.play || mode === modes.paused)) {
       e.preventDefault();
       pause();

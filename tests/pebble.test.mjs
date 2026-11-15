@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { checkpointSeconds, hop, makeRun, ROW_GAP, rowDistance, rowLanes, score, startCheckpointCountdown, steer, step } from '../sidecars/pebble/logic.mjs';
+import { CHECKPOINT_GAP, checkpointSeconds, FIRST_CHECKPOINT, hop, makeRun, ROW_GAP, rowAt, rowDistance, rowLanes, score, startCheckpointCountdown, steer, step } from '../sidecars/pebble/logic.mjs';
 import { createPebbleScene } from '../sidecars/pebble/view.mjs';
 import { Vector3 } from '../vendor/three/build/three.module.js?v=r187';
 
@@ -19,20 +19,77 @@ test('pebble rows always leave an open lane, with 2 rows per second', () => {
   assert.equal(score(run), 2);
 });
 
-test('a lane hop is smaller than a jump, and input does not restart either in midair', () => {
+test('quick lane changes do not lock steering or restart a jump', () => {
   const run = makeRun();
+  run.x = run.lane = -1;
   steer(run, 1);
-  const smallHop = run.vy;
-  assert.equal(run.lane, 1);
+  assert.equal(run.lane, 0);
+  assert.equal(run.vy, 0, 'lane bob is visual, not a jump');
   hop(run);
-  assert.equal(run.vy, smallHop);
-  steer(run, -1);
-  assert.equal(run.lane, 1);
-  for (let i = 0; i < 10; i++) step(run, .05);
+  step(run, .05);
+  const { vy } = run;
   steer(run, 1);
-  assert.equal(run.vy, 0, 'no hop when already at the edge');
+  assert.equal(run.lane, 1, 'can steer while jumping');
   hop(run);
-  assert.ok(run.vy > smallHop);
+  assert.equal(run.vy, vy, 'cannot jump twice in midair');
+  for (let i = 0; i < 3; i++) step(run, .05);
+  assert.equal(run.x, 1);
+});
+
+test('every two-tree wall has a clear approach and at least two single-tree rows between walls', () => {
+  let walls = 0;
+  for (let seed = 0; seed < 64; seed++) {
+    for (let row = 0; row < 120; row++) {
+      const lanes = rowLanes(row, seed);
+      if (lanes.length !== 2) continue;
+      walls++;
+      assert.ok(row >= 3);
+      const gap = [-1, 0, 1].find(lane => !lanes.includes(lane));
+      assert.equal(rowLanes(row - 2, seed).length, 1);
+      assert.equal(rowLanes(row - 1, seed).length, 1);
+      assert.ok(!rowLanes(row - 1, seed).includes(gap));
+    }
+  }
+  assert.ok(walls > 0);
+});
+
+test('the first row after a question is not a two-tree wall', () => {
+  for (let seed = 0; seed < 64; seed++) {
+    for (let gate = 0; gate < 10; gate++) {
+      const firstRowAfter = rowAt(FIRST_CHECKPOINT + gate * CHECKPOINT_GAP) + 1;
+      assert.equal(rowLanes(firstRowAfter, seed).length, 1);
+    }
+  }
+});
+
+test('two presses at controller repeat timing reach an opposite-edge gap without jumping', () => {
+  const row = 6;
+  const seed = Array.from({ length: 64 }, (_, i) => i).find(i => {
+    const lanes = rowLanes(row, i);
+    return lanes.length === 2 && lanes.includes(-1) && lanes.includes(0) && !rowLanes(row - 1, i).includes(-1);
+  });
+  assert.notEqual(seed, undefined, 'test uses a real wall with its gap on the right edge');
+  for (const learning of [false, true]) {
+    for (const fps of [20, 30, 60, 120]) {
+      const run = makeRun({ seed, learning });
+      // Start mid-run, after the first checkpoint, without relying on a shield.
+      if (learning) run.nextGate += CHECKPOINT_GAP;
+      run.distance = rowDistance(row - 1) + .01;
+      run.x = run.lane = -1;
+      const dt = 1 / fps;
+      const inputTimes = [.135, .355]; // Reaction time, then the host's 220 ms repeat.
+      let t = 0;
+      while (run.distance < rowDistance(row)) {
+        if (inputTimes.length && t >= inputTimes[0]) {
+          inputTimes.shift();
+          steer(run, 1);
+        }
+        assert.equal(step(run, dt), '', `wall hit in ${learning ? 'Learning' : 'Arcade'} at ${fps} fps`);
+        t += dt;
+      }
+      assert.equal(run.x, 1);
+    }
+  }
 });
 
 function aimAtTree(run, row = 0) {
