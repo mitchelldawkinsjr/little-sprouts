@@ -1,3 +1,4 @@
+import { englishLine } from '../../lib/english-voice.mjs?v=en1';
 import * as THREE from 'three';
 import { questionHolding } from '../../lib/hold.js?v=hold2';
 import {
@@ -545,7 +546,7 @@ function readAloud(text) {
     sound.duck(false);
   };
   speechSynthesis.cancel();
-  const line = new SpeechSynthesisUtterance(text);
+  const line = englishLine(text);
   line.rate = 0.95;
   line.onend = done;
   line.onerror = done;

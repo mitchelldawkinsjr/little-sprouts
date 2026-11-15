@@ -42,7 +42,7 @@ import {
   verseRecall,
   verseWithRef
 } from '../logic.mjs?v=offline1';
-import { canSpeak, warm } from '../lib/speech.js?v=night1';
+import { canSpeak, warm } from '../lib/speech.js?v=en1';
 import { bakedLines } from '../lib/speech-core.mjs?v=night1';
 import { mountCatch, mountLanes, mountRace, mountRocket, pokeRocket, stopArcade } from '../games/arcade.js?v=gear2';
 import { mountLunar } from '../games/lunar.js?v=moon-board2';

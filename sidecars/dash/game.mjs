@@ -1,3 +1,4 @@
+import { englishLine } from '../../lib/english-voice.mjs?v=en1';
 /**
  * Garden dash — seen from the side, the garden buddy runs on top of a little round garden
  * that turns under it, and a hungry caterpillar follows close behind. Tap to jump the rocks,
@@ -641,7 +642,7 @@ const munch = () => [0, 0.14, 0.28].forEach(t => tone(200, t, 0.1, 'square', 0.0
 /* ---------- voice (on its own page; inside Sprouts the host reads) ---------- */
 
 let sproutsVoice = null;
-import('../../lib/speech.js?v=night1').then((mod) => { sproutsVoice = mod; }).catch(() => {});
+import('../../lib/speech.js?v=en1').then((mod) => { sproutsVoice = mod; }).catch(() => {});
 function speak(text) {
   if (!text || embedded) return;
   const data = sproutsSettings();
@@ -655,7 +656,7 @@ function speak(text) {
   }
   try {
     speechSynthesis.cancel();
-    speechSynthesis.speak(new SpeechSynthesisUtterance(String(text).replace(/\s*\+\s*/g, ' plus ').replace(/\s*−\s*/g, ' minus ')));
+    speechSynthesis.speak(englishLine(String(text).replace(/\s*\+\s*/g, ' plus ').replace(/\s*−\s*/g, ' minus ')));
   } catch { /* no voice here */ }
 }
 

@@ -37,7 +37,7 @@ import {
   bustBoard,
   verseWithRef
 } from '../logic.mjs?v=offline1';
-import { canSpeak, commonLines, prefetchSpeech } from '../lib/speech.js?v=night1';
+import { canSpeak, commonLines, prefetchSpeech } from '../lib/speech.js?v=en1';
 import { stopArcade } from '../games/arcade.js?v=gear2';
 import { stopHoop } from '../games/hoop.js?v=hoop-trio-r2';
 import { stopHook } from '../games/hook.js?v=ask-first2-r2';

@@ -31,7 +31,7 @@ import {
   speakAndWait,
   voiceFor,
   voices
-} from '../lib/speech.js?v=night1';
+} from '../lib/speech.js?v=en1';
 import { sidecarGame, sidecarIsBuilt } from '../lib/sidecar.js?v=arcade1';
 import { spriteHtml } from '../lib/home-ui.mjs?v=gear2';
 import { wornGear } from '../logic/shop.mjs?v=shop3';
