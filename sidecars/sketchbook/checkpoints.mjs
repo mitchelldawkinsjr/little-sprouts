@@ -17,6 +17,14 @@ export const LANDMARKS = Object.freeze([
     aircraft: 'Spawn010' }
 ]);
 export const HOME = Object.freeze([9, 15.38, -5.17]);
+export const MEGA_RAMP = 'stunt_1';
+export const RAMP_LANDING = Object.freeze([0, 22.97, 200]);
+
+/** The descent is a warm-up, not a question. Do not stop a moving car for a quiz. */
+export function pastRampLanding({ x, y, z }) {
+  return Math.abs(x) < 38 && y < 55 && z < RAMP_LANDING[2] + 8;
+}
+
 export const ARRIVAL_RADIUS = 2.05;
 export const HEIGHT_TOLERANCE = 2.2;
 

@@ -4,35 +4,42 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Sketchbook Trail · Little Sprouts</title>
-  <link rel="stylesheet" href="./trail.css?v=trail5">
+  <link rel="stylesheet" href="./trail.css?v=trail6">
 </head>
 <body data-trail-paused>
-  <header id="trail-hud">
+  <header id="trail-hud" data-touch-ignore>
     <strong>Sketchbook Trail</strong>
     <p id="trail-mode">Opening the playground…</p>
-    <button type="button" id="trail-menu" aria-controls="trail-panel" aria-expanded="false" hidden>Menu</button>
   </header>
+  <button type="button" id="trail-menu" aria-controls="trail-panel" aria-expanded="false" hidden>
+    <span aria-hidden="true">☰</span> Menu
+  </button>
   <div id="trail-guide" aria-label="Direction and distance to next beacon" hidden>
     <span id="trail-arrow" aria-hidden="true">↑</span>
     <span id="trail-distance"></span>
   </div>
   <p id="trail-notice" role="status" aria-live="polite" hidden></p>
   <section id="trail-panel" role="dialog" aria-modal="true" aria-labelledby="trail-panel-title" hidden data-pad-menu data-touch-ignore>
+    <span class="trail-kicker">🌱 SKETCHBOOK TRAIL</span>
     <h2 id="trail-panel-title">Trail menu</h2>
+    <p class="trail-panel-intro">Take a break or pick your next adventure.</p>
     <div id="trail-actions">
-      <button type="button" id="trail-resume" data-trail-back>Keep playing</button>
-      <button type="button" id="trail-friends">Play with a friend</button>
-      <button type="button" id="trail-starts" hidden>Starting places</button>
-      <button type="button" id="trail-return" hidden>Back to the trail</button>
-      <button type="button" id="trail-finish" hidden>Finish trail</button>
+      <button type="button" id="trail-resume" class="trail-card trail-primary" data-trail-back><span class="trail-icon" aria-hidden="true">▶</span><strong>Keep playing</strong></button>
+      <button type="button" id="trail-starts" class="trail-card" hidden><span class="trail-icon" aria-hidden="true">🗺️</span><strong>Starting places</strong><small>Pick a ramp, race, or runway</small></button>
+      <button type="button" id="trail-friends" class="trail-card"><span class="trail-icon" aria-hidden="true">🤝</span><strong id="trail-friends-label">Play with a friend</strong><small>Explore together</small></button>
+      <button type="button" id="trail-return" class="trail-card" hidden><span class="trail-icon" aria-hidden="true">🧭</span><strong>Back to the trail</strong><small>Return to your last stop</small></button>
+      <button type="button" id="trail-finish" class="trail-card" hidden><span class="trail-icon" aria-hidden="true">⭐</span><strong>Finish trail</strong><small>Save your stars</small></button>
     </div>
   </section>
   <section id="trail-picker" role="dialog" aria-modal="true" aria-labelledby="trail-picker-title" hidden data-pad-menu data-touch-ignore>
+    <span class="trail-kicker">📍 EXPLORE THE MAP</span>
     <h2 id="trail-picker-title">Where should we start?</h2>
+    <p class="trail-panel-intro">Pick a place. Your lit beacons stay lit.</p>
     <div id="trail-scenarios"></div>
-    <button type="button" id="trail-close" data-trail-back>Cancel</button>
+    <button type="button" id="trail-close" class="trail-back" data-trail-back>← Back to menu</button>
   </section>
   <section id="trail-friend-panel" role="dialog" aria-modal="true" aria-labelledby="trail-friend-title" hidden data-pad-menu data-touch-ignore>
+    <span class="trail-kicker">🤝 TWO PLAYERS</span>
     <h2 id="trail-friend-title">Play with a friend</h2>
     <p>Explore the same playground together. Questions and stars stay with each learner.</p>
     <p id="trail-friend-status" role="status"></p>
@@ -42,7 +49,7 @@
       <button type="button" id="trail-wifi">Play on this Wi-Fi</button>
       <button type="button" id="trail-copy" hidden>Copy invite link</button>
       <button type="button" id="trail-leave" hidden>Leave room</button>
-      <button type="button" id="trail-friend-back" data-trail-back>Back to trail menu</button>
+      <button type="button" id="trail-friend-back" class="trail-back" data-trail-back>Back to trail menu</button>
     </div>
   </section>
   <div id="trail-touch" role="group" aria-label="Touch controls" hidden data-touch-ignore>
@@ -59,6 +66,6 @@
   <p id="trail-boarding" role="status" hidden></p>
   <p id="trail-help" hidden></p>
   <script src="./build/sketchbook.min.js?v=trail1"></script>
-  <script type="module" src="./trail.mjs?v=trail5"></script>
+  <script type="module" src="./trail.mjs?v=trail6"></script>
 </body>
 </html>

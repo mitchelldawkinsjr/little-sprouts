@@ -4,7 +4,7 @@ import { buddyGear, buddyKind, makeBuddy } from '../../lib/buddy3d.mjs';
 import { isPerformanceTier, resolveAutoQuality } from '../../lib/device-tier.mjs';
 import { openRoom } from '../../lib/friend-link.mjs?v=sketchbook1';
 import { friendRoomCode, makeFriendSession } from './friends.mjs?v=1';
-import { distanceTo, LANDMARKS, makeTrail, STOPS } from './checkpoints.mjs?v=trail4';
+import { distanceTo, LANDMARKS, makeTrail, MEGA_RAMP, pastRampLanding, RAMP_LANDING, STOPS } from './checkpoints.mjs?v=trail6';
 
 const $ = id => document.getElementById(id);
 const quiz = makeQuiz();
@@ -13,7 +13,7 @@ const runtime = globalThis.Sketchbook;
 const supported = !!runtime?.World;
 const performanceTier = isPerformanceTier(resolveAutoQuality());
 const state = { world: null, buddy: null, ready: false, arcade: !quiz.live, responded: false, finished: false };
-let fromHost, paused, driving, flightHint, timer = 0, motion = 0, touch, touchDevice = false;
+let fromHost, paused, driving, flightHint, onRamp = false, returningToTrail = false, timer = 0, motion = 0, touch, touchDevice = false;
 const touchCodes = new Map();
 const movementCodes = new Set();
 const touchPanel = $('trail-touch');
@@ -25,8 +25,9 @@ const canvas = () => state.world?.renderer.domElement;
 const player = () => {
   const world = state.world;
   const receiver = world?.inputManager.inputReceiver;
-  return world?.characters.includes(receiver) ? receiver
-    : world?.characters.includes(world.cameraOperator.characterCaller) ? world.cameraOperator.characterCaller : null;
+  if (world?.characters.includes(receiver)) return receiver;
+  if (world?.characters.includes(receiver?.controllingCharacter)) return receiver.controllingCharacter;
+  return world?.characters.includes(world.cameraOperator.characterCaller) ? world.cameraOperator.characterCaller : null;
 };
 const v = supported ? new runtime.Vector3() : null;
 const forward = supported ? new runtime.Vector3() : null;
@@ -119,9 +120,9 @@ function paintLights() {
 function paintMode() {
   $('trail-mode').textContent = state.arcade ? 'Free roam · No questions'
     : trail.done ? `All ${STOPS.length} beacons lit! Keep exploring or finish.`
-    : `${trail.index} of ${STOPS.length} beacons lit · Next: ${LANDMARKS[trail.index].name}`;
+    : `${trail.index} of ${STOPS.length} beacons lit · Next: ${onRamp ? 'Mega Ramp landing' : LANDMARKS[trail.index].name}`;
   $('trail-menu').hidden = false;
-  $('trail-starts').hidden = !state.arcade;
+  $('trail-starts').hidden = false;
   $('trail-return').hidden = state.arcade || trail.done;
   $('trail-finish').hidden = state.arcade || trail.index === 0;
   $('trail-guide').hidden = state.arcade || trail.done;
@@ -257,12 +258,10 @@ async function activateBeacon() {
 function resetTrailPosition() {
   const world = state.world;
   if (!state.ready || !world || trail.pending) return;
-  hideMenus();
-  state.ready = false;
+  returningToTrail = true;
   trail.restartLeg();
-  pause(true);
-  // Relaunch to recover the player and vehicles even if the player was in a seat or flying.
-  world.launchScenario('default');
+  // Recover the player and vehicles even if the player was in a seat or flying.
+  launchStart('default');
 }
 $('trail-return').onclick = resetTrailPosition;
 
@@ -276,8 +275,13 @@ $('trail-finish').onclick = () => {
 
 function panel(name) {
   for (const id of panelIds) $(id).hidden = id !== name;
+  // The shared touch helper disables page panning while playing. Restore it for scrollable cards.
+  document.documentElement.style.touchAction = document.body.style.touchAction = name ? 'auto' : 'none';
   $('trail-menu').setAttribute('aria-expanded', String(!!name));
-  if (name) $(name).querySelector('button:not([hidden])')?.focus({ preventScroll: true });
+  if (name) {
+    $(name).scrollTop = 0;
+    $(name).querySelector('button:not([hidden])')?.focus({ preventScroll: true });
+  }
 }
 
 function hideMenus() { panel(null); }
@@ -295,7 +299,7 @@ function resumeGame() {
 
 $('trail-menu').onclick = openMenu;
 $('trail-resume').onclick = resumeGame;
-$('trail-starts').onclick = () => { if (state.arcade) panel('trail-picker'); };
+$('trail-starts').onclick = () => panel('trail-picker');
 $('trail-close').onclick = () => panel('trail-panel');
 addEventListener('keydown', event => {
   if (event.repeat || !['KeyM', 'Escape'].includes(event.code)) return;
@@ -306,7 +310,7 @@ addEventListener('keydown', event => {
   }
   if (!$('trail-picker').hidden || !$('trail-friend-panel').hidden) panel('trail-panel');
   else if (!$('trail-panel').hidden) resumeGame();
-  else if (event.code === 'KeyM') openMenu();
+  else openMenu();
 });
 addEventListener('blur', () => {
   clearTouch();
@@ -351,13 +355,18 @@ function tick(dt, wallDt) {
     $('trail-boarding').textContent = nearby ? nearby.hint : '';
   }
   if (trail.done) return;
-  const target = trail.updateGuide(pos);
+  if (onRamp && pastRampLanding(pos)) {
+    onRamp = false;
+    paintMode();
+    notice('Nice ride! Follow the arrow to the parked cars.', 5);
+  }
+  const target = onRamp ? RAMP_LANDING : trail.updateGuide(pos);
   const dx = target[0] - pos.x, dz = target[2] - pos.z;
   world.camera.getWorldDirection(forward);
   const angle = Math.atan2(dx, -dz) - Math.atan2(forward.x, -forward.z);
   $('trail-arrow').style.transform = `rotate(${angle}rad)`;
   $('trail-distance').textContent = `${Math.round(distanceTo(pos, target))} m`;
-  if (!quiz.cleared && trail.reach(pos)) void activateBeacon();
+  if (!onRamp && !quiz.cleared && trail.reach(pos)) void activateBeacon();
 }
 
 const roomFromLink = friendRoomCode(new URLSearchParams(location.search).get('room'));
@@ -382,7 +391,7 @@ const friend = makeFriendSession({
   },
   update({ status, code, connected, active }) {
     $('trail-friend-status').textContent = status;
-    $('trail-friends').textContent = connected ? 'Playing with a friend' : 'Play with a friend';
+    $('trail-friends-label').textContent = connected ? 'Playing with a friend' : 'Play with a friend';
     $('trail-host').hidden = active;
     $('trail-wifi').hidden = active;
     $('trail-leave').hidden = !active;
@@ -484,31 +493,63 @@ function drawFriend(time) {
   model.quaternion.slerp(rotation.fromArray(ride.q), alpha);
 }
 
+const startingPlaces = {
+  [MEGA_RAMP]: ['🏁', 'Mega Ramp', 'Start in the car at the very top.'],
+  default: ['🌿', 'Playground', 'Walk around or try a parked car.'],
+  'default001': ['✈️', 'Runway', 'Try the airplane and low helicopter.'],
+  race_1: ['🏎️', 'Oval race', 'Race around the big loop.'],
+  race_2: ['🚇', 'Tunnel race', 'Drive through the tunnels.'],
+  race_3: ['♾️', 'Figure 8 race', 'Race around the figure eight.'],
+  stunt_2: ['🎢', 'Loop ramp', 'Build up speed to drive the loop.']
+};
+
+function launchStart(id) {
+  hideMenus();
+  state.ready = false;
+  onRamp = id === MEGA_RAMP && !state.arcade && !trail.index;
+  pause(true);
+  state.world.launchScenario(id);
+}
+
+function makeStartingCards() {
+  const scenarios = state.world.scenarios.filter(s => !s.spawnAlways && s.name);
+  scenarios.sort((a, b) => (a.id !== MEGA_RAMP) - (b.id !== MEGA_RAMP));
+  for (const scenario of scenarios) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'trail-card';
+    const [icon, title, hint] = startingPlaces[scenario.id] ?? ['📍', scenario.name, 'Explore a new spot.'];
+    const badge = document.createElement('span');
+    badge.className = 'trail-icon';
+    badge.setAttribute('aria-hidden', 'true');
+    badge.textContent = icon;
+    const label = document.createElement('strong');
+    label.textContent = title;
+    const detail = document.createElement('small');
+    detail.textContent = hint;
+    b.append(badge, label, detail);
+    b.onclick = () => launchStart(scenario.id);
+    $('trail-scenarios').append(b);
+  }
+}
+
 async function loaded() {
   if (!state.responded) {
     state.responded = true;
     state.arcade = !(await quiz.ready());
     if (!state.arcade) addLights();
-    else for (const scenario of state.world.scenarios) {
-      if (scenario.spawnAlways || !scenario.name) continue;
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.textContent = scenario.name;
-      b.onclick = () => {
-        hideMenus();
-        state.ready = false;
-        pause(true);
-        state.world.launchScenario(scenario.id);
-      };
-      $('trail-scenarios').append(b);
-    }
+    makeStartingCards();
+    // Reuse the built-in Mega Ramp driver scenario so the game opens in the seat.
+    launchStart(MEGA_RAMP);
+    return;
   }
   setBuddy();
   flightHint = undefined;
   $('trail-boarding').hidden = true;
   driving = player()?.controlledObject;
   paintControls(driving);
-  if (!state.arcade) {
+  if (returningToTrail) {
+    returningToTrail = false;
     const start = trail.resumePosition;
     const target = trail.guide;
     player()?.setPosition(...start);
@@ -520,6 +561,7 @@ async function loaded() {
   state.ready = true;
   $('trail-help').hidden = false;
   paintMode();
+  if (state.world.lastScenarioID === MEGA_RAMP) notice(touchDevice ? 'Push the Move stick up to drive down the Mega Ramp!' : 'Hold W or push the left stick forward to drive down the Mega Ramp!', 6);
   pause(document.hidden);
   if (roomFromLink && !openedInvite) {
     openedInvite = true;
@@ -548,7 +590,7 @@ try {
   if (isTouchDevice()) showTouchControls();
   if (!quiz.live) {
     document.documentElement.setAttribute('data-pad-standalone', '');
-    void import('../../lib/pad.js?v=trail5');
+    void import('../../lib/pad.js?v=trail6');
   }
   pause(true);
   state.world.registerUpdatable({ updateOrder: 99, update: tick });

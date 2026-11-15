@@ -4,10 +4,12 @@ A Little Sprouts sidecar based on [swift502's Sketchbook](https://github.com/swi
 
 ## Play
 
+New games start at the top of the Mega Ramp, already in the driver's seat. Drive down to the playground, then follow the spaced-out learning beacons. The descent itself does not ask a question.
+
 Run `node server/serve.mjs` at the repo root. Choose **Sketchbook Trail** on the **Run, Jump & Dodge** shelf. Directly opening `http://localhost:8000/sidecars/sketchbook/` starts standalone free roam without profile rewards.
 
 - In learning mode, follow the arrow to five beacons on a roughly 390 m walk past the parked cars, stunt bowl, tunnel, runway airplane, and low helipad. The arrow guides you through the tunnel. No vehicle is required, but at each aircraft stop you can walk straight up and board with the normal vehicle button. Answer the learner’s current question at each beacon. A wrong answer leaves the question up. A correct answer changes the beacon from gold to green and reveals the next one. The host banks learning stars using the shared question flow. **Finish trail** in the menu settles any remaining answered questions. **Back to the trail** returns to the last lit beacon (or the start) without losing progress.
-- Arcade Play uses the same playground without questions, beacons or learning stars. **Starting places** opens the original driving, free-roam and flight scenarios.
+- Arcade Play uses the same playground without questions, beacons or learning stars. **Starting places** is available in both modes. Its cards open the original ramp, race, playground, and runway scenarios without resetting your lit beacons.
 - Keyboard and mouse: WASD moves, drag looks, Space jumps or brakes, F enters or exits a vehicle, Shift runs or powers an aircraft, and Q/E yaw aircraft. M opens the trail menu.
 - Controller: left stick/D-pad moves and right stick looks. A jumps, brakes or descends. X enters/exits, RB runs or powers aircraft, and LB/LT yaw aircraft. Y switches seats, L3 enters as a passenger, R3 changes the vehicle view, and RT sets the airplane's wheel brake. Press Start for the menu, D-pad to highlight, A to choose, and B to go back. The D-pad and A also work on questions and **Hear it again**.
 - Touch: drag on the left to move and on the right to look. Tap **Menu** for trail actions. The on-screen buttons change with the vehicle, including separate throttle, yaw, and brake or descent controls.

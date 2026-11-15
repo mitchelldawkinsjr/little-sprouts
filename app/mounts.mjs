@@ -80,7 +80,7 @@ import {
   sidecarGame,
   sidecarIsBuilt,
   stopSidecar
-} from '../lib/sidecar.js?v=trail5';
+} from '../lib/sidecar.js?v=trail6';
 import {
   SHELF_META,
   shelfOf as shelfIdOf,

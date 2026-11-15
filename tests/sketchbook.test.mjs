@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, statSync } from 'node:fs';
-import { ARRIVAL_RADIUS, atBeacon, distanceTo, HOME, LANDMARKS, makeTrail, STOPS } from '../sidecars/sketchbook/checkpoints.mjs';
+import { ARRIVAL_RADIUS, atBeacon, distanceTo, HOME, LANDMARKS, makeTrail, MEGA_RAMP, pastRampLanding, STOPS } from '../sidecars/sketchbook/checkpoints.mjs';
 import { padMapFor, sidecarArcadeIds, sidecarGame } from '../lib/sidecar.js';
 
 const pos = ([x, y, z]) => ({ x, y, z });
@@ -122,4 +122,19 @@ test('The last two named stops are within easy range of their original ground-le
     assert.ok(distanceTo({ x, z }, STOPS[i]) < 4);
     assert.ok(Math.abs(y - STOPS[i][1]) < .35);
   }
+});
+
+test('Mega Ramp starts in a driver car and the descent has no question gate', () => {
+  const model = readFileSync(new URL('../sidecars/sketchbook/build/assets/world-lite.glb', import.meta.url));
+  const { nodes } = JSON.parse(model.toString('utf8', 20, 20 + model.readUInt32LE(12)));
+  const ramp = nodes.find(n => n.name === MEGA_RAMP);
+  const car = ramp.children.map(i => nodes[i]).find(n => n.extras?.driver === 'player');
+  assert.equal(car.extras.type, 'car');
+  assert.ok(ramp.translation[1] + car.translation[1] > 500);
+  assert.equal(pastRampLanding({ x: 0, y: 546, z: 625 }), false);
+  assert.equal(pastRampLanding({ x: 0, y: 100, z: 205 }), false);
+  assert.equal(pastRampLanding({ x: 0, y: 24, z: 201 }), true);
+  const trail = makeTrail();
+  assert.equal(trail.index, 0);
+  assert.equal(trail.reach({ x: 0, y: 24, z: 201 }), false);
 });

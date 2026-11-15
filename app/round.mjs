@@ -64,7 +64,7 @@ import { stopCrayon } from '../games/crayon.js?v=crayon-more';
 import { stopMarble } from '../games/marble.js?v=gear2';
 import { stopBridge } from '../games/bridge.js?v=gear2';
 import { stopMaze } from '../games/maze.js?v=gear2';
-import { lessonResult, postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=trail5';
+import { lessonResult, postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=trail6';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=aviator1';
 
@@ -172,7 +172,7 @@ export function registerRound(rt) {
       message.gates = rallyGates(message.stops);
     }
     if (g.mode === 'flight' || g.mode === 'blocks') message.freeEvery = rallyClearCount(rt.questionCount());
-    if (g.mode === 'range' || g.mode === 'roll' || g.mode === 'grass' || g.mode === 'glow' || g.mode === 'dash' || g.mode === 'boss') message.total = rt.questionCount();
+    if (g.mode === 'pinecone-trail' || g.mode === 'range' || g.mode === 'roll' || g.mode === 'grass' || g.mode === 'glow' || g.mode === 'dash' || g.mode === 'boss') message.total = rt.questionCount();
     return message;
   }
   /** Games that ask at moments in their own play and bank stars as they go (`banks` in lib/sidecar.js). */
@@ -226,6 +226,8 @@ export function registerRound(rt) {
             ? (ok ? 'Yes! Zoom!' : 'Not yet. Catch another one.')
           : g.mode === 'boss'
             ? (ok ? 'Yes! Swim away!' : 'Not yet. Swim to another one.')
+          : g.mode === 'pinecone-trail'
+            ? (ok ? 'Yes! Your trail shield is ready.' : 'Not yet. Pick another one.')
           : g.mode === 'pebble'
             ? (ok ? 'Yes! Shield charged.' : 'Not yet. Pick another one.')
           : g.mode === 'cabin'
