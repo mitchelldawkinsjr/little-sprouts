@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Sketchbook Trail · Little Sprouts</title>
-  <link rel="stylesheet" href="./trail.css?v=trail4">
+  <link rel="stylesheet" href="./trail.css?v=trail5">
 </head>
 <body data-trail-paused>
   <header id="trail-hud">
@@ -21,6 +21,7 @@
     <h2 id="trail-panel-title">Trail menu</h2>
     <div id="trail-actions">
       <button type="button" id="trail-resume" data-trail-back>Keep playing</button>
+      <button type="button" id="trail-friends">Play with a friend</button>
       <button type="button" id="trail-starts" hidden>Starting places</button>
       <button type="button" id="trail-return" hidden>Back to the trail</button>
       <button type="button" id="trail-finish" hidden>Finish trail</button>
@@ -30,6 +31,19 @@
     <h2 id="trail-picker-title">Where should we start?</h2>
     <div id="trail-scenarios"></div>
     <button type="button" id="trail-close" data-trail-back>Cancel</button>
+  </section>
+  <section id="trail-friend-panel" role="dialog" aria-modal="true" aria-labelledby="trail-friend-title" hidden data-pad-menu data-touch-ignore>
+    <h2 id="trail-friend-title">Play with a friend</h2>
+    <p>Explore the same playground together. Questions and stars stay with each learner.</p>
+    <p id="trail-friend-status" role="status"></p>
+    <a id="trail-invite" hidden></a>
+    <div id="trail-friend-actions">
+      <button type="button" id="trail-host">Start an online room</button>
+      <button type="button" id="trail-wifi">Play on this Wi-Fi</button>
+      <button type="button" id="trail-copy" hidden>Copy invite link</button>
+      <button type="button" id="trail-leave" hidden>Leave room</button>
+      <button type="button" id="trail-friend-back" data-trail-back>Back to trail menu</button>
+    </div>
   </section>
   <div id="trail-touch" role="group" aria-label="Touch controls" hidden data-touch-ignore>
     <button type="button" data-control="KeyQ" hidden>Yaw left</button>
@@ -45,6 +59,6 @@
   <p id="trail-boarding" role="status" hidden></p>
   <p id="trail-help" hidden></p>
   <script src="./build/sketchbook.min.js?v=trail1"></script>
-  <script type="module" src="./trail.mjs?v=trail4"></script>
+  <script type="module" src="./trail.mjs?v=trail5"></script>
 </body>
 </html>

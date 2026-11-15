@@ -4,7 +4,7 @@ body { margin: 0; overflow: hidden; background: #b7dbaa; }
 #canvas { position: fixed; inset: 0; display: block; touch-action: none; }
 #loading-screen { z-index: 5; }
 #ui-container, .dg.ac { display: none !important; }
-#trail-hud, #trail-guide, #trail-help, #trail-notice, #trail-boarding, #trail-panel, #trail-picker {
+#trail-hud, #trail-guide, #trail-help, #trail-notice, #trail-boarding, #trail-panel, #trail-picker, #trail-friend-panel {
   position: fixed; z-index: 25; color: #163d36; text-shadow: none;
   font: 650 clamp(12px, 2.3vw, 15px)/1.35 system-ui, sans-serif;
   box-sizing: border-box;
@@ -21,17 +21,17 @@ body { margin: 0; overflow: hidden; background: #b7dbaa; }
 #trail-arrow { display: inline-block; color: #206748; font-size: 1.65em; line-height: 1; }
 #trail-notice { top: max(83px, calc(env(safe-area-inset-top) + 72px)); left: 50%; transform: translateX(-50%); max-width: 75%; min-width: 8rem; text-align: center; pointer-events: none; }
 #trail-help { bottom: max(8px, env(safe-area-inset-bottom)); left: 10px; max-width: min(75%, 35rem); margin: 0; pointer-events: none; }
-#trail-panel, #trail-picker {
+#trail-panel, #trail-picker, #trail-friend-panel {
   z-index: 50; left: 50%; top: 50%; transform: translate(-50%, -50%);
   padding: 16px; width: min(460px, 90%); max-height: 88vh; overflow: auto; background: #fffdf3;
   border-radius: 18px; box-shadow: 0 0 0 100vmax #153a3fa8;
 }
-#trail-panel h2, #trail-picker h2 { margin: 0 0 6px; font-size: 1.3em; }
-#trail-hud button, #trail-panel button, #trail-picker button {
+#trail-panel h2, #trail-picker h2, #trail-friend-panel h2 { margin: 0 0 6px; font-size: 1.3em; }
+#trail-hud button, #trail-panel button, #trail-picker button, #trail-friend-panel button {
   cursor: pointer; background: #e6f3d8; border: 1px solid #baccab; border-radius: 9px;
   padding: 5px 9px; min-height: 36px; color: #20453a; font: inherit;
 }
-#trail-panel button, #trail-picker button, #trail-menu { min-height: 44px; }
+#trail-panel button, #trail-picker button, #trail-friend-panel button, #trail-menu { min-height: 44px; }
 #trail-picker #trail-close { margin-top: 10px; }
 button:focus-visible, button.pad-focus { outline: 3px solid #0b8069; outline-offset: 2px; }
 #trail-menu { margin-top: 5px; }
@@ -76,3 +76,7 @@ body[data-trail-touch] #trail-help, .pad-cursor, .pad-note { display: none !impo
 
 #trail-boarding { bottom: max(50px, calc(env(safe-area-inset-bottom) + 44px)); left: 10px; max-width: min(48%, 21rem); margin: 0; pointer-events: none; }
 body[data-trail-paused] #trail-boarding { display: none !important; }
+
+#trail-friend-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+#trail-friend-panel p { margin: 7px 0; }
+#trail-invite { display: block; overflow-wrap: anywhere; color: #14634d; }

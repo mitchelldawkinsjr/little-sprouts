@@ -19,7 +19,8 @@ test('Sketchbook uses the shared question reward and controller conventions', ()
     assert.equal(pad.keys.a, 'Space');
     assert.equal(pad.keys.x, 'KeyF');
     assert.equal(pad.menuOpen, '#trail-menu');
-    assert.equal(pad.menuBack, '[data-trail-back]');
+    assert.ok(pad.menuBack.includes('[data-trail-back]'));
+    assert.ok(pad.menuBack.includes('[data-id="cancel"]'));
     assert.equal(pad.keys.rs, 'KeyV');
     assert.equal(pad.keys.ls, 'KeyG');
     assert.equal(pad.keys.rt, 'KeyB');
@@ -66,7 +67,7 @@ test('Sketchbook ships after deployment and all of its runtime assets fit the of
   assert.match(read('Dockerfile'), /COPY sidecars\/sketchbook \/usr\/share\/nginx\/html\/sidecars\/sketchbook/);
   assert.ok(sidecarArcadeIds().includes('sketchbook'));
   const warm = read('lib/offline-warm.mjs');
-  const files = ['index.html','trail.css','trail.mjs','checkpoints.mjs','build/sketchbook.min.js',
+  const files = ['index.html','trail.css','trail.mjs','checkpoints.mjs','friends.mjs','build/sketchbook.min.js',
     ...['world-lite','boxman','car','heli','airplane'].map(x => 'build/assets/' + x + '.glb')];
   for (const name of files) {
     const path = 'sidecars/sketchbook/' + name;

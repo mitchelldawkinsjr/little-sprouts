@@ -1,7 +1,9 @@
 import { makeQuiz } from '../../lib/sidecar-quiz.mjs';
 import { attachTouchControls, isTouchDevice } from '../../lib/touch-controls.mjs?v=touch1';
-import { buddyKind, makeBuddy } from '../../lib/buddy3d.mjs';
+import { buddyGear, buddyKind, makeBuddy } from '../../lib/buddy3d.mjs';
 import { isPerformanceTier, resolveAutoQuality } from '../../lib/device-tier.mjs';
+import { openRoom } from '../../lib/friend-link.mjs?v=sketchbook1';
+import { friendRoomCode, makeFriendSession } from './friends.mjs?v=1';
 import { distanceTo, LANDMARKS, makeTrail, STOPS } from './checkpoints.mjs?v=trail4';
 
 const $ = id => document.getElementById(id);
@@ -16,7 +18,8 @@ const touchCodes = new Map();
 const movementCodes = new Set();
 const touchPanel = $('trail-touch');
 const touchButtons = [...touchPanel.querySelectorAll('button')];
-const menuOpen = () => !$('trail-panel').hidden || !$('trail-picker').hidden;
+const panelIds = ['trail-panel', 'trail-picker', 'trail-friend-panel'];
+const menuOpen = () => panelIds.some(id => !$(id).hidden) || !!document.querySelector('[data-friend-panel]');
 const lights = [];
 const canvas = () => state.world?.renderer.domElement;
 const player = () => {
@@ -51,14 +54,7 @@ function error(message) {
   pause(true);
 }
 
-function setBuddy() {
-  const character = player(), kind = buddyKind(fromHost);
-  if (!character || !runtime) return;
-  if (state.buddy?.character === character && state.buddy.rig.kind === kind) return;
-  if (state.buddy) {
-    state.buddy.rig.group.parent?.remove(state.buddy.rig.group);
-    state.buddy.rig.dispose();
-  }
+function trailBuddy(kind, gear) {
   // Sketchbook ships Three.js r113. Alias the new geometry names onto the same engine
   // so the Sprouts rig and the rest of the world share one scene graph and renderer.
   const Capsule = function(radius, length, capSegments = 4, radialSegments = 8) {
@@ -76,12 +72,22 @@ function setBuddy() {
   const three = { ...runtime, CapsuleGeometry: Capsule, PlaneGeometry: runtime.PlaneBufferGeometry,
     CircleGeometry: runtime.CircleBufferGeometry, SphereGeometry: runtime.SphereBufferGeometry,
     ConeGeometry: runtime.ConeBufferGeometry, TorusGeometry: runtime.TorusBufferGeometry };
-  // The original skeletal rig still supplies animation timing and vehicle entry poses.
-  // Hide its body and render this learner's garden buddy in the same model container.
-  for (const child of character.modelContainer.children) child.visible = false;
-  const rig = makeBuddy(three, kind, { shadow: false });
-  // Sprouts art faces +Z, the same direction as the Sketchbook character.
+  const rig = makeBuddy(three, kind, { shadow: false, gear });
   rig.group.scale.setScalar(0.65);
+  return rig;
+}
+
+function setBuddy() {
+  const character = player(), kind = buddyKind(fromHost);
+  if (!character || !runtime) return;
+  if (state.buddy?.character === character && state.buddy.rig.kind === kind) return;
+  if (state.buddy) {
+    state.buddy.rig.group.parent?.remove(state.buddy.rig.group);
+    state.buddy.rig.dispose();
+  }
+  // Keep Sketchbook's skeletal animation and vehicle entry, but show the learner's buddy.
+  for (const child of character.modelContainer.children) child.visible = false;
+  const rig = trailBuddy(kind);
   character.modelContainer.add(rig.group);
   state.buddy = { character, rig };
 }
@@ -269,8 +275,7 @@ $('trail-finish').onclick = () => {
 };
 
 function panel(name) {
-  $('trail-panel').hidden = name !== 'trail-panel';
-  $('trail-picker').hidden = name !== 'trail-picker';
+  for (const id of panelIds) $(id).hidden = id !== name;
   $('trail-menu').setAttribute('aria-expanded', String(!!name));
   if (name) $(name).querySelector('button:not([hidden])')?.focus({ preventScroll: true });
 }
@@ -294,7 +299,12 @@ $('trail-starts').onclick = () => { if (state.arcade) panel('trail-picker'); };
 $('trail-close').onclick = () => panel('trail-panel');
 addEventListener('keydown', event => {
   if (event.repeat || !['KeyM', 'Escape'].includes(event.code)) return;
-  if (!$('trail-picker').hidden) panel('trail-panel');
+  const wifi = document.querySelector('[data-friend-panel]');
+  if (wifi) {
+    wifi.shadowRoot?.querySelector('[data-k="cancel"], [data-id="cancel"], [data-id="later"]')?.click();
+    return;
+  }
+  if (!$('trail-picker').hidden || !$('trail-friend-panel').hidden) panel('trail-panel');
   else if (!$('trail-panel').hidden) resumeGame();
   else if (event.code === 'KeyM') openMenu();
 });
@@ -350,6 +360,130 @@ function tick(dt, wallDt) {
   if (!quiz.cleared && trail.reach(pos)) void activateBeacon();
 }
 
+const roomFromLink = friendRoomCode(new URLSearchParams(location.search).get('room'));
+const rideName = vehicle => vehicle?.actions?.ascend ? 'heli'
+  : vehicle?.actions?.wheelBrake ? 'plane' : vehicle?.actions?.throttle ? 'car' : '';
+let friendPose = null, friendBuddy = null, friendRide = null, inviteUrl = '', openedInvite = false;
+const removeRenderObject = object => object?.parent?.remove(object);
+const friend = makeFriendSession({
+  transport(facade, wifi) {
+    const url = new URL('/link', location.href);
+    url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return openRoom(url.href, facade, WebSocket, { wifi, wifiChip: false });
+  },
+  receive(pose) { friendPose = pose; },
+  clear() {
+    friendPose = null;
+    removeRenderObject(friendBuddy?.rig.group);
+    friendBuddy?.rig.dispose();
+    friendBuddy = null;
+    removeRenderObject(friendRide?.model);
+    friendRide = null;
+  },
+  update({ status, code, connected, active }) {
+    $('trail-friend-status').textContent = status;
+    $('trail-friends').textContent = connected ? 'Playing with a friend' : 'Play with a friend';
+    $('trail-host').hidden = active;
+    $('trail-wifi').hidden = active;
+    $('trail-leave').hidden = !active;
+    const url = new URL('index.html', location.href);
+    if (code) url.searchParams.set('room', code);
+    inviteUrl = code ? url.href : '';
+    $('trail-invite').hidden = $('trail-copy').hidden = !code || connected;
+    $('trail-invite').href = inviteUrl;
+    $('trail-invite').textContent = inviteUrl;
+    if (!connected) return;
+    if (!$('trail-friend-panel').hidden) resumeGame();
+    notice('Your friend joined the playground!', 5);
+  }
+});
+$('trail-friends').onclick = () => panel('trail-friend-panel');
+$('trail-friend-back').onclick = () => panel('trail-panel');
+$('trail-host').onclick = () => friend.host(false);
+$('trail-wifi').onclick = () => friend.host(true);
+$('trail-leave').onclick = () => friend.leave('Room closed. You can keep playing.');
+$('trail-copy').onclick = async () => {
+  try {
+    await navigator.clipboard.writeText(inviteUrl);
+    $('trail-friend-status').textContent = 'Invite link copied!';
+  } catch {
+    const selection = getSelection();
+    const range = document.createRange();
+    range.selectNodeContents($('trail-invite'));
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    $('trail-friend-status').textContent = 'Select and copy this invite link.';
+  }
+};
+addEventListener('pagehide', () => friend.leave());
+
+function sendFriend() {
+  const character = player();
+  if (!friend.connected || !state.ready || !character) return;
+  const kind = buddyKind(fromHost);
+  const vehicle = character.occupyingSeat?.vehicle || character.controlledObject;
+  friend.send({
+    p: character.modelContainer.getWorldPosition(v).toArray(),
+    yaw: Math.atan2(character.orientation.x, character.orientation.z),
+    gait: vehicle ? 0 : Math.min(1, Math.hypot(character.velocity.x, character.velocity.z)),
+    kind, gear: buddyGear(kind),
+    ride: vehicle && { type: rideName(vehicle), p: vehicle.position.toArray(), q: vehicle.quaternion.toArray() }
+  });
+}
+
+function drawFriend(time) {
+  requestAnimationFrame(drawFriend);
+  if (!friendPose || !state.ready) return;
+  const world = state.world.graphicsWorld;
+  const { p, yaw, gait, kind, gear, ride } = friendPose;
+  const xyz = v.fromArray(p);
+  if (friendBuddy?.kind !== kind || friendBuddy.gear !== gear) {
+    removeRenderObject(friendBuddy?.rig.group);
+    friendBuddy?.rig.dispose();
+    const rig = trailBuddy(kind, gear);
+    rig.group.name = 'sketchbook-friend-buddy';
+    rig.group.position.copy(xyz);
+    world.add(rig.group);
+    friendBuddy = { rig, kind, gear, time };
+  }
+  const dt = Math.min(.05, (time - friendBuddy.time) / 1000);
+  const alpha = 1 - Math.exp(-dt * 14);
+  const rig = friendBuddy.rig;
+  if (rig.group.position.distanceToSquared(xyz) > 900) rig.group.position.copy(xyz);
+  else rig.group.position.lerp(xyz, alpha);
+  rig.group.rotation.y += Math.atan2(Math.sin(yaw - rig.group.rotation.y), Math.cos(yaw - rig.group.rotation.y)) * alpha;
+  rig.animate(dt, gait, time / 1000);
+  friendBuddy.time = time;
+  if (!ride || friendRide?.type !== ride.type) {
+    removeRenderObject(friendRide?.model);
+    friendRide = null;
+  }
+  if (!ride) return;
+  if (!friendRide) {
+    const sample = state.world.vehicles.find(vehicle => rideName(vehicle) === ride.type);
+    if (!sample) return;
+    const model = sample.modelContainer.clone(true);
+    model.name = 'sketchbook-friend-vehicle';
+    // Characters and wheel meshes are attached by Sketchbook separately. The clone is visual only.
+    for (const wheel of sample.wheels) {
+      const mesh = wheel.wheelObject.clone(true);
+      const hub = sample.rayCastVehicle.wheelInfos[wheel.rayCastWheelInfoIndex].chassisConnectionPointLocal;
+      mesh.position.set(hub.x, hub.y - 0.2, hub.z);
+      mesh.quaternion.set(0, 0, 0, 1);
+      model.add(mesh);
+    }
+    model.position.fromArray(ride.p);
+    model.quaternion.fromArray(ride.q);
+    world.add(model);
+    friendRide = { type: ride.type, model, rotation: new runtime.Quaternion() };
+  }
+  const { model, rotation } = friendRide;
+  xyz.fromArray(ride.p);
+  if (model.position.distanceToSquared(xyz) > 900) model.position.copy(xyz);
+  else model.position.lerp(xyz, alpha);
+  model.quaternion.slerp(rotation.fromArray(ride.q), alpha);
+}
+
 async function loaded() {
   if (!state.responded) {
     state.responded = true;
@@ -387,6 +521,12 @@ async function loaded() {
   $('trail-help').hidden = false;
   paintMode();
   pause(document.hidden);
+  if (roomFromLink && !openedInvite) {
+    openedInvite = true;
+    openMenu();
+    panel('trail-friend-panel');
+    friend.join(roomFromLink);
+  }
 }
 
 try {
@@ -402,16 +542,18 @@ try {
   touch = attachTouchControls({
     aim: true,
     hints: { move: 'Move', aim: 'Look' },
-    ignore: '#trail-hud, #sprouts-quiz, #loading-screen',
+    ignore: '#trail-hud, #sprouts-quiz, #loading-screen, [data-friend-panel]',
     onFirstTouch: showTouchControls
   });
   if (isTouchDevice()) showTouchControls();
   if (!quiz.live) {
     document.documentElement.setAttribute('data-pad-standalone', '');
-    void import('../../lib/pad.js?v=trail4');
+    void import('../../lib/pad.js?v=trail5');
   }
   pause(true);
   state.world.registerUpdatable({ updateOrder: 99, update: tick });
+  requestAnimationFrame(drawFriend);
+  setInterval(sendFriend, 100);
   view.addEventListener('webglcontextlost', event => {
     event.preventDefault();
     error('The graphics stopped. Reload the game to try again.');
