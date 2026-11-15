@@ -96,7 +96,7 @@ import {
   shelfPanelHtml,
   starGardenHtml as gardenHtml,
   homePageHtml
-} from '../lib/home-ui.mjs?v=bloom2';
+} from '../lib/home-ui.mjs?v=bloom3';
 import { wornGear } from '../logic/shop.mjs?v=shop3';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=aviator1';
@@ -132,6 +132,7 @@ export function registerMounts(rt) {
     advanceVerse,
     paintRallyChrome,
     home,
+    paintHeader,
     requestHome,
     start,
     paintAsk,
@@ -682,7 +683,7 @@ export function registerMounts(rt) {
     };
     if ($('#readAgain')) $('#readAgain').onclick = () => readAloud($('#readLine').textContent);
     if ($('#readClose')) $('#readClose').onclick = () => { $('#readBar').hidden = true; rt.stopSpeech(); };
-    if ($('#addLearner')) $('#addLearner').onclick = () => $('#parents')?.click();
+    if ($('#homeAddLearner')) $('#homeAddLearner').onclick = () => $('#parents')?.click();
     paintHeader();
     window.sproutsPaintOffline?.();
     if (rt.scrollToKeys) {

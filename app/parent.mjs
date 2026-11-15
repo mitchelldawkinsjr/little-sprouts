@@ -18,7 +18,8 @@ import {
   profileSprite,
   nextSprite,
   blankLearner,
-  SPRITES
+  SPRITES,
+  stageLabel
 } from '../logic.mjs?v=offline1';
 import {
   getSpeechStatus,
@@ -33,6 +34,7 @@ import {
 } from '../lib/speech.js?v=night1';
 import { sidecarGame, sidecarIsBuilt } from '../lib/sidecar.js?v=sky1';
 import { spriteHtml } from '../lib/home-ui.mjs?v=gear2';
+import { wornGear } from '../logic/shop.mjs?v=shop3';
 import { voiceStatusText } from '../lib/parent-ui.mjs?v=structure2';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 
@@ -151,8 +153,90 @@ export function registerParent(rt) {
     if (remove) remove.disabled = rt.data.profiles.length < 2;
     const add = $('#addLearner');
     if (add) add.disabled = rt.data.profiles.length >= LEARNER_LIMIT;
+    paintPortal();
     rt.cleanSnapshot = formSnapshot();
     rt.loadingForm = false;
+  }
+  // ---- Dashboard pieces (Stitch "Parent Corner & Settings"). They only drive the real form fields. ----
+  const LEVEL_INFO = {
+    1: ['Level 1 · Little explorer', '3 choices · words shown on screen', 'Recommended to start'],
+    2: ['Level 2 · Growing thinker', '4 choices · the voice says the word', 'Standard'],
+    3: ['Level 3 · Super discoverer', 'Up to 6 choices · more to remember', 'Advanced']
+  };
+  const ROUND_INFO = { 5: ['Quick', '~3 min'], 10: ['Standard', '~6 min'], 15: ['Long', '~10 min'] };
+  /** Set a real form field the way a person would, so every existing change handler runs. */
+  function pickField(sel, value) {
+    const field = $(sel);
+    if (!field || field.value === String(value)) return;
+    field.value = String(value);
+    field.dispatchEvent(new Event('change', { bubbles: true }));
+    paintPortal();
+  }
+  function paintSeg(name, render) {
+    const box = document.querySelector(`[data-seg-for="${name}"]`);
+    const field = $(`#${name}`);
+    if (!box || !field) return;
+    box.innerHTML = [...field.options].map(o => render(o, o.value === field.value)).join('');
+    box.querySelectorAll('[data-pick]').forEach(b => { b.onclick = () => pickField(`#${name}`, b.dataset.pick); });
+  }
+  function wordList() {
+    const raw = $('#words')?.value.trim() || '';
+    return raw ? raw.split(/[\s,]+/).filter(Boolean) : [];
+  }
+  function setWords(list) {
+    const field = $('#words');
+    field.value = list.join(', ');
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    paintWords();
+  }
+  function paintWords() {
+    const box = $('#wordChips');
+    if (!box) return;
+    const list = wordList();
+    $('#wordCount').textContent = list.length ? `${list.length} words` : 'Grade list';
+    box.innerHTML = list.map((w, i) => `<span class="pc-word">${esc(w)}<button type="button" data-unword="${i}" aria-label="Remove ${esc(w)}">✕</button></span>`).join('')
+      + `<input id="wordAdd" class="pc-word-add" autocomplete="off" maxlength="12" placeholder="${list.length ? 'Type a word, press Enter' : 'Using this grade’s list. Type a word to add your own'}" aria-label="Add a sight word">`;
+    box.querySelectorAll('[data-unword]').forEach(b => { b.onclick = () => setWords(wordList().filter((_, i) => i !== +b.dataset.unword)); });
+    const add = $('#wordAdd');
+    add.onkeydown = e => {
+      if (e.key !== 'Enter' && e.key !== ',') return;
+      e.preventDefault();
+      const word = add.value.trim().replace(/,/g, '');
+      if (!word) return;
+      if (!wordList().some(w => w.toLowerCase() === word.toLowerCase())) setWords([...wordList(), word]);
+      $('#wordAdd')?.focus();
+    };
+  }
+  function paintPortal() {
+    const index = +$('#editProfile').value;
+    const x = rt.data.profiles[index];
+    if (!x) return;
+    const stageName = $('#stage').selectedOptions[0]?.textContent || '';
+    const pct = x.total ? Math.round(x.correct / x.total * 100) : null;
+    const state = pct === null ? 'Ready to explore' : pct >= 80 && x.total >= 10 ? 'Flourishing' : 'Growing';
+    const buddy = profileSprite(x, index);
+    const summary = $('#learnerSummary');
+    if (summary) summary.innerHTML = `<span class="pc-summary-buddy">${spriteHtml(buddy, wornGear(x))}</span><div class="pc-summary-copy"><div class="pc-summary-line"><b>${esc(x.name)}</b>${index === rt.data.active ? '<span class="chip-mini dark">PLAYING NOW</span>' : ''}<span class="chip-mini">${esc(state)}</span></div><p>Math band: <b>${esc(stageName)}</b> · Garden buddy: <b>${esc(buddy)}</b> · ${x.stars === 1 ? '1 star' : `${x.stars || 0} stars`}</p><p class="pc-summary-stat">${pct === null ? 'No rounds yet' : `${pct}% right on first tries · ${x.sessions === 1 ? '1 round' : `${x.sessions || 0} rounds`}`}</p></div>`;
+    const slots = $('#learnerSlots');
+    if (slots) {
+      const tiles = rt.data.profiles.map((pr, i) => `<button type="button" class="pc-slot${i === index ? ' current' : ''}" data-slot="${i}" aria-pressed="${i === index}"><span class="pc-slot-buddy">${spriteHtml(profileSprite(pr, i), wornGear(pr))}</span><b>${esc(pr.name)}</b><small>${esc(stageLabel(stageOf(pr, i)))}</small>${i === index ? '<em class="pc-slot-tag">EDITING</em>' : ''}</button>`);
+      if (rt.data.profiles.length < LEARNER_LIMIT) tiles.push('<button type="button" class="pc-slot add" data-slot="add"><span class="pc-slot-plus" aria-hidden="true">＋</span><b>Add learner</b><small>Slot ' + (rt.data.profiles.length + 1) + '</small></button>');
+      for (let i = tiles.length; i < LEARNER_LIMIT; i += 1) tiles.push(`<span class="pc-slot empty" aria-hidden="true"><span class="pc-slot-plus">＋</span><small>Empty slot ${i + 1}</small></span>`);
+      slots.innerHTML = tiles.join('');
+      slots.querySelectorAll('[data-slot]').forEach(b => {
+        b.onclick = () => (b.dataset.slot === 'add' ? $('#addLearner').click() : pickField('#editProfile', b.dataset.slot));
+      });
+    }
+    paintSeg('stage', (o, on) => `<button type="button" class="pc-seg-btn${on ? ' on' : ''}" data-pick="${o.value}" aria-pressed="${on}">${esc(o.textContent)}</button>`);
+    paintSeg('level', (o, on) => {
+      const [title, about, tag] = LEVEL_INFO[o.value] || [o.textContent, '', ''];
+      return `<button type="button" class="pc-level${on ? ' on' : ''}" data-pick="${o.value}" aria-pressed="${on}"><i class="pc-radio" aria-hidden="true"></i><span><b>${title}</b><small>${about}</small></span><em>${tag}</em></button>`;
+    });
+    paintSeg('rounds', (o, on) => {
+      const [label, time] = ROUND_INFO[o.value] || ['', ''];
+      return `<button type="button" class="pc-round${on ? ' on' : ''}" data-pick="${o.value}" aria-pressed="${on}"><b>${o.value}</b><small>${label}</small><small>${time}</small></button>`;
+    });
+    if (document.activeElement?.id !== 'wordAdd') paintWords();
   }
   function fillUpNext(formGames, pin) {
     const up = $('#upNext');
@@ -416,6 +500,8 @@ export function registerParent(rt) {
     paintStats();
   };
   $('#stage').onchange = () => { if (!rt.loadingForm) paintStageTopics(); };
+  $('#words').addEventListener('input', e => { if (e.isTrusted) paintWords(); });
+  $('#parentForm').addEventListener('change', e => { if (!rt.loadingForm && e.target.id !== 'wordAdd' && e.isTrusted) paintPortal(); });
   $('#voice').innerHTML = voices.map(([id, label]) => `<option value="${esc(id)}">${esc(label)}</option>`).join('');
   async function hearWith(button, lines) {
     const label = button.textContent;
