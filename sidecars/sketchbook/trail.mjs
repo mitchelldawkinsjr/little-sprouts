@@ -16,6 +16,7 @@ const state = { world: null, buddy: null, ready: false, arcade: !quiz.live, resp
 let fromHost, paused, driving, flightHint, onRamp = false, returningToTrail = false, pickerFromMenu = false, timer = 0, motion = 0, touch, touchDevice = false;
 const touchCodes = new Map();
 const movementCodes = new Set();
+const pressedTouchKeys = new Set();
 const touchPanel = $('trail-touch');
 const touchButtons = [...touchPanel.querySelectorAll('button')];
 const panelIds = ['trail-panel', 'trail-picker', 'trail-friend-panel'];
@@ -154,12 +155,20 @@ function sendKey(code, down) {
   document.dispatchEvent(new KeyboardEvent(down ? 'keydown' : 'keyup', { code, bubbles: true, cancelable: true }));
 }
 
+function syncTouchKey(code) {
+  const down = movementCodes.has(code) || [...touchCodes.values()].some(button => button.dataset.control === code);
+  if (down === pressedTouchKeys.has(code)) return;
+  if (down) pressedTouchKeys.add(code);
+  else pressedTouchKeys.delete(code);
+  sendKey(code, down);
+}
+
 function releaseTouchButton(id) {
   const button = touchCodes.get(id);
   if (!button) return;
   touchCodes.delete(id);
   button.removeAttribute('data-held');
-  sendKey(button.dataset.control, false);
+  syncTouchKey(button.dataset.control);
 }
 
 for (const button of touchButtons) {
@@ -169,23 +178,24 @@ for (const button of touchButtons) {
     try { button.setPointerCapture(event.pointerId); } catch { /* The pointer may already be gone. */ }
     touchCodes.set(event.pointerId, button);
     button.setAttribute('data-held', '');
-    sendKey(button.dataset.control, true);
+    syncTouchKey(button.dataset.control);
   });
   for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
     button.addEventListener(type, event => releaseTouchButton(event.pointerId));
   }
   // Keyboard and assistive-technology clicks have no pointer to hold/release the action.
   button.addEventListener('click', event => {
-    if (paused || event.detail !== 0) return;
+    if (paused || event.detail !== 0 || pressedTouchKeys.has(button.dataset.control)) return;
     sendKey(button.dataset.control, true);
     sendKey(button.dataset.control, false);
   });
 }
 
 function clearTouch() {
-  for (const code of movementCodes) sendKey(code, false);
   movementCodes.clear();
   for (const id of touchCodes.keys()) releaseTouchButton(id);
+  for (const code of pressedTouchKeys) sendKey(code, false);
+  pressedTouchKeys.clear();
 }
 
 function showTouchControls() {
@@ -205,6 +215,7 @@ function paintControls(vehicle) {
     KeyB: actions?.wheelBrake && 'Wheel brake',
     KeyG: !vehicle && 'Passenger',
     KeyF: vehicle ? 'Exit vehicle' : 'Vehicle',
+    KeyW: actions?.throttle && !actions.pitchUp && 'Gas',
     ShiftLeft: !vehicle ? 'Run' : actions.ascend ? 'Rise' : actions.pitchUp && 'Throttle',
     Space: !vehicle ? 'Jump' : actions.descend ? 'Descend' : 'Brake'
   };
@@ -230,7 +241,7 @@ function touchStep(dt) {
     if (held === movementCodes.has(code)) continue;
     if (held) movementCodes.add(code);
     else movementCodes.delete(code);
-    sendKey(code, held);
+    syncTouchKey(code);
   }
   if (touch.aim.active) {
     const e = new MouseEvent('mousemove', { movementX: touch.aim.x * 900 * dt, movementY: touch.aim.y * 900 * dt });
@@ -578,7 +589,7 @@ async function loaded() {
   state.ready = true;
   $('trail-help').hidden = false;
   paintMode();
-  if (state.world.lastScenarioID === MEGA_RAMP) notice(touchDevice ? 'Push the Move stick up to drive down the Mega Ramp!' : 'Hold W or push the left stick forward to drive down the Mega Ramp!', 6);
+  if (state.world.lastScenarioID === MEGA_RAMP) notice(touchDevice ? 'Hold Gas or push the Move stick up to drive down the Mega Ramp!' : 'Hold W or push the left stick forward to drive down the Mega Ramp!', 6);
   pause(document.hidden);
   if (roomFromLink && !openedInvite) {
     openedInvite = true;
@@ -607,7 +618,7 @@ try {
   if (isTouchDevice()) showTouchControls();
   if (!quiz.live) {
     document.documentElement.setAttribute('data-pad-standalone', '');
-    void import('../../lib/pad.js?v=trail7');
+    void import('../../lib/pad.js?v=trail8');
   }
   pause(true);
   state.world.registerUpdatable({ updateOrder: 99, update: tick });

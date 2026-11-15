@@ -153,6 +153,13 @@ body[data-trail-flight] .touch-hints > :last-child { bottom: calc(220px + env(sa
   min-height: 48px; background: #183b31ec; color: white;
   font: 750 13px/1.15 system-ui, sans-serif;
 }
+#trail-touch button[data-control="KeyW"] {
+  background: #d7f3a2;
+  color: #183b31;
+  border-color: #f7ffd0;
+  font-weight: 900;
+}
+#trail-touch button[data-control="KeyW"][data-held] { background: #f7ffd0; }
 #trail-touch button[data-held] { background: #d5f2a9; color: #183b31; }
 #trail-touch button[data-control="Space"] { grid-column: 1 / -1; }
 body[data-trail-paused] .touch-hints, body[data-trail-paused] .vg-gamepad,
@@ -160,9 +167,6 @@ body[data-trail-paused] #trail-touch, body[data-trail-paused] #trail-shortcuts,
 body[data-trail-touch] #trail-help, .pad-cursor, .pad-note { display: none !important; }
 @media (pointer: coarse) { #trail-help { display: none; } }
 
-@media (max-height: 320px) and (orientation: portrait) {
-  .touch-hints { display: none; }
-}
 @media (max-height: 320px) {
   #trail-touch { grid-template-columns: repeat(3, minmax(54px, auto)); }
   #trail-touch button[data-control="Space"] { grid-column: auto; }
@@ -179,3 +183,9 @@ body[data-trail-paused] #trail-boarding { display: none !important; }
 #trail-friend-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 #trail-friend-panel p { margin: 7px 0; }
 #trail-invite { display: block; overflow-wrap: anywhere; color: #14634d; }
+
+/* In a short iframe, keep the first-touch hints out of the throttle and brake area. */
+@media (max-height: 320px) {
+  .touch-hints > :first-child { left: max(12px, env(safe-area-inset-left)) !important; }
+  body[data-trail-touch] #trail-notice { top: calc(max(9px, env(safe-area-inset-top)) + 62px); left: 9px; transform: none; max-width: min(51%, 19rem); }
+}
