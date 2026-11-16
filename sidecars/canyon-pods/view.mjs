@@ -248,20 +248,34 @@ export function createView(host, onLost) {
     const m = new THREE.Mesh(shadowGeo,new THREE.MeshBasicMaterial({ color:0x251b2b, transparent:true, opacity:.28, depthWrite:false }));
     m.rotateX(-Math.PI/2);m.scale.set(1.6,2.2,1);scene.add(m);return m;
   });
-  const draw = (run, reduced = false) => {
-    const list = [run,...rivals.map((_,i)=>rivalAt(i,run.time))];
+  const paintPod = (racer, paint) => {
+    racer.mat.color.set(paint.body);
+    racer.trim.color.set(paint.trim);
+    racer.glow.color.set(paint.trim);
+  };
+  const soloPaint = { body: 0x677acf, trim: 0xc1d3ff };
+  let friendPod = null, friendKind = null, localKind;
+  const draw = (run, reduced = false, friend = null) => {
+    const list = [run, ...rivals.map((_, i) => rivalAt(i, run.time))];
+    if (friend) list[3] = friend;
+    if (friendPod !== (friend?.pod ?? null) || friendKind !== (friend?.kind ?? null)) {
+      friendPod = friend?.pod ?? null;
+      friendKind = friend?.kind ?? null;
+      paintPod(rivals[2], PODS[friendPod] || soloPaint);
+      seatDriver(rivals[2], friendKind || rivalDrivers(localKind)[2], true);
+    }
     [player,...rivals].forEach(({pod,chassis,jets,shield,buddy},i)=>{
       const state = list[i];
       setTrack(pod,state.d,state.x,.42 + (reduced?0:.08*Math.sin(run.time*12+i)));
-      chassis.rotation.z = i ? 0 : run.steer*.2;
+      chassis.rotation.z = (state.steer || 0) * .2;
       shield.visible = i === 0 && run.shield;
-      const jet = !i && run.boost ? 1.6 : .5 + Math.min(1,run.speed/70);
+      const jet = state.boost ? 1.6 : .5 + Math.min(1, (state.speed ?? run.speed) / 70);
       jets.forEach(m=>m.scale.y=jet);
       if (buddy) {
         buddy.animate(0, 0, reduced ? 0 : run.time);
         buddy.legs.forEach(leg => { leg.rotation.x = -Math.PI * .36; });
         buddy.arms.forEach(arm => { arm.rotation.x = -.48; });
-        buddy.body.rotation.x = i === 0 && run.boost ? .16 : .05;
+        buddy.body.rotation.x = state.boost ? .16 : .05;
       }
       shadows[i].position.set(pod.position.x,.04,pod.position.z);
     });
@@ -283,11 +297,11 @@ export function createView(host, onLost) {
   };
   new ResizeObserver(resize).observe(host);resize();
   return {
-    setPod(i) { const p=PODS[i];player.mat.color.set(p.body);player.trim.color.set(p.trim);player.glow.color.set(p.trim); },
+    setPod(i) { paintPod(player, PODS[i]); },
     setBuddy(kind) {
-      const k = buddyKind(kind);
-      seatDriver(player, k);
-      rivalDrivers(k).forEach((kind, i) => seatDriver(rivals[i], kind, true));
+      localKind = buddyKind(kind);
+      seatDriver(player, localKind);
+      rivalDrivers(localKind).forEach((kind, i) => seatDriver(rivals[i], i === 2 && friendKind ? friendKind : kind, true));
     },
     draw
   };

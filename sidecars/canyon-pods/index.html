@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Canyon Pods · Little Sprouts</title>
-  <link rel="stylesheet" href="./pods.css">
+  <link rel="stylesheet" href="./pods.css?v=3">
 </head>
 <body>
   <main id="world" tabindex="-1" aria-label="Canyon race"></main>
@@ -12,20 +12,12 @@
     <div class="meters">
       <span id="lap">LAP 1 / 2</span><span id="place">4 / 4</span>
       <span id="speed">0 m/s</span><span id="shield" hidden>🛡 Shield</span>
+      <span id="boost-meter">⚡ <span id="charges">1</span></span>
+      <span id="friend-hud" hidden>🤝 Friend race</span>
     </div>
     <button id="pause" type="button" aria-label="Pause race">Ⅱ</button>
   </header>
   <div id="toast" role="status" hidden></div>
-  <div id="controls" hidden data-touch-ignore>
-    <div class="steer">
-      <button id="left" type="button" aria-label="Steer left">‹</button>
-      <button id="right" type="button" aria-label="Steer right">›</button>
-    </div>
-    <div class="power">
-      <button id="brake" type="button">Brake</button>
-      <button id="boost" type="button">⚡ Boost <span id="charges">1</span></button>
-    </div>
-  </div>
   <div id="countdown" hidden><div><span id="count-label" role="status">Get ready!</span><strong id="digit" aria-hidden="true">3</strong></div></div>
   <section id="panel" role="dialog" aria-label="Canyon Pods menu" data-pad-menu data-touch-ignore>
     <div class="card">
@@ -35,11 +27,31 @@
       <div id="pods" aria-label="Pick your pod" hidden></div>
       <div class="menu-actions">
         <button id="start" type="button" hidden>Race!</button>
+        <button id="friends" type="button" hidden>Play with a friend</button>
         <button id="leave" type="button" hidden>All games</button>
       </div>
-      <p id="instructions" class="help">Auto-throttle · Hold a direction to steer · Brake to line up · Boost on a straight</p>
+      <p id="instructions" class="help">Auto-throttle · Steer with the stick or arrows · Brake to line up · Boost on a straight</p>
     </div>
   </section>
-  <script type="module" src="./game.mjs?v=2"></script>
+  <section id="friend-panel" role="dialog" aria-label="Play with a friend" data-pad-menu data-touch-ignore hidden>
+    <div class="card">
+      <div class="eyebrow">🏁 LITTLE SPROUTS RACING</div>
+      <h1>Race a friend</h1>
+      <p>Two laps, two buddies, and two computer racers. Friend races skip questions and stars.</p>
+      <p id="friend-status" role="status">Start a room and send the link to your friend.</p>
+      <p id="invite-row" hidden>
+        <a id="invite">Open invite link</a>
+        <button id="copy" type="button">Copy invite</button>
+      </p>
+      <div id="friend-pods" aria-label="Pick your pod" hidden></div>
+      <div class="menu-actions">
+        <button id="host" type="button">Start a room</button>
+        <button id="wifi" type="button">Same Wi-Fi</button>
+        <button id="ready" type="button" hidden>Ready to race</button>
+        <button id="friend-back" type="button" data-pad-back>Back to solo</button>
+      </div>
+    </div>
+  </section>
+  <script type="module" src="./game.mjs?v=3"></script>
 </body>
 </html>

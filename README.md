@@ -22,7 +22,7 @@ From this folder:
 node server/serve.mjs
 ```
 
-Open http://localhost:8000. There is no build step. From that address the browser can install Little Sprouts, and the pages already opened keep working if the network drops. This server also opens the friend room for Paint Sphere and Garden gulp. If the site is already running from `python3 -m http.server`, start `node server/paint-link.mjs` beside it. Play with a friend uses that room.
+Open http://localhost:8000. There is no build step. From that address the browser can install Little Sprouts, and the pages already opened keep working if the network drops. This server also opens the friend room for Paint Sphere and Garden gulp. If the site is already running from `python3 -m http.server`, start `node server/paint-link.mjs` beside it. Play with a friend uses that room. Saving the games for offline play also needs this server: it writes the list of files to save (`offline-files.json`), as the Docker image does at build.
 
 ## Play with a friend, with or without internet
 

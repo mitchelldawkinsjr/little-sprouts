@@ -16,11 +16,16 @@ test('Canyon Pods ships with Learning Play, Arcade Play, input mapping, and offl
   assert.equal(game.banks, true);
   assert.ok(sidecarArcadeIds().includes(game.id));
   assert.deepEqual(game.pad.keys, { a: 'Space', x: 'KeyS', rt: 'Space' });
+  assert.equal(game.pad.menuBack, '[data-pad-back]');
   const read = p => readFileSync(new URL('../'+p, import.meta.url), 'utf8');
   assert.match(read('Dockerfile'), /COPY sidecars\/canyon-pods /);
-  for (const p of ['index.html','pods.css','logic.mjs','game.mjs','view.mjs']) {
-    assert.ok(read('lib/offline-warm.mjs').includes('sidecars/canyon-pods/'+p));
+  assert.match(read('Dockerfile'), /find sidecars vendor lib/);
+  assert.match(read('server/serve.mjs'), /LISTED = \['sidecars', 'vendor', 'lib'/);
+  for (const p of ['index.html', 'pods.css', 'logic.mjs', 'game.mjs', 'view.mjs', 'friends.mjs']) {
+    assert.ok(read('sidecars/canyon-pods/' + p).length);
   }
+  assert.match(read('sidecars/canyon-pods/game.mjs'), /attachTouchControls/);
+  assert.match(read('sidecars/canyon-pods/game.mjs'), /data-pad-standalone/);
 });
 
 test('Closed track wraps, stays continuous and is parameterized by metres', () => {

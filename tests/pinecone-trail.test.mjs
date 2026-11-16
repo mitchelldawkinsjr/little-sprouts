@@ -20,10 +20,11 @@ test('Pinecone Trail ships under Run, Jump & Dodge with Arcade play, rewards, an
   assert.equal(game.pad.keys.start, 'KeyP');
   assert.ok(statSync(new URL('../' + game.src.split('?')[0], import.meta.url)).isFile());
   const docker = readFileSync(new URL('../Dockerfile', import.meta.url), 'utf8');
-  const warm = readFileSync(new URL('../lib/offline-warm.mjs', import.meta.url), 'utf8');
   assert.match(docker, /COPY sidecars\/pinecone-trail /);
+  // Offline saving follows the build list, which covers every file under sidecars/.
+  assert.ok(docker.match(/find ([^\n]+?) -type f/)[1].split(' ').includes('sidecars'));
   for (const path of ['index.html', 'trail.css', 'game.mjs', 'logic.mjs', 'world.mjs']) {
-    assert.ok(warm.includes('./sidecars/pinecone-trail/' + path), path);
+    assert.ok(statSync(new URL('../sidecars/pinecone-trail/' + path, import.meta.url)).isFile(), path);
   }
 });
 

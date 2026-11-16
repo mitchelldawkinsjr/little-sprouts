@@ -4,21 +4,18 @@
 body { margin: 0; overflow: hidden; }
 #world, #world canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; outline: 0; touch-action: none; }
 button { font: inherit; font-weight: 800; cursor: pointer; min-width: 48px; min-height: 44px; }
-button:focus-visible { outline: 3px solid #8debe2; outline-offset: 3px; }
+button:focus-visible, button.pad-focus { outline: 3px solid #8debe2; outline-offset: 3px; }
+.pad-note, .pad-cursor { display: none; }
 #hud { position: fixed; inset: max(10px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) auto max(12px,env(safe-area-inset-left)); display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; pointer-events: none; }
-.meters, #controls > div { display:flex; gap: 5px; flex-wrap: wrap; align-items: center; }
-.meters span, #toast { border-radius: 20px; padding: 6px 11px; color: #ffebcb; background: #2b192dec; border: 1px solid #e3a96d96; font-weight: 850; font-variant-numeric: tabular-nums; }
+.meters { display:flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+.meters > span, #toast { border-radius: 20px; padding: 6px 11px; color: #ffebcb; background: #2b192dec; border: 1px solid #e3a96d96; font-weight: 850; font-variant-numeric: tabular-nums; }
 #shield { background: #1b5b58; }
-#hud button, #controls button { pointer-events: auto; color: #ffebcb; background: #2f1b32ed; border: 1px solid #eca770; border-radius: 14px; padding: 6px 11px; touch-action: none; }
-#hud button { font-size: 19px; }
-#controls { position: fixed; display: flex; justify-content: space-between; align-items: flex-end; gap: 5px; left: max(12px,env(safe-area-inset-left)); right: max(12px,env(safe-area-inset-right)); bottom: max(12px,env(safe-area-inset-bottom)); pointer-events: none; }
-#controls button { min-height: 52px; }
-#controls .steer button { min-width: 54px; font-size: 1.8rem; line-height: 1; }
-#controls button[data-held] { background: #c35c40; color: #fff; }
-#controls #boost { background: #ffd278; color: #301b36; }
-#controls #boost[data-empty] { background: #3a293c; color: #fff1d2; }
-#toast { position: fixed; bottom: 78px; left: 50%; transform: translateX(-50%); text-align: center; width: max-content; max-width: 88vw; pointer-events: none; }
-#panel, #countdown { position: fixed; inset: 0; display: grid; place-items: center; padding: 10px; background: #26172893; }
+#hud button { pointer-events: auto; color: #ffebcb; background: #2f1b32ed; border: 1px solid #eca770; border-radius: 14px; padding: 6px 11px; touch-action: none; }
+#boost-meter[data-empty] { opacity: .65; }
+.vg-gamepad .vg-btn[data-id] { font-size: 16px !important; letter-spacing: 0; }
+.vg-gamepad .vg-btn[data-id=boost] { font-size: 19px !important; }
+#toast { position: fixed; bottom: 115px; left: 50%; transform: translateX(-50%); text-align: center; width: max-content; max-width: 88vw; pointer-events: none; }
+#panel, #countdown, #friend-panel { position: fixed; inset: 0; display: grid; place-items: center; padding: 10px; background: #26172893; }
 #countdown { pointer-events: none; background: #2b182755; }
 #countdown div { border: 1px solid #f0a978; padding: 7px 23px; border-radius: 19px; background: #3a2037ed; text-align:center; }
 #countdown strong { display: block; color: #ffd278; font-size: clamp(38px,13vmin,80px); line-height: 1; }
@@ -26,21 +23,20 @@ button:focus-visible { outline: 3px solid #8debe2; outline-offset: 3px; }
 .eyebrow { font-size: .7rem; letter-spacing: .16em; color: #ffbb82; font-weight: 850; }
 h1 { font-size: clamp(28px,7vw,49px); margin: 3px 0; line-height: 1; }
 .card p { margin: 8px 0; }
-#pods, .menu-actions { display: flex; justify-content: center; gap: 7px; margin-top: 10px; }
-#pods button, .menu-actions button { border-radius: 12px; padding: 4px 11px; color: #ffe8c4; background: #522e46; border: 1px solid #a9756d; }
-#pods button { flex: 1; max-width: 130px; min-width: 0; font-size: .78rem; }
-#pods button::before { content:''; display:block; width: 19px; height: 9px; margin: 3px auto; border-radius: 10px; background: var(--pod); box-shadow: 0 0 9px var(--pod); }
-#pods button[aria-pressed=true] { border-color: #ffe7a2; background: #72444f; }
-.menu-actions #start { background: #ffd278; color: #301b36; min-width: 100px; }
+#pods, #friend-pods, .menu-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; margin-top: 10px; }
+:is(#pods, #friend-pods) button, .menu-actions button { border-radius: 12px; padding: 4px 11px; color: #ffe8c4; background: #522e46; border: 1px solid #a9756d; }
+:is(#pods, #friend-pods) button { flex: 1; max-width: 130px; min-width: 0; font-size: .78rem; }
+:is(#pods, #friend-pods) button::before { content:''; display:block; width: 19px; height: 9px; margin: 3px auto; border-radius: 10px; background: var(--pod); box-shadow: 0 0 9px var(--pod); }
+:is(#pods, #friend-pods) button[aria-pressed=true] { border-color: #ffe7a2; background: #72444f; }
+.menu-actions :is(#start, #ready) { background: #ffd278; color: #301b36; min-width: 100px; }
+#invite { color: #fff1b4; margin-right: 8px; }
+#copy { border-radius: 10px; padding: 4px 8px; }
 .help { font-size: .74rem; color: #e7b69a; }
 @media (max-height:350px) {
   .card { padding: 9px; }
-  .card p, #pods, .menu-actions { margin: 5px 0; }
-  #controls { bottom: 6px; }
-  #controls button { min-height: 44px; }
+  .card p, #pods, #friend-pods, .menu-actions { margin: 5px 0; }
 }
 @media (max-width:365px) {
-  #hud, #controls { left: 7px; right: 7px; }
-  .meters span, #controls button { padding-inline: 7px; }
-  #controls .steer button { min-width: 46px; }
+  #hud { left: 7px; right: 7px; }
+  .meters > span { padding-inline: 7px; }
 }

@@ -42,8 +42,8 @@ import {
   verseRecall,
   verseWithRef
 } from '../logic.mjs?v=offline1';
-import { canSpeak, warm } from '../lib/speech.js?v=en1';
-import { bakedLines } from '../lib/speech-core.mjs?v=night1';
+import { canSpeak, warm } from '../lib/speech.js?v=offline4';
+import { bakedLines } from '../lib/speech-core.mjs?v=offline4';
 import { mountCatch, mountLanes, mountRace, mountRocket, pokeRocket, stopArcade } from '../games/arcade.js?v=gear2';
 import { mountLunar } from '../games/lunar.js?v=moon-board2';
 import { mountHoop, stopHoop } from '../games/hoop.js?v=hoop-trio-r2';
@@ -80,7 +80,7 @@ import {
   sidecarGame,
   sidecarIsBuilt,
   stopSidecar
-} from '../lib/sidecar.js?v=pods2';
+} from '../lib/sidecar.js?v=offline4';
 import {
   SHELF_META,
   shelfOf as shelfIdOf,
