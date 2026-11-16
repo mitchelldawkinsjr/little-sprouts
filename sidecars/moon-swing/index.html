@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#342e34">
+  <title>Moonlight Swing · Little Sprouts</title>
+  <link rel="stylesheet" href="/lib/game-touch.css?v=1">
+  <link rel="stylesheet" href="./rink.css?v=1">
+  <script type="importmap">{"imports":{"three":"../../vendor/three/build/three.module.js?v=r187"}}</script>
+</head>
+<body data-game-touch-canvas>
+  <main aria-label="Moonlight Swing">
+    <canvas id="world" tabindex="0" aria-label="Moonlight rink. Pull the leash and hop to catch the tokens."></canvas>
+    <canvas id="backup" tabindex="0" aria-label="Moonlight rink. Pull the leash and hop to catch the tokens." hidden></canvas>
+    <div id="labels" aria-label="Floating answers"></div>
+    <nav id="levels" aria-label="Difficulty modes" data-pad-menu data-touch-ignore>
+      <button type="button" value="1" aria-pressed="true">1 <small>Easy</small></button>
+      <button type="button" value="2" aria-pressed="false" disabled>2 <small>Beat 1</small></button>
+      <button type="button" value="3" aria-pressed="false" disabled>3 <small>Beat 2</small></button>
+    </nav>
+    <header id="hud" hidden>
+      <div class="chip"><strong>MOONLIGHT SWING</strong><span id="round-mode">Easy</span></div>
+      <div class="score"><strong id="score">0 pts</strong><span id="shield" hidden>🛡 Shield</span></div>
+      <button id="pause" type="button" data-game-touch aria-label="Pause">Ⅱ</button>
+    </header>
+    <section id="question" aria-labelledby="prompt" data-touch-ignore hidden>
+      <div class="question-copy">
+        <span id="progress"></span>
+        <p id="prompt" role="status"></p>
+        <div id="question-show"></div>
+      </div>
+      <button id="hear" type="button" aria-label="Hear the question again">🔊</button>
+    </section>
+    <p id="notice" role="status" hidden></p>
+    <section id="menu" aria-labelledby="headline" data-pad-menu data-touch-ignore>
+      <div class="card">
+        <p id="eyebrow">LITTLE SPROUTS · SWING &amp; COLLECT</p>
+        <h1 id="headline">Moonlight Swing</h1>
+        <p id="description">Skate a glowing rink on a stretchy leash and hop for high gems.</p>
+        <p id="target"></p>
+        <div class="actions">
+          <button id="play" class="primary" type="button" data-pad-back disabled>Start swinging</button>
+          <button id="practice" type="button" hidden>Practice questions</button>
+        </div>
+        <div id="how">
+          <p id="help-keys">Point the mouse where your buddy should skate, or slide the leash with arrows, WASD, or the stick. Click, Space, or A to hop. Faster skating means bigger spins.</p>
+          <p id="help-touch" hidden>Drag a thumb on the left to pull the leash. Tap ↗ to hop and spin for things in the air.</p>
+          <p>Gold gems are points. In learning play, touch the floating answer. Clear a mode to unlock the next.</p>
+        </div>
+      </div>
+    </section>
+    <div id="count" hidden><strong id="count-digit"></strong><span id="count-label" role="status"></span></div>
+  </main>
+  <script type="module" src="./game.mjs?v=leash1"></script>
+</body>
+</html>

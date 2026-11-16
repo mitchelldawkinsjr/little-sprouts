@@ -554,8 +554,8 @@ export function registerMounts(rt) {
         else rt.question();
         return;
       }
-      // Ink Trail runs a final stretch after its last checkpoint and owns the finish screen.
-      if (g.mode === 'ink-trail') {
+      // These games own their finish screen after the last question.
+      if (g.mode === 'ink-trail' || g.mode === 'moon-swing') {
         if (g.index >= rounds) postSidecar({ type: 'clear' });
         else rt.question();
         return;
@@ -1440,11 +1440,13 @@ export function registerMounts(rt) {
           // Arcade picture rounds: the goal was said at the start; don't stop play to read it each time.
           if (rt.game?.freePlay && side.arcadeVia === 'pictures') return;
           // Garden gulp and Garden dash keep moving while the question is read, so just say it.
-          if (rt.game?.mode === 'gulp' || rt.game?.mode === 'dash' || rt.game?.mode === 'boss' || rt.game?.mode === 'deliveries') { if (!rt.game.finished) rt.say(rt.game.prompt); return; }
+          if (rt.game?.mode === 'gulp' || rt.game?.mode === 'dash' || rt.game?.mode === 'boss' || rt.game?.mode === 'deliveries' || rt.game?.mode === 'moon-swing') { if (!rt.game.finished) rt.say(rt.game.prompt); return; }
           if (rt.game && !rt.game.finished) rt.askBeforePlay(rt.game.prompt);
         },
         onReplay() {
-          if (rt.game && !rt.game.finished) rt.askBeforePlay(rt.game.prompt);
+          if (!rt.game || rt.game.finished) return;
+          if (rt.game.mode === 'moon-swing') rt.say(rt.game.prompt);
+          else rt.askBeforePlay(rt.game.prompt);
         },
         onNeed(data) {
           if (side.lesson) { if (data?.lesson && rt.game && !rt.game.finished) sendLessonConfig(); return; }
@@ -1463,8 +1465,8 @@ export function registerMounts(rt) {
           }
           // Boss chase says which way the round goes when it starts: Play or Endless.
           if (rt.game.mode === 'boss' && typeof data?.endless === 'boolean') rt.game.bossEndless = data.endless;
-          // Skybound: this world has had all its questions; let the climb go on to the portal.
-          if (rt.game.mode === 'skybound' && rt.game.index >= rt.questionCount()) {
+          // The guest owns the result screen once this learner's set is complete.
+          if ((rt.game.mode === 'skybound' || rt.game.mode === 'moon-swing') && rt.game.index >= rt.questionCount()) {
             postSidecar({ type: 'clear' });
             return;
           }
@@ -1544,6 +1546,10 @@ export function registerMounts(rt) {
               if (rt.game !== round || round.finished) return;
               rt.finish(detail || 'round');
             }, 4500);
+            return;
+          }
+          if (round.mode === 'moon-swing') {
+            if (!round.freePlay && round.index >= rt.questionCount() && detail === 'swing-clear') rt.finish(detail);
             return;
           }
           if (round.mode === 'ink-trail') {
