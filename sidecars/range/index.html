@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/lib/game-touch.css?v=1">
   <title>Targets</title>
   <script type="importmap">
   {
@@ -59,7 +60,7 @@
     @media (max-width: 520px) { #hud { left: 12px; right: 12px; top: 56px; } #map { width: 96px; height: 96px; margin-left: -48px; bottom: 130px; } }
   </style>
 </head>
-<body>
+<body data-game-touch-canvas>
   <div id="view" aria-label="Targets: paint the board with the right answer"></div>
   <div id="cross" aria-hidden="true"></div>
   <div class="corner left">
@@ -87,7 +88,7 @@
       <button type="button" id="again">Play again</button>
     </div>
   </div>
-  <div class="aim">
+  <div class="aim" data-game-touch>
     <div class="stack">
       <button type="button" id="aimUp" aria-label="Look up">▲</button>
       <div class="row">

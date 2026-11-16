@@ -1322,6 +1322,7 @@ export function registerRound(rt) {
   function finishRun(g, title, detail) {
     rt.releaseListen();
     if (!g || g.finished) return;
+    rt.leavePlayFullscreen();
     g.finished = true;
     rt.clearTimers('bridge');
     stopMarble();
@@ -1777,6 +1778,7 @@ export function registerRound(rt) {
     stopHoop();
     const g = rt.game;
     if (!g || g.finished) return;
+    rt.leavePlayFullscreen();
     g.finished = true;
     rt.camOff();
     const distance = Math.max(0, Math.round(+result?.distance || 0));
@@ -1798,6 +1800,7 @@ export function registerRound(rt) {
   }
   function finish(detail) {
     rt.releaseListen();
+    rt.leavePlayFullscreen();
     rt.clearTimers('lane', 'hook', 'sky', 'planet', 'match');
     stopArcade();
     rt.stopLunar();

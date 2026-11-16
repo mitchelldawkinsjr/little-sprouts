@@ -10,6 +10,7 @@ const SHELL = [
   './',
   './index.html',
   './style.css',
+  './lib/game-touch.css',
   './app.js',
   './logic.mjs',
   './sheet.csv',

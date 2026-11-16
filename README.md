@@ -26,6 +26,14 @@ Open http://127.0.0.1:8000. There is no local build step. This server provides t
 
 Starter games save automatically. Select **Save full offline pack** in Parent corner for the larger games. See [Traffic, diagnostics, and offline delivery](docs/observability.md) for sizes, verification and GA4 setup.
 
+### Playing on a tablet
+
+Use **Full screen** in a game's top bar to hide the browser chrome when supported.
+If fullscreen is unavailable, **Expand game** fills the available browser viewport
+and keeps the exit button visible. Touch controls and playfields ignore accidental
+pinch and double-tap zoom so a second finger can press a game control. The game
+shelf and Parent corner still support browser zoom and scrolling.
+
 ## Play with a friend, with or without internet
 
 **Group rooms** are available in Canyon Pods, Sketchbook Mega Ramp (Free Explore), Sakura Town Helper, and Block Meadow (Free Build) for up to four players. Cabin Camp supports three-player co-op. Start an online room and share its invite, or use **Host on same Wi-Fi**, **Join on same Wi-Fi**, and **Add another friend** to pair devices one at a time. Save the games on every device before trying no-internet play. Group room invites are scoped to the game.

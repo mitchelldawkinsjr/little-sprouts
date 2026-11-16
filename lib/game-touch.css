@@ -1,0 +1,17 @@
+/* Apply inside each sidecar document as well as the host. Touch action does not cross frames. */
+[data-game-touch-canvas] :where(canvas, .touch-controls),
+[data-game-touch],
+#arcade :where(canvas, .field, .steer, .steer-btn, .puzzle-stage, .match-play,
+  .trace-board, .crayon-board, .sort-tube, .merge-jar) {
+  /* Override older generic button and canvas rules only on these play surfaces. */
+  touch-action: none !important;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Tap-only play keeps intentional pinch available, but doesn't zoom on rapid taps. */
+.playtop button,
+.playarea .choices button,
+[data-game-tap] button {
+  touch-action: manipulation;
+}

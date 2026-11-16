@@ -2,7 +2,8 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="/lib/game-touch.css?v=1">
     <title>Marble box</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='1' y='1' width='14' height='14' rx='3' fill='%23b9874f'/%3E%3Ccircle cx='8' cy='8' r='4' fill='%233f9c8f'/%3E%3C/svg%3E" />
     <script src="/lib/device-tier-boot.js?v=low-end1"></script>
@@ -70,17 +71,17 @@
       }
     </style>
   </head>
-  <body>
+  <body data-game-touch-canvas>
     <canvas id="stage" aria-label="Marble box: a wooden maze with a marble"></canvas>
     <div id="hud" hidden>
       <span id="count">Maze 1</span>
-      <button id="tilt" type="button" aria-pressed="false" hidden>📱 Tilt</button>
+      <button id="tilt" data-game-touch type="button" aria-pressed="false" hidden>📱 Tilt</button>
       <span id="stars">⭐ 0</span>
     </div>
     <div id="ask" hidden aria-live="polite"><span id="askText"></span><div id="show"></div></div>
     <div id="toast" hidden aria-live="assertive"></div>
     <div id="hint" hidden>Drag anywhere to tilt the box</div>
-    <div id="stick" hidden><i></i></div>
+    <div id="stick" data-game-touch hidden><i></i></div>
     <div id="overlay">
       <div class="card">
         <h1 id="title">Marble box</h1>

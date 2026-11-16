@@ -43,6 +43,7 @@ import {
   verseWithRef
 } from '../logic.mjs?v=offline1';
 import { canSpeak } from '../lib/speech.js?v=offline4';
+import { makePlayFullscreen } from '../lib/play-fullscreen.mjs';
 import { bakedLines } from '../lib/speech-core.mjs?v=offline4';
 import { mountCatch, mountLanes, mountRace, mountRocket, pokeRocket, stopArcade } from '../games/arcade.js?v=gear2';
 import { mountLunar } from '../games/lunar.js?v=moon-board2';
@@ -133,6 +134,7 @@ export function registerMounts(rt) {
     advanceVerse,
     paintRallyChrome,
     home,
+    leavePlayFullscreen,
     paintHeader,
     requestHome,
     start,
@@ -462,6 +464,7 @@ export function registerMounts(rt) {
       else rt.question();
     }, 700);
   }
+  let playFullscreen;
   function playFocusOn() { return document.body.classList.contains('play-focus'); }
   function setPlayFocus(on) {
     document.body.classList.toggle('play-focus', !!on);
@@ -469,9 +472,12 @@ export function registerMounts(rt) {
     syncPlayViewButtons();
   }
   function syncPlayViewButtons() {
+    document.body.classList.toggle('play-native-full', playFullscreen.native);
+    document.body.classList.toggle('play-expanded', playFullscreen.expanded);
     const focus = $('#playFocus');
     if (focus) {
       const on = playFocusOn();
+      focus.hidden = playFullscreen.native || playFullscreen.expanded;
       focus.setAttribute('aria-pressed', String(on));
       focus.setAttribute('aria-label', on ? 'Show controls' : 'Focus view');
       focus.title = on ? 'Show controls' : 'Focus view';
@@ -479,26 +485,33 @@ export function registerMounts(rt) {
     }
     const full = $('#playFull');
     if (full) {
-      const on = !!document.fullscreenElement;
+      const on = playFullscreen.native || playFullscreen.expanded;
+      const label = playFullscreen.expanded ? 'Exit expanded play' : on ? 'Exit full screen'
+        : playFullscreen.canRequest ? 'Full screen' : 'Expand game';
       full.setAttribute('aria-pressed', String(on));
-      full.setAttribute('aria-label', on ? 'Exit full screen' : 'Full screen');
-      full.title = on ? 'Exit full screen' : 'Full screen';
+      full.setAttribute('aria-label', label);
+      full.title = label;
       full.textContent = on ? '🗗' : '⛶';
     }
   }
   function wirePlayViewControls(doListen) {
+    playFullscreen ||= makePlayFullscreen(document);
     try { if (sessionStorage.getItem('ls:play-focus') === '1') document.body.classList.add('play-focus'); } catch {}
     if ($('#playListen')) $('#playListen').onclick = doListen;
     if ($('#playFocus')) $('#playFocus').onclick = () => setPlayFocus(!playFocusOn());
     if ($('#playFull')) $('#playFull').onclick = async () => {
-      try {
-        if (document.fullscreenElement) await document.exitFullscreen();
-        else await (document.documentElement.requestFullscreen?.() || document.body.requestFullscreen?.());
-      } catch {}
+      await playFullscreen.toggle();
       syncPlayViewButtons();
     };
-    document.removeEventListener('fullscreenchange', syncPlayViewButtons);
-    document.addEventListener('fullscreenchange', syncPlayViewButtons);
+    for (const event of ['fullscreenchange', 'webkitfullscreenchange']) {
+      document.removeEventListener(event, syncPlayViewButtons);
+      document.addEventListener(event, syncPlayViewButtons);
+    }
+    syncPlayViewButtons();
+  }
+  function leavePlayFullscreen() {
+    if (!playFullscreen) return;
+    playFullscreen.leave();
     syncPlayViewButtons();
   }
   function playTopControls() {
@@ -570,6 +583,7 @@ export function registerMounts(rt) {
     rt.releaseListen();
     const g = rt.game;
     if (!g || g.finished || g.mode !== mode) return;
+    leavePlayFullscreen();
     g.finished = true;
     clearTimers(mode);
     stopFn();
@@ -613,6 +627,7 @@ export function registerMounts(rt) {
     }
   }
   function home(focus, { syncHash = true } = {}) {
+    leavePlayFullscreen();
     if (!rt.data.profiles?.length) {
       rt.showWelcome?.();
       return;
@@ -3034,6 +3049,7 @@ export function registerMounts(rt) {
   }
   function showRocketEnd(g, kind, asked, correct) {
     if (rt.game !== g) return;
+    leavePlayFullscreen();
     stopArcade();
     const title = kind === 'moon' ? 'You landed on the moon!' : kind === 'stars' ? 'You flew past the stars!' : 'The rocket came back down.';
     const sub = kind === 'crash' ? 'Let’s launch again.' : 'Nice flying. Let’s launch again.';

@@ -22,6 +22,13 @@ const page = "dist/index.html";
 let html = readFileSync(page, "utf8");
 const tier = "<script src=\"/lib/device-tier-boot.js?v=low-end1\"></script>";
 const guest = "<script src=\"/lib/sidecar-guest.js?v=low-end1\"></script>";
+const gestures = "<link rel=\"stylesheet\" href=\"/lib/game-touch.css?v=1\">";
+if (!html.includes("game-touch.css")) {
+  html = html.replace(/<head\b[^>]*>/i, "$&\n    " + gestures)
+    .replace(/<body\b/i, "$& data-game-touch-canvas")
+    .replace(/(<meta\s+name="viewport"\s+content=")([^"]*)/i,
+      (_, prefix, content) => prefix + content.replace(/,\s*(?:user-scalable\s*=\s*no|maximum-scale\s*=\s*1)(?=,|$)/gi, ""));
+}
 // Phones and tablets: touch sticks and buttons the game reads as a controller (lib/touch-controls.mjs).
 // Left thumb steers; the big buttons are go, brake, and back on the road. It runs before the game
 // module itself, so the game sees the touch controller from its first frame.
