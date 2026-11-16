@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <link rel="stylesheet" href="/lib/game-touch.css?v=1">
   <meta name="theme-color" content="#543caa" />
   <meta name="description" content="Skybound Obby — cinematic offline-first 3D adventure with Little Sprouts learning gates" />
   <link rel="manifest" href="./manifest.webmanifest" />
@@ -14,7 +15,7 @@
   <!-- A tall card (World clear plus the world list) starts at its top and scrolls, instead of losing its heading above a short frame. -->
   <style>#modal{overflow-y:auto;align-items:safe center}</style>
 </head>
-<body>
+<body data-game-touch-canvas>
   <div id="game"></div>
   <header id="hud">
     <div class="brand"><span class="brand-star">✦</span> SKYBOUND <b>OBBY</b></div>
@@ -25,14 +26,14 @@
       <span class="stat">★ <strong id="stars">0</strong></span>
       <span class="stat">⚑ <strong id="checkpoint">0</strong><small id="checkpoint-total">/ 3</small></span>
       <span class="stat">◷ <strong id="timer">00:00</strong></span>
-      <button type="button" class="round" id="sound-btn" title="Toggle sound" aria-label="Toggle sound">♪</button>
-      <button type="button" class="round" id="pause-btn" title="Pause" aria-label="Pause">Ⅱ</button>
+      <button type="button" class="round" id="sound-btn" data-game-touch title="Toggle sound" aria-label="Toggle sound">♪</button>
+      <button type="button" class="round" id="pause-btn" data-game-touch title="Pause" aria-label="Pause">Ⅱ</button>
     </div>
   </header>
   <div id="ask" hidden aria-live="polite"></div>
   <div id="stage"><span id="stage-label">WORLD 01 · CRYSTAL RUN</span><div id="stage-track"><div id="stage-fill"></div></div></div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <div id="mobile-controls" aria-label="Touch game controls">
+  <div id="mobile-controls" data-game-touch aria-label="Touch game controls">
     <div id="stick" aria-label="Virtual joystick"><div id="stick-thumb"></div></div>
     <button id="jump-btn" aria-label="Jump">JUMP <span>↥</span></button>
   </div>

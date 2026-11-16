@@ -2,7 +2,8 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="/lib/game-touch.css?v=1">
     <title>Grass maze</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='1' y='1' width='14' height='14' rx='3' fill='%23bfe3f2'/%3E%3Cpath d='M3 15 L5 5 L6 15 M7 15 L8 3 L9 15 M10 15 L11 6 L13 15' fill='%234f8a2c'/%3E%3C/svg%3E" />
     <script src="/lib/device-tier-boot.js?v=low-end1"></script>
@@ -68,17 +69,17 @@
       }
     </style>
   </head>
-  <body>
+  <body data-game-touch-canvas>
     <canvas id="stage" aria-label="Grass maze: your garden buddy runs through a maze of tall grass"></canvas>
     <div id="hud" hidden>
       <span id="count">Maze 1</span>
-      <button id="map" type="button">🗺️ Map</button>
+      <button id="map" data-game-touch type="button">🗺️ Map</button>
       <span id="stars">⭐ 0</span>
     </div>
     <div id="ask" hidden aria-live="polite"><span id="askText"></span><div id="show"></div></div>
     <div id="toast" hidden aria-live="assertive"></div>
     <div id="hint" hidden>Drag anywhere to run</div>
-    <div id="stick" hidden><i></i></div>
+    <div id="stick" data-game-touch hidden><i></i></div>
     <div id="overlay">
       <div class="card">
         <h1 id="title">Grass maze</h1>

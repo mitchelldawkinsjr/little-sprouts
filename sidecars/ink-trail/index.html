@@ -3,19 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <link rel="stylesheet" href="/lib/game-touch.css?v=1">
   <meta name="theme-color" content="#111823">
   <title>Ink Trail · Little Sprouts</title>
   <link rel="stylesheet" href="./trail.css?v=6">
   <script type="importmap">{"imports":{"three":"../../vendor/three/build/three.module.js?v=r187"}}</script>
 </head>
-<body>
+<body data-game-touch-canvas>
   <main aria-label="Ink Trail">
     <canvas id="trail" tabindex="0" data-touch-ignore aria-label="Ink drawing area. Touch and slide to steer the pen, drag with the mouse, or use the arrow keys."></canvas>
     <canvas id="creature" aria-hidden="true"></canvas>
     <header id="hud" hidden>
       <div class="chip"><span class="kicker">INK TRAIL</span><strong id="distance">0 m</strong></div>
       <div class="chip chase"><span id="chase-icons" aria-hidden="true">🐛←</span><span id="chase-label">1 boss chasing</span><progress id="gap" max="220" aria-label="Distance from the nearest boss"></progress></div>
-      <div class="chip stats"><strong id="score">💧 0</strong><button id="pause" type="button" aria-label="Pause">Ⅱ</button></div>
+      <div class="chip stats"><strong id="score">💧 0</strong><button id="pause" data-game-touch type="button" aria-label="Pause">Ⅱ</button></div>
     </header>
     <div id="status" role="status" hidden></div>
     <div id="tip" hidden>Draw in any direction · arrows or controller</div>

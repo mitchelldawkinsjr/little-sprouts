@@ -3,15 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <link rel="stylesheet" href="/lib/game-touch.css?v=1">
   <title>Sketchbook Mega Ramp · Little Sprouts</title>
-  <link rel="stylesheet" href="./trail.css?v=trail8">
+  <link rel="stylesheet" href="./trail.css?v=trail8-tablet1">
 </head>
-<body data-trail-paused>
+<body data-game-touch-canvas data-trail-paused>
   <header id="trail-hud" data-touch-ignore>
     <strong>Sketchbook Mega Ramp</strong>
     <p id="trail-mode">Opening the playground…</p>
   </header>
-  <div id="trail-shortcuts" data-touch-ignore>
+  <div id="trail-shortcuts" data-game-touch data-touch-ignore>
     <button type="button" id="trail-menu" aria-haspopup="dialog" aria-controls="trail-panel" aria-expanded="false" hidden>
       <span aria-hidden="true">☰</span> Menu
     </button>
@@ -59,7 +60,7 @@
       <button type="button" id="trail-friend-back" class="trail-back" data-trail-back>Back to trail menu</button>
     </div>
   </section>
-  <div id="trail-touch" role="group" aria-label="Touch controls" hidden data-touch-ignore>
+  <div id="trail-touch" data-game-touch role="group" aria-label="Touch controls" hidden data-touch-ignore>
     <button type="button" data-control="KeyQ" hidden>Yaw left</button>
     <button type="button" data-control="KeyE" hidden>Yaw right</button>
     <button type="button" data-control="KeyV" hidden>View</button>
@@ -74,6 +75,6 @@
   <p id="trail-boarding" role="status" hidden></p>
   <p id="trail-help" hidden></p>
   <script src="./build/sketchbook.min.js?v=trail1"></script>
-  <script type="module" src="./trail.mjs?v=plane-crash1"></script>
+  <script type="module" src="./trail.mjs?v=group1-plane1"></script>
 </body>
 </html>
