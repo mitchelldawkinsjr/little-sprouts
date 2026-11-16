@@ -4,7 +4,7 @@ import { drawBuddy } from '../../lib/buddy2d.mjs?v=gear2';
 import { BOSS_EMOJI } from '../../lib/boss-design.mjs';
 import { makeBoss } from '../../lib/boss-model.mjs';
 import { bossLungeBlend, makeBossCatch } from '../../lib/boss-catch.mjs';
-import { strokeAt } from './logic.mjs';
+import { bossDistance } from './logic.mjs';
 import { makeInkSurface } from './ink-surface.mjs';
 
 const UNIT = 12;
@@ -12,17 +12,16 @@ const BOSS_SCALE = .76;
 const INK = { clean: '#7beeff', wobble: '#ff739c', gold: '#ffca72' };
 const pos = p => ({ x: p.x / UNIT, z: p.z / UNIT });
 
-function placeBoss(rig, sample, s) {
-  function place(part, at) {
-    const p = sample(at);
-    part.position.set(p.x / UNIT, .53, p.z / UNIT);
-    part.rotation.y = -Math.atan2(p.dz, p.dx);
-  }
-  place(rig.lead, s);
+function placeBoss(rig, head) {
+  const x = head.x / UNIT, z = head.z / UNIT;
+  const dx = Math.cos(head.heading), dz = Math.sin(head.heading);
+  rig.lead.position.set(x, .53, z);
+  rig.lead.rotation.y = -head.heading;
   let back = 0;
   rig.segs.forEach(({ group }, i) => {
-    back += rig.spacing[i] * UNIT * BOSS_SCALE;
-    place(group, s - back);
+    back += rig.spacing[i] * BOSS_SCALE;
+    group.position.set(x - dx * back, .53, z - dz * back);
+    group.rotation.y = -head.heading;
   });
 }
 
@@ -35,18 +34,22 @@ function buildRig(design) {
 }
 
 function chaseDraws() {
-  let activeRun, catcher, catchDistance;
+  let activeRun, catcher, pose;
   return (run, catchAge, dt, reduced) => {
     if (activeRun !== run || catcher !== run.caughtBy) {
       activeRun = run;
       catcher = run.caughtBy;
-      catchDistance = catcher ? run.distance - catcher.gap : 0;
+      if (catcher) {
+        const heading = Math.atan2(run.buddy.z - catcher.z, run.buddy.x - catcher.x);
+        pose = { x: catcher.x, z: catcher.z, heading };
+      }
     }
     if (catcher) {
-      const goal = run.distance - 9;
-      catchDistance = reduced ? goal : catchDistance + (goal - catchDistance) * bossLungeBlend(catchAge, dt);
+      const blend = reduced ? 1 : bossLungeBlend(catchAge, dt);
+      pose.x += (run.buddy.x - Math.cos(pose.heading) * 12 - pose.x) * blend;
+      pose.z += (run.buddy.z - Math.sin(pose.heading) * 12 - pose.z) * blend;
     }
-    return boss => boss === catcher ? catchDistance : run.distance - boss.gap;
+    return boss => boss === catcher ? pose : boss;
   };
 }
 
@@ -279,7 +282,6 @@ function make3D(canvas, surface, preview, renderer) {
     if (strokes.length || (running && dt > 0)) ink.frame(a, b, strokes, reduced || !running ? 0 : Math.min(dt,.06), run.time);
     lastSample = trail.at(-1);
     const headAt = chase(run, catchAge, dt, reduced);
-    const sampleStroke = s => strokeAt(trail, s);
     const active = run.bosses.filter(boss => boss.active);
     if (!run.caughtBy || !pack.has(run.caughtBy)) bossCatch.release();
     for (const [boss, rig] of pack) if (!active.includes(boss)) {
@@ -293,9 +295,9 @@ function make3D(canvas, surface, preview, renderer) {
         scene.add(rig.group);
         pack.set(boss, rig);
       }
-      placeBoss(rig, sampleStroke, headAt(boss));
+      placeBoss(rig, headAt(boss));
       rig.animate(boss === run.caughtBy && !reduced ? clock : time, 1,
-        boss === run.caughtBy ? 1 : boss.gap < 50 ? .75 : 0);
+        boss === run.caughtBy ? 1 : bossDistance(boss, run.buddy) < 50 ? .75 : 0);
     }
     const catcher = pack.get(run.caughtBy);
     if (catcher) {
@@ -370,11 +372,11 @@ function makeFallback(canvas, preview) {
       const lead=at(run.buddy), pen=at(run.trail.at(-1));
       ctx.font='36px system-ui';ctx.textAlign='center';
       for (const boss of run.bosses) if (boss.active) {
-        const p = strokeAt(run.trail, headAt(boss)), head = at(p);
+        const p = headAt(boss), head = at(p);
         ctx.fillText(BOSS_EMOJI[boss.design.head], head.x, head.y);
         if (boss === run.caughtBy) {
           const kick = reduced ? 0 : Math.sin(time * 18) * 3;
-          drawBuddy(ctx, buddy, head.x + p.dx * 11, head.y + p.dz * 11 - 5 + kick, 25, { step: reduced ? 0 : time * 18 });
+          drawBuddy(ctx, buddy, head.x + Math.cos(p.heading) * 11, head.y + Math.sin(p.heading) * 11 - 5 + kick, 25, { step: reduced ? 0 : time * 18 });
         }
       }
       if (!run.caughtBy) drawBuddy(ctx,buddy,lead.x,lead.y,58,{ step: running ? time*14 : 0 });

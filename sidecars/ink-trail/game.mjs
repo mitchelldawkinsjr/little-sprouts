@@ -4,7 +4,7 @@ import { makeBossBuilder } from '../../lib/boss-builder.mjs';
 import { BOSS_CHOMP_SECONDS } from '../../lib/boss-catch.mjs';
 import { actionDown, moveDirs, nextIndex, readPad } from '../../lib/pad-core.mjs?v=pad-map1';
 import { localQuestion, normalizeQuestion, LOCAL_ROUND } from '../roll/quiz.mjs?v=roll1';
-import { COUNT_IN, answer, makeRun, nearestBoss, resumeCaught, stepRun } from './logic.mjs';
+import { CHASE_RANGE, COUNT_IN, answer, bossDistance, makeRun, nearestBoss, resumeCaught, stepRun } from './logic.mjs';
 import { makeView } from './view.mjs';
 
 const $ = id => document.getElementById(id);
@@ -44,6 +44,7 @@ let padX = 0, padY = 0, padAction = false, padPause = false, padFocus = null;
 let arcadeBest = 0;
 
 const BEST_KEY = 'sprouts-ink-trail-best-v1';
+const BEARINGS = ['→', '↘', '↓', '↙', '←', '↖', '↑', '↗'];
 try { arcadeBest = Number(localStorage.getItem(BEST_KEY)) || 0; } catch { /* storage off */ }
 const meters = () => Math.floor(run.distance / 10);
 
@@ -57,11 +58,15 @@ function paintChase() {
   const closest = nearestBoss(run);
   const active = run.bosses.filter(boss => boss.active);
   const gap = $('gap'), label = $('chase-label'), icons = $('chase-icons');
-  const text = closest.gap < 48 ? 'Boss is close!' : active.length === 1 ? '1 boss behind' : `${active.length} bosses behind`;
-  if (gap.max !== closest.max) gap.max = closest.max;
-  gap.value = closest.gap;
+  const distance = bossDistance(closest, run.buddy);
+  const text = distance < 48 ? 'Boss is close!' : active.length === 1 ? '1 boss chasing' : `${active.length} bosses chasing`;
+  if (gap.max !== CHASE_RANGE) gap.max = CHASE_RANGE;
+  gap.value = distance;
   if (label.textContent !== text) label.textContent = text;
-  const heads = active.map(boss => BOSS_EMOJI[boss.design.head]).join(' ');
+  const heads = active.map(boss => {
+    const angle = Math.atan2(boss.z - run.buddy.z, boss.x - run.buddy.x);
+    return BOSS_EMOJI[boss.design.head] + BEARINGS[(Math.round(angle * 4 / Math.PI) + 8) % 8];
+  }).join(' ');
   if (icons.textContent !== heads) icons.textContent = heads;
 }
 
@@ -107,7 +112,7 @@ function home() {
   setScreen('menu');
   menu({
     tag: 'Little Sprouts · Run & Draw', title: 'Ink Trail',
-    intro: 'Draw a glowing trail for your garden buddy. Keep the ink flowing as more bosses join the chase!',
+    intro: 'Draw a glowing trail for your garden buddy. Turn away from bosses as they close in from different sides!',
     play: !playMode ? 'Getting ready…' : playMode === 'arcade' ? 'Start drawing' : 'Start learning run',
     action: playMode ? () => start(playMode) : null, build: true, endless: !embedded,
     info: `${BOSS_EMOJI[design.head]} ${bossName(design)}`
@@ -414,7 +419,7 @@ function tick(now) {
       if (event === 'question') openQuestion();
       if (event === 'caught') caught();
       if (event === 'finish') win();
-      if (event === 'join' && screen === 'run' && nextBoss) status(`${bossName(nextBoss.design)} joined the chase!`);
+      if (event === 'join' && screen === 'run' && nextBoss) status(`${bossName(nextBoss.design)} is cutting across the floor!`);
       if (event === 'dot') status('✦ Ink drop! The bosses fell back.');
       if (event === 'wash') status('Splash! Draw around the puddles.');
     }

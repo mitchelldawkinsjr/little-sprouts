@@ -5,7 +5,7 @@ import { sidecarGame, sidecarAlone, sidecarArcadeIds } from '../lib/sidecar.js';
 import { contextFor } from '../lib/speech-core.mjs';
 import { PRESETS, readBoss as readShared, saveBoss as saveShared } from '../lib/boss-design.mjs';
 import { readBoss as readFromChase, saveBoss as saveFromChase } from '../sidecars/boss/logic.mjs';
-import { answer, FIRST_QUESTION, INK_BOOST, makeRun, nearestBoss, PEN_AHEAD, PEN_WOBBLE, resumeCaught, stepRun, strokeAt } from '../sidecars/ink-trail/logic.mjs';
+import { answer, bossDistance, FIRST_QUESTION, INK_BOOST, makeRun, nearestBoss, PEN_AHEAD, PEN_WOBBLE, resumeCaught, stepRun, strokeAt } from '../sidecars/ink-trail/logic.mjs';
 import { makeBossCatch } from '../lib/boss-catch.mjs';
 import { Group } from '../vendor/three/build/three.module.js';
 
@@ -46,6 +46,7 @@ test('the old Boss Chase save survives in both directions', () => {
 
 test('the runner follows a freehand corner, then doubles back in floor coordinates', () => {
   const run = makeRun();
+  run.safe = 12; // This test exercises the drawing controls, not boss avoidance.
   const settle = (x, z) => {
     for (let i = 0; i < 110; i++) {
       stepRun(run, 1 / 60, { target: { x, z } });
@@ -91,19 +92,21 @@ test('the custom boss leads and two distinct bosses join before the first questi
   assert.equal(run.bosses.filter(boss => boss.active).length, 2);
   assert.deepEqual(simulate(run, 3, input), ['join', 'question']);
   assert.equal(run.bosses.filter(boss => boss.active).length, 3);
-  const gaps = run.bosses.map(boss => boss.gap);
+  const positions = run.bosses.map(({ x, z }) => [x, z]);
   simulate(run, 2, input);
-  assert.deepEqual(run.bosses.map(boss => boss.gap), gaps, 'a question freezes the whole pack');
+  assert.deepEqual(run.bosses.map(({ x, z }) => [x, z]), positions, 'a question freezes the whole pack');
 });
 
-test('any active boss can catch the buddy, and only a learning run resumes', () => {
+test('any active boss can catch the buddy on contact, and only a learning run resumes', () => {
   for (const learning of [false, true]) {
     for (const i of [0, 1, 2]) {
       const run = makeRun({ learning });
       simulate(run, 4.25, { direction: { x: 1, z: 0 } });
       const catcher = run.bosses[i];
       assert.ok(catcher.active);
-      catcher.gap = 16.01;
+      catcher.x = run.buddy.x + 22;
+      catcher.z = run.buddy.z;
+      catcher.heading = Math.PI;
       assert.equal(nearestBoss(run), catcher);
       assert.deepEqual(stepRun(run, 1 / 60), ['caught']);
       assert.equal(run.caughtBy, catcher);
@@ -113,19 +116,40 @@ test('any active boss can catch the buddy, and only a learning run resumes', () 
       assert.equal(run.distance, distance);
       if (learning) {
         assert.equal(run.caughtBy, null);
-        assert.ok(run.bosses.every(boss => boss.active && boss.gap === boss.start));
+        assert.ok(run.bosses.every(boss => boss.active && bossDistance(boss, run.buddy) >= 120));
         assert.equal(run.nextQuestion, FIRST_QUESTION);
       }
     }
   }
 });
 
-test('the faster late boss can overtake the pack when the pen stops', () => {
+test('flankers cut over unpainted floor from opposite sides of a straight stroke', () => {
   const run = makeRun();
   assert.deepEqual(simulate(run, 5, { direction: { x: 1, z: 0 } }), ['join', 'join']);
-  assert.equal(nearestBoss(run), run.bosses[0]);
+  assert.ok(run.trail.every(p => p.z === 0));
+  assert.ok(run.bosses[1].z < -5);
+  assert.ok(run.bosses[2].z > 35);
   assert.deepEqual(simulate(run, 6), ['caught']);
   assert.equal(run.caughtBy, run.bosses[2]);
+});
+
+test('choosing a turn away from a flanker can avoid a catch', () => {
+  const north = makeRun(), south = makeRun();
+  for (const run of [north, south]) simulate(run, 3, { direction: { x: 1, z: 0 } });
+  assert.ok(!simulate(north, 4, { direction: { x: 0, z: -1 } }).includes('caught'));
+  assert.ok(simulate(south, 4, { direction: { x: 0, z: 1 } }).includes('caught'));
+  assert.equal(south.caughtBy, south.bosses[2]);
+  assert.ok(south.caughtBy.z > 0, 'the chomp comes from the floor, not the old trail behind the buddy');
+});
+
+test('a moving boss catches the buddy on a swept path crossing even when the endpoints miss', () => {
+  const run = makeRun();
+  const boss = run.bosses[0];
+  Object.assign(boss, { x: 34, z: -55, heading: Math.PI / 2, speed: 220, turn: 0 });
+  assert.deepEqual(stepRun(run, .5, { direction: { x: 1, z: 0 } }), ['caught']);
+  assert.equal(run.caughtBy, boss);
+  assert.ok(run.distance > 0 && run.distance < 54);
+  assert.ok(Math.abs(bossDistance(boss, run.buddy) - 21) < .001);
 });
 
 test('the shared chomp holds the garden buddy at the chosen jaw and restores its running transform', () => {
@@ -179,10 +203,10 @@ test('a right answer pushes every boss back, thickens the ink, and opens the fin
   const run = makeRun({ learning: true });
   const input = { direction: { x: 1, z: 0 } };
   simulate(run, 6, input);
-  const gaps = run.bosses.map(boss => boss.gap);
+  const gaps = run.bosses.map(boss => bossDistance(boss, run.buddy));
   assert.ok(answer(run, true, true));
   assert.equal(run.boost, INK_BOOST);
-  assert.ok(run.bosses.every((boss, i) => boss.gap > gaps[i]));
+  assert.ok(run.bosses.every((boss, i) => bossDistance(boss, run.buddy) > gaps[i]));
   assert.equal(run.nextQuestion, Infinity);
   simulate(run, .35, input);
   assert.ok(run.trail.some(p => p.style === 'gold' && p.ink));
@@ -205,6 +229,7 @@ test('collectibles and puddles trigger only when the buddy passes their position
 
 test('keyboard can draw in all four directions, at a bounded lead', () => {
   const run = makeRun();
+  run.safe = 8;
   for (const [x,z] of [[1,0],[0,-1],[-1,0],[0,1]]) {
     const before = { ...run.pen };
     simulate(run, 1, { direction: { x,z } });

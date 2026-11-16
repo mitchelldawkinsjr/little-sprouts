@@ -53,10 +53,11 @@ Most rounds are 5, 10, or 15 questions. A right answer on the first try earns a 
 
 Hold and drag anywhere on the 3D floor to draw wet ink. Your garden buddy follows the
 actual painted stroke, including corners and loops. Guide the line around purple
-puddles and through golden drops to stay ahead of the bosses. Your custom boss starts
-the chase and two more join as you get farther. Any of the three can catch and chomp
-the garden buddy. Learning play lets you keep drawing from there, while a catch ends
-that Arcade run. Learning play uses the
+puddles and through golden drops to stay ahead of the bosses. Only the garden buddy
+follows the ink. Your custom boss starts behind you and two more cut across the floor
+from opposite sides. Watch their direction arrows and draw a turn away from danger.
+Any boss that reaches the buddy can chomp. Learning play lets you keep drawing from
+there, while a catch ends that Arcade run. Learning play uses the
 active learner's questions. A correct answer gives a golden boost. A miss sends the
 buddy back onto a briefly wobbly trail, then brings the same question back. Arcade play
 runs without questions. The wet-ink look is inspired by Karim Maaloul’s
