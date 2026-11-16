@@ -10,7 +10,7 @@ import {
 } from '../lib/device-tier.mjs?v=low-end1';
 import { makeBuddy, buddyKind } from '../lib/buddy3d.mjs?v=gear2';
 
-const THREE_URL = '../vendor/three/build/three.module.js?v=r187';
+const THREE_URL = '/vendor/three/build/three.module.js?v=r187';
 const GROUND_TOP = 0.25;
 const GRAVITY = -7.2;
 const JUMP = 4.8;

@@ -5,6 +5,7 @@
 import { createHash, randomInt } from 'node:crypto'
 import { createServer } from 'node:http'
 import { pathToFileURL } from 'node:url'
+import { operations } from './operations.mjs'
 import { GROUP, groupCapacity, makeGroupRoom, readGroup, roomCode } from '../lib/group-room.mjs'
 
 const GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
@@ -279,7 +280,9 @@ class Peer {
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href
 if (isMain) {
-  const server = createServer((_req, res) => {
+  const ops = operations({ origin: process.env.SPROUTS_ORIGIN, measurementId: process.env.SPROUTS_GA4_MEASUREMENT_ID })
+  const server = createServer(async (req, res) => {
+    if (await ops(req, res)) return
     res.writeHead(404)
     res.end()
   })

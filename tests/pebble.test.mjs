@@ -1,3 +1,5 @@
+import { inventory } from '../tools/static-files.mjs';
+import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { CHECKPOINT_GAP, checkpointSeconds, FIRST_CHECKPOINT, hop, makeRun, ROW_GAP, rowAt, rowDistance, rowLanes, score, startCheckpointCountdown, steer, step } from '../sidecars/pebble/logic.mjs';
@@ -204,11 +206,10 @@ test('the Pebble roll sidecar ships with arcade, controller, learning, and offli
   const assets = [spec.src.split('?')[0], 'sidecars/pebble/game.mjs',
     'sidecars/pebble/logic.mjs', 'sidecars/pebble/view.mjs', 'lib/sidecar-quiz.mjs', 'lib/buddy3d.mjs',
     'vendor/three/build/three.module.js', 'vendor/three/build/three.core.js'];
-  // Offline saving follows the build list: every file under the folders the Dockerfile lists.
-  const listed = (await file('Dockerfile')).match(/find ([^\n]+?) -type f/)[1].split(' ');
+  const listed = inventory(fileURLToPath(new URL('..', import.meta.url))).offline();
   for (const asset of assets) {
     assert.ok((await file(asset)).length > 0);
-    assert.ok(listed.includes(asset.split('/')[0]), asset + ' is in the offline list');
+    assert.ok(listed['./' + asset], asset + ' is in the offline list');
   }
   assert.match(await file('Dockerfile'), /COPY sidecars\/pebble /);
 });

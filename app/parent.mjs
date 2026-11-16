@@ -36,6 +36,7 @@ import { sidecarGame, sidecarIsBuilt } from '../lib/sidecar.js?v=offline4';
 import { spriteHtml } from '../lib/home-ui.mjs?v=gear2';
 import { wornGear } from '../logic/shop.mjs?v=shop3';
 import { voiceStatusText } from '../lib/parent-ui.mjs?v=structure2';
+import { refreshDiagnostics } from '../lib/diagnostics.mjs';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 
 export function registerParent(rt) {
@@ -360,6 +361,7 @@ export function registerParent(rt) {
     fillLearners(rt.data.active);
     loadForm();
     $('#settings').showModal();
+    refreshDiagnostics();
     rt.setHash?.('settings');
   }
   function showWelcome({ syncHash = true } = {}) {
@@ -546,6 +548,7 @@ export function registerParent(rt) {
     el.textContent = `${replaced}${sheet.rows.length} items (${summary}) stay on this device until you reload.${stale}`;
   }
   async function loadSheet() {
+    if (!navigator.onLine && rt.data.sheet?.rows?.length) { paintSheet(); return; }
     const el = $('#sheetStatus');
     if (el) el.textContent = 'Checking the question sheet…';
     let base = { rows: [], note: 'empty' };
@@ -555,12 +558,21 @@ export function registerParent(rt) {
     } catch { /* the default file is missing; the Google Sheet can still supply rows */ }
     let remote = { rows: [], note: 'empty' };
     let error = '';
+    const controller = new AbortController();
+    const deadline = setTimeout(() => controller.abort(), 4000);
     try {
-      const res = await fetch(SHEET_URL, { cache: 'no-store' });
+      const res = await fetch(SHEET_URL, { cache: 'no-store', signal: controller.signal });
       if (!res.ok) throw new Error(String(res.status));
       remote = parseSheet(await res.text());
     } catch {
       error = 'The Google Sheet could not be loaded. Games are using the default sheet.';
+    } finally {
+      clearTimeout(deadline);
+    }
+    if (error && rt.data.sheet?.rows?.length && (rt.data.sheet.games?.length || rt.data.sheet.error?.includes('last saved'))) {
+      rt.data.sheet.error = 'Could not refresh the Google Sheet. Using the last saved questions.';
+      paintSheet();
+      return;
     }
     const merged = mergeSheets(base, remote);
     let rows = merged.rows;

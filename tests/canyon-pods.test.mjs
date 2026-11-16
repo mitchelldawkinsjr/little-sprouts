@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url';
+import { inventory } from '../tools/static-files.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
@@ -19,8 +21,8 @@ test('Canyon Pods ships with Learning Play, Arcade Play, input mapping, and offl
   assert.equal(game.pad.menuBack, '[data-pad-back]');
   const read = p => readFileSync(new URL('../'+p, import.meta.url), 'utf8');
   assert.match(read('Dockerfile'), /COPY sidecars\/canyon-pods /);
-  assert.match(read('Dockerfile'), /find sidecars vendor lib/);
-  assert.match(read('server/serve.mjs'), /LISTED = \['sidecars', 'vendor', 'lib'/);
+  // The deploy's offline list (tools/static-files.mjs) carries the game's files.
+  assert.ok(inventory(fileURLToPath(new URL('..', import.meta.url))).offline()['./sidecars/canyon-pods/index.html']);
   for (const p of ['index.html', 'pods.css', 'logic.mjs', 'game.mjs', 'view.mjs', 'friends.mjs']) {
     assert.ok(read('sidecars/canyon-pods/' + p).length);
   }

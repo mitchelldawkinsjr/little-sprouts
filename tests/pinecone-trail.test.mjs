@@ -1,3 +1,5 @@
+import { inventory } from '../tools/static-files.mjs';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, statSync } from 'node:fs';
@@ -21,9 +23,9 @@ test('Pinecone Trail ships under Run, Jump & Dodge with Arcade play, rewards, an
   assert.ok(statSync(new URL('../' + game.src.split('?')[0], import.meta.url)).isFile());
   const docker = readFileSync(new URL('../Dockerfile', import.meta.url), 'utf8');
   assert.match(docker, /COPY sidecars\/pinecone-trail /);
-  // Offline saving follows the build list, which covers every file under sidecars/.
-  assert.ok(docker.match(/find ([^\n]+?) -type f/)[1].split(' ').includes('sidecars'));
+  const listed = inventory(fileURLToPath(new URL('..', import.meta.url))).offline();
   for (const path of ['index.html', 'trail.css', 'game.mjs', 'logic.mjs', 'world.mjs']) {
+    assert.ok(listed['./sidecars/pinecone-trail/' + path]);
     assert.ok(statSync(new URL('../sidecars/pinecone-trail/' + path, import.meta.url)).isFile(), path);
   }
 });

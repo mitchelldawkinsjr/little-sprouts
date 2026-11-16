@@ -1,7 +1,7 @@
 FROM node:24-alpine AS link
 WORKDIR /app
-COPY server/paint-link.mjs /app/server/paint-link.mjs
-COPY lib/group-room.mjs /app/lib/group-room.mjs
+COPY server/paint-link.mjs server/operations.mjs /app/server/
+COPY lib/diagnostic-schema.mjs lib/group-room.mjs /app/lib/
 ENV PORT=5180
 EXPOSE 5180
 CMD ["node", "server/paint-link.mjs"]
@@ -12,9 +12,12 @@ WORKDIR /build
 COPY tools/build-sidecar.sh /build/tools/build-sidecar.sh
 RUN sh /build/tools/build-sidecar.sh /out/sidecars/rally /sidecars/rally/
 
-FROM nginx:alpine
-
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+FROM node:24-alpine AS static
+WORKDIR /build
+COPY tools/build/package.json tools/build/package-lock.json /build/bundle/
+RUN npm --prefix /build/bundle ci --no-audit --no-fund
+COPY tools/build/bundle.mjs /build/bundle/
+COPY tools/static-files.mjs /build/
 COPY --from=sidecars /out/sidecars /usr/share/nginx/html/sidecars
 COPY sidecars/flight /usr/share/nginx/html/sidecars/flight
 COPY sidecars/bike /usr/share/nginx/html/sidecars/bike
@@ -40,6 +43,7 @@ COPY sidecars/sky-deliveries /usr/share/nginx/html/sidecars/sky-deliveries
 COPY sidecars/field-guide-fishing /usr/share/nginx/html/sidecars/field-guide-fishing
 COPY sidecars/canyon-pods /usr/share/nginx/html/sidecars/canyon-pods
 COPY sidecars/sketchbook /usr/share/nginx/html/sidecars/sketchbook
+COPY for-parents /usr/share/nginx/html/for-parents
 COPY index.html style.css app.js logic.mjs sheet.csv manifest.webmanifest sw.js /usr/share/nginx/html/
 COPY icons /usr/share/nginx/html/icons
 COPY app /usr/share/nginx/html/app
@@ -49,19 +53,11 @@ COPY games /usr/share/nginx/html/games
 COPY voice /usr/share/nginx/html/voice
 COPY vendor /usr/share/nginx/html/vendor
 
-# Every shipped file with a stamp of its content (SHA-1 prefix and size), so the service worker can
-# save all sidecars for offline play and download again only what really changed. A stamp from the
-# file's time would change on every build and send every device the whole download again.
-# Tidewater (field-guide-fishing, ~57 MB, WebGPU only) is left out: it plays online, and devices
-# that cannot run it would otherwise download it all for nothing. Every voice is listed; each
-# device saves only the voices it uses.
-RUN cd /usr/share/nginx/html \
- && find sidecars vendor lib app logic games icons voice style.css app.js logic.mjs sheet.csv manifest.webmanifest -type f \
-      ! -path 'sidecars/field-guide-fishing/*' \
-      ! -name '.*' ! -name '*.md' ! -name '*LICENSE*' ! -name 'NOTICE' ! -name '*.test.*' ! -name '*.map' \
-      -exec sh -c 'for f; do printf "%s-%s %s\n" "$(sha1sum "$f" | cut -c1-16)" "$(stat -c %s "$f")" "$f"; done' sh {} + \
-  | sort -k2 \
-  | awk 'BEGIN { printf "{" } { printf "%s\"./%s\":\"%s\"", (NR > 1 ? "," : ""), $2, $1 } END { print "}" }' \
-  > offline-files.json
+# Stamp original bytes for Cache Storage, then precompress eligible HTTP assets.
+RUN node /build/bundle/bundle.mjs /usr/share/nginx/html \
+ && node /build/static-files.mjs /usr/share/nginx/html
 
+FROM nginx:alpine
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=static /usr/share/nginx/html /usr/share/nginx/html
 EXPOSE 80

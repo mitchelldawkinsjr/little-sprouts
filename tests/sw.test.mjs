@@ -145,3 +145,43 @@ test('an online answer is saved once, under its address without ?v=', async () =
   assert.ok(saved.includes('/games/y.js'));
   assert.ok(!saved.some(p => p.includes('?')));
 });
+
+test('starter excludes the heavy packs and camera by default, full adds them without redownloading starter files', async () => {
+  const files = { ...FILES, '/sidecars/skybound/index.html': 'sky', '/vendor/mediapipe/model': 'cam' };
+  const sw = worker(files);
+  await sw.warm({ pack: 'starter' });
+  assert.ok((await sw.saved()).includes('/lib/tool.js'));
+  assert.ok(!(await sw.saved()).some(p => p.startsWith('/sidecars/rally') || p.includes('/mediapipe/') || p.includes('/skybound/')));
+  sw.net.calls.length = 0;
+  await sw.warm({ pack: 'full' });
+  assert.ok((await sw.saved()).includes('/sidecars/skybound/index.html'));
+  assert.ok((await sw.saved()).includes('/vendor/mediapipe/model'));
+  assert.ok(!sw.net.calls.includes('/lib/tool.js'));
+  await sw.warm({ pack: 'starter' });
+  assert.ok((await sw.saved()).includes('/sidecars/skybound/index.html'), 'existing full packs are not removed');
+});
+
+test('starter saves the Reach camera files when it is enabled', async () => {
+  const sw = worker({ '/vendor/mediapipe/model': 'cam' });
+  await sw.warm({ pack: 'starter', camera: true });
+  assert.ok((await sw.saved()).includes('/vendor/mediapipe/model'));
+});
+
+test('Tidewater is saved only in the Full pack, and only on a device that can draw with WebGPU', async () => {
+  const tide = '/sidecars/field-guide-fishing/tidewater-coast.html';
+  const sw = worker({ ...FILES, [tide]: 'tide' });
+  await sw.warm({ pack: 'starter', webgpu: true });
+  assert.ok(!(await sw.saved()).includes(tide));
+  await sw.warm({ pack: 'full', webgpu: false });
+  assert.ok(!(await sw.saved()).includes(tide));
+  await sw.warm({ pack: 'full', webgpu: true });
+  assert.ok((await sw.saved()).includes(tide));
+});
+
+test('operations routes bypass the worker cache', async () => {
+  const sw = worker({});
+  for (const path of ['/ops/diagnostics', '/healthz', '/metrics', '/for-parents/']) {
+    assert.equal(await sw.get(path), undefined, path);
+  }
+  assert.deepEqual(sw.net.calls, []);
+});

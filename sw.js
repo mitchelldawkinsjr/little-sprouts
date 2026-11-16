@@ -20,10 +20,12 @@ const SHELL = [
   './vendor/fonts/fonts.css',
   './vendor/fonts/dm-sans.woff2',
   './vendor/fonts/outfit.woff2',
-  './vendor/three/build/three.module.js',
-  './vendor/three/addons/objects/Sky.js'
+  './sidecars.json'
 ];
 /** The folders the build list covers. Saved files there that this device no longer needs are deleted. */
+const LARGE_GAMES = /^\.\/sidecars\/(rally|skybound|sky-deliveries|field-guide-fishing)\//;
+/** Tidewater draws with WebGPU only: a device without it never saves the game. */
+const WEBGPU_GAMES = /^\.\/sidecars\/field-guide-fishing\//;
 const LISTED = /^\.\/(sidecars|vendor|lib|app|logic|games|icons|voice)\//;
 
 self.addEventListener('install', event => {
@@ -103,7 +105,8 @@ self.addEventListener('fetch', event => {
   const req = event.request;
   if (req.method !== 'GET' || req.headers.has('range')) return;
   const url = new URL(req.url);
-  if (url.origin !== self.location.origin || url.pathname.startsWith('/link')) return;
+  if (url.origin !== self.location.origin
+    || /^\/(link|ops|for-parents|metrics|healthz)(?:\/|$)/.test(url.pathname)) return;
   event.respondWith((async () => {
     const cache = await caches.open(CACHE);
     const ready = await current(cache, req, url);
@@ -113,7 +116,7 @@ self.addEventListener('fetch', event => {
         ? cache.match('./index.html', MATCH) : undefined));
     const network = fetch(req).then(fresh => {
       // Hand the page the response at once; saving the copy finishes in the background.
-      if (fresh.ok && keep(fresh)) {
+      if (fresh.ok && keep(fresh) && url.pathname !== '/offline-files.json') {
         event.waitUntil(cache.put(bare(req), fresh.clone()).catch(() => {}));
         if (isShell(req, url)) event.waitUntil(cache.put('./index.html', fresh.clone()).catch(() => {}));
       }
@@ -121,13 +124,16 @@ self.addEventListener('fetch', event => {
     });
     network.catch(() => {});
     // A slow network: a saved copy, if there is one, answers after SLOW_MS. The download still finishes and is saved.
-    const slow = new Promise(resolve => setTimeout(() => saved().then(hit => hit && resolve(hit)), SLOW_MS));
+    let timer;
+    const slow = new Promise(resolve => { timer = setTimeout(() => saved().then(hit => hit && resolve(hit), () => {}), SLOW_MS); });
     try {
       return await Promise.race([network, slow]);
     } catch (error) {
       const hit = await saved();
       if (hit) return hit;
       throw error;
+    } finally {
+      clearTimeout(timer);
     }
   })());
 });
@@ -135,7 +141,7 @@ self.addEventListener('fetch', event => {
 /** Path → stamp ("sha1prefix-size") for every shipped file. Empty when there is no list. */
 async function shipped() {
   try {
-    const res = await fetch(`${LIST}?t=${Date.now()}`, { cache: 'no-store' });
+    const res = await fetch(LIST, { cache: 'no-cache' });
     if (!res.ok) return {};
     const list = await res.json();
     return list && typeof list === 'object' && !Array.isArray(list) ? list : {};
@@ -176,10 +182,13 @@ async function sameFile(saved, stamp) {
  * The files this device needs. Every voice is shipped, but only the voices this family hears are
  * saved. Backroad rally ships each sound twice and plays the .opus copy when the browser can.
  */
-function wanted(list, { voices = [], opus = false } = {}) {
+function wanted(list, { voices = [], opus = false, pack = 'full', camera = false, webgpu = false } = {}) {
   const keepVoices = new Set(voices);
   const out = {};
   for (const [path, stamp] of Object.entries(list)) {
+    if (pack === 'starter' && LARGE_GAMES.test(path)) continue;
+    if (!webgpu && WEBGPU_GAMES.test(path)) continue;
+    if (!camera && pack === 'starter' && path.startsWith('./vendor/mediapipe/')) continue;
     const voice = /^\.\/voice\/[^/]+\/([^/]+)\//.exec(path);
     if (voice && !keepVoices.has(voice[1])) continue;
     if (opus && /^\.\/sidecars\/rally\/audio\/.*\.m4a$/.test(path)) continue;
@@ -202,10 +211,11 @@ async function tell(state) {
 }
 
 /** Delete old ?v= copies, and saved files in the listed folders that this device no longer needs. */
-async function prune(cache, need, stamps) {
+async function prune(cache, list, need, stamps) {
   for (const req of await cache.keys()) {
     const path = pathOf(req.url);
-    if (new URL(req.url).search || (LISTED.test(path) && !need[path])) {
+    if (new URL(req.url).search
+      || (LISTED.test(path) && (!list[path] || (path.startsWith('./voice/') && !need[path])))) {
       await cache.delete(req);
       delete stamps[path];
     }
@@ -220,11 +230,18 @@ async function prune(cache, need, stamps) {
 async function warm(options) {
   const cache = await caches.open(CACHE);
   const list = await shipped();
-  if (!Object.keys(list).length) return;
+  const pack = options.pack;
+  if (!Object.keys(list).length) {
+    const previous = last || await (await cache.match(STATUS))?.json().catch(() => null);
+    if (previous?.state === 'ready' && previous.pack === pack) await tell(previous);
+    else await tell({ state: 'unavailable', pack });
+    return;
+  }
   shippedNow = list;
   const need = wanted(list, options);
   const stamps = await stampsReady();
-  const todo = Object.keys(need);
+  const priority = path => path.startsWith('./sidecars/') ? (LARGE_GAMES.test(path) ? 2 : 1) : 0;
+  const todo = Object.keys(need).sort((a, b) => priority(a) - priority(b));
   let total = 0;
   for (const path of todo) total += bytes(need[path]);
   let saved = 0;
@@ -233,11 +250,14 @@ async function warm(options) {
   let next = 0;
   let sinceSave = 0;
   let lastTell = 0;
+  let progress = Promise.resolve();
   const report = () => {
     const now = Date.now();
     if (now - lastTell < 400) return;
     lastTell = now;
-    return tell({ state: 'saving', saved, total, failed, checked, count: todo.length });
+    const state = { state: 'saving', pack, saved, total, failed, checked, count: todo.length };
+    progress = progress.catch(() => {}).then(() => tell(state));
+    progress.catch(() => {});
   };
   async function lane() {
     while (next < todo.length) {
@@ -254,7 +274,7 @@ async function warm(options) {
           ok = true;
         } else {
           const fresh = await fetch(path, { cache: 'no-cache' });
-          if (fresh.ok && keep(fresh)) {
+          if (keep(fresh) && await sameFile(fresh.clone(), stamp)) {
             await cache.put(path, fresh);
             stamps[path] = stamp;
             if (++sinceSave % 25 === 0) await cache.put(STAMPS, json(stamps));
@@ -268,15 +288,21 @@ async function warm(options) {
       report();
     }
   }
-  await tell({ state: 'saving', saved, total, failed, checked, count: todo.length });
+  await tell({ state: 'saving', pack, saved, total, failed, checked, count: todo.length });
   await Promise.all(Array.from({ length: PARALLEL }, lane));
-  await prune(cache, need, stamps);
+  await progress.catch(() => {});
+  await prune(cache, list, need, stamps);
   await cache.put(STAMPS, json(stamps));
-  await cache.put(SAVED_LIST, json(need));
-  await tell({ state: failed ? 'partial' : 'ready', saved, total, failed, checked, count: todo.length });
+  const expected = options.opus
+    ? Object.fromEntries(Object.entries(list).filter(([p]) => !/^\.\/sidecars\/rally\/audio\/.*\.m4a$/.test(p)))
+    : list;
+  await cache.put(SAVED_LIST, json(expected));
+  await tell({ state: failed ? 'partial' : 'ready', pack, saved, total, failed, checked, count: todo.length });
 }
 
 let running = null;
+let nextOptions = null;
+let activeOptions = null;
 
 self.addEventListener('message', event => {
   const type = event.data?.type;
@@ -294,8 +320,23 @@ self.addEventListener('message', event => {
   const options = {
     voices: Array.isArray(event.data.voices) ? event.data.voices.map(String) : [],
     opus: event.data.opus === true,
+    pack: event.data.pack === 'starter' ? 'starter' : 'full',
+    camera: event.data.camera === true,
+    webgpu: event.data.webgpu === true,
   };
-  if (!running) running = warm(options).finally(() => { running = null; });
-  else if (last) event.source?.postMessage({ type: 'offline-progress', ...last });
+  if (!running) {
+    nextOptions = options;
+    running = (async () => {
+      while (nextOptions) {
+        activeOptions = nextOptions;
+        nextOptions = null;
+        try { await warm(activeOptions); }
+        catch { await tell({ state: 'unavailable', pack: activeOptions.pack }).catch(() => {}); }
+      }
+    })().finally(() => { running = activeOptions = null; });
+  } else {
+    if (JSON.stringify(options) !== JSON.stringify(activeOptions)) nextOptions = options;
+    if (last) event.source?.postMessage({ type: 'offline-progress', ...last });
+  }
   event.waitUntil(running);
 });

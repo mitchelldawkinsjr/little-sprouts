@@ -42,7 +42,7 @@ import {
   verseRecall,
   verseWithRef
 } from '../logic.mjs?v=offline1';
-import { canSpeak, warm } from '../lib/speech.js?v=offline4';
+import { canSpeak } from '../lib/speech.js?v=offline4';
 import { bakedLines } from '../lib/speech-core.mjs?v=offline4';
 import { mountCatch, mountLanes, mountRace, mountRocket, pokeRocket, stopArcade } from '../games/arcade.js?v=gear2';
 import { mountLunar } from '../games/lunar.js?v=moon-board2';
@@ -714,9 +714,8 @@ export function registerMounts(rt) {
       requestAnimationFrame(() => $('#shortcuts')?.scrollIntoView({ block: 'center' }));
     }
     rt.focusHeading();
-    if (rt.data.sound) warm(rt.data.voice);
     // Speak the Hi greeting once per learner per local calendar day.
-    if (rt.data.sound && focus !== 'style' && focus !== 'more' && focus !== 'shelf' && focus !== 'how') {
+    if (rt.data.sound && !['style', 'more', 'shelf', 'how', 'catalog'].includes(focus)) {
       const day = localCalendarDay();
       if (learner.helloDay !== day) {
         learner.helloDay = day;

@@ -1,0 +1,44 @@
+name: Verify Little Sprouts
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Run game, offline, and operations tests
+        run: node --test tests/*.test.mjs server/*.test.mjs
+      - name: Check production bundle and startup budgets
+        run: |
+          npm --prefix tools/build ci --no-audit --no-fund
+          assets="$(mktemp -d)"
+          cp -a app.js index.html style.css logic.mjs sheet.csv manifest.webmanifest sw.js app logic lib games icons sidecars voice vendor for-parents "$assets/"
+          node tools/build/bundle.mjs "$assets"
+          node tools/static-files.mjs "$assets"
+          node --input-type=module - "$assets" <<'JS'
+          import assert from 'node:assert/strict';
+          import { readFileSync, statSync } from 'node:fs';
+          import { join } from 'node:path';
+          const root = process.argv[2];
+          const size = name => statSync(join(root, name)).size;
+          assert.ok(size('app.js.gz') <= 250000, 'initial JavaScript exceeds 250 kB gzip');
+          assert.ok(size('style.css.gz') <= 30000, 'initial CSS exceeds 30 kB gzip');
+          const manifest = JSON.parse(readFileSync(join(root, 'offline-files.json'), 'utf8'));
+          const starter = Object.entries(manifest).filter(([path]) =>
+            !/^\.\/sidecars\/(?:rally|skybound|sky-deliveries|field-guide-fishing)\//.test(path) &&
+            !path.startsWith('./vendor/mediapipe/') &&
+            (!path.startsWith('./voice/') || path.startsWith('./voice/1/af_heart/'))
+          ).reduce((total, [, stamp]) => total + Number(stamp.split('-')[1]), 0);
+          assert.ok(starter <= 32_000_000, 'starter offline pack exceeds 32 MB without Reach');
+          console.log(JSON.stringify({ appGzip: size('app.js.gz'), cssGzip: size('style.css.gz'), starter }));
+          JS

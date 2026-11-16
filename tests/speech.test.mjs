@@ -488,7 +488,7 @@ test('every baked line has a clip for every voice, loaded from the site root', a
     }
   }
   assert.deepEqual(missing, []);
-  // speech.js sits in lib/, and the clips are at the root: voice/<version>/<voice>/<hash>.m4a.
+  // The source module and production bundle both load clips from the site root.
   const source = readFileSync(new URL('../lib/speech.js', import.meta.url), 'utf8');
-  assert.match(source, /new URL\(`\.\.\/\$\{path\}`, import\.meta\.url\)/);
+  assert.match(source, /new URL\(`\/\$\{path\}`, import\.meta\.url\)/);
 });

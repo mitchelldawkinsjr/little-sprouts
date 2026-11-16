@@ -22,7 +22,9 @@ From this folder:
 node server/serve.mjs
 ```
 
-Open http://localhost:8000. There is no build step. From that address the browser can install Little Sprouts, and the pages already opened keep working if the network drops. This server also opens the friend room for Paint Sphere and Garden gulp. If the site is already running from `python3 -m http.server`, start `node server/paint-link.mjs` beside it. Play with a friend uses that room. Saving the games for offline play also needs this server: it writes the list of files to save (`offline-files.json`), as the Docker image does at build.
+Open http://127.0.0.1:8000. There is no local build step. This server provides the friend relay, the sidecar catalog, and the manifest for saving games offline. The production Docker image also bundles, minifies and precompresses the app.
+
+Starter games save automatically. Select **Save full offline pack** in Parent corner for the larger games. See [Traffic, diagnostics, and offline delivery](docs/observability.md) for sizes, verification and GA4 setup.
 
 ## Play with a friend, with or without internet
 
@@ -74,7 +76,7 @@ jaw-grab animation from `lib/boss-catch.mjs`.
 
 Prompts are spoken by Kokoro, a voice model that runs in this browser. It downloads once, about 90 MB from jsDelivr and Hugging Face, the first time read-aloud is used. Every line it says is saved in the browser and replays at once later. While the model is still downloading, a line it has not said before is read by the browser’s own voice. Once the model is ready, a new line waits for Kokoro. On a recent laptop that takes about as long as the line itself. If the model cannot load, the browser’s voice reads aloud and the app tries again later.
 
-In Parent corner, **Hear this voice** shows download progress, then plays a sample. **Give game hosts their own voices** lets racing and arcade games use a second voice. Reading and math always use the voice the grown-up picked. The app itself still needs the server to load. Saved lines keep playing if the model cannot download. How it works, and the checks to run by hand: [docs/voice.md](docs/voice.md).
+In Parent corner, **Hear this voice** shows download progress, then plays a sample. **Give game hosts their own voices** lets racing and arcade games use a second voice. Reading and math always use the voice the grown-up picked. The app needs one online visit to be saved for offline play. Saved lines keep playing if the model cannot download. How it works, and the checks to run by hand: [docs/voice.md](docs/voice.md).
 
 ## The shelf
 
