@@ -19,8 +19,8 @@ const canvas = $('trail');
 let touchDevice = isTouchDevice();
 const touch = attachTouchControls({
   tint: '#a4f8ff',
-  // Only the joystick zone owns a touch stick. Floor drags and all buttons stay native.
-  ignore: 'main > :not(#pen-stick)',
+  // Use the shared stick's full playfield. Don't let the overlays start a stroke.
+  ignore: 'main > :not(#trail)',
   onFirstTouch() {
     touchDevice = true;
     showTouchStick();
@@ -85,9 +85,8 @@ function focusButton(el) { el?.focus({ preventScroll: true }); }
 
 function showTouchStick() {
   const playing = screen === 'run';
-  $('pen-stick').hidden = !playing || !touchDevice;
   touch.setVisible(playing && touchDevice);
-  $('tip').textContent = touchDevice ? 'Steer with the pen stick or drag on the floor' : 'Draw in any direction · arrows or controller';
+  $('tip').textContent = touchDevice ? 'Touch anywhere, then slide to steer the pen' : 'Draw in any direction · arrows or controller';
 }
 
 function clearPen() {
@@ -102,6 +101,8 @@ function clearPen() {
 
 function setScreen(name) {
   screen = name;
+  // Hiding the shared stick doesn't disable input, so opt the floor out between runs.
+  canvas.toggleAttribute('data-touch-ignore', name !== 'run');
   showTouchStick();
   // Builder and quiz cards must still scroll on short touchscreens.
   document.documentElement.style.touchAction = document.body.style.touchAction = name === 'run' ? 'none' : 'auto';
@@ -357,6 +358,9 @@ function pointerMove(event) {
   }
 }
 canvas.addEventListener('pointerdown', event => {
+  // Fingers steer the shared floating stick. Mouse, stylus and synthetic controller
+  // pointers still draw directly on the floor.
+  if (event.pointerType === 'touch') return;
   if (!['run', 'count'].includes(screen) || event.button !== 0 || point.id !== null) return;
   point.id = event.pointerId;
   // The host controller may dispatch synthetic pointer events with no capturable pointer.

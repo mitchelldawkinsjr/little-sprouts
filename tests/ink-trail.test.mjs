@@ -63,6 +63,23 @@ test('the shared touch joystick steers the ink diagonally and releases without d
   assert.ok(run.distance > distance, 'the garden buddy still runs along the ink already drawn');
 });
 
+test('the pen stick re-anchors wherever the next touch lands on the playfield', () => {
+  const pad = new VirtualGamepad({ stick: { radius: KID.stick, knobRadius: KID.knob, deadZone: KID.deadZone } });
+  pad.setViewport(390, 700);
+  for (const [id, x, y] of [[1, 28, 65], [2, 335, 123], [3, 202, 638], [4, 193, 350]]) {
+    pad.pointerDown(id, x, y);
+    const { anchorX, anchorY } = pad.getStick();
+    assert.deepEqual([anchorX, anchorY], [x, y]);
+    assert.equal(penStickDirection(readStick(pad.getStick())), null);
+    pad.pointerMove(id, x - 24, y + 24);
+    const direction = penStickDirection(readStick(pad.getStick()));
+    assert.ok(direction.x < 0 && direction.z > 0);
+    if (id === 3) pad.reset(); // A pause or question discards a held finger.
+    else pad.pointerUp(id);
+    assert.equal(penStickDirection(readStick(pad.getStick())), null);
+  }
+});
+
 test('more joystick travel draws faster while an active floor drag keeps its own direction', () => {
   const light = makeRun(), full = makeRun(), drag = makeRun();
   const small = penStickDirection({ active: true, x: .25, y: 0, magnitude: .25 });
