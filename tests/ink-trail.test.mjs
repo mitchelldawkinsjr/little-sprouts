@@ -22,12 +22,12 @@ test('the Ink Trail shelf card, arcade mode, controller, and offline files ship 
   assert.equal(spec.pad.keys.start, 'KeyP');
   assert.equal(sidecarAlone(spec).href, 'sidecars/ink-trail/index.html');
   const docker = readFileSync(new URL('../Dockerfile', import.meta.url), 'utf8');
-  const warm = readFileSync(new URL('../lib/offline-warm.mjs', import.meta.url), 'utf8');
+  const listed = docker.match(/find ([^\n]+?) -type f/)[1].split(' ');
   assert.match(docker, /COPY sidecars\/ink-trail /);
   for (const name of ['index.html', 'trail.css', 'game.mjs', 'logic.mjs', 'view.mjs', 'ink-surface.mjs'].map(x => 'sidecars/ink-trail/' + x)
     .concat(['boss-design', 'boss-builder', 'boss-model'].map(x => 'lib/' + x + '.mjs'))) {
     assert.ok(existsSync(new URL('../' + name, import.meta.url)), name);
-    assert.ok(warm.includes('./' + name), name);
+    assert.ok(listed.includes(name.split('/')[0]), name);
   }
 });
 

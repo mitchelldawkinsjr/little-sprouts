@@ -37,7 +37,7 @@ import {
   bustBoard,
   verseWithRef
 } from '../logic.mjs?v=offline1';
-import { canSpeak, commonLines, prefetchSpeech } from '../lib/speech.js?v=ink1';
+import { canSpeak, commonLines, prefetchSpeech } from '../lib/speech.js?v=offline4';
 import { stopArcade } from '../games/arcade.js?v=gear2';
 import { stopHoop } from '../games/hoop.js?v=hoop-trio-r2';
 import { stopHook } from '../games/hook.js?v=ask-first2-r2';
@@ -64,7 +64,7 @@ import { stopCrayon } from '../games/crayon.js?v=crayon-more';
 import { stopMarble } from '../games/marble.js?v=gear2';
 import { stopBridge } from '../games/bridge.js?v=gear2';
 import { stopMaze } from '../games/maze.js?v=gear2';
-import { lessonResult, postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=ink1';
+import { lessonResult, postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=offline4';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=aviator1';
 
@@ -240,6 +240,8 @@ export function registerRound(rt) {
             ? (ok ? 'Yes! Fish on!' : 'Not yet. Pick another one.')
           : g.mode === 'station'
             ? (ok ? 'Yes! You can buy it.' : 'Not yet. Pick another one.')
+          : g.mode === 'sketchbook'
+            ? (ok ? 'Yes! You lit the beacon.' : 'Not yet. Pick another one.')
           : g.mode === 'deliveries'
             ? (ok ? 'Yes! A double gift!' : 'Not yet. Pick another one.')
           : g.mode === 'blocks'

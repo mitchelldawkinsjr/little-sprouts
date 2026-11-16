@@ -1,0 +1,92 @@
+diff --git a/src/ts/core/InputManager.ts b/src/ts/core/InputManager.ts
+index b15442c..90ae3b9 100644
+--- a/src/ts/core/InputManager.ts
++++ b/src/ts/core/InputManager.ts
+@@ -49,0 +50,5 @@ export class InputManager implements IUpdatable
++		// The Little Sprouts controller sends deltas directly to the canvas.
++		this.domElement.addEventListener('mousemove', (event) => {
++			if ((event as any).sproutsLook && !this.world.inputPaused)
++				this.inputReceiver?.handleMouseMove(event, event.movementX, event.movementY);
++		});
+@@ -104,0 +110 @@ export class InputManager implements IUpdatable
++		if (this.world.inputPaused) return;
+@@ -122,0 +129 @@ export class InputManager implements IUpdatable
++		if (this.world.inputPaused || (event as any).sproutsLook) return;
+@@ -144,0 +152 @@ export class InputManager implements IUpdatable
++		if (this.world.inputPaused || (event.target as HTMLElement)?.closest?.("button, input, select, #sprouts-quiz")) return;
+@@ -160,0 +169 @@ export class InputManager implements IUpdatable
++		if (this.world.options.onReady) return;
+diff --git a/src/ts/core/LoadingManager.ts b/src/ts/core/LoadingManager.ts
+index da2e937..7ee28b0 100644
+--- a/src/ts/core/LoadingManager.ts
++++ b/src/ts/core/LoadingManager.ts
+@@ -46,0 +47 @@ export class LoadingManager
++			this.world.options.onError?.(error);
+diff --git a/src/ts/sketchbook.ts b/src/ts/sketchbook.ts
+index ae93c3e..607fa52 100644
+--- a/src/ts/sketchbook.ts
++++ b/src/ts/sketchbook.ts
+@@ -2 +2,2 @@ import '../css/main.css';
+-export { World } from './world/World';
+\ No newline at end of file
++export { World } from './world/World';
++export { BoxBufferGeometry, CircleBufferGeometry, ConeBufferGeometry, Group, LatheBufferGeometry, Mesh, MeshBasicMaterial, MeshStandardMaterial, PlaneBufferGeometry, Quaternion, SphereBufferGeometry, TorusBufferGeometry, Vector2, Vector3 } from "three";
+diff --git a/src/ts/world/World.ts b/src/ts/world/World.ts
+index 266b6a2..287f397 100644
+--- a/src/ts/world/World.ts
++++ b/src/ts/world/World.ts
+@@ -34,0 +35,2 @@ import { Ocean } from './Ocean';
++export interface WorldOptions { onReady?: () => void; onError?: (error: unknown) => void; performance?: boolean; }
++
+@@ -65,0 +68,2 @@ export class World
++	public options: WorldOptions;
++	public inputPaused: boolean = false;
+@@ -69 +73 @@ export class World
+-	constructor(worldScenePath?: any)
++	constructor(worldScenePath?: any, options: WorldOptions = {})
+@@ -71,0 +76 @@ export class World
++		this.options = options;
+@@ -88 +93 @@ export class World
+-		this.renderer.setPixelRatio(window.devicePixelRatio);
++		this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, options.performance ? 0.8 : 1.4));
+@@ -92 +97 @@ export class World
+-		this.renderer.shadowMap.enabled = true;
++		this.renderer.shadowMap.enabled = !options.performance;
+@@ -160,0 +166,7 @@ export class World
++				if (options.onReady)
++				{
++					UIManager.setUserInterfaceVisible(true);
++					UIManager.setLoadingScreenVisible(false);
++					options.onReady();
++					return;
++				}
+@@ -281 +293 @@ export class World
+-		world.update(timeStep, unscaledTimeStep);
++		if (!world.inputPaused) world.update(timeStep, unscaledTimeStep);
+@@ -411 +423,11 @@ export class World
+-		if (!loadingManager) loadingManager = new LoadingManager(this);
++		if (!loadingManager)
++		{
++			loadingManager = new LoadingManager(this);
++			if (this.options.onReady)
++			{
++				loadingManager.onFinishedCallback = () => {
++					UIManager.setUserInterfaceVisible(true);
++					this.options.onReady();
++				};
++			}
++		}
+@@ -485,4 +507 @@ export class World
+-		// Fonts
+-		$('head').append('<link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&display=swap" rel="stylesheet">');
+-		$('head').append('<link href="https://fonts.googleapis.com/css2?family=Solway:wght@400;500;700&display=swap" rel="stylesheet">');
+-		$('head').append('<link href="https://fonts.googleapis.com/css2?family=Cutive+Mono&display=swap" rel="stylesheet">');
++		// Uses the host device’s fonts, including when downloaded for offline play.
+@@ -531 +550 @@ export class World
+-			Pointer_Lock: true,
++			Pointer_Lock: !this.options.onReady,
+@@ -534,2 +553,2 @@ export class World
+-			Shadows: true,
+-			FXAA: true,
++			Shadows: !this.options.performance,
++			FXAA: !this.options.performance,
