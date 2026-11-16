@@ -21,7 +21,4 @@ test('offline availability requires a sidecar page and the full compatible pack,
   assert.equal(await savedOffline('https://sprouts.test' + path, {
     list, keys: new Set([path, js]), stamps: { ['.' + js]: 'older stamp' }
   }), false);
-  assert.equal(await savedOffline('https://sprouts.test/sidecars/field-guide-fishing/tidewater-coast.html', {
-    list: null, keys: new Set(['/sidecars/field-guide-fishing/tidewater-coast.html'])
-  }), false);
 });

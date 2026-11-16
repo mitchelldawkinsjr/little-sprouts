@@ -26,7 +26,8 @@ test('static build emits a catalog separately from complete offline stamps and g
   const offline = build.offline();
   assert.ok(offline['./index.html']);
   assert.ok(offline['./sidecars/dash/index.html']);
-  assert.ok(!offline['./sidecars/field-guide-fishing/tidewater-coast.html']);
+  // Tidewater is listed; the service worker saves it only for Full on a WebGPU device.
+  assert.ok(offline['./sidecars/field-guide-fishing/tidewater-coast.html']);
   assert.ok(!offline['./for-parents/analytics.mjs']);
   const metrics = build.compress();
   assert.equal(metrics.files, 1);

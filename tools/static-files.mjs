@@ -26,7 +26,6 @@ export function inventory(root) {
     offline() {
       const out = {};
       files([...DIRS, ...CORE], SKIP, (name, full, info) => {
-        if (name.startsWith('sidecars/field-guide-fishing/')) return;
         const key = `${info.mtimeMs}-${info.size}`;
         let known = stamps.get(name);
         if (known?.key !== key) {

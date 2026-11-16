@@ -23,7 +23,9 @@ const SHELL = [
   './sidecars.json'
 ];
 /** The folders the build list covers. Saved files there that this device no longer needs are deleted. */
-const LARGE_GAMES = /^\.\/sidecars\/(rally|skybound|sky-deliveries)\//;
+const LARGE_GAMES = /^\.\/sidecars\/(rally|skybound|sky-deliveries|field-guide-fishing)\//;
+/** Tidewater draws with WebGPU only: a device without it never saves the game. */
+const WEBGPU_GAMES = /^\.\/sidecars\/field-guide-fishing\//;
 const LISTED = /^\.\/(sidecars|vendor|lib|app|logic|games|icons|voice)\//;
 
 self.addEventListener('install', event => {
@@ -104,8 +106,7 @@ self.addEventListener('fetch', event => {
   if (req.method !== 'GET' || req.headers.has('range')) return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin
-    || /^\/(link|ops|for-parents|metrics|healthz)(?:\/|$)/.test(url.pathname)
-    || url.pathname.startsWith('/sidecars/field-guide-fishing/')) return;
+    || /^\/(link|ops|for-parents|metrics|healthz)(?:\/|$)/.test(url.pathname)) return;
   event.respondWith((async () => {
     const cache = await caches.open(CACHE);
     const ready = await current(cache, req, url);
@@ -181,11 +182,12 @@ async function sameFile(saved, stamp) {
  * The files this device needs. Every voice is shipped, but only the voices this family hears are
  * saved. Backroad rally ships each sound twice and plays the .opus copy when the browser can.
  */
-function wanted(list, { voices = [], opus = false, pack = 'full', camera = false } = {}) {
+function wanted(list, { voices = [], opus = false, pack = 'full', camera = false, webgpu = false } = {}) {
   const keepVoices = new Set(voices);
   const out = {};
   for (const [path, stamp] of Object.entries(list)) {
     if (pack === 'starter' && LARGE_GAMES.test(path)) continue;
+    if (!webgpu && WEBGPU_GAMES.test(path)) continue;
     if (!camera && pack === 'starter' && path.startsWith('./vendor/mediapipe/')) continue;
     const voice = /^\.\/voice\/[^/]+\/([^/]+)\//.exec(path);
     if (voice && !keepVoices.has(voice[1])) continue;
@@ -212,7 +214,7 @@ async function tell(state) {
 async function prune(cache, list, need, stamps) {
   for (const req of await cache.keys()) {
     const path = pathOf(req.url);
-    if (new URL(req.url).search || path.startsWith('./sidecars/field-guide-fishing/')
+    if (new URL(req.url).search
       || (LISTED.test(path) && (!list[path] || (path.startsWith('./voice/') && !need[path])))) {
       await cache.delete(req);
       delete stamps[path];
@@ -320,6 +322,7 @@ self.addEventListener('message', event => {
     opus: event.data.opus === true,
     pack: event.data.pack === 'starter' ? 'starter' : 'full',
     camera: event.data.camera === true,
+    webgpu: event.data.webgpu === true,
   };
   if (!running) {
     nextOptions = options;

@@ -167,9 +167,20 @@ test('starter saves the Reach camera files when it is enabled', async () => {
   assert.ok((await sw.saved()).includes('/vendor/mediapipe/model'));
 });
 
-test('operations routes and online-only Tidewater bypass the worker cache', async () => {
+test('Tidewater is saved only in the Full pack, and only on a device that can draw with WebGPU', async () => {
+  const tide = '/sidecars/field-guide-fishing/tidewater-coast.html';
+  const sw = worker({ ...FILES, [tide]: 'tide' });
+  await sw.warm({ pack: 'starter', webgpu: true });
+  assert.ok(!(await sw.saved()).includes(tide));
+  await sw.warm({ pack: 'full', webgpu: false });
+  assert.ok(!(await sw.saved()).includes(tide));
+  await sw.warm({ pack: 'full', webgpu: true });
+  assert.ok((await sw.saved()).includes(tide));
+});
+
+test('operations routes bypass the worker cache', async () => {
   const sw = worker({});
-  for (const path of ['/ops/diagnostics', '/healthz', '/metrics', '/for-parents/', '/sidecars/field-guide-fishing/tidewater-coast.html']) {
+  for (const path of ['/ops/diagnostics', '/healthz', '/metrics', '/for-parents/']) {
     assert.equal(await sw.get(path), undefined, path);
   }
   assert.deepEqual(sw.net.calls, []);
