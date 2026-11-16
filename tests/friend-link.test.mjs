@@ -70,6 +70,13 @@ test('friend link: 7-bit text for sound and QR text both round-trip', () => {
   assert.equal(fromQrText('https://example.com'), null);
 });
 
+test('group pairing signals cannot be accepted by a legacy room', () => {
+  const bytes = packSignal(CHROME_OFFER, { kind: 'offer', session: 222, version: 2 });
+  assert.equal(unpackSignal(bytes), null);
+  assert.equal(unpackSignal(fromQrText(toQrText(bytes)), 2)?.session, 222);
+  assert.equal(unpackSignal(packSignal(CHROME_OFFER, { kind: 'offer', session: 222 }), 2), null);
+});
+
 test('friend link: a signal survives a ggwave chirp, heard in small pieces like a microphone', async () => {
   const require = createRequire(import.meta.url);
   const factory = require('../vendor/ggwave/ggwave.js');
@@ -79,7 +86,7 @@ test('friend link: a signal survives a ggwave chirp, heard in small pieces like 
   p.sampleFormatInp = p.sampleFormatOut = gg.SampleFormat.GGWAVE_SAMPLE_FORMAT_F32;
   const tx = gg.init(p);
   const rx = gg.init(p);
-  const bytes = packSignal(CHROME_OFFER, { kind: 'offer', session: 31337 });
+  const bytes = packSignal(CHROME_OFFER, { kind: 'offer', session: 31337, version: 2 });
   const wave = gg.encode(tx, to7(bytes), gg.ProtocolId.GGWAVE_PROTOCOL_AUDIBLE_FASTEST, 60);
   const samples = new Float32Array(wave.buffer.slice(wave.byteOffset, wave.byteOffset + wave.byteLength));
   assert.ok(samples.length / 48000 < 6, `chirp is ${(samples.length / 48000).toFixed(1)} s`);
@@ -93,6 +100,6 @@ test('friend link: a signal survives a ggwave chirp, heard in small pieces like 
     if (r && r.length) heard = from7(String.fromCharCode(...new Uint8Array(r)));
   }
   assert.ok(heard, 'the chirp was heard');
-  const sig = unpackSignal(heard.subarray(0, bytes.length));
+  const sig = unpackSignal(heard.subarray(0, bytes.length), 2);
   assert.equal(sig?.session, 31337);
 });

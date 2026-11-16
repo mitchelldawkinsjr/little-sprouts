@@ -2,9 +2,10 @@
  * Pair two browsers on /link (Paint Sphere, Garden gulp).
  * The first socket owns the room. Everything else is forwarded.
  */
-import { createHash } from 'node:crypto'
+import { createHash, randomInt } from 'node:crypto'
 import { createServer } from 'node:http'
 import { pathToFileURL } from 'node:url'
+import { GROUP, groupCapacity, makeGroupRoom, readGroup, roomCode } from '../lib/group-room.mjs'
 
 const GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
 const ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789'
@@ -16,6 +17,8 @@ export function attachRelay(httpServer) {
   attached.add(httpServer)
   const rooms = new Map()
   const seats = new WeakMap()
+  const groups = new Map()
+  const memberships = new WeakMap()
 
   httpServer.on('upgrade', (request, socket, head) => {
     const path = (request.url ?? '').split('?')[0]
@@ -23,7 +26,11 @@ export function attachRelay(httpServer) {
     const peer = accept(request, socket, head)
     if (!peer) return
     peer.onMessage = (text) => onMessage(peer, text)
-    peer.onClose = () => leave(peer)
+    peer.onClose = () => {
+      const group = memberships.get(peer)
+      if (group) group.room.detach(group.connection)
+      else leave(peer)
+    }
   })
 
   function onMessage(peer, text) {
@@ -33,6 +40,13 @@ export function attachRelay(httpServer) {
     } catch {
       return
     }
+    if (!msg || typeof msg !== 'object') return
+    if (typeof msg.t === 'string' && msg.t.startsWith('sprouts-group/')) {
+      if (msg.t === GROUP) groupMessage(peer, readGroup(text))
+      else if (!memberships.has(peer) && !seats.has(peer)) peer.send(JSON.stringify({ t: GROUP, type: 'error', reason: 'game-mismatch' }))
+      return
+    }
+    if (memberships.has(peer)) return
     if (msg.t === 'create') {
       create(peer)
       return
@@ -47,6 +61,32 @@ export function attachRelay(httpServer) {
     if (!room) return
     const other = seat.role === 'host' ? room.guest : room.host
     if (other?.open) other.send(text)
+  }
+
+  function groupMessage(peer, msg) {
+    if (!msg || seats.has(peer)) return
+    const membership = memberships.get(peer)
+    if (membership) { membership.room.receive(membership.connection, msg); return }
+    const connection = { send: value => peer.send(JSON.stringify(value)), close: () => peer.close() }
+    const reject = reason => connection.send({ t: GROUP, type: 'error', reason })
+    if (!groupCapacity(msg.game)) { reject('game-mismatch'); return }
+    let room
+    if (msg.type === 'create') {
+      let code
+      for (let i = 0; i < 12; i++) {
+        const candidate = Array.from({ length: 4 }, () => ALPHABET[randomInt(ALPHABET.length)]).join('')
+        if (!groups.has(candidate)) { code = candidate; break }
+      }
+      if (!code) { reject('unavailable'); return }
+      room = makeGroupRoom({ game: msg.game, code, ended: () => groups.delete(code) })
+      groups.set(code, { room, game: msg.game })
+    } else if (msg.type === 'join') {
+      const group = groups.get(roomCode(msg.room))
+      if (!group) { reject('missing'); return }
+      if (group.game !== msg.game) { reject('game-mismatch'); return }
+      room = group.room
+    } else return
+    if (room.attach(connection)) memberships.set(peer, { room, connection })
   }
 
   function create(peer) {

@@ -26,11 +26,13 @@ Open http://localhost:8000. There is no build step. From that address the browse
 
 ## Play with a friend, with or without internet
 
-Paint Sphere and Garden gulp share one friend room (`lib/friend-link.mjs`). Both games' `link.js` hand it their room socket, so the games don't change.
+**Group rooms** are available in Canyon Pods, Sketchbook Mega Ramp (Free Explore), Sakura Town Helper, and Block Meadow (Free Build) for up to four players. Cabin Camp supports three-player co-op. Start an online room and share its invite, or use **Host on same Wi-Fi**, **Join on same Wi-Fi**, and **Add another friend** to pair devices one at a time. Save the games on every device before trying no-internet play. Group room invites are scoped to the game.
 
-- **Internet up:** the relay gives out the room code and link as before. Once both players are in, the two browsers open a direct WebRTC connection, and game messages travel over it. On the same Wi-Fi they never leave the house. If the direct connection can't open, messages keep going through the relay. If the internet drops mid-game, the direct connection carries on.
+Paint Sphere and Garden gulp use the original two-player room (`lib/friend-link.mjs`). Both games' `link.js` hand it their room socket, so the games don't change.
+
+- **Internet up in a legacy two-player room:** the relay gives out the room code and link as before. Once both players are in, the two browsers open a direct WebRTC connection, and game messages travel over it. On the same Wi-Fi they never leave the house. If the direct connection can't open, messages keep going through the relay. If the internet drops mid-game, the direct connection carries on.
 - **Internet down, same Wi-Fi:** no relay answers, so a card asks **Start a room** or **Join a friend**. The host's computer chirps about four seconds of sound carrying its connection details (ggwave), and the friend's computer hears it and chirps back. The same details also show as a QR code for a tablet or phone to scan. Then the direct connection opens. Each device needs to have opened Little Sprouts online once, so the app is cached.
-- **Host online, friend offline:** the host can tap **Friend has no internet? Join on this Wi-Fi** and use the same sound handshake.
+- **Host online, friend offline in a legacy two-player room:** the host can tap **Friend has no internet? Join on this Wi-Fi** and use the same sound handshake.
 
 Joining by sound needs the microphone once, and it works best with the computers close together and the sound up. Guest Wi-Fi networks that keep devices apart (client isolation) block the direct connection. `lib/friend-wire.mjs` packs a WebRTC offer or answer into about 75 bytes; `tests/friend-link.test.mjs` covers it and a full chirp round trip.
 

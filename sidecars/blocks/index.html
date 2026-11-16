@@ -4,7 +4,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>Block meadow</title>
-  <script src="./link.js?v=hush1"></script>
   <style>
     :root { --ink: #16382c; --paper: #faf9f5; --leaf: #32634e; --warm: #db8b32; --line: #d7decc; }
     html, body { margin: 0; height: 100%; overflow: hidden; background: #d4e8f4; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Trebuchet MS", sans-serif; color: var(--ink); -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
@@ -113,9 +112,9 @@
   <p id="note" role="status" aria-live="polite" hidden></p>
   <p id="munch" aria-hidden="true" hidden>MUNCH!</p>
   <div id="fade" aria-hidden="true"></div>
-  <div id="friendBox" role="status" aria-live="polite" hidden>
-    <p id="friendText"></p>
-    <div class="row"><button type="button" id="friendCopy" hidden>Copy link</button><button type="button" class="soft" id="friendLeave" hidden>Leave</button></div>
+  <div id="friendBox" data-pad-menu data-touch-ignore hidden>
+    <p id="friendText" role="status"></p>
+    <div class="row"></div>
   </div>
   <button type="button" id="done" hidden>I’m done building</button>
   <div id="bar" role="toolbar" aria-label="Blocks"></div>
@@ -137,6 +136,6 @@
     </div>
   </div>
   <div id="loading"><span class="sprout" aria-hidden="true">🌱</span><span id="loadingText">Growing the meadow…</span></div>
-  <script type="module" src="game.js?v=offline4"></script>
+  <script type="module" src="game.js?v=group1"></script>
 </body>
 </html>

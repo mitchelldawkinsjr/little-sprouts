@@ -3,7 +3,8 @@ import { attachTouchControls, isTouchDevice } from '../../lib/touch-controls.mjs
 import { buddyGear, buddyKind, makeBuddy } from '../../lib/buddy3d.mjs';
 import { isPerformanceTier, resolveAutoQuality } from '../../lib/device-tier.mjs';
 import { openRoom } from '../../lib/friend-link.mjs?v=sketchbook1';
-import { friendRoomCode, makeFriendSession } from './friends.mjs?v=1';
+import { worldFriendStatus, makeWorldFriends } from '../../lib/world-friends.mjs';
+import { friendRoomCode, makeFriendSession, packFriendPose, readFriendPose } from './friends.mjs?v=1';
 import { distanceTo, LANDMARKS, makeTrail, MEGA_RAMP, pastRampLanding, RAMP_LANDING, STOPS } from './checkpoints.mjs?v=trail6';
 
 const $ = id => document.getElementById(id);
@@ -123,6 +124,8 @@ function paintMode() {
     : trail.done ? `All ${STOPS.length} beacons lit! Keep exploring or finish.`
     : `${trail.index} of ${STOPS.length} beacons lit · Next: ${onRamp ? 'Mega Ramp landing' : LANDMARKS[trail.index].name}`;
   $('trail-menu').hidden = false;
+  $('trail-room-size').textContent = state.arcade ? '🤝 UP TO FOUR PLAYERS' : '🤝 TWO PLAYERS';
+  $('trail-join').hidden = !state.arcade || group.state.active;
   $('trail-quick-starts').hidden = false;
   $('trail-starts').hidden = false;
   $('trail-return').hidden = state.arcade || trail.done;
@@ -397,106 +400,136 @@ function tick(dt, wallDt) {
   if (!onRamp && !quiz.cleared && trail.reach(pos)) void activateBeacon();
 }
 
-const roomFromLink = friendRoomCode(new URLSearchParams(location.search).get('room'));
+const query = new URLSearchParams(location.search);
+const roomFromLink = friendRoomCode(query.get('room'));
 const rideName = vehicle => vehicle?.actions?.ascend ? 'heli'
   : vehicle?.actions?.wheelBrake ? 'plane' : vehicle?.actions?.throttle ? 'car' : '';
-let friendPose = null, friendBuddy = null, friendRide = null, inviteUrl = '', openedInvite = false;
+let inviteUrl = '', openedInvite = false;
+const remotes = new Map();
 const removeRenderObject = object => object?.parent?.remove(object);
-const friend = makeFriendSession({
+function forget(id) {
+  const remote = remotes.get(id);
+  removeRenderObject(remote?.friendBuddy?.rig.group);
+  remote?.friendBuddy?.rig.dispose();
+  removeRenderObject(remote?.friendRide?.model);
+  remotes.delete(id);
+}
+function receivePose(id, pose) {
+  if (!pose) return;
+  if (!remotes.has(id)) remotes.set(id, {});
+  remotes.get(id).pose = pose;
+}
+function paintFriends({ status, url = '', active, count, wifiHost = false, pairing = false }) {
+  $('trail-friend-status').textContent = status;
+  $('trail-friends-label').textContent = count ? `Friends in playground (${count + 1})` : 'Play with a friend';
+  $('trail-host').hidden = $('trail-wifi').hidden = active;
+  $('trail-join').hidden = active || !state.arcade;
+  $('trail-add').hidden = !wifiHost || count >= 3;
+  $('trail-add').disabled = pairing;
+  $('trail-leave').hidden = !active;
+  inviteUrl = url;
+  $('trail-invite').hidden = $('trail-copy').hidden = !url || count >= (state.arcade ? 3 : 1);
+  $('trail-invite').href = url || '#';
+  $('trail-invite').textContent = url;
+}
+const group = makeWorldFriends({
+  game: 'sketchbook',
+  update(room) {
+    paintFriends({ status: worldFriendStatus(room, 4), url: room.url, active: room.active,
+      count: room.others.length, pairing: room.pairing, wifiHost: room.mode === 'wifi-host' && room.role === 'host' });
+  },
+  receive(data, { id }) { receivePose(id, readFriendPose(data)); },
+  departed({ id }) { forget(id); },
+});
+const pair = makeFriendSession({
   transport(facade, wifi) {
     const url = new URL('/link', location.href);
     url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
     return openRoom(url.href, facade, WebSocket, { wifi, wifiChip: false });
   },
-  receive(pose) { friendPose = pose; },
-  clear() {
-    friendPose = null;
-    removeRenderObject(friendBuddy?.rig.group);
-    friendBuddy?.rig.dispose();
-    friendBuddy = null;
-    removeRenderObject(friendRide?.model);
-    friendRide = null;
-  },
+  receive(pose) { receivePose('pair', pose); },
+  clear() { forget('pair'); },
   update({ status, code, connected, active }) {
-    $('trail-friend-status').textContent = status;
-    $('trail-friends-label').textContent = connected ? 'Playing with a friend' : 'Play with a friend';
-    $('trail-host').hidden = active;
-    $('trail-wifi').hidden = active;
-    $('trail-leave').hidden = !active;
-    const url = new URL('index.html', location.href);
+    const url = new URL(location.pathname, location.origin);
     if (code) url.searchParams.set('room', code);
-    inviteUrl = code ? url.href : '';
-    $('trail-invite').hidden = $('trail-copy').hidden = !code || connected;
-    $('trail-invite').href = inviteUrl;
-    $('trail-invite').textContent = inviteUrl;
-    if (!connected) return;
-    if (!$('trail-friend-panel').hidden) resumeGame();
-    notice('Your friend joined the playground!', 5);
-  }
+    paintFriends({ status, url: code ? url.href : '', active, count: Number(connected) });
+    if (connected && !$('trail-friend-panel').hidden) resumeGame();
+  },
 });
 $('trail-friends').onclick = () => panel('trail-friend-panel');
 $('trail-friend-back').onclick = () => panel('trail-panel');
-$('trail-host').onclick = () => friend.host(false);
-$('trail-wifi').onclick = () => friend.host(true);
-$('trail-leave').onclick = () => friend.leave('Room closed. You can keep playing.');
+$('trail-host').onclick = () => state.arcade ? group.host() : pair.host(false);
+$('trail-wifi').onclick = () => state.arcade ? group.hostWifi() : pair.host(true);
+$('trail-join').onclick = group.guestWifi;
+$('trail-add').onclick = group.add;
+$('trail-leave').onclick = () => {
+  if (group.state.active) group.close('Room closed. You can keep playing.');
+  else pair.leave('Room closed. You can keep playing.');
+};
 $('trail-copy').onclick = async () => {
   try {
     await navigator.clipboard.writeText(inviteUrl);
     $('trail-friend-status').textContent = 'Invite link copied!';
   } catch {
-    const selection = getSelection();
     const range = document.createRange();
     range.selectNodeContents($('trail-invite'));
+    const selection = getSelection();
     selection?.removeAllRanges();
     selection?.addRange(range);
     $('trail-friend-status').textContent = 'Select and copy this invite link.';
   }
 };
-addEventListener('pagehide', () => friend.leave());
+addEventListener('pagehide', () => { group.close(); pair.leave(); });
 
 function sendFriend() {
   const character = player();
-  if (!friend.connected || !state.ready || !character) return;
+  if (!(group.state.others.length || pair.connected) || !state.ready || !character) return;
   const kind = buddyKind(fromHost);
   const vehicle = character.occupyingSeat?.vehicle || character.controlledObject;
-  friend.send({
+  const pose = {
     p: character.modelContainer.getWorldPosition(v).toArray(),
     yaw: Math.atan2(character.orientation.x, character.orientation.z),
     gait: vehicle ? 0 : Math.min(1, Math.hypot(character.velocity.x, character.velocity.z)),
     kind, gear: buddyGear(kind),
     ride: vehicle && { type: rideName(vehicle), p: vehicle.position.toArray(), q: vehicle.quaternion.toArray() }
-  });
+  };
+  if (group.state.others.length) group.send(packFriendPose(pose));
+  else pair.send(pose);
 }
 
 function drawFriend(time) {
   requestAnimationFrame(drawFriend);
-  if (!friendPose || !state.ready) return;
+  if (!state.ready || (remotes.size === 0)) return;
+  for (const remote of remotes.values()) drawRemote(remote, time);
+}
+function drawRemote(remote, time) {
   const world = state.world.graphicsWorld;
-  const { p, yaw, gait, kind, gear, ride } = friendPose;
+  const { p, yaw, gait, kind, gear, ride } = remote.pose;
   const xyz = v.fromArray(p);
-  if (friendBuddy?.kind !== kind || friendBuddy.gear !== gear) {
-    removeRenderObject(friendBuddy?.rig.group);
-    friendBuddy?.rig.dispose();
+  if (remote.friendBuddy?.kind !== kind || remote.friendBuddy.gear !== gear) {
+    removeRenderObject(remote.friendBuddy?.rig.group);
+    remote.friendBuddy?.rig.dispose();
     const rig = trailBuddy(kind, gear);
     rig.group.name = 'sketchbook-friend-buddy';
     rig.group.position.copy(xyz);
     world.add(rig.group);
-    friendBuddy = { rig, kind, gear, time };
+    remote.friendBuddy = { rig, kind, gear, time };
   }
-  const dt = Math.min(.05, (time - friendBuddy.time) / 1000);
+  const dt = Math.min(.05, (time - remote.friendBuddy.time) / 1000);
   const alpha = 1 - Math.exp(-dt * 14);
-  const rig = friendBuddy.rig;
+  const rig = remote.friendBuddy.rig;
+  if (rig.group.parent !== world) world.add(rig.group);
   if (rig.group.position.distanceToSquared(xyz) > 900) rig.group.position.copy(xyz);
   else rig.group.position.lerp(xyz, alpha);
   rig.group.rotation.y += Math.atan2(Math.sin(yaw - rig.group.rotation.y), Math.cos(yaw - rig.group.rotation.y)) * alpha;
   rig.animate(dt, gait, time / 1000);
-  friendBuddy.time = time;
-  if (!ride || friendRide?.type !== ride.type) {
-    removeRenderObject(friendRide?.model);
-    friendRide = null;
+  remote.friendBuddy.time = time;
+  if (!ride || remote.friendRide?.type !== ride.type) {
+    removeRenderObject(remote.friendRide?.model);
+    remote.friendRide = null;
   }
   if (!ride) return;
-  if (!friendRide) {
+  if (!remote.friendRide) {
     const sample = state.world.vehicles.find(vehicle => rideName(vehicle) === ride.type);
     if (!sample) return;
     const model = sample.modelContainer.clone(true);
@@ -512,9 +545,10 @@ function drawFriend(time) {
     model.position.fromArray(ride.p);
     model.quaternion.fromArray(ride.q);
     world.add(model);
-    friendRide = { type: ride.type, model, rotation: new runtime.Quaternion() };
+    remote.friendRide = { type: ride.type, model, rotation: new runtime.Quaternion() };
   }
-  const { model, rotation } = friendRide;
+  const { model, rotation } = remote.friendRide;
+  if (model.parent !== world) world.add(model);
   xyz.fromArray(ride.p);
   if (model.position.distanceToSquared(xyz) > 900) model.position.copy(xyz);
   else model.position.lerp(xyz, alpha);
@@ -595,7 +629,9 @@ async function loaded() {
     openedInvite = true;
     openMenu();
     panel('trail-friend-panel');
-    friend.join(roomFromLink);
+    if (state.arcade && query.get('v') === 'group1') group.join(roomFromLink);
+    else if (query.get('v') === 'group1') $('trail-friend-status').textContent = 'Open Arcade Play or Free Explore to join this group.';
+    else pair.join(roomFromLink);
   }
 }
 
