@@ -16,6 +16,8 @@ Run `node server/serve.mjs` at the repo root. Choose **Sketchbook Mega Ramp** on
 
 - **Play with a friend:** open the trail menu and choose **Play with a friend**. Free Explore supports up to four players, while Learning Play keeps two-player rooms. Start an online room and share the invite link, or choose **Play on this Wi-Fi** on both devices and use the shared Start/Join card and its sound or QR handshake. The invite opens the guest in free roam. Once connected, both players see the other garden buddy move and ride, drive, or fly. Each player still controls their own vehicles, questions, and stars. Vehicle replicas are visual only and cannot be boarded by the other player. Use **Leave room** to return to solo play.
 
+A hard airplane impact plays a short 3D burst of sparks and smoke at the point of contact. Regular landings, car bumps, and helicopters are unchanged. The effect is local to this screen during friend play, runs offline, and does not change how the plane drives or respawns.
+
 The build ships with the repository, so no npm install is needed to play. All runtime assets are same-origin, each below the service worker's 20 MB per-file limit. Open Little Sprouts online until the offline download is ready before using it off-network.
 
 ## Rebuild the vendor engine

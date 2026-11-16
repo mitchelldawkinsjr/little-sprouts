@@ -7,6 +7,8 @@ import { worldFriendStatus, makeWorldFriends } from '../../lib/world-friends.mjs
 import { friendRoomCode, makeFriendSession, packFriendPose, readFriendPose } from './friends.mjs?v=1';
 import { distanceTo, LANDMARKS, makeTrail, MEGA_RAMP, pastRampLanding, RAMP_LANDING, STOPS } from './checkpoints.mjs?v=trail6';
 
+import { isPlane, makeCrashBursts, watchPlaneCrashes } from './plane-crash.mjs';
+
 const $ = id => document.getElementById(id);
 const quiz = makeQuiz();
 const trail = makeTrail();
@@ -14,6 +16,7 @@ const runtime = globalThis.Sketchbook;
 const supported = !!runtime?.World;
 const performanceTier = isPerformanceTier(resolveAutoQuality());
 const state = { world: null, buddy: null, ready: false, arcade: !quiz.live, responded: false, finished: false };
+let planeCrashes, crashBursts;
 let fromHost, paused, driving, flightHint, onRamp = false, returningToTrail = false, pickerFromMenu = false, timer = 0, motion = 0, touch, touchDevice = false;
 const touchCodes = new Map();
 const movementCodes = new Set();
@@ -357,6 +360,7 @@ addEventListener('visibilitychange', () => {
 function tick(dt, wallDt) {
   if (!state.ready) return;
   const character = player(), world = state.world;
+  crashBursts.update(dt);
   touchStep(Math.min(0.05, wallDt));
   setBuddy();
   motion += reduced ? 0 : dt;
@@ -403,7 +407,7 @@ function tick(dt, wallDt) {
 const query = new URLSearchParams(location.search);
 const roomFromLink = friendRoomCode(query.get('room'));
 const rideName = vehicle => vehicle?.actions?.ascend ? 'heli'
-  : vehicle?.actions?.wheelBrake ? 'plane' : vehicle?.actions?.throttle ? 'car' : '';
+  : isPlane(vehicle) ? 'plane' : vehicle?.actions?.throttle ? 'car' : '';
 let inviteUrl = '', openedInvite = false;
 const remotes = new Map();
 const removeRenderObject = object => object?.parent?.remove(object);
@@ -566,6 +570,8 @@ const startingPlaces = {
 };
 
 function launchStart(id) {
+  crashBursts.clear();
+  planeCrashes.clear();
   hideMenus();
   state.ready = false;
   onRamp = id === MEGA_RAMP && !state.arcade && !trail.index;
@@ -619,6 +625,7 @@ async function loaded() {
     state.world.cameraOperator.phi = 18;
     state.world.cameraOperator.targetRadius = 4.4;
   }
+  planeCrashes.track(state.world.vehicles);
   state.world.setTimeScale(1);
   state.ready = true;
   $('trail-help').hidden = false;
@@ -642,6 +649,8 @@ try {
     onReady() { void loaded().catch(() => error('Sketchbook Mega Ramp could not start. Reload once online, then try again.')); },
     onError() { error('Sketchbook Mega Ramp could not load its world. Save it again while online, then try again.'); }
   });
+  crashBursts = makeCrashBursts(runtime, state.world.graphicsWorld, { performance: performanceTier, reduced });
+  planeCrashes = watchPlaneCrashes(state.world, hit => crashBursts.spawn(hit));
   const view = canvas();
   view.tabIndex = 0;
   view.setAttribute('aria-label', 'Sketchbook Mega Ramp playground');
