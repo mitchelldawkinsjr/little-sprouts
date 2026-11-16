@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#111823">
+  <title>Ink Trail · Little Sprouts</title>
+  <link rel="stylesheet" href="./trail.css?v=4">
+  <script type="importmap">{"imports":{"three":"../../vendor/three/build/three.module.js?v=r187"}}</script>
+</head>
+<body>
+  <main aria-label="Ink Trail">
+    <canvas id="trail" tabindex="0" aria-label="Ink drawing area. Hold and drag, or use the arrow keys to draw."></canvas>
+    <canvas id="creature" aria-hidden="true"></canvas>
+    <header id="hud" hidden>
+      <div class="chip"><span class="kicker">INK TRAIL</span><strong id="distance">0 m</strong></div>
+      <div class="chip chase"><span id="chase-icons" aria-hidden="true">🐛←</span><span id="chase-label">1 boss chasing</span><progress id="gap" max="220" aria-label="Distance from the nearest boss"></progress></div>
+      <div class="chip stats"><strong id="score">💧 0</strong><button id="pause" type="button" aria-label="Pause">Ⅱ</button></div>
+    </header>
+    <div id="status" role="status" hidden></div>
+    <div id="tip" hidden>Draw in any direction · arrows or stick</div>
+    <div id="chomp" role="status" hidden><strong>Chomp!</strong><span id="chomp-boss"></span></div>
+    <section class="overlay" id="panel" aria-labelledby="title" data-pad-menu>
+      <div class="card menu">
+        <p class="kicker" id="eyebrow">LITTLE SPROUTS · RUN &amp; DRAW</p>
+        <h1 id="title">Ink Trail</h1>
+        <p id="intro">Draw a glowing trail for your garden buddy. Turn away from bosses as they close in from different sides!</p>
+        <div id="menu-boss"></div>
+        <div class="actions">
+          <button id="play" type="button" class="primary">Start drawing</button>
+          <button id="endless" type="button" hidden>Just draw</button>
+          <button id="build" type="button">Build your boss</button>
+        </div>
+        <p class="fine" id="help">Hold and drag across the floor with your finger or mouse. You can also draw with the arrows or a controller.</p>
+      </div>
+    </section>
+    <section class="overlay" id="builder" aria-labelledby="builder-title" data-pad-menu hidden>
+      <div class="card builder">
+        <div class="preview">
+          <h2 id="builder-title">Build your boss</h2>
+          <div id="preview-spot" aria-hidden="true"></div>
+          <p id="boss-name" aria-live="polite"></p>
+        </div>
+        <div>
+          <div id="presets" class="presets" aria-label="Ready-made bosses"></div>
+          <div id="parts"></div>
+          <div class="actions"><button id="surprise" type="button">Surprise me</button><button id="done" type="button" class="primary">Done</button></div>
+        </div>
+      </div>
+    </section>
+    <section class="overlay" id="question" role="dialog" aria-modal="true" aria-labelledby="prompt" data-pad-menu hidden>
+      <div class="card quiz">
+        <p class="kicker" id="checkpoint">INK CHECKPOINT</p>
+        <h2 id="prompt"></h2>
+        <div id="show"></div>
+        <div id="choices" class="actions"></div>
+        <div class="actions"><button id="hear" type="button">🔊 Hear it again</button></div>
+      </div>
+    </section>
+    <div id="count" hidden><strong id="number"></strong><span id="count-line"></span></div>
+  </main>
+  <script type="module" src="./game.mjs?v=4"></script>
+</body>
+</html>

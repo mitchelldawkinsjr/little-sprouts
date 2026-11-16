@@ -172,7 +172,7 @@ export function registerRound(rt) {
       message.gates = rallyGates(message.stops);
     }
     if (g.mode === 'flight' || g.mode === 'blocks') message.freeEvery = rallyClearCount(rt.questionCount());
-    if (g.mode === 'pinecone-trail' || g.mode === 'range' || g.mode === 'roll' || g.mode === 'grass' || g.mode === 'glow' || g.mode === 'dash' || g.mode === 'boss') message.total = rt.questionCount();
+    if (g.mode === 'ink-trail' || g.mode === 'pinecone-trail' || g.mode === 'range' || g.mode === 'roll' || g.mode === 'grass' || g.mode === 'glow' || g.mode === 'dash' || g.mode === 'boss') message.total = rt.questionCount();
     return message;
   }
   /** Games that ask at moments in their own play and bank stars as they go (`banks` in lib/sidecar.js). */
@@ -202,7 +202,7 @@ export function registerRound(rt) {
       return;
     }
     // Sky flight and the range keep the same question up after a miss.
-    const flightMiss = (g.mode === 'flight' || g.mode === 'range' || g.mode === 'gulp' || g.mode === 'blocks' || g.mode === 'roll' || g.mode === 'grass' || g.mode === 'glow' || g.mode === 'dash' || g.mode === 'boss' || banks(g.mode)) && !ok;
+    const flightMiss = (g.mode === 'flight' || g.mode === 'range' || g.mode === 'gulp' || g.mode === 'blocks' || g.mode === 'roll' || g.mode === 'grass' || g.mode === 'glow' || g.mode === 'dash' || g.mode === 'boss' || g.mode === 'ink-trail' || banks(g.mode)) && !ok;
     g.done = !flightMiss;
     if (!ok) g.missed = true;
     else if (!g.missed) g.firstCorrect++;
@@ -226,6 +226,8 @@ export function registerRound(rt) {
             ? (ok ? 'Yes! Zoom!' : 'Not yet. Catch another one.')
           : g.mode === 'boss'
             ? (ok ? 'Yes! Swim away!' : 'Not yet. Swim to another one.')
+          : g.mode === 'ink-trail'
+            ? (ok ? 'Yes! Golden ink!' : 'Oops! Wobbly ink. Keep drawing.')
           : g.mode === 'pinecone-trail'
             ? (ok ? 'Yes! Your trail shield is ready.' : 'Not yet. Pick another one.')
           : g.mode === 'pebble'
@@ -859,7 +861,7 @@ export function registerRound(rt) {
       else if (g.mode === 'glow') glowAsk(g);
       else if (g.mode === 'dash') dashAsk(g);
       else if (g.mode === 'boss') bossAsk(g);
-      else if (banks(g.mode)) cabinAsk(g);
+      else if (g.mode === 'ink-trail' || banks(g.mode)) cabinAsk(g);
       else if (g.mode === 'paint') shellAsk(g);
       else {
         rallyAsk(g);
