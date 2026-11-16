@@ -106,3 +106,14 @@ export function roomLine({ role, peer, room, status, url }) {
   if (role === 'guest') return peer ? 'You are in your friend’s cabin. Splash together!' : (status || 'Joining…');
   return status || '';
 }
+
+/** Nearest eligible buddy of any group size. Input order breaks exact ties. */
+export function nearestAwake(from, buddies) {
+  let best = null, distance = Infinity;
+  for (const buddy of buddies) {
+    if (buddy.asleep) continue;
+    const d = Math.hypot(buddy.position.x - from.x, buddy.position.z - from.z);
+    if (d < distance) { best = buddy; distance = d; }
+  }
+  return best;
+}

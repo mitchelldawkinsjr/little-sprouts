@@ -1,5 +1,5 @@
 import { townErrands } from '../lessons/errands.mjs';
-import { stationFriends } from '../lessons/friends.mjs';
+import { stationFriends } from '../lessons/friends.mjs?v=group1';
 // Bootstrap: renderer, sky, context, module build, batching, main loop, HUD.
 import * as THREE from 'three';
 import * as L from './world/layout.js';
@@ -266,7 +266,7 @@ async function main() {
   if (params.has('stats')) $('stats').hidden = false;
   lesson = townErrands({ THREE, scene, camera, player, ground: (x, z) => ctx.physics.groundHeight(x, z, 1e9), place: (lot, lx, lz) => L.lotToWorld(L.lotById(lot), lx, lz) });
   // Inside Little Sprouts there is no start board: walk straight into town.
-  if (SPROUTS) start(false);
+  if (SPROUTS || params.has('room')) start(false);
   // Local testing only: lets a test script move the buddy.
   if (['localhost', '127.0.0.1'].includes(location.hostname)) window.__town = { player, lesson };
   friends = stationFriends({ THREE, scene, player, ground: (x, z) => ctx.physics.groundHeight(x, z, 1e9) });

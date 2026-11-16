@@ -70,8 +70,6 @@
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
   @media (max-width: 520px) { .ends small { display: none; } .keys { display: none; } }
 </style>
-<!-- Play with a friend: hands the game's /link WebSocket to lib/friend-link.mjs (relay, or sound and QR on Wi-Fi). -->
-<script src="./link.js?v=station1"></script>
 <script type="importmap">
 { "imports": {
   "three": "./_external/cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
@@ -117,6 +115,6 @@
 <div id="stats" hidden></div>
 
 <script>if (window.parent !== window) { document.body.classList.add('sprouts'); const n = document.getElementById('stname'); if (n) n.textContent = '🚉 Station Scout'; }</script>
-<script type="module" src="./src/main.js"></script>
+<script type="module" src="./src/main.js?v=group1"></script>
 </body>
 </html>

@@ -52,7 +52,7 @@ export function readWorld(msg, known) {
 
 /** A position from a friend: three finite numbers, or null. */
 export function readSpot(p) {
-  return Array.isArray(p) && p.length === 3 && p.every(Number.isFinite) ? p.map(Number) : null;
+  return Array.isArray(p) && p.length === 3 && p.every(n => Number.isFinite(n) && Math.abs(n) <= 1_000_000) ? p.map(Number) : null;
 }
 
 /** Collects a world sent in parts. add() returns the whole list once the last part is in. */
