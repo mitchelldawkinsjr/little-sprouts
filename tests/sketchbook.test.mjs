@@ -70,7 +70,7 @@ test('Sketchbook ships after deployment and all of its runtime assets fit the of
   assert.match(read('Dockerfile'), /COPY sidecars\/sketchbook \/usr\/share\/nginx\/html\/sidecars\/sketchbook/);
   assert.ok(sidecarArcadeIds().includes('sketchbook'));
   const listed = inventory(fileURLToPath(new URL('..', import.meta.url))).offline();
-  const files = ['index.html','trail.css','trail.mjs','checkpoints.mjs','friends.mjs','build/sketchbook.min.js',
+  const files = ['index.html','trail.css','trail.mjs','vehicle-crash.mjs','checkpoints.mjs','friends.mjs','build/sketchbook.min.js',
     ...['world-lite','boxman','car','heli','airplane'].map(x => 'build/assets/' + x + '.glb')];
   for (const name of files) {
     const path = 'sidecars/sketchbook/' + name;
