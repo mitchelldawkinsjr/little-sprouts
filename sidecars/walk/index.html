@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/lib/game-touch.css?v=1">
   <title>Garden walk</title>
   <style>
     html, body { margin: 0; height: 100%; background: #8ec8e6; overflow: hidden; font-family: "Trebuchet MS", sans-serif; }
@@ -22,14 +23,14 @@
     .steer button:active { background: #2f6a52; }
   </style>
 </head>
-<body>
+<body data-game-touch-canvas>
   <canvas id="stage" width="960" height="540"></canvas>
   <div id="hud">
     <p id="prompt">Walk to the picture that matches.</p>
     <div id="show"></div>
     <button type="button" id="hear">Hear it again</button>
   </div>
-  <div class="steer">
+  <div class="steer" data-game-touch>
     <button type="button" id="left" aria-label="Walk left">◀</button>
     <button type="button" id="right" aria-label="Walk right">▶</button>
   </div>

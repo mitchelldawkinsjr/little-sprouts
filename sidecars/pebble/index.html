@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="stylesheet" href="/lib/game-touch.css?v=1">
 <title>Pebble roll</title>
 <style>
 :root { color-scheme: light; font: 16px/1.35 system-ui,sans-serif; color: #181d16; background: #fffafa }
@@ -42,7 +43,7 @@ button:focus-visible { outline: 3px solid #9b4706; outline-offset: 3px }
 }
 </style>
 </head>
-<body>
+<body data-game-touch-canvas>
   <div id="world" tabindex="-1" role="group" aria-label="Forest course"></div>
   <div class="hud" id="hud" hidden>
     <div class="hud-copy">
@@ -51,10 +52,10 @@ button:focus-visible { outline: 3px solid #9b4706; outline-offset: 3px }
       <span id="hearts" aria-live="polite" hidden>3 hearts</span>
       <span id="shield" hidden>🛡 Shield ready</span>
     </div>
-    <button type="button" id="pause">Pause</button>
+    <button type="button" id="pause" data-game-touch>Pause</button>
   </div>
   <p id="notice" hidden role="status"><span class="pill"></span></p>
-  <div class="controls" id="controls" hidden>
+  <div class="controls" id="controls" data-game-touch hidden>
     <div><button type="button" id="left" aria-label="Move left">◀</button><button type="button" id="right" aria-label="Move right">▶</button></div>
     <button type="button" id="jump">Jump ↑</button>
   </div>

@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/lib/game-touch.css?v=1">
   <title>Block meadow</title>
   <style>
     :root { --ink: #16382c; --paper: #faf9f5; --leaf: #32634e; --warm: #db8b32; --line: #d7decc; }
@@ -100,7 +101,7 @@
     @media (prefers-reduced-motion: reduce) { #loading .sprout, .icon-bar-item.new { animation: none; } }
   </style>
 </head>
-<body>
+<body data-game-touch-canvas>
   <div id="view" aria-label="Block meadow. Walk, build, and find the gift boxes."></div>
   <div id="cross" aria-hidden="true"></div>
   <div id="hud">
@@ -117,13 +118,13 @@
     <div class="row"></div>
   </div>
   <button type="button" id="done" hidden>I’m done building</button>
-  <div id="bar" role="toolbar" aria-label="Blocks"></div>
-  <div class="side" id="tools">
+  <div id="bar" data-game-touch role="toolbar" aria-label="Blocks"></div>
+  <div class="side" id="tools" data-game-touch>
     <button type="button" class="round" id="jump" aria-label="Jump"><span class="icon">⤒</span>Jump</button>
     <button type="button" class="round" id="friend" aria-label="Play with a friend"><span class="icon">👫</span>Friend</button>
     <button type="button" class="round" id="mode" aria-label="Switch between build and dig"><span class="icon" id="modeIcon">🧱</span><span id="modeText">Build</span></button>
   </div>
-  <div id="stick" aria-hidden="true"><div id="knob"></div></div>
+  <div id="stick" data-game-touch aria-hidden="true"><div id="knob"></div></div>
   <div id="card" hidden role="dialog" aria-modal="true" aria-labelledby="cardPrompt">
     <div class="sheet">
       <p class="gift" aria-hidden="true">🎁</p>

@@ -3,10 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <link rel="stylesheet" href="/lib/game-touch.css?v=1">
   <title>Canyon Pods · Little Sprouts</title>
   <link rel="stylesheet" href="./pods.css?v=4">
 </head>
-<body>
+<body data-game-touch-canvas>
   <main id="world" tabindex="-1" aria-label="Canyon race"></main>
   <header id="hud" hidden>
     <div class="meters">
@@ -15,7 +16,7 @@
       <span id="boost-meter">⚡ <span id="charges">1</span></span>
       <span id="friend-hud" hidden>🤝 Friend race</span>
     </div>
-    <button id="pause" type="button" aria-label="Pause race">Ⅱ</button>
+    <button id="pause" data-game-touch type="button" aria-label="Pause race">Ⅱ</button>
   </header>
   <div id="toast" role="status" hidden></div>
   <div id="countdown" hidden><div><span id="count-label" role="status">Get ready!</span><strong id="digit" aria-hidden="true">3</strong></div></div>
