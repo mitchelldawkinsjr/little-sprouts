@@ -1,21 +1,31 @@
-// Plane-only, visual crash detection over Sketchbook's existing Cannon callbacks.
-// Speed values tune the arcade effect. They don't alter the engine or vehicle state.
-const CHASSIS_HIT = 8;
-const WHEEL_HIT = 8;
+// Visual crash detection over Sketchbook's existing Cannon callbacks.
+// Speed values tune the arcade effect without changing physics or vehicle state.
+const CRASH_SPEEDS = {
+  car: { chassis: 11, landing: 9, fall: 6 },
+  plane: { chassis: 8, landing: 8, fall: 4.5 },
+  heli: { chassis: 7.5, landing: 7.5, fall: 4.5 }
+};
 const REPEAT_DELAY = 2.2;
 const CLEAR_AIR = .20;
 
 const finitePoint = p => p && Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z);
-export const isPlane = vehicle => !!vehicle?.actions?.wheelBrake;
+// Same kinds as the sidecar's friend vehicle snapshots.
+export function vehicleKind(vehicle) {
+  const actions = vehicle?.actions;
+  return actions?.ascend ? 'heli' : actions?.wheelBrake ? 'plane' : actions?.throttle ? 'car' : '';
+}
 
-export function watchPlaneCrashes(world, onCrash) {
+export function watchVehicleCrashes(world, onCrash) {
   const physics = world.physicsWorld;
   const tracked = new Map();
   let time = 0;
 
-  function emit(state, point, speed) {
+  function emit(state, point, speed, other) {
     if (!finitePoint(point) || !Number.isFinite(speed) || time < state.next) return;
     state.next = time + REPEAT_DELAY;
+    // Cannon notifies both chassis about a shared contact. Play one burst.
+    const peer = tracked.get(other);
+    if (peer) peer.next = Math.max(peer.next, state.next);
     onCrash({ x: point.x, y: point.y, z: point.z, strength: Math.min(1.65, 1.02 + speed / 38) });
   }
 
@@ -26,8 +36,8 @@ export function watchPlaneCrashes(world, onCrash) {
       const { position, velocity } = body;
       const wheel = state.wheels.find(w => w.isInContact);
       // Wheel rays don't dispatch chassis contact. Only count a hard touchdown
-      // after sustained air time, so runway seams and ordinary landings stay quiet.
-      if (wheel && state.air >= CLEAR_AIR && state.vy <= -WHEEL_HIT) {
+      // after sustained air time, so road seams and ordinary landings stay quiet.
+      if (wheel && state.air >= CLEAR_AIR && state.vy <= -state.speeds.landing) {
         emit(state, wheel.raycastResult?.hitPointWorld || position, -state.vy);
       }
       state.air = wheel ? 0 : state.air + dt;
@@ -37,7 +47,7 @@ export function watchPlaneCrashes(world, onCrash) {
       // finds out of bounds. Don't emit at the runway respawn point.
       if (world.isOutOfBounds(position)) {
         const speed = Math.hypot(velocity.x, velocity.y, velocity.z);
-        if (speed >= CHASSIS_HIT || velocity.y <= -4.5) emit(state, position, speed);
+        if (speed >= state.speeds.chassis || velocity.y <= -state.speeds.fall) emit(state, position, speed);
         state.air = 0;
         state.vy = 0;
       }
@@ -52,18 +62,19 @@ export function watchPlaneCrashes(world, onCrash) {
   physics.addEventListener('postStep', step);
   return {
     track(vehicles) {
-      const planes = new Set();
+      const bodies = new Set();
       for (const vehicle of vehicles) {
-        if (!isPlane(vehicle) || !vehicle.collision) continue;
+        const speeds = CRASH_SPEEDS[vehicleKind(vehicle)];
+        if (!speeds || !vehicle.collision) continue;
         const body = vehicle.collision;
-        planes.add(body);
+        bodies.add(body);
         if (tracked.has(body)) continue;
-        const state = { next: 0, air: 0, vy: 0, wheels: vehicle.rayCastVehicle?.wheelInfos ?? [] };
+        const state = { speeds, next: 0, air: 0, vy: 0, wheels: vehicle.rayCastVehicle?.wheelInfos ?? [] };
         state.hit = ({ contact }) => {
           // Cannon dispatches the new contact before solving its impulse.
           if (!contact || contact.enabled === false || (contact.bi !== body && contact.bj !== body)) return;
           const speed = contact.getImpactVelocityAlongNormal();
-          if (!(speed >= CHASSIS_HIT)) return;
+          if (!(speed >= state.speeds.chassis)) return;
           const first = contact.bi === body;
           const other = first ? contact.bj : contact.bi;
           // Prefer the struck surface point to avoid burying the visual in penetration.
@@ -72,13 +83,13 @@ export function watchPlaneCrashes(world, onCrash) {
           const offset = useSurface ? surface : first ? contact.ri : contact.rj;
           if (!finitePoint(offset)) return;
           const p = useSurface ? other.position : body.position;
-          emit(state, { x: p.x + offset.x, y: p.y + offset.y, z: p.z + offset.z }, speed);
+          emit(state, { x: p.x + offset.x, y: p.y + offset.y, z: p.z + offset.z }, speed, other);
         };
         body.addEventListener('collide', state.hit);
         tracked.set(body, state);
       }
       for (const [body, state] of tracked) {
-        if (planes.has(body)) continue;
+        if (bodies.has(body)) continue;
         body.removeEventListener('collide', state.hit);
         tracked.delete(body);
       }
@@ -107,7 +118,7 @@ export function makeCrashBursts(T, scene, { performance = false, reduced = false
     }
     material ??= { amber: solid(0xff923b), gold: solid(0xffcf64), spark: solid(0xffb84b) };
     const group = new T.Group();
-    group.name = 'sketchbook-plane-crash';
+    group.name = 'sketchbook-vehicle-crash';
     scene.add(group);
     const mesh = (geometry, mat) => {
       const m = new T.Mesh(geometry, mat);

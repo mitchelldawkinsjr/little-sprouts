@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isPlane, makeCrashBursts, watchPlaneCrashes } from '../sidecars/sketchbook/plane-crash.mjs';
+import { makeCrashBursts, vehicleKind, watchVehicleCrashes } from '../sidecars/sketchbook/vehicle-crash.mjs';
 
 function target(props = {}) {
   const listeners = new Map();
@@ -15,17 +15,21 @@ function target(props = {}) {
   });
 }
 const point = (x = 0, y = 0, z = 0) => ({ x, y, z });
-function fixture() {
-  const plane = { actions: { wheelBrake: {} },
+const actionsFor = { plane: { wheelBrake: {} }, car: { throttle: {} }, heli: { ascend: {} } };
+function makeVehicle(kind) {
+  return { actions: actionsFor[kind],
     collision: target({ position: point(10, 10, 10), velocity: point() }),
     rayCastVehicle: { wheelInfos: [{ isInContact: false, raycastResult: { hitPointWorld: point(10, 1, 10) } }] }
   };
+}
+function fixture(kind = 'plane') {
+  const vehicle = makeVehicle(kind);
   const physics = target();
   const world = { physicsWorld: physics, physicsFrameTime: 1 / 60, isOutOfBounds: p => p.y < 0 };
   const hits = [];
-  const watch = watchPlaneCrashes(world, hit => hits.push(hit));
-  watch.track([plane]);
-  return { plane, body: plane.collision, wheel: plane.rayCastVehicle.wheelInfos[0], physics, hits, watch };
+  const watch = watchVehicleCrashes(world, hit => hits.push(hit));
+  watch.track([vehicle]);
+  return { vehicle, body: vehicle.collision, wheel: vehicle.rayCastVehicle.wheelInfos[0], physics, hits, watch };
 }
 function collide(body, speed, second = false, enabled = true) {
   const other = {};
@@ -34,17 +38,17 @@ function collide(body, speed, second = false, enabled = true) {
 }
 function steps(physics, count) { for (let i = 0; i < count; i++) physics.fire('postStep'); }
 
-test('crash tracking attaches once to planes only and detaches on scenario changes', () => {
-  const { plane, body, hits, watch, physics } = fixture();
-  const heli = { actions: { ascend: {} }, collision: target() };
-  const car = { actions: { throttle: {} }, collision: target() };
-  watch.track([plane, plane, heli, car]);
-  assert.ok(isPlane(plane));
+test('crash tracking attaches once per drivable vehicle and detaches on scenario changes', () => {
+  const { vehicle: plane, body, hits, watch, physics } = fixture();
+  const heli = makeVehicle('heli'), car = makeVehicle('car'), decoration = makeVehicle('');
+  watch.track([plane, plane, heli, car, decoration]);
+  assert.deepEqual([plane, heli, car, decoration].map(vehicleKind), ['plane', 'heli', 'car', '']);
   assert.equal(body.listenerCount('collide'), 1);
-  assert.equal(heli.collision.listenerCount('collide'), 0);
-  assert.equal(car.collision.listenerCount('collide'), 0);
+  assert.equal(heli.collision.listenerCount('collide'), 1);
+  assert.equal(car.collision.listenerCount('collide'), 1);
+  assert.equal(decoration.collision.listenerCount('collide'), 0);
   watch.track([]);
-  assert.equal(body.listenerCount('collide'), 0);
+  for (const v of [plane, heli, car]) assert.equal(v.collision.listenerCount('collide'), 0);
   watch.track([plane]);
   watch.clear();
   collide(body, 18);
@@ -71,40 +75,69 @@ test('a hard chassis collision emits at contact once and ignores disabled, soft,
   assert.ok(hits[1].strength > hits[0].strength);
 });
 
-test('wheels trigger only on a hard touchdown after air time, not taxi seams or a gentle landing', () => {
-  const { body, wheel, physics, hits } = fixture();
-  body.velocity.y = -10;
-  steps(physics, 2);
-  wheel.isInContact = true;
-  steps(physics, 1);
-  assert.equal(hits.length, 0);
-  wheel.isInContact = false;
-  body.velocity.y = -3;
-  steps(physics, 20);
-  wheel.isInContact = true;
-  steps(physics, 1);
-  assert.equal(hits.length, 0);
-  wheel.isInContact = false;
-  body.velocity.y = -12;
-  steps(physics, 20);
-  wheel.isInContact = true;
-  body.velocity.y = 0;
-  steps(physics, 10);
-  assert.equal(hits.length, 1);
-  assert.deepEqual([hits[0].x, hits[0].y, hits[0].z], [10, 1, 10]);
+test('car collisions and helicopter impacts use different thresholds', () => {
+  const car = fixture('car'), heli = fixture('heli');
+  collide(car.body, 8);
+  collide(heli.body, 4);
+  assert.equal(car.hits.length, 0);
+  assert.equal(heli.hits.length, 0);
+  collide(car.body, 13);
+  collide(heli.body, 8);
+  assert.equal(car.hits.length, 1);
+  assert.equal(heli.hits.length, 1);
 });
 
-test('a falling airplane emits before the game respawns it and does not change its velocity', () => {
-  const { body, physics, hits } = fixture();
-  body.position.y = -1;
-  body.velocity.y = -9;
-  steps(physics, 1);
-  assert.equal(body.velocity.y, -9);
-  body.position.y = 10;
-  body.velocity.y = 0;
-  steps(physics, 10);
+test('both sides of a two-vehicle collision produce one burst at the struck surface', () => {
+  const { vehicle, body, watch, hits } = fixture('car');
+  const other = makeVehicle('car').collision;
+  other.position = point(12, 10, 10);
+  watch.track([vehicle, { actions: actionsFor.car, collision: other }]);
+  const contact = { bi: body, bj: other, ri: point(1.1), rj: point(-1),
+    getImpactVelocityAlongNormal: () => 13 };
+  body.fire('collide', { body: other, contact });
+  other.fire('collide', { body, contact });
   assert.equal(hits.length, 1);
-  assert.deepEqual([hits[0].x, hits[0].y, hits[0].z], [10, -1, 10]);
+  assert.deepEqual([hits[0].x, hits[0].y, hits[0].z], [11, 10, 10]);
+});
+
+test('wheels trigger only on a hard touchdown after air time, not road seams or a gentle landing', () => {
+  for (const kind of ['plane', 'car', 'heli']) {
+    const { body, wheel, physics, hits } = fixture(kind);
+    body.velocity.y = -10;
+    steps(physics, 2);
+    wheel.isInContact = true;
+    steps(physics, 1);
+    assert.equal(hits.length, 0);
+    wheel.isInContact = false;
+    body.velocity.y = -3;
+    steps(physics, 20);
+    wheel.isInContact = true;
+    steps(physics, 1);
+    assert.equal(hits.length, 0);
+    wheel.isInContact = false;
+    body.velocity.y = -12;
+    steps(physics, 20);
+    wheel.isInContact = true;
+    body.velocity.y = 0;
+    steps(physics, 10);
+    assert.equal(hits.length, 1);
+    assert.deepEqual([hits[0].x, hits[0].y, hits[0].z], [10, 1, 10]);
+  }
+});
+
+test('a falling vehicle emits before the game respawns it and does not change its velocity', () => {
+  for (const kind of ['plane', 'car', 'heli']) {
+    const { body, physics, hits } = fixture(kind);
+    body.position.y = -1;
+    body.velocity.y = -9;
+    steps(physics, 1);
+    assert.equal(body.velocity.y, -9);
+    body.position.y = 10;
+    body.velocity.y = 0;
+    steps(physics, 10);
+    assert.equal(hits.length, 1);
+    assert.deepEqual([hits[0].x, hits[0].y, hits[0].z], [10, -1, 10]);
+  }
 });
 
 test('the crash effect uses a bounded pool with lighter variants, expires, and clears on reset', () => {
