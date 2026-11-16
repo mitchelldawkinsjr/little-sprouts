@@ -7,8 +7,10 @@ import { sidecarGame, sidecarAlone, sidecarArcadeIds } from '../lib/sidecar.js';
 import { contextFor } from '../lib/speech-core.mjs';
 import { PRESETS, readBoss as readShared, saveBoss as saveShared } from '../lib/boss-design.mjs';
 import { readBoss as readFromChase, saveBoss as saveFromChase } from '../sidecars/boss/logic.mjs';
-import { answer, bossDistance, FIRST_QUESTION, INK_BOOST, makeRun, nearestBoss, PEN_AHEAD, PEN_WOBBLE, resumeCaught, stepRun, strokeAt } from '../sidecars/ink-trail/logic.mjs';
+import { answer, bossDistance, FIRST_QUESTION, INK_BOOST, makeRun, nearestBoss, PEN_AHEAD, PEN_WOBBLE, penStickDirection, resumeCaught, stepRun, strokeAt } from '../sidecars/ink-trail/logic.mjs';
 import { makeBossCatch } from '../lib/boss-catch.mjs';
+import { KID, readStick } from '../lib/touch-controls.mjs';
+import { VirtualGamepad } from '../vendor/gamepad/core.js';
 import { Group } from '../vendor/three/build/three.module.js';
 
 function simulate(run, seconds, input = {}) {
@@ -17,7 +19,7 @@ function simulate(run, seconds, input = {}) {
   return events;
 }
 
-test('the Ink Trail shelf card, arcade mode, controller, and offline files ship together', () => {
+test('the Ink Trail shelf card, arcade mode, controller, touch controls, and offline files ship together', () => {
   const spec = sidecarGame('ink-trail');
   assert.equal(spec.shelf, 'run-jump-dodge');
   assert.equal(contextFor(spec.id), 'gameHost');
@@ -30,10 +32,47 @@ test('the Ink Trail shelf card, arcade mode, controller, and offline files ship 
   const listed = inventory(fileURLToPath(new URL('..', import.meta.url))).offline();
   assert.match(docker, /COPY sidecars\/ink-trail /);
   for (const name of ['index.html', 'trail.css', 'game.mjs', 'logic.mjs', 'view.mjs', 'ink-surface.mjs'].map(x => 'sidecars/ink-trail/' + x)
-    .concat(['boss-design', 'boss-builder', 'boss-model', 'boss-catch'].map(x => 'lib/' + x + '.mjs'))) {
+    .concat(['boss-design', 'boss-builder', 'boss-model', 'boss-catch', 'touch-controls'].map(x => 'lib/' + x + '.mjs'))
+    .concat(['core', 'dom', 'physical', 'safe-area'].map(x => 'vendor/gamepad/' + x + '.js'))) {
     assert.ok(existsSync(new URL('../' + name, import.meta.url)), name);
     assert.ok(listed['./' + name], name);
   }
+});
+
+test('the shared touch joystick steers the ink diagonally and releases without drawing more', () => {
+  const pad = new VirtualGamepad({ stick: { radius: KID.stick, knobRadius: KID.knob, deadZone: KID.deadZone } });
+  pad.setViewport(390, 700);
+  const run = makeRun();
+  pad.pointerDown(1, 78, 600);
+  pad.pointerMove(1, 82, 598);
+  assert.equal(penStickDirection(readStick(pad.getStick())), null);
+  pad.pointerMove(1, 78 + KID.stick, 600 - KID.stick);
+  const direction = penStickDirection(readStick(pad.getStick()));
+  const { x, z } = run.pen;
+  simulate(run, .4, { direction });
+  assert.ok(run.pen.x > x + 50);
+  assert.ok(run.pen.z < z - 50);
+  assert.ok(Math.abs(run.pen.x - x + run.pen.z - z) < 1e-8);
+  assert.deepEqual(run.buddy, strokeAt(run.trail, run.distance));
+  pad.pointerUp(1);
+  assert.equal(penStickDirection(readStick(pad.getStick())), null);
+  const end = run.trail.at(-1);
+  const distance = run.distance;
+  simulate(run, .25, { direction: penStickDirection(readStick(pad.getStick())) });
+  assert.equal(run.trail.at(-1), end);
+  assert.ok(run.distance > distance, 'the garden buddy still runs along the ink already drawn');
+});
+
+test('more joystick travel draws faster while an active floor drag keeps its own direction', () => {
+  const light = makeRun(), full = makeRun(), drag = makeRun();
+  const small = penStickDirection({ active: true, x: .25, y: 0, magnitude: .25 });
+  const large = penStickDirection({ active: true, x: 1, y: 0, magnitude: 1 });
+  simulate(light, .2, { direction: small });
+  simulate(full, .2, { direction: large });
+  simulate(drag, .2, { direction: large, target: { x: 65, z: 100 } });
+  assert.ok(full.pen.x > light.pen.x);
+  assert.equal(drag.pen.x, 65);
+  assert.ok(drag.pen.z > 70);
 });
 
 test('the old Boss Chase save survives in both directions', () => {

@@ -83,6 +83,13 @@ export function strokeAt(trail, s) {
   };
 }
 
+/** Shared touch-stick axes point right/down. The ink floor uses +X/+Z for those directions. */
+export function penStickDirection(stick) {
+  if (!stick.active) return null;
+  // Even a small push should draw faster than the buddy's starting run speed.
+  return { x: stick.x, z: stick.y, throttle: .6 + .4 * stick.magnitude };
+}
+
 function extendStroke(run, target, direction, dt, pressure) {
   const last = run.trail.at(-1);
   const pen = run.pen;
@@ -92,7 +99,8 @@ function extendStroke(run, target, direction, dt, pressure) {
   if (!Number.isFinite(length) || length < .01) return;
   const dx = vx / length, dz = vz / length;
   const room = Math.max(0, run.distance + PEN_AHEAD - last.s);
-  let draw = Math.min(room, dt * (target ? 410 : 215), target ? length : Infinity);
+  const speed = target ? 410 : 215 * (direction?.throttle ?? 1);
+  let draw = Math.min(room, dt * speed, target ? length : Infinity);
   // Move the pen in small increments so the terrain, ink and runner use one continuous line.
   while (draw > .001) {
     const step = Math.min(draw, STEP);

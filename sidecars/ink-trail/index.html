@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#111823">
   <title>Ink Trail · Little Sprouts</title>
-  <link rel="stylesheet" href="./trail.css?v=4">
+  <link rel="stylesheet" href="./trail.css?v=5">
   <script type="importmap">{"imports":{"three":"../../vendor/three/build/three.module.js?v=r187"}}</script>
 </head>
 <body>
@@ -18,7 +18,10 @@
       <div class="chip stats"><strong id="score">💧 0</strong><button id="pause" type="button" aria-label="Pause">Ⅱ</button></div>
     </header>
     <div id="status" role="status" hidden></div>
-    <div id="tip" hidden>Draw in any direction · arrows or stick</div>
+    <div id="tip" hidden>Draw in any direction · arrows or controller</div>
+    <div id="pen-stick" role="group" aria-label="Ink pen joystick" hidden>
+      <span aria-hidden="true">✥</span><small aria-hidden="true">Pen stick</small>
+    </div>
     <div id="chomp" role="status" hidden><strong>Chomp!</strong><span id="chomp-boss"></span></div>
     <section class="overlay" id="panel" aria-labelledby="title" data-pad-menu>
       <div class="card menu">
@@ -31,7 +34,7 @@
           <button id="endless" type="button" hidden>Just draw</button>
           <button id="build" type="button">Build your boss</button>
         </div>
-        <p class="fine" id="help">Hold and drag across the floor with your finger or mouse. You can also draw with the arrows or a controller.</p>
+        <p class="fine" id="help">On touchscreens, push the pen stick to draw and let go to stop. You can also drag on the floor, use the arrow keys, or play with a controller.</p>
       </div>
     </section>
     <section class="overlay" id="builder" aria-labelledby="builder-title" data-pad-menu hidden>
@@ -59,6 +62,6 @@
     </section>
     <div id="count" hidden><strong id="number"></strong><span id="count-line"></span></div>
   </main>
-  <script type="module" src="./game.mjs?v=4"></script>
+  <script type="module" src="./game.mjs?v=5"></script>
 </body>
 </html>

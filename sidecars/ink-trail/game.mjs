@@ -3,8 +3,9 @@ import { BOSS_EMOJI, DEFAULT_BOSS, bossName, readBoss } from '../../lib/boss-des
 import { makeBossBuilder } from '../../lib/boss-builder.mjs';
 import { BOSS_CHOMP_SECONDS } from '../../lib/boss-catch.mjs';
 import { actionDown, moveDirs, nextIndex, readPad } from '../../lib/pad-core.mjs?v=pad-map1';
+import { attachTouchControls, isTouchDevice } from '../../lib/touch-controls.mjs?v=touch3';
 import { localQuestion, normalizeQuestion, LOCAL_ROUND } from '../roll/quiz.mjs?v=roll1';
-import { CHASE_RANGE, COUNT_IN, answer, bossDistance, makeRun, nearestBoss, resumeCaught, stepRun } from './logic.mjs';
+import { CHASE_RANGE, COUNT_IN, answer, bossDistance, makeRun, nearestBoss, penStickDirection, resumeCaught, stepRun } from './logic.mjs';
 import { makeView } from './view.mjs';
 
 const $ = id => document.getElementById(id);
@@ -15,6 +16,16 @@ const send = (type, extra = {}) => {
 };
 const panel = $('panel'), builder = $('builder'), question = $('question');
 const canvas = $('trail');
+let touchDevice = isTouchDevice();
+const touch = attachTouchControls({
+  tint: '#a4f8ff',
+  // Only the joystick zone owns a touch stick. Floor drags and all buttons stay native.
+  ignore: 'main > :not(#pen-stick)',
+  onFirstTouch() {
+    touchDevice = true;
+    showTouchStick();
+  }
+});
 const view = makeView(canvas, $('creature'), $('preview-spot'));
 const keys = new Set();
 const tried = new Set();
@@ -72,15 +83,28 @@ function paintChase() {
 
 function focusButton(el) { el?.focus({ preventScroll: true }); }
 
+function showTouchStick() {
+  const playing = screen === 'run';
+  $('pen-stick').hidden = !playing || !touchDevice;
+  touch.setVisible(playing && touchDevice);
+  $('tip').textContent = touchDevice ? 'Steer with the pen stick or drag on the floor' : 'Draw in any direction · arrows or controller';
+}
+
 function clearPen() {
   keys.clear();
+  const pointerId = point.id;
   point.id = null;
+  if (pointerId !== null && canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
   point.pending.length = 0;
   point.pressure = 0;
+  touch.reset();
 }
 
 function setScreen(name) {
   screen = name;
+  showTouchStick();
+  // Builder and quiz cards must still scroll on short touchscreens.
+  document.documentElement.style.touchAction = document.body.style.touchAction = name === 'run' ? 'none' : 'auto';
   panel.hidden = !['menu', 'pause', 'caught', 'win'].includes(name);
   builder.hidden = name !== 'build';
   question.hidden = name !== 'question';
@@ -354,6 +378,7 @@ addEventListener('keydown', event => {
 });
 addEventListener('keyup', event => keys.delete(event.code));
 addEventListener('blur', clearPen);
+document.addEventListener('visibilitychange', () => { if (document.hidden) clearPen(); });
 
 function readController() {
   if (embedded) return { x: 0, y: 0, draw: false };
@@ -388,10 +413,12 @@ function tick(now) {
   const dt = Math.min(.08, Math.max(0, (now - lastTime) / 1000));
   lastTime = now;
   const controller = readController();
+  touch.update();
+  const stick = screen === 'run' ? penStickDirection(touch.move) : null;
   const x = controller.x || (+keys.has('ArrowRight') - +keys.has('ArrowLeft'));
   const z = controller.y || (+keys.has('ArrowDown') - +keys.has('ArrowUp'));
-  const direction = x || z ? { x, z }
-    : keys.has('Space') || controller.draw ? { x: run.pen.dx, z: run.pen.dz } : null;
+  const direction = stick ?? (x || z ? { x, z }
+    : keys.has('Space') || controller.draw ? { x: run.pen.dx, z: run.pen.dz } : null);
   if (direction && point.id === null) point.pending.length = 0;
   while (point.pending.length && Math.hypot(point.pending[0].x - run.pen.x, point.pending[0].z - run.pen.z) < 2) point.pending.shift();
   const target = point.pending[0];
