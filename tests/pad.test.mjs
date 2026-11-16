@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { actionDown, actionFor, axisDir, held, moveDirs, nextIndex, readPad } from '../lib/pad-core.mjs';
+import { actionDown, actionFor, axisDir, buttonEdges, held, moveDirs, nextIndex, readPad } from '../lib/pad-core.mjs';
 
 const button = (pressed, value = pressed ? 1 : 0) => ({ pressed, value });
 
@@ -14,6 +14,18 @@ test('the right trigger and the face button read from a standard pad', () => {
   assert.equal(pad.left, 1);
   assert.equal(axisDir(pad.lx), -1);
   assert.equal(axisDir(0.1), 0);
+});
+
+test('a game can map both stick clicks without affecting movement axes', () => {
+  const pad = readPad({ axes: [0.6, 0, 0, 0], buttons: { 10: button(true), 11: button(true) } });
+  const keys = { ls: 'KeyG', rs: 'KeyV' }, was = {};
+  assert.deepEqual(moveDirs(pad), { x: 1, y: 0 });
+  assert.deepEqual(buttonEdges(pad, keys, was), [
+    { button: 'ls', code: 'KeyG', down: true }, { button: 'rs', code: 'KeyV', down: true }
+  ]);
+  assert.deepEqual(buttonEdges(readPad({}), keys, was), [
+    { button: 'ls', code: 'KeyG', down: false }, { button: 'rs', code: 'KeyV', down: false }
+  ]);
 });
 
 test('a resting trigger does not count as held, and a half pull stays held', () => {

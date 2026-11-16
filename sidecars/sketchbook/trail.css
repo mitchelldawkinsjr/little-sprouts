@@ -1,0 +1,191 @@
+:root { color-scheme: light; }
+body { margin: 0; overflow: hidden; background: #b7dbaa; }
+[hidden] { display: none !important; }
+#canvas { position: fixed; inset: 0; display: block; touch-action: none; }
+#loading-screen { z-index: 5; }
+#ui-container, .dg.ac { display: none !important; }
+#trail-hud, #trail-guide, #trail-help, #trail-notice, #trail-boarding, #trail-panel, #trail-picker, #trail-friend-panel {
+  position: fixed;
+  z-index: 25;
+  color: #163d36;
+  text-shadow: none;
+  font: 650 clamp(12px, 2.3vw, 15px)/1.35 system-ui, sans-serif;
+  box-sizing: border-box;
+}
+#trail-hud, #trail-guide, #trail-help, #trail-notice, #trail-boarding {
+  padding: 7px 12px;
+  background: #fffdf3f5;
+  border: 1px solid #e6f0d9;
+  border-radius: 14px;
+  box-shadow: 0 4px 18px #162d332b;
+}
+#trail-hud { top: max(9px, env(safe-area-inset-top)); left: max(9px, env(safe-area-inset-left)); max-width: min(calc(100% - 161px), 22rem); }
+#trail-hud strong { color: #245449; font-size: 1.07em; }
+#trail-mode { margin: 3px 0 0; }
+#trail-guide { top: calc(max(9px, env(safe-area-inset-top)) + 112px); right: max(9px, env(safe-area-inset-right)); display: flex; align-items: center; gap: 5px; pointer-events: none; }
+#trail-arrow { display: inline-block; color: #206748; font-size: 1.65em; line-height: 1; }
+#trail-notice { top: calc(max(9px, env(safe-area-inset-top)) + 153px); left: 50%; transform: translateX(-50%); max-width: 75%; min-width: 8rem; text-align: center; pointer-events: none; }
+#trail-help { bottom: max(8px, env(safe-area-inset-bottom)); left: 10px; max-width: min(75%, 35rem); margin: 0; pointer-events: none; }
+#trail-shortcuts {
+  position: fixed;
+  z-index: 32;
+  top: max(9px, env(safe-area-inset-top));
+  right: max(9px, env(safe-area-inset-right));
+  display: grid;
+  justify-items: end;
+  gap: 7px;
+}
+#trail-shortcuts button {
+  text-shadow: none;
+  min-height: 46px;
+  padding: 7px 13px;
+  border: 2px solid #fff8cb;
+  border-radius: 18px;
+  background: #ffd76f;
+  color: #253d2e;
+  box-shadow: 0 4px 0 #926224, 0 7px 16px #1127175c;
+  font: 850 16px/1.15 system-ui, sans-serif;
+  cursor: pointer;
+}
+#trail-shortcuts button span { margin-right: 3px; font-size: 1.1em; }
+#trail-shortcuts #trail-quick-starts {
+  padding-inline: 9px;
+  background: #d8f0c3;
+  border-color: #effde3;
+  box-shadow: 0 4px 0 #58764e, 0 7px 16px #1127175c;
+  font-size: 13px;
+}
+#trail-panel, #trail-picker, #trail-friend-panel {
+  z-index: 50; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  box-sizing: border-box;
+  width: min(560px, calc(100% - 28px));
+  max-height: min(88vh, 610px);
+  padding: clamp(12px, 3vw, 22px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  background: linear-gradient(145deg, #fff6d6, #fffcf1 48%, #e9f7e6);
+  border: 2px solid #fffdf6;
+  border-radius: 24px;
+  box-shadow: 0 16px 46px #172a394d, 0 0 0 100vmax #153a3fa8;
+}
+.trail-kicker {
+  display: inline-block;
+  color: #204b3f;
+  background: #dff2cf;
+  border-radius: 20px;
+  padding: 4px 10px;
+  letter-spacing: .07em;
+  font-size: .74rem;
+  font-weight: 850;
+}
+#trail-panel h2, #trail-picker h2, #trail-friend-panel h2 {
+  color: #173e35;
+  margin: 5px 0 2px;
+  font-size: clamp(20px, 4.6vw, 30px);
+  line-height: 1.12;
+}
+.trail-panel-intro { color: #365244; margin: 5px 0 13px; }
+#trail-actions, #trail-scenarios {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+#trail-actions button, #trail-scenarios button, #trail-picker .trail-back, #trail-friend-panel button {
+  cursor: pointer; background: #fffef8; border: 1px solid #b8d0b3;
+  border-radius: 15px; padding: 7px 11px; min-height: 48px;
+  color: #1b4538; font: inherit;
+}
+#trail-actions button.trail-card, #trail-scenarios button.trail-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: "icon label" "icon hint";
+  align-content: center;
+  align-items: center;
+  column-gap: 7px;
+  text-align: left;
+  min-height: 62px;
+  box-shadow: 0 2px 0 #c8d9c3;
+}
+.trail-card .trail-icon {
+  grid-area: icon;
+  display: grid;
+  place-items: center;
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: 10px;
+  background: #e7f4d9;
+  font-size: 18px;
+}
+.trail-card strong { grid-area: label; font-size: clamp(13px, 2.5vw, 16px); line-height: 1.13; }
+.trail-card small { grid-area: hint; color: #466053; font-size: clamp(10px, 2.2vw, 12px); line-height: 1.18; margin-top: 3px; }
+#trail-actions .trail-primary { grid-column: 1 / -1; background: #c5edaf; border-color: #83ac71; }
+#trail-actions .trail-primary .trail-icon { background: #256046; color: white; }
+#trail-scenarios button:first-child { background: #fff1bf; border-color: #dbc16c; }
+#trail-scenarios button:first-child .trail-icon { background: #ffdf82; }
+#trail-picker .trail-back { margin-top: 10px; }
+#trail-actions button:hover, #trail-scenarios button:hover, #trail-picker .trail-back:hover, #trail-friend-panel button:hover { background: #edf9de; }
+button:focus-visible, button.pad-focus { outline: 3px solid #075f51; outline-offset: 2px; }
+@media (max-height: 360px) {
+  #trail-panel, #trail-picker, #trail-friend-panel { max-height: 94vh; padding: 12px; border-radius: 18px; }
+  #trail-actions button.trail-card, #trail-scenarios button.trail-card { min-height: 52px; }
+}
+@media (max-width: 345px) {
+  #trail-actions, #trail-scenarios { gap: 6px; }
+  #trail-actions button.trail-card, #trail-scenarios button.trail-card { padding: 6px; column-gap: 4px; }
+  .trail-card .trail-icon { min-width: 26px; min-height: 27px; }
+}
+.touch-hints > :last-child {
+  right: max(12px, env(safe-area-inset-right)) !important;
+  bottom: calc(115px + env(safe-area-inset-bottom)) !important;
+}
+body[data-trail-flight] .touch-hints > :last-child { bottom: calc(220px + env(safe-area-inset-bottom)) !important; }
+#trail-touch {
+  position: fixed; z-index: 42;
+  right: max(10px, env(safe-area-inset-right));
+  bottom: max(10px, env(safe-area-inset-bottom));
+  display: grid; grid-template-columns: repeat(2, minmax(56px, auto)); gap: 5px;
+  touch-action: none;
+}
+#trail-touch button {
+  touch-action: none; -webkit-tap-highlight-color: transparent;
+  border: 2px solid #d5f2a9; border-radius: 14px; padding: 4px 8px;
+  min-height: 48px; background: #183b31ec; color: white;
+  font: 750 13px/1.15 system-ui, sans-serif;
+}
+#trail-touch button[data-control="KeyW"] {
+  background: #d7f3a2;
+  color: #183b31;
+  border-color: #f7ffd0;
+  font-weight: 900;
+}
+#trail-touch button[data-control="KeyW"][data-held] { background: #f7ffd0; }
+#trail-touch button[data-held] { background: #d5f2a9; color: #183b31; }
+#trail-touch button[data-control="Space"] { grid-column: 1 / -1; }
+body[data-trail-paused] .touch-hints, body[data-trail-paused] .vg-gamepad,
+body[data-trail-paused] #trail-touch, body[data-trail-paused] #trail-shortcuts,
+body[data-trail-touch] #trail-help, .pad-cursor, .pad-note { display: none !important; }
+@media (pointer: coarse) { #trail-help { display: none; } }
+
+@media (max-height: 320px) {
+  #trail-touch { grid-template-columns: repeat(3, minmax(54px, auto)); }
+  #trail-touch button[data-control="Space"] { grid-column: auto; }
+  #trail-touch button { min-height: 44px; }
+  .touch-hints > :last-child, body[data-trail-flight] .touch-hints > :last-child {
+    right: calc(205px + env(safe-area-inset-right)) !important;
+    bottom: max(12px, env(safe-area-inset-bottom)) !important;
+  }
+}
+
+#trail-boarding { bottom: max(50px, calc(env(safe-area-inset-bottom) + 44px)); left: 10px; max-width: min(48%, 21rem); margin: 0; pointer-events: none; }
+body[data-trail-paused] #trail-boarding { display: none !important; }
+
+#trail-friend-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+#trail-friend-panel p { margin: 7px 0; }
+#trail-invite { display: block; overflow-wrap: anywhere; color: #14634d; }
+
+/* In a short iframe, keep the first-touch hints out of the throttle and brake area. */
+@media (max-height: 320px) {
+  .touch-hints > :first-child { left: max(12px, env(safe-area-inset-left)) !important; }
+  body[data-trail-touch] #trail-notice { top: calc(max(9px, env(safe-area-inset-top)) + 62px); left: 9px; transform: none; max-width: min(51%, 19rem); }
+}

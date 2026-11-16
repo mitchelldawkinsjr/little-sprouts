@@ -238,6 +238,8 @@ export function registerRound(rt) {
             ? (ok ? 'Yes! Fish on!' : 'Not yet. Pick another one.')
           : g.mode === 'station'
             ? (ok ? 'Yes! You can buy it.' : 'Not yet. Pick another one.')
+          : g.mode === 'sketchbook'
+            ? (ok ? 'Yes! You lit the beacon.' : 'Not yet. Pick another one.')
           : g.mode === 'deliveries'
             ? (ok ? 'Yes! A double gift!' : 'Not yet. Pick another one.')
           : g.mode === 'blocks'
