@@ -1,9 +1,10 @@
 import { buddyKind } from '../../lib/buddy3d.mjs?v=gear2';
 import { BOSS_EMOJI, DEFAULT_BOSS, bossName, readBoss } from '../../lib/boss-design.mjs';
 import { makeBossBuilder } from '../../lib/boss-builder.mjs';
+import { BOSS_CHOMP_SECONDS } from '../../lib/boss-catch.mjs';
 import { actionDown, moveDirs, nextIndex, readPad } from '../../lib/pad-core.mjs?v=pad-map1';
 import { localQuestion, normalizeQuestion, LOCAL_ROUND } from '../roll/quiz.mjs?v=roll1';
-import { COUNT_IN, answer, makeRun, resumeCaught, stepRun } from './logic.mjs';
+import { COUNT_IN, answer, makeRun, nearestBoss, resumeCaught, stepRun } from './logic.mjs';
 import { makeView } from './view.mjs';
 
 const $ = id => document.getElementById(id);
@@ -20,7 +21,7 @@ const tried = new Set();
 const point = { id: null, pending: [], pressure: 0 };
 const driveKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'];
 let design = readBoss() || DEFAULT_BOSS;
-let run = makeRun();
+let run = makeRun({ design });
 let buddy = buddyKind();
 let playMode = embedded ? null : 'learning';
 let buddySound = true;
@@ -32,6 +33,7 @@ let activeQuestion = null;
 let pending = -1;
 let screen = 'menu';
 let count = 0;
+let catchAge = 0;
 let countMessage = '';
 let pausedCount = 0;
 let pausedMessage = '';
@@ -49,6 +51,18 @@ function status(line, seconds = 2) {
   $('status').textContent = line;
   $('status').hidden = !line;
   statusFor = seconds;
+}
+
+function paintChase() {
+  const closest = nearestBoss(run);
+  const active = run.bosses.filter(boss => boss.active);
+  const gap = $('gap'), label = $('chase-label'), icons = $('chase-icons');
+  const text = closest.gap < 48 ? 'Boss is close!' : active.length === 1 ? '1 boss behind' : `${active.length} bosses behind`;
+  if (gap.max !== closest.max) gap.max = closest.max;
+  gap.value = closest.gap;
+  if (label.textContent !== text) label.textContent = text;
+  const heads = active.map(boss => BOSS_EMOJI[boss.design.head]).join(' ');
+  if (icons.textContent !== heads) icons.textContent = heads;
 }
 
 function focusButton(el) { el?.focus({ preventScroll: true }); }
@@ -69,7 +83,9 @@ function setScreen(name) {
   $('pause').disabled = name !== 'run' && name !== 'count';
   $('tip').hidden = name !== 'run';
   $('count').hidden = name !== 'count';
+  $('chomp').hidden = name !== 'chomp';
   view.setPreview(name === 'build');
+  if (!$('hud').hidden) paintChase();
 }
 
 function menu({ tag, title, intro, play, action, build = false, endless = false, info = '' }) {
@@ -91,7 +107,7 @@ function home() {
   setScreen('menu');
   menu({
     tag: 'Little Sprouts · Run & Draw', title: 'Ink Trail',
-    intro: 'Draw a glowing trail for your garden buddy. Keep the ink flowing and don’t let your boss catch up!',
+    intro: 'Draw a glowing trail for your garden buddy. Keep the ink flowing as more bosses join the chase!',
     play: !playMode ? 'Getting ready…' : playMode === 'arcade' ? 'Start drawing' : 'Start learning run',
     action: playMode ? () => start(playMode) : null, build: true, endless: !embedded,
     info: `${BOSS_EMOJI[design.head]} ${bossName(design)}`
@@ -103,6 +119,7 @@ const bossBuilder = makeBossBuilder({
   onChange(next) { view.setBoss(next); },
   onSave(next) {
     design = next;
+    run = makeRun({ design });
     view.setBoss(design);
     home();
     focusButton($('build'));
@@ -130,7 +147,7 @@ function start(mode) {
   finishedQuestions = 0;
   activeQuestion = null;
   tried.clear();
-  run = makeRun({ learning: mode === 'learning', level });
+  run = makeRun({ learning: mode === 'learning', level, design });
   status('');
   countdown('Get your pen ready!');
 }
@@ -142,7 +159,7 @@ function pause() {
   clearPen();
   setScreen('pause');
   menu({
-    tag: 'Pen down', title: 'Taking a break?', intro: 'Your garden buddy and boss will wait.',
+    tag: 'Pen down', title: 'Taking a break?', intro: 'Your garden buddy and the bosses will wait.',
     play: 'Keep drawing', action: () => countdown(pausedCount ? pausedMessage : 'Get your pen ready!', pausedCount || COUNT_IN)
   });
   focusButton($('play'));
@@ -231,11 +248,18 @@ function mark(ok, index) {
 
 function caught() {
   clearPen();
-  setScreen('caught');
   status('');
+  catchAge = 0;
+  $('chomp-boss').textContent = `${bossName(run.caughtBy.design)} caught you!`;
+  setScreen('chomp');
+}
+
+function showCaughtMenu() {
+  setScreen('caught');
+  const name = bossName(run.caughtBy.design);
   if (run.learning) {
     menu({
-      tag: 'The boss caught up!', title: 'Shake it off!',
+      tag: `${name} caught up!`, title: 'Shake it off!',
       intro: 'Your garden buddy gets another chance. Keep drawing from right here.',
       play: 'Keep drawing', action: () => {
         resumeCaught(run);
@@ -247,7 +271,7 @@ function caught() {
     arcadeBest = Math.max(arcadeBest, meters());
     try { localStorage.setItem(BEST_KEY, String(arcadeBest)); } catch { /* storage off */ }
     menu({
-      tag: 'Arcade play', title: 'The boss caught up!', intro: 'Try a new line and see how far your buddy can go.',
+      tag: 'Arcade play', title: `${name} caught up!`, intro: 'Try a new line and see how far your buddy can go.',
       play: 'Draw again', action: () => start('arcade'), build: true,
       info: `${meters()} m · Best ${arcadeBest} m`
     });
@@ -380,23 +404,29 @@ function tick(now) {
         else if (run.wobble > 0) status('~ Wobbly ink! Keep drawing.', run.wobble);
       }
     }
+  } else if (screen === 'chomp') {
+    catchAge += dt;
+    if (catchAge >= BOSS_CHOMP_SECONDS) showCaughtMenu();
   } else if (screen === 'run') {
-    for (const event of stepRun(run, dt, { target, direction, pressure: point.pressure })) {
+    const nextBoss = run.bosses.find(boss => !boss.active);
+    const events = stepRun(run, dt, { target, direction, pressure: point.pressure });
+    for (const event of events) {
       if (event === 'question') openQuestion();
       if (event === 'caught') caught();
       if (event === 'finish') win();
-      if (event === 'dot') status('✦ Ink drop! The boss fell back.');
+      if (event === 'join' && screen === 'run' && nextBoss) status(`${bossName(nextBoss.design)} joined the chase!`);
+      if (event === 'dot') status('✦ Ink drop! The bosses fell back.');
       if (event === 'wash') status('Splash! Draw around the puddles.');
     }
     if (screen === 'run' && !run.onInk && statusFor <= 0) status('Draw a little farther so your buddy can keep running.', 1.5);
     $('distance').textContent = `${meters()} m`;
     $('score').textContent = `💧 ${run.dots}`;
-    $('gap').value = run.gap;
-    $('chase-label').textContent = run.gap < 48 ? 'Boss is close!' : 'Boss behind';
+    paintChase();
   }
   if (statusFor > 0 && (statusFor -= dt) <= 0) status('');
   elapsed += dt;
-  view.paint(run, buddy, screen === 'run' ? run.time : (['menu', 'build'].includes(screen) ? elapsed : run.time), drawing, dt, screen === 'run');
+  const clock = ['menu', 'build', 'chomp', 'caught'].includes(screen) ? elapsed : run.time;
+  view.paint(run, buddy, clock, drawing, dt, screen === 'run', catchAge);
   requestAnimationFrame(tick);
 }
 

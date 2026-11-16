@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#111823">
   <title>Ink Trail · Little Sprouts</title>
-  <link rel="stylesheet" href="./trail.css?v=2">
+  <link rel="stylesheet" href="./trail.css?v=3">
   <script type="importmap">{"imports":{"three":"../../vendor/three/build/three.module.js?v=r187"}}</script>
 </head>
 <body>
@@ -14,16 +14,17 @@
     <canvas id="creature" aria-hidden="true"></canvas>
     <header id="hud" hidden>
       <div class="chip"><span class="kicker">INK TRAIL</span><strong id="distance">0 m</strong></div>
-      <div class="chip chase"><span id="chase-label">Boss behind</span><progress id="gap" max="152" aria-label="Distance from the boss"></progress></div>
+      <div class="chip chase"><span id="chase-icons" aria-hidden="true">🐛</span><span id="chase-label">1 boss behind</span><progress id="gap" max="152" aria-label="Distance from the nearest boss"></progress></div>
       <div class="chip stats"><strong id="score">💧 0</strong><button id="pause" type="button" aria-label="Pause">Ⅱ</button></div>
     </header>
     <div id="status" role="status" hidden></div>
     <div id="tip" hidden>Draw in any direction · arrows or stick</div>
+    <div id="chomp" role="status" hidden><strong>Chomp!</strong><span id="chomp-boss"></span></div>
     <section class="overlay" id="panel" aria-labelledby="title" data-pad-menu>
       <div class="card menu">
         <p class="kicker" id="eyebrow">LITTLE SPROUTS · RUN &amp; DRAW</p>
         <h1 id="title">Ink Trail</h1>
-        <p id="intro">Draw a glowing trail for your garden buddy. Keep the ink flowing and don’t let your boss catch up!</p>
+        <p id="intro">Draw a glowing trail for your garden buddy. Keep the ink flowing as more bosses join the chase!</p>
         <div id="menu-boss"></div>
         <div class="actions">
           <button id="play" type="button" class="primary">Start drawing</button>
@@ -58,6 +59,6 @@
     </section>
     <div id="count" hidden><strong id="number"></strong><span id="count-line"></span></div>
   </main>
-  <script type="module" src="./game.mjs?v=2"></script>
+  <script type="module" src="./game.mjs?v=3"></script>
 </body>
 </html>

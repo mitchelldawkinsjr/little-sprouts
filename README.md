@@ -53,7 +53,10 @@ Most rounds are 5, 10, or 15 questions. A right answer on the first try earns a 
 
 Hold and drag anywhere on the 3D floor to draw wet ink. Your garden buddy follows the
 actual painted stroke, including corners and loops. Guide the line around purple
-puddles and through golden drops to stay ahead of the boss. Learning play uses the
+puddles and through golden drops to stay ahead of the bosses. Your custom boss starts
+the chase and two more join as you get farther. Any of the three can catch and chomp
+the garden buddy. Learning play lets you keep drawing from there, while a catch ends
+that Arcade run. Learning play uses the
 active learner's questions. A correct answer gives a golden boost. A miss sends the
 buddy back onto a briefly wobbly trail, then brings the same question back. Arcade play
 runs without questions. The wet-ink look is inspired by Karim Maaloul’s
@@ -61,7 +64,8 @@ runs without questions. The wet-ink look is inspired by Karim Maaloul’s
 
 Boss Chase and Ink Trail share the Build your boss controls and save. A new sidecar can
 mount `makeBossBuilder` from `lib/boss-builder.mjs`, read the shared design from
-`lib/boss-design.mjs`, and use the animated Three.js rig from `lib/boss-model.mjs`.
+`lib/boss-design.mjs`, use the Three.js rig from `lib/boss-model.mjs`, and reuse the
+jaw-grab animation from `lib/boss-catch.mjs`.
 
 ## Read-aloud
 

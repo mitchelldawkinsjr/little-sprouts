@@ -5,7 +5,9 @@ import { sidecarGame, sidecarAlone, sidecarArcadeIds } from '../lib/sidecar.js';
 import { contextFor } from '../lib/speech-core.mjs';
 import { PRESETS, readBoss as readShared, saveBoss as saveShared } from '../lib/boss-design.mjs';
 import { readBoss as readFromChase, saveBoss as saveFromChase } from '../sidecars/boss/logic.mjs';
-import { answer, FIRST_QUESTION, INK_BOOST, makeRun, PEN_AHEAD, PEN_WOBBLE, resumeCaught, stepRun, strokeAt } from '../sidecars/ink-trail/logic.mjs';
+import { answer, FIRST_QUESTION, INK_BOOST, makeRun, nearestBoss, PEN_AHEAD, PEN_WOBBLE, resumeCaught, stepRun, strokeAt } from '../sidecars/ink-trail/logic.mjs';
+import { makeBossCatch } from '../lib/boss-catch.mjs';
+import { Group } from '../vendor/three/build/three.module.js';
 
 function simulate(run, seconds, input = {}) {
   const events = [];
@@ -25,7 +27,7 @@ test('the Ink Trail shelf card, arcade mode, controller, and offline files ship 
   const listed = docker.match(/find ([^\n]+?) -type f/)[1].split(' ');
   assert.match(docker, /COPY sidecars\/ink-trail /);
   for (const name of ['index.html', 'trail.css', 'game.mjs', 'logic.mjs', 'view.mjs', 'ink-surface.mjs'].map(x => 'sidecars/ink-trail/' + x)
-    .concat(['boss-design', 'boss-builder', 'boss-model'].map(x => 'lib/' + x + '.mjs'))) {
+    .concat(['boss-design', 'boss-builder', 'boss-model', 'boss-catch'].map(x => 'lib/' + x + '.mjs'))) {
     assert.ok(existsSync(new URL('../' + name, import.meta.url)), name);
     assert.ok(listed.includes(name.split('/')[0]), name);
   }
@@ -69,18 +71,97 @@ test('a short stroke stops the buddy at the endpoint and lets the boss catch up'
   const run = makeRun({ learning: true });
   const x = run.pen.x, z = run.pen.z;
   assert.ok(simulate(run, 6).includes('caught'));
+  assert.equal(run.caughtBy, run.bosses[0]);
   assert.equal(run.buddy.x, x);
   assert.equal(run.buddy.z, z);
   assert.ok(resumeCaught(run));
+  assert.equal(run.caughtBy, null);
   assert.equal(run.buddy.x, x);
   assert.equal(run.pen.z, z);
   assert.equal(run.nextQuestion, FIRST_QUESTION);
 });
 
+test('the custom boss leads and two distinct bosses join before the first question', () => {
+  const run = makeRun({ learning: true, design: PRESETS.spider });
+  assert.deepEqual(run.bosses[0].design, PRESETS.spider);
+  assert.equal(new Set(run.bosses.map(boss => boss.design.head)).size, 3);
+  assert.equal(run.bosses.filter(boss => boss.active).length, 1);
+  const input = { direction: { x: 1, z: 0 } };
+  assert.deepEqual(simulate(run, 3, input), ['join']);
+  assert.equal(run.bosses.filter(boss => boss.active).length, 2);
+  assert.deepEqual(simulate(run, 3, input), ['join', 'question']);
+  assert.equal(run.bosses.filter(boss => boss.active).length, 3);
+  const gaps = run.bosses.map(boss => boss.gap);
+  simulate(run, 2, input);
+  assert.deepEqual(run.bosses.map(boss => boss.gap), gaps, 'a question freezes the whole pack');
+});
+
+test('any active boss can catch the buddy, and only a learning run resumes', () => {
+  for (const learning of [false, true]) {
+    for (const i of [0, 1, 2]) {
+      const run = makeRun({ learning });
+      simulate(run, 4.25, { direction: { x: 1, z: 0 } });
+      const catcher = run.bosses[i];
+      assert.ok(catcher.active);
+      catcher.gap = 16.01;
+      assert.equal(nearestBoss(run), catcher);
+      assert.deepEqual(stepRun(run, 1 / 60), ['caught']);
+      assert.equal(run.caughtBy, catcher);
+      const distance = run.distance;
+      assert.deepEqual(stepRun(run, 1), []);
+      assert.equal(resumeCaught(run), learning);
+      assert.equal(run.distance, distance);
+      if (learning) {
+        assert.equal(run.caughtBy, null);
+        assert.ok(run.bosses.every(boss => boss.active && boss.gap === boss.start));
+        assert.equal(run.nextQuestion, FIRST_QUESTION);
+      }
+    }
+  }
+});
+
+test('the faster late boss can overtake the pack when the pen stops', () => {
+  const run = makeRun();
+  assert.deepEqual(simulate(run, 5, { direction: { x: 1, z: 0 } }), ['join', 'join']);
+  assert.equal(nearestBoss(run), run.bosses[0]);
+  assert.deepEqual(simulate(run, 6), ['caught']);
+  assert.equal(run.caughtBy, run.bosses[2]);
+});
+
+test('the shared chomp holds the garden buddy at the chosen jaw and restores its running transform', () => {
+  const scene = new Group(), buddy = new Group();
+  buddy.scale.setScalar(1.88);
+  buddy.position.set(3, 0, 4);
+  scene.add(buddy);
+  const rig = () => {
+    const lead = new Group(), holder = new Group();
+    lead.scale.setScalar(.76);
+    lead.add(holder);
+    scene.add(lead);
+    return { holder };
+  };
+  const first = rig(), second = rig();
+  const chomp = makeBossCatch(buddy);
+  chomp.grab(first);
+  chomp.grab(second, .8, Math.PI / 2);
+  assert.equal(chomp.rig, second);
+  assert.equal(first.holder.children.length, 0);
+  assert.equal(buddy.parent, second.holder);
+  assert.equal(buddy.rotation.y, Math.PI / 2);
+  const hero = { arms: [new Group(), new Group()], legs: [new Group(), new Group()] };
+  chomp.wriggle(hero, .07);
+  assert.ok(hero.legs[0].rotation.x > .5);
+  assert.equal(hero.legs[0].rotation.x, -hero.legs[1].rotation.x);
+  chomp.release();
+  assert.equal(buddy.parent, scene);
+  assert.equal(buddy.scale.x, 1.88);
+  assert.deepEqual(buddy.position.toArray(), [3, 0, 4]);
+});
+
 test('a wrong answer adds skipped ink on the run and reopens a checkpoint without advancing it', () => {
   const run = makeRun({ learning: true });
   const input = { direction: { x: 1, z: 0 } };
-  assert.deepEqual(simulate(run, 6, input), ['question']);
+  assert.deepEqual(simulate(run, 6, input), ['join', 'join', 'question']);
   assert.equal(run.distance, FIRST_QUESTION);
   simulate(run, 1, input);
   assert.equal(run.distance, FIRST_QUESTION, 'the question pauses the chase');
@@ -94,14 +175,14 @@ test('a wrong answer adds skipped ink on the run and reopens a checkpoint withou
   assert.equal(run.phase, 'question');
 });
 
-test('a right answer pushes the boss back, thickens the ink, and opens the final stretch', () => {
+test('a right answer pushes every boss back, thickens the ink, and opens the final stretch', () => {
   const run = makeRun({ learning: true });
   const input = { direction: { x: 1, z: 0 } };
   simulate(run, 6, input);
-  const gap = run.gap;
+  const gaps = run.bosses.map(boss => boss.gap);
   assert.ok(answer(run, true, true));
   assert.equal(run.boost, INK_BOOST);
-  assert.ok(run.gap > gap);
+  assert.ok(run.bosses.every((boss, i) => boss.gap > gaps[i]));
   assert.equal(run.nextQuestion, Infinity);
   simulate(run, .35, input);
   assert.ok(run.trail.some(p => p.style === 'gold' && p.ink));

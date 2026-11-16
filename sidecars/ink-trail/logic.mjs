@@ -1,3 +1,5 @@
+import { normalizeBoss, PRESETS } from '../../lib/boss-design.mjs';
+
 /** Freehand ink on a plane. s is arc length along the stroke, not a screen/world axis. */
 export const PEN_AHEAD = 190;
 export const PEN_WOBBLE = 2.4;
@@ -5,13 +7,18 @@ export const INK_BOOST = 3.5;
 export const COUNT_IN = 2;
 export const FIRST_QUESTION = 560;
 export const QUESTION_SPACING = 730;
-const GAP = { start: 114, max: 152, near: 33, catch: 16 };
+const GAP = { near: 33, catch: 16 };
+const PACK = [
+  { joinAt: 0, start: 114, max: 152, creep: 0, rush: 34 },
+  { joinAt: 220, start: 146, max: 184, creep: .65, rush: 51 },
+  { joinAt: 430, start: 174, max: 212, creep: 1.05, rush: 65 }
+];
 const STEP = 5;
 const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
 
 function seedTrail(run, x = 0, z = 0) {
   run.trail = [];
-  for (let offset = -160; offset <= 65; offset += STEP) {
+  for (let offset = -340; offset <= 65; offset += STEP) {
     run.trail.push({ s: run.distance + offset, x: x + offset, z, age: run.time, ink: true, style: 'clean' });
   }
   run.buddy = { x, z, dx: 1, dz: 0 };
@@ -19,15 +26,25 @@ function seedTrail(run, x = 0, z = 0) {
   run.onInk = true;
 }
 
-export function makeRun({ learning = false, level = 1 } = {}) {
+export function makeRun({ learning = false, level = 1, design } = {}) {
+  const custom = normalizeBoss(design);
+  // Never send two bosses that look alike, even if the learner built a preset.
+  const reserves = [PRESETS.spider, PRESETS.gator, PRESETS.shark].filter(boss => boss.head !== custom.head);
   const run = {
     phase: 'run', learning, level, time: 0, distance: 0,
-    gap: GAP.start, wobble: 0, boost: 0, safe: 0, dots: 0,
+    bosses: PACK.map((boss, i) => ({
+      ...boss, design: i ? reserves[i - 1] : custom, active: i === 0, gap: boss.start
+    })),
+    caughtBy: null, wobble: 0, boost: 0, safe: 0, dots: 0,
     nextQuestion: learning ? FIRST_QUESTION : Infinity,
     finishAt: Infinity, objects: [], spawn: 245, row: 0
   };
   seedTrail(run);
   return run;
+}
+
+export function nearestBoss(run) {
+  return run.bosses.reduce((near, boss) => boss.active && boss.gap < near.gap ? boss : near, run.bosses[0]);
 }
 
 /** Drive characters on the very samples the renderer paints, including loops and crossings. */
@@ -123,9 +140,17 @@ export function stepRun(run, dt, { target, direction, pressure = 0 } = {}) {
   run.moving = run.distance - before > .01;
   const stopped = run.distance >= run.trail.at(-1).s - .01;
   run.onInk = run.buddy.ink && !stopped;
-  run.gap += dt * (run.onInk ? -(1.3 + (run.level - 1) * .8 + (run.learning ? 0 : Math.min(4.4, run.time * .043))) : -34);
-  if (run.boost > 0 && run.onInk) run.gap += dt * 10;
-  if (run.safe > 0) run.gap = Math.max(GAP.near, run.gap);
+  const creep = 1.3 + (run.level - 1) * .8 + (run.learning ? 0 : Math.min(4.4, run.time * .043));
+  for (const boss of run.bosses) {
+    if (!boss.active && run.distance >= boss.joinAt) {
+      boss.active = true;
+      events.push('join');
+    }
+    if (!boss.active) continue;
+    boss.gap -= dt * (run.onInk ? creep + boss.creep : boss.rush);
+    if (run.boost > 0 && run.onInk) boss.gap += dt * 10;
+    if (run.safe > 0) boss.gap = Math.max(GAP.near, boss.gap);
+  }
   spawnObjects(run);
   if (run.distance > before) {
     for (const item of run.objects) {
@@ -133,9 +158,11 @@ export function stepRun(run, dt, { target, direction, pressure = 0 } = {}) {
       if (item.type === 'dot') {
         if (!run.onInk) continue;
         run.dots++;
-        run.gap += 23;
+        for (const boss of run.bosses) if (boss.active) boss.gap += 23;
       } else if (run.safe <= 0 && run.boost <= 0) {
-        run.gap = Math.max(Math.min(run.gap, GAP.near), run.gap - 22);
+        for (const boss of run.bosses) if (boss.active) {
+          boss.gap = Math.max(Math.min(boss.gap, GAP.near), boss.gap - 22);
+        }
         run.safe = .85;
       } else continue;
       item.used = true;
@@ -147,14 +174,16 @@ export function stepRun(run, dt, { target, direction, pressure = 0 } = {}) {
   let discard = 0;
   while (discard < run.trail.length - 2 && run.trail[discard + 1].s < keep) discard++;
   if (discard) run.trail.splice(0, discard);
-  run.gap = Math.min(GAP.max, run.gap);
+  for (const boss of run.bosses) boss.gap = Math.min(boss.max, boss.gap);
   run.wobble = Math.max(0, run.wobble - dt);
   run.boost = Math.max(0, run.boost - dt);
   run.safe = Math.max(0, run.safe - dt);
+  const closest = nearestBoss(run);
   if (run.distance >= run.finishAt) {
     run.phase = 'finished';
     events.push('finish');
-  } else if (run.gap <= GAP.catch) {
+  } else if (closest.gap <= GAP.catch) {
+    run.caughtBy = closest;
     run.phase = 'caught';
     events.push('caught');
   } else if (run.distance >= run.nextQuestion) {
@@ -169,13 +198,13 @@ export function answer(run, ok, final = false) {
   if (ok) {
     run.boost = INK_BOOST;
     run.wobble = 0;
-    run.gap = Math.min(GAP.max, run.gap + 36);
+    for (const boss of run.bosses) if (boss.active) boss.gap = Math.min(boss.max, boss.gap + 36);
     run.nextQuestion = final ? Infinity : run.distance + QUESTION_SPACING;
     if (final) run.finishAt = run.distance + 400;
   } else {
     run.wobble = PEN_WOBBLE;
     run.nextQuestion = run.distance + 480;
-    run.gap = Math.max(run.gap, 85);
+    for (const boss of run.bosses) if (boss.active) boss.gap = Math.max(boss.gap, 85);
   }
   run.phase = 'run';
   return true;
@@ -185,7 +214,8 @@ export function resumeCaught(run) {
   if (run.phase !== 'caught' || !run.learning) return false;
   seedTrail(run, run.buddy.x, run.buddy.z);
   run.phase = 'run';
-  run.gap = GAP.start;
+  run.caughtBy = null;
+  for (const boss of run.bosses) boss.gap = boss.start;
   run.safe = 2;
   return true;
 }

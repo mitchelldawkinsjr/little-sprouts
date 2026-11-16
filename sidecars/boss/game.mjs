@@ -25,6 +25,7 @@ import {
   columnYs, answerColumn, bossAim, trimTrail, meters, saveBest
 } from './logic.mjs?v=boss2';
 import { makeBoss } from '../../lib/boss-model.mjs';
+import { BOSS_CHOMP_SECONDS, bossLungeBlend, makeBossCatch } from '../../lib/boss-catch.mjs';
 import { BOSS_EMOJI, DEFAULT_BOSS, bossName, readBoss } from '../../lib/boss-design.mjs';
 import { makeBossBuilder } from '../../lib/boss-builder.mjs';
 import { localQuestion, normalizeQuestion, LOCAL_ROUND } from './quiz.mjs?v=boss2';
@@ -284,6 +285,7 @@ function puffBubble(x, y, size = 1) {
 
 const swimmer = new THREE.Group();   // leans toward where it swims
 scene.add(swimmer);
+const bossCatch = makeBossCatch(swimmer);
 let hero = makeHero(buddyKind());
 function makeHero(kind) {
   const b = makeBuddy(THREE, kind, { material: (color) => lambert(color) });
@@ -319,6 +321,7 @@ dizzy.visible = false;
 scene.add(dizzy);
 
 function buildBoss(d) {
+  bossCatch.release();
   boss?.dispose();
   boss = makeBoss(d || DEFAULT_BOSS);
   meterBoss.textContent = BOSS_EMOJI[boss.design.head] || '🐛';
@@ -1082,8 +1085,6 @@ function knock(t, dir) {
 
 /* ---------- caught: the boss chomps, as the running pen's monster does ---------- */
 
-let held = false;
-
 function caught() {
   state.phase = 'over';
   state.overAt = state.t;
@@ -1101,12 +1102,7 @@ function caught() {
   const best = saveBest(m);
   overStatsEl.textContent = state.asking ? `${m} m · ⭐ ${state.stars} · 🐚 ${state.shells}` : `${m} m · best ${best} · 🐚 ${state.shells}`;
   // Into the boss's jaw, wriggling.
-  held = true;
-  swimmer.visible = true;
-  boss.holder.add(swimmer);
-  swimmer.position.set(0, 0, 0);
-  swimmer.rotation.set(0, 0, 0);
-  swimmer.scale.setScalar(0.8 / boss.scale);
+  bossCatch.grab(boss);
   speak(`Chomp! ${bossName(design)} got you. You swam ${m} meters.`);
   const endsHere = state.mode === 'endless' && embedded && !state.arcade;
   setTimeout(() => {
@@ -1120,15 +1116,11 @@ function caught() {
     againTap.textContent = state.mode === 'quiz' ? 'Tap to swim on' : 'Tap to swim again';
     againEl.hidden = false;
     state.readyToReplay = true;
-  }, 1400);
+  }, BOSS_CHOMP_SECONDS * 1000);
 }
 
 function releaseHero() {
-  held = false;
-  if (swimmer.parent !== scene) {
-    swimmer.parent?.remove(swimmer);
-    scene.add(swimmer);
-  }
+  bossCatch.release();
   swimmer.scale.setScalar(1);
   swimmer.rotation.set(0, 0, 0);
   swimmer.position.set(state.x, state.y, 0);
@@ -1463,12 +1455,8 @@ function animateHero(dt) {
   const swimming = state.phase !== 'over';
   const pace = state.phase === 'run' ? THREE.MathUtils.clamp(state.speed / 9, 0.4, 1.4) : 1;
   hero.animate(dt, swimming ? Math.min(1, pace) : 0.2, clock.t);
-  if (held) {
-    // Wriggling in the boss's jaw.
-    hero.legs[0].rotation.x = Math.sin(clock.t * 18) * 0.9;
-    hero.legs[1].rotation.x = -Math.sin(clock.t * 18) * 0.9;
-    hero.arms[0].rotation.x = -2 + Math.sin(clock.t * 14) * 0.6;
-    hero.arms[1].rotation.x = -2 - Math.sin(clock.t * 14) * 0.6;
+  if (bossCatch.rig) {
+    bossCatch.wriggle(hero, clock.t);
     return;
   }
   // Arms sweep like a swimmer; the body lies along the water and leans with the climb.
@@ -1497,8 +1485,8 @@ function animateBoss(dt, drift) {
     swimBoss(dt, bossPos.x + (hx - bossPos.x) * Math.min(1, dt * 3), hy, dt * 5);
   } else if (state.phase === 'over') {
     // Lunges in, then bobs about pleased with its catch.
-    const k = Math.min(1, (state.t - state.overAt) * 2);
-    swimBoss(dt, bossPos.x + (state.x - 0.6 - bossPos.x) * k * dt * 5, bossPos.y + (state.y - bossPos.y) * dt * 3 + Math.sin(clock.t * 2) * 0.01, drift);
+    const blend = bossLungeBlend(state.t - state.overAt, dt);
+    swimBoss(dt, bossPos.x + (state.x - 0.6 - bossPos.x) * blend, bossPos.y + (state.y - bossPos.y) * dt * 3 + Math.sin(clock.t * 2) * 0.01, drift);
   } else if (state.phase === 'free') {
     swimBoss(dt, bossPos.x - dt * 3, bossPos.y + Math.sin(clock.t * 3) * 0.02, drift);
   }

@@ -24,6 +24,7 @@ button:disabled{opacity:.5;cursor:default}
 #hud{position:fixed;inset:9px 10px auto;display:flex;justify-content:space-between;align-items:stretch;gap:6px;pointer-events:none}
 .chip{border:1px solid var(--edge);border-radius:16px;background:#12232eea;padding:6px 10px;display:grid;place-items:center;gap:2px;text-align:center}
 .chase{min-width:0;flex:1;max-width:180px;font-size:.75rem;font-weight:800}
+#chase-icons{font-size:.95rem;line-height:1}
 progress{height:10px;width:100%;accent-color:#75e1e9}
 .stats{display:flex;gap:6px;padding:4px 4px 4px 8px}
 .stats button{pointer-events:auto;min-width:44px;padding:3px}
@@ -33,6 +34,11 @@ progress{height:10px;width:100%;accent-color:#75e1e9}
 #count{position:fixed;inset:0;display:grid;place-content:center;justify-items:center;pointer-events:none;text-align:center}
 #count strong{display:grid;place-items:center;border-radius:50%;width:82px;height:82px;font-size:3.5rem;background:#132635ee;border:2px solid var(--ink);color:var(--ink)}
 #count span{max-width:calc(100vw - 24px);padding:5px 12px;margin-top:8px;background:var(--night);border-radius:20px;font-weight:850}
+#chomp{position:fixed;top:max(90px,21%);left:50%;transform:translateX(-50%);display:grid;justify-items:center;text-align:center;width:max-content;max-width:95vw;pointer-events:none;animation:chomp-in .5s ease-out}
+#chomp strong{line-height:1;font-size:clamp(48px,12vw,102px);text-transform:uppercase;color:#ffc29b;text-shadow:0 4px 0 #743f43,0 8px 30px #0b101a}
+#chomp span{margin-top:8px;padding:5px 12px;border-radius:20px;background:#172633ef;font-weight:850}
+@keyframes chomp-in{from{opacity:0;transform:translate(-50%,-24px)}}
+@media(prefers-reduced-motion:reduce){#chomp{animation:none}}
 .builder{display:grid;grid-template-columns:minmax(145px,1fr) minmax(250px,1.45fr);width:min(100%,690px);align-items:center;gap:14px}
 #preview-spot{height:120px;pointer-events:none}
 #boss-name{color:var(--peach);font-weight:850}
