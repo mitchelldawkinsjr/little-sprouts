@@ -5,7 +5,7 @@
 import { createHash, randomInt } from 'node:crypto'
 import { createServer } from 'node:http'
 import { pathToFileURL } from 'node:url'
-import { GAME, GROUP, makeGroupRoom, readGroup, roomCode } from '../lib/group-room.mjs'
+import { GROUP, groupCapacity, makeGroupRoom, readGroup, roomCode } from '../lib/group-room.mjs'
 
 const GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
 const ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789'
@@ -69,7 +69,7 @@ export function attachRelay(httpServer) {
     if (membership) { membership.room.receive(membership.connection, msg); return }
     const connection = { send: value => peer.send(JSON.stringify(value)), close: () => peer.close() }
     const reject = reason => connection.send({ t: GROUP, type: 'error', reason })
-    if (msg.game !== GAME) { reject('game-mismatch'); return }
+    if (!groupCapacity(msg.game)) { reject('game-mismatch'); return }
     let room
     if (msg.type === 'create') {
       let code
@@ -78,11 +78,13 @@ export function attachRelay(httpServer) {
         if (!groups.has(candidate)) { code = candidate; break }
       }
       if (!code) { reject('unavailable'); return }
-      room = makeGroupRoom({ code, ended: () => groups.delete(code) })
-      groups.set(code, room)
+      room = makeGroupRoom({ game: msg.game, code, ended: () => groups.delete(code) })
+      groups.set(code, { room, game: msg.game })
     } else if (msg.type === 'join') {
-      room = groups.get(roomCode(msg.room))
-      if (!room) { reject('missing'); return }
+      const group = groups.get(roomCode(msg.room))
+      if (!group) { reject('missing'); return }
+      if (group.game !== msg.game) { reject('game-mismatch'); return }
+      room = group.room
     } else return
     if (room.attach(connection)) memberships.set(peer, { room, connection })
   }

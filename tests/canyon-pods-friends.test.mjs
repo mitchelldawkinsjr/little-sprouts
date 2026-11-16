@@ -84,6 +84,7 @@ test('Same Wi-Fi forwarding uses independent guest links; canceling a second pai
     a.target = b;
     b.target = a;
     a.facade.dispatchEvent(new Event('open'));
+    b.facade.dispatchEvent(new Event('open'));
   };
   const tick = () => new Promise(resolve => setImmediate(resolve));
   let now = 0;

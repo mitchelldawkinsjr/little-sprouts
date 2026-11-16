@@ -82,6 +82,14 @@ export const ui_controller = (() => {
       })];
     }
 
+    UseInventory({ unlocked, kits, selected }) {
+      this.unlocked_ = [...unlocked];
+      this.kits_ = [...kits];
+      this.kitIndex_ = -1;
+      this.Paint_();
+      this.Select(1 + Math.max(0, this.unlocked_.indexOf(selected)));
+    }
+
     get Kits() {
       return [...this.kits_];
     }

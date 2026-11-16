@@ -11,7 +11,6 @@
 <script>window.SproutsSidecarOwnAsk = true;</script>
 <script src="/lib/sidecar-guest.js?v=gulp13"></script>
 <!-- Play with a friend: hands the game's /link WebSocket to lib/friend-link.mjs (relay, or sound and QR on Wi-Fi). -->
-<script src="./link.js?v=cabin1"></script>
 <script type="importmap">
 { "imports": { "three": "../../vendor/three/build/three.module.js?v=r187" } }
 </script>
@@ -464,9 +463,9 @@
 
   <div id="friendWrap">
     <button type="button" id="friendBtn" aria-label="Play with a friend"><span aria-hidden="true">👫</span> Friend</button>
-    <div id="friendBox" role="status" aria-live="polite" hidden>
-      <p id="friendText"></p>
-      <div class="row"><button type="button" id="friendCopy" hidden>Copy link</button><button type="button" class="soft" id="friendLeave" hidden>Leave</button></div>
+    <div id="friendBox" data-pad-menu data-touch-ignore hidden>
+      <p id="friendText" role="status"></p>
+      <div class="row"></div>
     </div>
   </div>
 
@@ -558,6 +557,6 @@
   </div>
 </div>
 
-<script type="module" src="cabin.js?v=cabin3"></script>
+<script type="module" src="cabin.js?v=group1"></script>
 </body>
 </html>

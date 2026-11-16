@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { buddyKind, makeBuddy, savedLook } from '/lib/buddy3d.mjs?v=cabin1';
 import { readPad, actionDown, moveDirs } from '../../lib/pad-core.mjs?v=pad-rt';
 import { attachTouchControls, isTouchDevice } from '../../lib/touch-controls.mjs?v=touch1';
-import { BUSY_MAX, NAP_TIME, SEND_EVERY, SNAP_EVERY, outOfHearts, packSnap, pickTarget, readSnap, readSpot, readSpray, roomLine } from './friends.mjs?v=cabin1';
+import { makeWorldFriends, mountWorldFriendControls } from '../../lib/world-friends.mjs';
+import { BUSY_MAX, NAP_TIME, SEND_EVERY, SNAP_EVERY, nearestAwake, packSnap, readSnap, readSpot, readSpray } from './friends.mjs?v=cabin1';
 
 // ===================================================================
 // Cabin camp — keep the garden buddy's cabin cozy at dusk
@@ -1869,7 +1870,12 @@ document.getElementById('deathQuitBtn').addEventListener('click', quitToTitle);
 document.getElementById('resumeBtn').addEventListener('click', () => setPaused(false));
 document.getElementById('quitBtn').addEventListener('click', quitToTitle);
 // alt-tabbing away mid-run pauses (and would otherwise leave WASD stuck down)
-window.addEventListener('blur', () => setPaused(true));
+window.addEventListener('blur', () => {
+  if (!friendHere()) { setPaused(true); return; }
+  // Losing window focus must not stop the host's cabin for everyone else.
+  firing = false;
+  for (const k in keys) keys[k] = false;
+});
 document.getElementById('cards').addEventListener('click', e => {
   const c = e.target.closest('.card');
   if (c) choose(+c.dataset.i);
@@ -2932,7 +2938,7 @@ function routeAround(z, tx, tz) {
 }
 
 function shooRaider(z, idx, dir) {
-  if (friendHere()) link.send({ t: 'home', id: z.userData.id });
+  if (friendHere() && !isGuest()) link.send({ t: 'home', id: z.userData.id });
   if (z.userData.climb >= 0) endClimb(z, true);
   spawnPetals(z.position);
   maybeDrop(z.position);
@@ -3156,7 +3162,7 @@ function startWave(n) {
   const hellos = { 1: 'here comes the family', 5: 'more little paws', 8: 'a busy evening', 12: 'the whole family', 15: 'a raccoon party' };
   showBanner('ROUND ' + n, hellos[n] || 'more friends');
   audio.waveStart(n);
-  if (friendHere()) link.send({ t: 'wave', n });
+  if (friendHere() && !isGuest()) link.send({ t: 'wave', n });
 }
 
 // ===================================================================
@@ -3200,7 +3206,11 @@ function resetGame(keep = false) {
   updateHUD();
 }
 
-function startGame(fromTitle = false) {
+function startGame(fromTitle = false, fromRoom = false) {
+  if (!fromRoom && isGuest() && !state.running && !document.getElementById('death').classList.contains('hidden')) {
+    showToast('The host starts the next night.', '#e0b84a');
+    return;
+  }
   audio.ensure(); // create/resume AudioContext within the click gesture
   endNap();
   document.getElementById('death').classList.add('hidden');
@@ -3208,6 +3218,11 @@ function startGame(fromTitle = false) {
   document.body.classList.remove('titling');
   menuEl.classList.add('gone');
   resetGame(fromTitle);
+  if (friendHere() && !isGuest()) {
+    for (const remote of remotes.values()) Object.assign(remote, { nap: false, busy: false, hurtCd: 0 });
+    link.send({ t: 'restart' });
+    sendSnap(true);
+  }
 }
 
 function setPaused(on) {
@@ -3541,8 +3556,9 @@ function hurtPlayer() {
 function chaseRaider(z, dt) {
   const ud = z.userData;
   const target = raccoonTarget(z);
-  const p = target === 'friend' ? friendBody.position : player.position;
-  const hurtTarget = () => (target === 'friend' ? hurtFriend() : target === 'me' ? hurtPlayer() : false);
+  if (!target) return;
+  const p = target.position;
+  const hurtTarget = () => target.id === 'me' ? hurtPlayer() : hurtFriend(target.id);
   const pdx = p.x - z.position.x, pdz = p.z - z.position.z, pd = Math.hypot(pdx, pdz);
   let walking = false;
   if (ud.climb >= 0) {
@@ -3843,79 +3859,68 @@ function update(dt) {
 }
 
 // ===================================================================
-// PLAY WITH A FRIEND — the same friend rooms as Block meadow and Garden gulp. See friends.mjs.
-// ===================================================================
-const roomParam = (new URLSearchParams(location.search).get('room') || '').slice(0, 16);
-const friend = { role: 'solo', peer: false, room: '', status: '', url: '', kind: '', gear: '', nap: false, busy: false, busySince: 0, aim: null };
+// THREE-PLAYER CO-OP — the host runs waves, hits, raccoons and doors.
+const roomParam = new URLSearchParams(location.search).get('room');
+const friend = { role: 'solo', peer: false };
 const nap = { t: 0 };
-let link = null;
-let friendModel = null;
-const friendBody = new THREE.Group();
-friendBody.visible = false;
-scene.add(friendBody);
-const friendCan = can.clone(true);
-friendBody.add(friendCan);
-// a soft ring at the friend's feet, so two buddies of the same kind are easy to tell apart
-const friendRing = new THREE.Mesh(new THREE.RingGeometry(0.75, 0.95, 28), new THREE.MeshBasicMaterial({ color: 0xf0c050, transparent: true, opacity: 0.75, depthWrite: false, side: THREE.DoubleSide }));
-friendRing.rotation.x = -Math.PI / 2;
-friendRing.position.y = 0.04;
-friendBody.add(friendRing);
-let friendTime = 0, friendHurtCd = 0, sendAt = 0, snapAt = 0, friendGait = 0;
+const remotes = new Map();
+const ringGeo = new THREE.RingGeometry(0.75, 0.95, 28);
+const ringMat = new THREE.MeshBasicMaterial({ color: 0xf0c050, transparent: true, opacity: 0.75, depthWrite: false, side: THREE.DoubleSide });
+let sendAt = 0, snapAt = 0;
 const friendLast = new THREE.Vector3();
 
-const isGuest = () => friend.role === 'guest' && friend.peer;
-const friendHere = () => !!(link && friend.peer);
-const friendBusy = () => friendHere() && !isGuest() && friend.busy && performance.now() - friend.busySince < BUSY_MAX * 1000;
+const isGuest = () => friend.role === 'guest';
+const friendHere = () => friend.peer;
+const anyAwake = () => [...remotes.values()].some(remote => remote.aim && !remote.nap);
+const friendBusy = () => !isGuest() && [...remotes.values()].some(remote =>
+  remote.busy && performance.now() - remote.busySince < BUSY_MAX * 1000);
 function setBusy(on) {
-  if (isGuest()) link.send({ t: 'busy', on: !!on });
+  if (isGuest()) link.send({ t: 'busy', on: !!on }, link.state.host);
 }
 
-/** Which buddy this raccoon goes for: 'me', 'friend', or null when both are napping. */
 function raccoonTarget(z) {
-  if (!friendHere() || isGuest() || !friend.aim) return nap.t > 0 ? null : 'me';
-  return pickTarget(z.position, { x: player.position.x, z: player.position.z, nap: nap.t > 0 },
-    { x: friendBody.position.x, z: friendBody.position.z, nap: friend.nap || friend.busy });
+  const me = { id: 'me', position: player.position, asleep: nap.t > 0 };
+  const others = [...remotes].filter(([, remote]) => remote.aim).map(([id, remote]) => ({
+    id, position: remote.body.position, asleep: remote.nap || remote.busy,
+  }));
+  return nearestAwake(z.position, [me, ...others]);
 }
-function hurtFriend() {
-  // a friend on a question card or picking a prize stands still, so the raccoons leave them be
-  if (friendHurtCd > 0 || friend.nap || friend.busy) return false;
-  friendHurtCd = HURT_IFRAMES;
-  link.send({ t: 'ouch' });
+
+function hurtFriend(id) {
+  const remote = remotes.get(id);
+  if (!remote || remote.hurtCd > 0 || remote.nap || remote.busy) return false;
+  remote.hurtCd = HURT_IFRAMES;
+  link.send({ t: 'ouch' }, id);
   audio.bump();
   return true;
 }
 
-// ---- naps: out of hearts with a friend still awake, a buddy rests and comes back with one
 function outOfHeartsNow() {
-  const what = outOfHearts({ withFriend: friendHere(), friendNapping: friend.nap });
-  // In a friend's cabin the host's game ends the night, so the friend always naps and says so.
-  if (what === 'over' && !isGuest()) { die(); return; }
+  if (!isGuest() && !anyAwake()) { die(); return; }
   nap.t = NAP_TIME;
   firing = false;
-  showBanner('NAP TIME', 'your friend keeps watch', 2);
+  showBanner('NAP TIME', 'your friends keep watch', 2);
   sendMe(true);
 }
 function endNap() { nap.t = 0; }
 function stepNap(dt) {
   if (nap.t <= 0) return;
-  // the friend left while this buddy was napping: no one to keep watch
-  if (!friendHere()) { nap.t = 0; if (!isGuest()) die(); return; }
-  nap.t -= dt;
-  if (nap.t <= 0) {
-    nap.t = 0;
+  if (!isGuest() && !anyAwake()) { nap.t = 0; die(); return; }
+  nap.t = Math.max(0, nap.t - dt);
+  if (!nap.t) {
     state.hp = 1;
     state.dmgCd = HURT_IFRAMES;
     showToast('Awake! Back to it', '#7aae5a');
     sendMe(true);
   }
 }
-// a napping buddy lies down for a little rest
 function napPose() {
   if (nap.t > 0) { buddy.group.rotation.z = 1.35; buddy.group.position.y = 0.35; }
   else buddy.group.position.y = 0;
-  if (friendModel) {
-    friendModel.group.rotation.z = friend.nap ? 1.35 : 0;
-    friendModel.group.position.y = friend.nap ? 0.35 : 0;
+  for (const remote of remotes.values()) {
+    if (!remote.model) continue;
+    remote.model.group.rotation.z = remote.nap ? 1.35 : 0;
+    remote.model.group.position.y = remote.nap ? 0.35 : 0;
   }
 }
 
@@ -3932,14 +3937,14 @@ function sendSpray(mp, aim, n) {
   link.send({ t: 'spray', p: [+mp.x.toFixed(2), +mp.z.toFixed(2)], d: [+aim.x.toFixed(3), +aim.z.toFixed(3)], hot,
     dmg: state.damage * (hot ? 2 : 1), pierce: state.pierce, n });
 }
-function sendSnap() {
-  if (!friendHere() || isGuest() || snapAt < SNAP_EVERY) return;
+function sendSnap(force = false, to) {
+  if (!friendHere() || isGuest() || (!force && snapAt < SNAP_EVERY)) return;
   snapAt = 0;
   link.send(packSnap({
     wave: state.wave, kills: state.kills,
     raccoons: raiders.map(z => ({ id: z.userData.id, x: z.position.x, z: z.position.z, yaw: z.rotation.y, gait: z.userData.gait, wet: z.userData.hurt > 0 })),
     openings: openings.map(o => o.hp),
-  }));
+  }), to);
 }
 
 // ---- the friend's water: on the host it really splashes raccoons; on the friend's screen it's for show
@@ -4015,63 +4020,88 @@ function followRaider(z, dt) {
   animateRaider(z, dt, Math.hypot(player.position.x - z.position.x, player.position.z - z.position.z));
 }
 
-// ---- the friend's buddy
-function showFriend(kind, gear) {
-  if (friendModel) { friendBody.remove(friendModel.group); friendModel.dispose?.(); }
-  friendModel = makeBuddy(THREE, buddyKind(kind), { gear });
-  friendModel.group.scale.setScalar(BUDDY_SCALE);
-  friendModel.group.traverse(o => { if (o.isMesh && o.material.depthWrite !== false) o.castShadow = true; });
-  friendBody.add(friendModel.group);
-  friendCan.position.copy(can.position);
+// ---- each remote buddy has its own pose, model and state
+function newRemote(id) {
+  const body = new THREE.Group();
+  body.visible = false;
+  scene.add(body);
+  const wateringCan = can.clone(true);
+  wateringCan.position.copy(can.position);
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = 0.04;
+  body.add(wateringCan, ring);
+  const remote = { body, nap: false, busy: false, busySince: 0, hurtCd: 0, gait: 0, time: 0 };
+  remotes.set(id, remote);
+  return remote;
 }
-function dropFriend() {
-  if (friendModel) { friendBody.remove(friendModel.group); friendModel.dispose?.(); friendModel = null; }
-  friendBody.visible = false;
-  Object.assign(friend, { aim: null, nap: false, busy: false });
+function showFriend(remote, kind, gear) {
+  if (remote.model) { remote.body.remove(remote.model.group); remote.model.dispose?.(); }
+  remote.model = makeBuddy(THREE, buddyKind(kind), { gear });
+  remote.model.group.scale.setScalar(BUDDY_SCALE);
+  remote.body.add(remote.model.group);
+}
+function dropFriend(id) {
+  const remote = remotes.get(id);
+  if (!remote) return;
+  scene.remove(remote.body);
+  remote.model?.dispose?.();
+  remotes.delete(id);
 }
 function stepFriend(dt) {
   sendAt += dt;
   snapAt += dt;
-  friendHurtCd = Math.max(0, friendHurtCd - dt);
+  for (const remote of remotes.values()) remote.hurtCd = Math.max(0, remote.hurtCd - dt);
   if (!state.running) return;
   stepNap(dt);
-  if (!friendHere()) return;
+  if (!state.running || !friendHere()) return;
   sendMe();
   sendSnap();
-  // both buddies napping at once: the night is over
-  if (!isGuest() && nap.t > 0 && friend.nap) { die(); return; }
-  if (friendModel && friend.aim) {
-    const [x, z] = friend.aim.p;
-    if (!friendBody.visible) friendBody.position.set(x, 0, z);
-    friendBody.visible = true;
-    friendLast.copy(friendBody.position);
+  for (const remote of remotes.values()) {
+    if (!remote.model || !remote.aim) continue;
+    const { body: b, model, aim } = remote;
+    const [x, z] = aim.p;
+    if (!b.visible) b.position.set(x, 0, z);
+    b.visible = true;
+    friendLast.copy(b.position);
     const k = Math.min(1, dt * 10);
-    friendBody.position.x += (x - friendBody.position.x) * k;
-    friendBody.position.z += (z - friendBody.position.z) * k;
-    const turn = Math.atan2(Math.sin(friend.aim.yaw - friendBody.rotation.y), Math.cos(friend.aim.yaw - friendBody.rotation.y));
-    friendBody.rotation.y += turn * k;
-    const speed = dt > 0 ? friendLast.distanceTo(friendBody.position) / dt : 0;
-    friendGait = damp(friendGait, Math.min(1, speed / 5), 8, dt);
-    friendTime += dt;
-    friendModel.animate?.(dt, friendGait, friendTime);
+    b.position.x += (x - b.position.x) * k;
+    b.position.z += (z - b.position.z) * k;
+    b.rotation.y += Math.atan2(Math.sin(aim.yaw - b.rotation.y), Math.cos(aim.yaw - b.rotation.y)) * k;
+    const speed = dt > 0 ? friendLast.distanceTo(b.position) / dt : 0;
+    remote.gait = damp(remote.gait, Math.min(1, speed / 5), 8, dt);
+    remote.time += dt;
+    model.animate?.(dt, remote.gait, remote.time);
   }
 }
 
-// ---- messages from the friend
-function fromFriend(msg) {
+function joinHostCabin() {
+  clearRun();
+  resetOpenings();
+  netRaccoons.clear();
+  setPaused(false);
+  startGame(false, true);
+  state.toSpawn = 0;
+  player.position.set(2.5, 0, link.state.seat === 2 ? -1.5 : 1.5);
+}
+
+function fromFriend(msg, peer) {
+  const remote = remotes.get(peer.id);
+  if (!remote) return;
   if (msg.t === 'hi') {
-    showFriend(typeof msg.buddy === 'string' ? msg.buddy : 'fox', typeof msg.gear === 'string' ? msg.gear.slice(0, 160) : '');
+    showFriend(remote, typeof msg.buddy === 'string' ? msg.buddy : 'fox', typeof msg.gear === 'string' ? msg.gear.slice(0, 160) : '');
   } else if (msg.t === 'me') {
     const p = readSpot(msg.p);
-    if (p) friend.aim = { p, yaw: Number.isFinite(msg.yaw) ? msg.yaw : 0 };
-    friend.nap = !!msg.nap;
-  } else if (msg.t === 'spray') {
+    if (p) remote.aim = { p, yaw: Number.isFinite(msg.yaw) ? msg.yaw : 0 };
+    remote.nap = msg.nap === true;
+  } else if (msg.t === 'spray' && state.running) {
     friendSpray(msg);
   } else if (msg.t === 'busy' && !isGuest()) {
-    friend.busy = !!msg.on;
-    friend.busySince = performance.now();
-  } else if (isGuest()) {
-    if (msg.t === 'snap') applySnap(msg);
+    remote.busy = msg.on === true;
+    if (remote.busy) remote.busySince = performance.now();
+  } else if (isGuest() && peer.seat === 0) {
+    if (msg.t === 'restart') joinHostCabin();
+    else if (msg.t === 'snap') applySnap(msg);
     else if (msg.t === 'home' && Number.isInteger(msg.id)) raccoonHome(msg.id);
     else if (msg.t === 'ouch') hurtPlayer();
     else if (msg.t === 'wave' && Number.isInteger(msg.n)) { state.wave = msg.n; showBanner('ROUND ' + msg.n, 'splash together'); audio.waveStart(msg.n); }
@@ -4079,129 +4109,58 @@ function fromFriend(msg) {
       const healed = state.hp < state.maxHp && nap.t <= 0;
       if (nap.t <= 0) state.hp = Math.min(state.maxHp, state.hp + 1);
       audio.waveClear();
-      // Still on the last round's question or prize: no new card on top. The host only waits so
-      // long (BUSY_MAX), so a slow reader would otherwise get a card every round and never play.
       if (sidecar.ask || sidecar.waiting || state.choosing) return;
       askBetweenRounds(healed);
-    } else if (msg.t === 'over') die();
+    } else if (msg.t === 'over') {
+      if (Number.isInteger(msg.w)) state.wave = msg.w;
+      if (Number.isInteger(msg.k)) state.kills = msg.k;
+      die();
+    }
   }
 }
 
-function friendArrived() {
-  const me = savedLook();
-  link.send({ t: 'hi', buddy: buddyKind(me.kind), gear: me.kind ? me.gear : '' });
-  sendMe(true);
-  if (friend.role === 'guest') {
-    // the host's cabin is the one played in: clear this one's raccoons and doors
-    clearRun();
-    resetOpenings();
-    netRaccoons.clear();
-    if (!state.running) startGame(false);
-    state.toSpawn = 0;
-    player.position.set(2.5, 0, 1.5); // a few steps from the host, not on top of them
-    showToast('You are in your friend’s cabin!', '#7aae5a');
-  } else {
-    showToast('Your friend is here!', '#7aae5a');
-  }
-}
-function friendLeft() {
-  const was = friend.role;
-  dropFriend();
-  if (was === 'guest' && state.running) {
-    // back to a cabin of your own, starting fresh
-    clearRun();
-    resetOpenings();
-    netRaccoons.clear();
-    startGame(false);
-    showToast('Your friend left. A new night in your cabin!', '#e0b84a');
-  } else if (was === 'host') showToast('Your friend left. They can come back with the same link.', '#e0b84a');
-}
-
-class FriendLink {
-  constructor() { this.socket = null; }
-  host() { this.open({ t: 'create' }); }
-  join(code) { this.open({ t: 'join', room: code }); }
-  open(first) {
-    this.close();
-    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    const socket = new WebSocket(`${proto}://${location.host}/link`);
-    this.socket = socket;
-    friend.status = 'Opening a room…';
-    paintFriend();
-    socket.addEventListener('open', () => socket.send(JSON.stringify(first)));
-    socket.addEventListener('message', (e) => { let msg; try { msg = JSON.parse(e.data); } catch { return; } if (msg && typeof msg.t === 'string') this.onMessage(msg); });
-    socket.addEventListener('close', () => {
-      if (this.socket !== socket) return;
-      this.socket = null;
-      const was = friend.role;
-      const hadPeer = friend.peer;
-      Object.assign(friend, { role: 'solo', peer: false, room: '', url: '' });
-      friend.status = was === 'solo' ? 'Could not open a room. Try again in a little while.' : '';
-      if (hadPeer) { friend.role = was; friendLeft(); friend.role = 'solo'; }
-      paintFriend();
-    });
-  }
-  close() { const s = this.socket; this.socket = null; try { s?.close(); } catch { /* already closed */ } }
-  leave() {
-    const was = friend.role, hadPeer = friend.peer;
-    this.close();
-    Object.assign(friend, { role: 'solo', peer: false, room: '', url: '', status: '' });
-    if (hadPeer) { friend.role = was; friendLeft(); friend.role = 'solo'; }
-    paintFriend();
-  }
-  onMessage(msg) {
-    if (msg.t === 'welcome') {
-      friend.role = msg.role === 'guest' ? 'guest' : 'host';
-      friend.room = String(msg.room || '');
-      friend.url = `${location.origin}${location.pathname}?room=${encodeURIComponent(friend.room)}`;
-      friend.status = friend.role === 'host' ? 'Waiting for a friend.' : 'Joining your friend’s cabin…';
-      if (friend.role === 'host' && friend.room !== 'wifi') navigator.clipboard?.writeText(friend.url).catch(() => {});
-      paintFriend();
-      return;
+const $id = id => document.getElementById(id);
+const link = makeWorldFriends({
+  game: 'cabin',
+  update(room) {
+    friend.peer = room.others.length > 0;
+    paintFriend(room);
+  },
+  admit({ role }) {
+    friend.role = role;
+    if (role === 'guest') joinHostCabin();
+  },
+  arrived({ id }) {
+    if (isGuest() && !remotes.size) player.position.set(2.5, 0, link.state.seat === 2 ? -1.5 : 1.5);
+    newRemote(id);
+    const me = savedLook();
+    link.send({ t: 'hi', buddy: buddyKind(me.kind), gear: me.kind ? me.gear : '' }, id);
+    sendMe(true);
+    if (!isGuest()) {
+      // A late join sees the current wave or the result, not a new copy of the cabin.
+      if (!state.running) link.send({ t: 'over', w: state.wave, k: state.kills }, id);
+      else {
+        sendSnap(true, id);
+        if (state.choosing || state.intermission > 0) link.send({ t: 'round', n: state.wave }, id);
+      }
     }
-    if (msg.t === 'peer') {
-      const was = friend.peer;
-      friend.peer = !!msg.here;
-      if (msg.here && !was) friendArrived();
-      else if (!msg.here && was) friendLeft();
-      paintFriend();
-      return;
+  },
+  departed({ id }) { dropFriend(id); },
+  leave({ role }) {
+    friend.role = 'solo';
+    if (role === 'guest') {
+      setPaused(false);
+      netRaccoons.clear();
+      startGame(false);
+      showToast('You are back in your own cabin.', '#e0b84a');
     }
-    if (msg.t === 'full' || msg.t === 'missing' || msg.t === 'closed') {
-      friend.status = msg.t === 'full' ? 'That room already has two players.' : msg.t === 'missing' ? 'That room is not open any more.' : 'Your friend closed the room.';
-      this.close();
-      const was = friend.role, hadPeer = friend.peer;
-      Object.assign(friend, { role: 'solo', peer: false, room: '', url: '' });
-      if (hadPeer) { friend.role = was; friendLeft(); friend.role = 'solo'; }
-      paintFriend();
-      return;
-    }
-    fromFriend(msg);
-  }
-  send(msg) { if (this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify(msg)); }
-}
-
-const $id = (id) => document.getElementById(id);
-function paintFriend() {
-  const line = roomLine(friend);
-  $id('friendBox').hidden = !line;
-  $id('friendText').textContent = line;
-  $id('friendCopy').hidden = !(friend.role === 'host' && !friend.peer && friend.room && friend.room !== 'wifi');
-  $id('friendLeave').hidden = friend.role === 'solo';
-  $id('friendBtn').hidden = friend.role !== 'solo';
-}
-$id('friendBtn').addEventListener('click', (e) => {
-  e.stopPropagation();
-  link = link || new FriendLink();
-  link.host();
+  },
+  receive: fromFriend,
 });
-$id('friendLeave').addEventListener('click', (e) => { e.stopPropagation(); link?.leave(); });
-$id('friendCopy').addEventListener('click', (e) => {
-  e.stopPropagation();
-  navigator.clipboard?.writeText(friend.url).then(() => showToast('Link copied', '#7aae5a'), () => showToast(friend.url, '#e0b84a'));
+const paintFriend = mountWorldFriendControls({
+  room: link, button: $id('friendBtn'), box: $id('friendBox'), text: $id('friendText'),
+  row: $id('friendBox').querySelector('.row'),
 });
-// The friend box's buttons are taps, not sprays.
-for (const id of ['friendBtn', 'friendBox']) $id(id).addEventListener('mousedown', (e) => e.stopPropagation());
 
 // ---- joining a friend: while the join card (lib/friend-panel.mjs) is up, the cabin holds still
 // and goes quiet, so the only sound is the card's own (it talks to the other device by sound).
@@ -4259,8 +4218,7 @@ if (roomParam) {
   // opened from a friend's room link: skip the title and go straight to their cabin
   menuEl.classList.add('gone');
   startGame(false);
-  link = new FriendLink();
-  link.join(roomParam);
+  link.fromInvite();
 }
 updateCamera(0);
 requestAnimationFrame(loop);
@@ -4268,4 +4226,4 @@ requestAnimationFrame(loop);
 // host that attached its listener after this module ran.
 bridge.ready();
 // Test hook for _test.html (?test=1) only; the shipped game doesn't expose its state.
-if (new URLSearchParams(location.search).has('test')) window.__cabin = { state, sidecar, raiders, die, friend, nap, bullets, hurtPlayer, player, touch, padState };
+if (new URLSearchParams(location.search).has('test')) window.__cabin = { state, sidecar, raiders, die, friend, nap, bullets, hurtPlayer, player, touch, padState, remotes, link };

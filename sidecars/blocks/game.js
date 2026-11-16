@@ -13,7 +13,7 @@ import { sparse_voxel_cell_manager } from './engine/sparse-voxel-cell-manager.js
 import { cloud_controller } from './engine/cloud-controller.js?v=blocks5';
 import { player_controller } from './engine/player-controller.js?v=blocks5';
 import { voxel_tools } from './engine/voxel-tools.js?v=blocks5';
-import { ui_controller } from './engine/ui-controller.js?v=blocks5';
+import { ui_controller } from './engine/ui-controller.js?v=group1';
 import { hack_defs } from './engine/hack-defs.js?v=blocks5';
 import { texture_defs } from './engine/texture-defs.js?v=blocks5';
 import { voxel_block_builder } from './engine/voxel-block-builder.js?v=blocks5';
@@ -24,7 +24,8 @@ import { chestDistance, goalFrom, localQuestion, nextLetterOk, normalizeAsk, rea
 import { BUGS, COME_FROM, CYCLE, LINES, NIGHT, bugTarget, canGrab, feetBlock, sheltered, skyAt, stepToward } from './night.mjs?v=blocks5';
 import { animate as animateBug, dropBug, makeCaterpillar, makeSpider } from './bugs.js?v=blocks5';
 import { DAY_BOXES, KITS, NEW_DAY, POWERS, TOO_CLOSE, boosts, facingFromYaw, kitCells, kitToWorld, prizeFor } from './prizes.mjs?v=blocks5';
-import { SEND_EVERY, SKY_EVERY, STILL_EVERY, readEdit, readSpot, roomLine, worldCollector, worldParts } from './friends.mjs?v=blocks5';
+import { makeWorldFriends, mountWorldFriendControls } from '../../lib/world-friends.mjs';
+import { SEND_EVERY, SKY_EVERY, STILL_EVERY, readEdit, readSpot, worldCollector, worldParts } from './friends.mjs?v=blocks5';
 import { BUDDIES, buddyGear, buddyKind, makeBuddy } from '../../lib/buddy3d.mjs?v=gear2';
 
 const SOURCE = 'sprouts-sidecar';
@@ -49,14 +50,10 @@ function readOwnSave() {
 }
 // Opened from a friend's room link: start in a fresh world, which becomes the host's world.
 // Your own world stays saved and comes back after.
-const roomParam = (new URLSearchParams(location.search).get('room') || '').slice(0, 16);
 const saved = readOwnSave();
-if (roomParam && saved) {
-  saved.edits = [];
-  saved.pos = null;
-}
-// ownWorld: the world on screen is this player's own, so building in it is saved.
-const friend = { role: 'solo', peer: false, room: '', status: '', url: '', loading: false, ownWorld: !roomParam };
+const friend = { role: 'solo', peer: false, loading: false, ownWorld: true };
+let soloInventory = null;
+
 
 function send(type, extra) {
   if (solo) return;
@@ -197,9 +194,9 @@ function save() {
       pos: own ? own.pos : [Math.round(p.x * 10) / 10, Math.round(p.y * 10) / 10 + 0.5, Math.round(p.z * 10) / 10],
       yaw: own ? own.yaw : player.Yaw,
       pitch: own ? own.pitch : player.Pitch,
-      unlocked: ui.Unlocked,
-      selected: ui.Selected,
-      kits: ui.Kits
+      unlocked: soloInventory?.unlocked ?? ui.Unlocked,
+      selected: soloInventory?.selected ?? ui.Selected,
+      kits: soloInventory?.kits ?? ui.Kits
     }));
     saveDirty = false;
   } catch { /* storage full or blocked: the world still plays */ }
@@ -230,11 +227,11 @@ const rnd = Math.random;
 
 // Gift boxes come out until free build, and after that for a few boxes each new morning.
 function asking() {
-  return !quest.free || (!quest.arcade && quest.dayAsks > 0);
+  return !soloInventory && (!quest.free || (!quest.arcade && quest.dayAsks > 0));
 }
 
 function newDay() {
-  if (!quest.free || quest.arcade) return;
+  if (soloInventory || !quest.free || quest.arcade) return;
   quest.dayAsks = DAY_BOXES;
   // After the "good morning" line.
   setTimeout(() => {
@@ -524,7 +521,7 @@ function paintHud() {
   const c = quest.chest;
   const questEl = $('quest');
   questEl.hidden = !asking() || !c;
-  $('stars').hidden = quest.free || solo && quest.rights === 0;
+  $('stars').hidden = !!soloInventory || quest.free || solo && quest.rights === 0;
   $('starCount').textContent = `${quest.rights} / ${quest.goal}`;
   if (!c || !asking()) return;
   const p = player.camera_.position;
@@ -875,7 +872,7 @@ function tappedChest(ndc) {
 }
 
 function act(ndc) {
-  if (quest.open || questionHolding() || night.grab) return;
+  if (friend.loading || quest.open || questionHolding() || night.grab) return;
   if (tappedChest(ndc || { x: 0, y: 0 })) return;
   if (tools.Mode === 'build' && ui.Kit) { placeKit(ui.Kit, ndc); return; }
   tools.Act(ndc);
@@ -1096,152 +1093,102 @@ function gatherInput(dt) {
   player.input.jump = !holding && (keys.has('Space') || jumpHeld || pad.jump);
 }
 
-// ---- Play with a friend: the same rooms as Paint Sphere and Garden gulp. See friends.mjs.
+// In group Free Build the host is the only authority for edits and snapshots.
 const knownBlock = type => ALL_TYPES.includes(type);
-const collector = worldCollector();
+let collector = worldCollector(), editQueue = [], friendSpot = null;
 const myBuddy = buddyKind();
-let link = null;
-let editQueue = [];
-let friendSpot = null;
-let friendModel = null;   // the friend's garden buddy: { group, animate, dispose }
-let friendTime = 0;
-let friendAim = null;      // { p: [x, y, z] eye, yaw } last heard
-let sendAt = 0;
-let stillAt = 0;
-let skyAt_ = 0;
-let lastSent = '';
+const remotes = new Map();
+let sendAt = 0, stillAt = 0, friendSkyAt = 0, lastSent = '';
+const feet = new THREE.Vector3();
 
-class FriendLink {
-  constructor() { this.socket = null; }
-
-  host() { this.open({ t: 'create' }); }
-  join(code) { this.open({ t: 'join', room: code }); }
-
-  open(msg) {
-    this.socket?.close();
-    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    const socket = new WebSocket(`${proto}://${location.host}/link`);
-    this.socket = socket;
-    friend.status = 'Opening a room…';
-    paintFriend();
-    socket.addEventListener('open', () => { if (this.socket === socket) socket.send(JSON.stringify(msg)); });
-    socket.addEventListener('message', ev => { if (this.socket === socket) this.receive(String(ev.data)); });
-    socket.addEventListener('close', () => {
-      if (this.socket !== socket) return;
-      this.socket = null;
-      const was = friend.role;
-      friend.role = 'solo';
-      friend.peer = false;
-      friend.room = '';
-      friend.url = '';
-      friend.status = was === 'solo' ? 'Could not open a room. Try again in a little while.' : '';
-      dropFriend();
-      if (was === 'guest') leaveFriendWorld('The room closed. You are back in your own world.');
-      else if (was === 'host') note('The room closed.', 3);
-      paintFriend();
-    });
-  }
-
-  leave() {
-    const socket = this.socket;
-    this.socket = null;
-    socket?.close();
-    const was = friend.role;
-    Object.assign(friend, { role: 'solo', peer: false, room: '', url: '', status: '' });
-    dropFriend();
-    if (was === 'guest') leaveFriendWorld('You are back in your own world.');
-    paintFriend();
-  }
-
-  receive(text) {
-    let msg;
-    try { msg = JSON.parse(text); } catch { return; }
-    if (!msg || typeof msg !== 'object') return;
-    if (msg.t === 'welcome') {
-      friend.role = msg.role === 'guest' ? 'guest' : 'host';
-      friend.room = String(msg.room || '');
-      friend.url = `${location.origin}${location.pathname}?room=${encodeURIComponent(friend.room)}`;
-      if (friend.role === 'host') {
-        friend.status = 'Waiting for a friend.';
-        if (friend.room !== 'wifi') navigator.clipboard?.writeText(friend.url).catch(() => {});
-      } else {
-        // Keep your own world saved as it is now, then wait for the host's.
-        if (friend.ownWorld) save();
-        friend.ownWorld = false;
-        friend.loading = true;
-        friend.status = 'Joining your friend’s world…';
-      }
-      paintFriend();
-      return;
+const link = makeWorldFriends({
+  game: 'blocks',
+  update(room) {
+    friend.peer = !!room.others.length;
+    paintFriend(room);
+  },
+  admit({ role }) {
+    if (friend.ownWorld && started) save();
+    friend.role = role;
+    if (role === 'guest') {
+      friend.ownWorld = false;
+      friend.loading = true;
+      collector = worldCollector();
+      editQueue = [];
+      friendSpot = null;
     }
-    if (msg.t === 'peer') {
-      friend.peer = !!msg.here;
-      if (msg.here) friendArrived();
-      else {
-        dropFriend();
-        if (friend.role === 'host') note('Your friend left. They can come back with the same link.', 4);
-      }
-      paintFriend();
-      return;
+    soloInventory = { unlocked: ui.Unlocked, selected: ui.Selected, kits: ui.Kits };
+    if (quest.open) closeCard();
+    clearChest();
+    ui.UseInventory({ unlocked: ALL_TYPES.filter(type => !type.endsWith('_top') && !type.startsWith('door_open')),
+      selected: soloInventory.selected, kits: [] });
+    note('Free build with friends. Your learning progress stays yours.', 4);
+  },
+  arrived({ id }) {
+    link.send({ t: 'hi', buddy: myBuddy, gear: buddyGear(myBuddy) }, id);
+    lastSent = '';
+    if (friend.role !== 'host') return;
+    const p = player.camera_.position;
+    link.send({ t: 'sky', at: night.t }, id);
+    link.send({ t: 'spot', p: [p.x, p.y, p.z] }, id);
+    // The ordered connection delivers this snapshot before subsequent commits.
+    for (const part of worldParts(voxels.Edits, 128)) link.send(part, id);
+  },
+  departed({ id }) { dropFriend(id); },
+  leave({ role }) {
+    friend.role = 'solo';
+    if (role === 'guest') leaveFriendWorld();
+    const inventory = soloInventory;
+    soloInventory = null;
+    if (inventory) ui.UseInventory(inventory);
+  },
+  receive(msg, peer) {
+    if (msg.t === 'hi') {
+      const previous = remotes.get(peer.id);
+      dropFriend(peer.id);
+      const model = makeBuddy(THREE, BUDDIES.includes(msg.buddy) ? msg.buddy : 'fox', {
+        gear: typeof msg.gear === 'string' ? msg.gear.slice(0, 160) : '',
+      });
+      model.group.scale.setScalar(1.25);
+      model.group.visible = false;
+      renderer.scene_.add(model.group);
+      remotes.set(peer.id, { model, aim: previous?.aim, time: 0 });
+    } else if (msg.t === 'me') {
+      const p = readSpot(msg.p), remote = remotes.get(peer.id);
+      if (p && remote) remote.aim = { p, yaw: Number.isFinite(msg.yaw) ? msg.yaw : 0 };
+    } else if (msg.t === 'ed' && friend.role === 'host') {
+      const e = readEdit(msg.k, msg.v, knownBlock);
+      if (!e) return;
+      voxels.ApplyEdit(e.pos, e.type);
+      link.send({ t: 'commit', k: msg.k, v: e.type });
+    } else if (msg.t === 'commit' && peer.seat === 0 && friend.role === 'guest') {
+      const e = readEdit(msg.k, msg.v, knownBlock);
+      if (!e) return;
+      if (friend.loading) editQueue.push(e);
+      else voxels.ApplyEdit(e.pos, e.type);
+    } else if (peer.seat === 0 && friend.role === 'guest') {
+      if (msg.t === 'world' && friend.loading) {
+        const edits = collector.add(msg, knownBlock);
+        if (edits) joinFriendWorld(edits, link.state.others.length);
+      } else if (msg.t === 'spot' && friend.loading) friendSpot = readSpot(msg.p);
+      else if (msg.t === 'sky' && Number.isFinite(msg.at) && Math.abs(night.t - msg.at) > 1.5) night.t = Math.max(0, msg.at);
     }
-    if (msg.t === 'full' || msg.t === 'missing' || msg.t === 'closed') {
-      friend.status = msg.t === 'full' ? 'That room already has two players.'
-        : msg.t === 'missing' ? 'That room is not open any more.' : 'Your friend closed the room.';
-      paintFriend();
-      return;
-    }
-    fromFriend(msg);
-  }
+  },
+});
 
-  send(msg) {
-    if (this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify(msg));
-  }
-}
-
-function friendArrived() {
-  link.send({ t: 'hi', buddy: myBuddy, gear: buddyGear(myBuddy) });
-  if (friend.role !== 'host') return;
-  const p = player.camera_.position;
-  link.send({ t: 'sky', at: night.t });
-  link.send({ t: 'spot', p: [p.x, p.y, p.z] });
-  for (const part of worldParts(voxels.Edits)) link.send(part);
-  note('👫 Your friend is here. Build together!', 3.5);
-}
-
-function fromFriend(msg) {
-  if (msg.t === 'hi') {
-    showFriend(BUDDIES.includes(msg.buddy) ? msg.buddy : 'fox', typeof msg.gear === 'string' ? msg.gear.slice(0, 160) : '');
-  } else if (msg.t === 'me') {
-    const p = readSpot(msg.p);
-    if (p) friendAim = { p, yaw: Number.isFinite(msg.yaw) ? msg.yaw : 0 };
-  } else if (msg.t === 'ed') {
-    const e = readEdit(msg.k, msg.v, knownBlock);
-    if (!e) return;
-    if (friend.loading) editQueue.push(e);
-    else voxels.ApplyEdit(e.pos, e.type);
-  } else if (msg.t === 'world' && friend.role === 'guest') {
-    const all = collector.add(msg, knownBlock);
-    if (all) joinFriendWorld(all);
-  } else if (msg.t === 'spot' && friend.role === 'guest') {
-    friendSpot = readSpot(msg.p);
-  } else if (msg.t === 'sky' && friend.role === 'guest' && Number.isFinite(msg.at)) {
-    if (Math.abs(night.t - msg.at) > 1.5) night.t = Math.max(0, msg.at);
-  }
-}
-
-// The host's world replaces this one, and you start right next to the host.
-function joinFriendWorld(edits) {
+function joinFriendWorld(edits, count) {
   voxels.ResetEdits(edits);
   editQueue.splice(0).forEach(e => voxels.ApplyEdit(e.pos, e.type));
   friend.loading = false;
-  const at = friendSpot ? new THREE.Vector3(friendSpot[0] + 1.5, friendSpot[1] + 0.5, friendSpot[2] + 1.5) : player.camera_.position.clone();
+  const spread = 1 + count * .5;
+  const at = friendSpot ? new THREE.Vector3(friendSpot[0] + spread, friendSpot[1] + .5, friendSpot[2] + spread)
+    : player.camera_.position.clone();
   player.Teleport(at);
   if (night.grab) letGo();
-  note('👫 You are in your friend’s world. Build together!', 3.5);
-  paintFriend();
+  note('You are in your friend’s world. Build together!', 3.5);
 }
 
-function leaveFriendWorld(line) {
+function leaveFriendWorld() {
   if (friend.ownWorld) return;
   friend.loading = false;
   editQueue = [];
@@ -1249,90 +1196,66 @@ function leaveFriendWorld(line) {
   voxels.ResetEdits(own?.edits || []);
   player.Teleport(own?.pos ? new THREE.Vector3(...own.pos) : startSpot.clone());
   friend.ownWorld = true;
-  if (roomParam) history.replaceState(null, '', location.pathname);
-  note(line, 3.5);
+  if (new URLSearchParams(location.search).has('room')) history.replaceState(null, '', location.pathname);
+  note('You are back in your own world.', 3.5);
 }
 
-function showFriend(kind, gear) {
-  dropFriend(true);
-  const model = makeBuddy(THREE, kind, { gear });
-  model.group.scale.setScalar(1.25);
-  model.group.visible = false;
-  renderer.scene_.add(model.group);
-  friendModel = model;
+function dropFriend(id) {
+  const remote = remotes.get(id);
+  if (!remote) return;
+  renderer.scene_.remove(remote.model.group);
+  remote.model.dispose?.();
+  remotes.delete(id);
 }
 
-function dropFriend(keepAim = false) {
-  if (friendModel) {
-    renderer.scene_.remove(friendModel.group);
-    friendModel.dispose?.();
-    friendModel = null;
-  }
-  if (!keepAim) friendAim = null;
-}
-
-const _feet = new THREE.Vector3();
 function stepFriend(dt) {
-  if (!link || !friend.peer) return;
-  if (friendModel && friendAim) {
-    // The buddy stands where the friend's feet are and faces where they look (it faces +z).
-    const g = friendModel.group;
-    _feet.set(friendAim.p[0], friendAim.p[1] - 1.6, friendAim.p[2]);
-    if (!g.visible) g.position.copy(_feet);
+  if (!friend.peer) return;
+  for (const remote of remotes.values()) {
+    if (!remote.aim) continue;
+    const { model, aim } = remote, g = model.group;
+    feet.set(aim.p[0], aim.p[1] - 1.6, aim.p[2]);
+    if (!g.visible) g.position.copy(feet);
     g.visible = true;
-    const away = Math.hypot(_feet.x - g.position.x, _feet.z - g.position.z);
-    g.position.lerp(_feet, Math.min(1, dt * 10));
-    let turn = friendAim.yaw + Math.PI - g.rotation.y;
-    turn = Math.atan2(Math.sin(turn), Math.cos(turn));
-    g.rotation.y += turn * Math.min(1, dt * 10);
-    friendTime += dt;
-    friendModel.animate?.(dt, Math.min(1, away * 4), friendTime);
+    const away = Math.hypot(feet.x - g.position.x, feet.z - g.position.z);
+    g.position.lerp(feet, Math.min(1, dt * 10));
+    const turn = aim.yaw + Math.PI - g.rotation.y;
+    g.rotation.y += Math.atan2(Math.sin(turn), Math.cos(turn)) * Math.min(1, dt * 10);
+    remote.time += dt;
+    model.animate?.(dt, Math.min(1, away * 4), remote.time);
   }
   if (friend.loading) return;
   sendAt += dt;
   stillAt += dt;
-  skyAt_ += dt;
+  friendSkyAt += dt;
   const p = player.camera_.position;
   const me = { t: 'me', p: [+p.x.toFixed(2), +p.y.toFixed(2), +p.z.toFixed(2)], yaw: +player.Yaw.toFixed(2) };
   const key = `${me.p}|${me.yaw}`;
   if ((sendAt >= SEND_EVERY && key !== lastSent) || stillAt >= STILL_EVERY) {
     link.send(me);
     lastSent = key;
-    sendAt = 0;
-    stillAt = 0;
+    sendAt = stillAt = 0;
   }
-  if (friend.role === 'host' && skyAt_ >= SKY_EVERY) {
-    skyAt_ = 0;
+  if (friend.role === 'host' && friendSkyAt >= SKY_EVERY) {
+    friendSkyAt = 0;
     link.send({ t: 'sky', at: night.t });
   }
 }
 
-// Your own building goes to the friend as it happens.
 voxels.onChange = (pos, type) => {
-  if (link && friend.peer && !friend.loading) link.send({ t: 'ed', k: pos.join('.'), v: type });
+  if (!friend.peer || friend.loading) return;
+  const edit = { k: pos.join('.'), v: type };
+  if (friend.role === 'host') link.send({ t: 'commit', ...edit });
+  else link.send({ t: 'ed', ...edit }, link.state.host);
 };
 
-function paintFriend() {
-  const line = roomLine(friend);
-  $('friendBox').hidden = !line;
-  $('friendText').textContent = line;
-  $('friendCopy').hidden = !(friend.role === 'host' && !friend.peer && friend.room && friend.room !== 'wifi');
-  $('friendLeave').hidden = friend.role === 'solo';
-  $('friend').hidden = friend.role !== 'solo';
-}
-
-$('friend').addEventListener('click', () => {
-  link = link || new FriendLink();
-  link.host();
+const paintFriend = mountWorldFriendControls({
+  room: link, button: $('friend'), box: $('friendBox'), text: $('friendText'),
+  row: $('friendBox').querySelector('.row'),
+  beforeOpen() {
+    if (!started || quest.open) { note('Close the question or wait for the meadow to finish loading.', 3); return false; }
+    return true;
+  },
 });
-$('friendLeave').addEventListener('click', () => link?.leave());
-$('friendCopy').addEventListener('click', () => {
-  navigator.clipboard?.writeText(friend.url).then(() => note('Link copied.', 2), () => note(friend.url, 6));
-});
-if (roomParam) {
-  link = new FriendLink();
-  link.join(roomParam);
-}
 
 // ---- Main loop.
 let started = false;
@@ -1370,6 +1293,7 @@ function frame(now) {
   em.Update(dt);
   if (!started && !player.waiting_) {
     started = true;
+    link.fromInvite();
     $('loading').hidden = true;
     send('ready');
     note(quest.free ? 'Free build.' : 'Walk to the glowing gift box.', 3);
@@ -1393,4 +1317,4 @@ function frame(now) {
 }
 requestAnimationFrame(frame);
 setMode('build');
-if (['localhost', '127.0.0.1'].includes(location.hostname)) globalThis.blockMeadow = { quest, player, tools, voxels, ui, save, night, powers, mark, placeKit, friend, get link() { return link; } };
+if (['localhost', '127.0.0.1'].includes(location.hostname)) globalThis.blockMeadow = { quest, player, tools, voxels, ui, save, night, powers, mark, placeKit, friend, remotes, get link() { return link; } };
