@@ -45,15 +45,17 @@ COPY games /usr/share/nginx/html/games
 COPY voice /usr/share/nginx/html/voice
 COPY vendor /usr/share/nginx/html/vendor
 
-# Every shipped file with a version stamp, so the service worker can cache all
-# sidecars for offline play and re-fetch only what changed.
+# Every shipped file with a stamp of its content (SHA-1 prefix and size), so the service worker can
+# save all sidecars for offline play and download again only what really changed. A stamp from the
+# file's time would change on every build and send every device the whole download again.
 # Tidewater (field-guide-fishing, ~57 MB, WebGPU only) is left out: it plays online, and devices
-# that cannot run it would otherwise download it all for nothing.
+# that cannot run it would otherwise download it all for nothing. Every voice is listed; each
+# device saves only the voices it uses.
 RUN cd /usr/share/nginx/html \
- && find sidecars vendor lib app logic games icons -type f \
+ && find sidecars vendor lib app logic games icons voice style.css app.js logic.mjs sheet.csv manifest.webmanifest -type f \
       ! -path 'sidecars/field-guide-fishing/*' \
       ! -name '.*' ! -name '*.md' ! -name '*LICENSE*' ! -name 'NOTICE' ! -name '*.test.*' ! -name '*.map' \
-      -exec stat -c '%Y-%s %n' {} + \
+      -exec sh -c 'for f; do printf "%s-%s %s\n" "$(sha1sum "$f" | cut -c1-16)" "$(stat -c %s "$f")" "$f"; done' sh {} + \
   | sort -k2 \
   | awk 'BEGIN { printf "{" } { printf "%s\"./%s\":\"%s\"", (NR > 1 ? "," : ""), $2, $1 } END { print "}" }' \
   > offline-files.json

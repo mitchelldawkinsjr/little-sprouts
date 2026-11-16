@@ -547,7 +547,7 @@ function paintHud() {
 // ?bugs=off keeps the day going with no bugs, for a calm world.
 const bugsOff = new URLSearchParams(location.search).get('bugs') === 'off';
 let sproutsVoice = null;
-if (solo) import('../../lib/speech.js?v=en1').then(mod => { sproutsVoice = mod; }).catch(() => {});
+if (solo) import('../../lib/speech.js?v=offline4').then(mod => { sproutsVoice = mod; }).catch(() => {});
 function speakLine(text) {
   if (!soundOn || joinHold) return;
   if (!solo) { send('say', { text }); return; }

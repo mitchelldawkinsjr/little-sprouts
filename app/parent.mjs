@@ -31,8 +31,8 @@ import {
   speakAndWait,
   voiceFor,
   voices
-} from '../lib/speech.js?v=en1';
-import { sidecarGame, sidecarIsBuilt } from '../lib/sidecar.js?v=arcade1';
+} from '../lib/speech.js?v=offline4';
+import { sidecarGame, sidecarIsBuilt } from '../lib/sidecar.js?v=offline4';
 import { spriteHtml } from '../lib/home-ui.mjs?v=gear2';
 import { wornGear } from '../logic/shop.mjs?v=shop3';
 import { voiceStatusText } from '../lib/parent-ui.mjs?v=structure2';
@@ -302,6 +302,8 @@ export function registerParent(rt) {
     rt.data.camera = $('#camera').checked;
     rt.data.active = +$('#editProfile').value;
     rt.save();
+    // A newly picked voice is saved for offline play too.
+    window.sproutsOfflineRefresh?.();
     rt.cleanSnapshot = formSnapshot();
   }
   function ask(title, text, okLabel, opts = {}) {
