@@ -2,3 +2,6 @@ sidecars/rally/
 .DS_Store
 docs/deploy.md
 tools/voice-bake/node_modules/
+
+.env
+tools/build/node_modules/

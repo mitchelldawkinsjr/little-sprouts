@@ -1,0 +1,8 @@
+:root { color-scheme: light; font-family: system-ui, sans-serif; background: #f6f2e7; color: #264b3c; }
+main { box-sizing: border-box; max-width: 44rem; margin: 9vh auto; padding: 2rem; }
+.eyebrow { font-size: .85rem; font-weight: 750; letter-spacing: .13em; text-transform: uppercase; }
+h1 { max-width: 16ch; font-size: clamp(2.25rem, 7vw, 4rem); line-height: 1.05; }
+p { max-width: 58ch; line-height: 1.6; }
+.launch, button { display: inline-block; padding: .75rem 1rem; border-radius: .6rem; background: #264b3c; color: white; font: inherit; }
+button { cursor: pointer; border: 0; }
+section { margin-top: 2.5rem; border-top: 1px solid #91a99e; }

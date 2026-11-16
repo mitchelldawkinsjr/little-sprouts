@@ -1,3 +1,5 @@
+import { inventory } from '../tools/static-files.mjs';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, statSync } from 'node:fs';
@@ -67,13 +69,12 @@ test('Sketchbook ships after deployment and all of its runtime assets fit the of
   const read = name => readFileSync(new URL('../' + name, import.meta.url), 'utf8');
   assert.match(read('Dockerfile'), /COPY sidecars\/sketchbook \/usr\/share\/nginx\/html\/sidecars\/sketchbook/);
   assert.ok(sidecarArcadeIds().includes('sketchbook'));
-  // The deploy lists every file under these folders for offline saving.
-  const listed = read('Dockerfile').match(/find ([^\n]+?) -type f/)[1].split(' ');
-  assert.ok(listed.includes('sidecars') && listed.includes('lib') && listed.includes('vendor'));
+  const listed = inventory(fileURLToPath(new URL('..', import.meta.url))).offline();
   const files = ['index.html','trail.css','trail.mjs','checkpoints.mjs','friends.mjs','build/sketchbook.min.js',
     ...['world-lite','boxman','car','heli','airplane'].map(x => 'build/assets/' + x + '.glb')];
   for (const name of files) {
     const path = 'sidecars/sketchbook/' + name;
+    assert.ok(listed['./' + path], path);
     assert.ok(statSync(new URL('../' + path, import.meta.url)).size < 20_000_000, path);
   }
   const model = readFileSync(new URL('../sidecars/sketchbook/build/assets/world-lite.glb', import.meta.url));
