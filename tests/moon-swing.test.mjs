@@ -129,7 +129,7 @@ test('the shelf, controller map, speech, and offline bundle include Moonlight Sw
   const built = inventory(fileURLToPath(root));
   assert.ok(built.sidecars().includes('sidecars/moon-swing/index.html'));
   const files = built.offline();
-  for (const path of ['index.html', 'rink.css', 'game.mjs', 'logic.mjs', 'view.mjs']) {
+  for (const path of ['index.html', 'rink.css', 'game.mjs', 'logic.mjs', 'view.mjs', 'ice.mjs', 'motion.mjs']) {
     assert.ok(files['./sidecars/moon-swing/' + path], path);
   }
   assert.ok(files['./lib/game-touch.css']);

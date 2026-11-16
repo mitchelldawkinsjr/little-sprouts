@@ -2,7 +2,7 @@ import { buddyKind } from '../../lib/buddy3d.mjs?v=gear2';
 import { attachTouchControls, isTouchDevice } from '../../lib/touch-controls.mjs?v=touch3';
 import { localQuestion, normalizeQuestion, LOCAL_ROUND } from '../roll/quiz.mjs?v=roll1';
 import { MODES, difficulty, makeRun, markChoice, nextUnlock, placeChoices, step } from './logic.mjs';
-import { makeView } from './view.mjs';
+import { makeView } from './view.mjs?v=ice2';
 
 const $ = id => document.getElementById(id);
 const embedded = window.parent !== window;
@@ -295,7 +295,10 @@ function frame(now) {
       jump = touchJump = false;
       accumulator -= 1 / 120;
       for (const e of events) {
-        if (e.type === 'pickup' && e.air) notice('Air gem! +2');
+        if (e.type === 'pickup') {
+          view.burst(run);
+          if (e.air) notice('Air gem! +2');
+        }
         else if (e.type === 'shield') notice('Your shield blocked the bump!');
         else if (e.type === 'hit') notice(e.boss ? 'Boss bump! Jump the rose ring.' : 'Oof! Dodge the rose obstacles.');
         else if (e.type === 'pick') {
