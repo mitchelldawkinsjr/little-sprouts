@@ -51,6 +51,25 @@ The first visit starts with a small addition problem, then a short setup for the
 
 Most rounds are 5, 10, or 15 questions. A right answer on the first try earns a learning star. Arcade games such as Gas race, Dirt ride, and Sky flight keep going on their own clocks.
 
+## Ink Trail
+
+Hold and drag anywhere on the 3D floor to draw wet ink. Your garden buddy follows the
+actual painted stroke, including corners and loops. Guide the line around purple
+puddles and through golden drops to stay ahead of the bosses. Only the garden buddy
+follows the ink. Your custom boss starts behind you and two more cut across the floor
+from opposite sides. Watch their direction arrows and draw a turn away from danger.
+Any boss that reaches the buddy can chomp. Learning play lets you keep drawing from
+there, while a catch ends that Arcade run. Learning play uses the
+active learner's questions. A correct answer gives a golden boost. A miss sends the
+buddy back onto a briefly wobbly trail, then brings the same question back. Arcade play
+runs without questions. The wet-ink look is inspired by Karim Maaloul’s
+[Ink and Water simulation](https://codepen.io/Yakudoo/pen/bGOMJPw).
+
+Boss Chase and Ink Trail share the Build your boss controls and save. A new sidecar can
+mount `makeBossBuilder` from `lib/boss-builder.mjs`, read the shared design from
+`lib/boss-design.mjs`, use the Three.js rig from `lib/boss-model.mjs`, and reuse the
+jaw-grab animation from `lib/boss-catch.mjs`.
+
 ## Read-aloud
 
 Prompts are spoken by Kokoro, a voice model that runs in this browser. It downloads once, about 90 MB from jsDelivr and Hugging Face, the first time read-aloud is used. Every line it says is saved in the browser and replays at once later. While the model is still downloading, a line it has not said before is read by the browser’s own voice. Once the model is ready, a new line waits for Kokoro. On a recent laptop that takes about as long as the line itself. If the model cannot load, the browser’s voice reads aloud and the app tries again later.
