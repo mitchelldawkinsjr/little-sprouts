@@ -1,4 +1,4 @@
-import { buddyKind } from '../../lib/buddy2d.mjs?v=gear2';
+import { buddyKind } from '../../lib/buddy3d.mjs?v=gear2';
 import { BOSS_EMOJI, DEFAULT_BOSS, bossName, readBoss } from '../../lib/boss-design.mjs';
 import { makeBossBuilder } from '../../lib/boss-builder.mjs';
 import { actionDown, moveDirs, nextIndex, readPad } from '../../lib/pad-core.mjs?v=pad-map1';
@@ -17,7 +17,7 @@ const canvas = $('trail');
 const view = makeView(canvas, $('creature'), $('preview-spot'));
 const keys = new Set();
 const tried = new Set();
-const point = { id: null, y: .5 };
+const point = { id: null, pending: [], pressure: 0 };
 const driveKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'];
 let design = readBoss() || DEFAULT_BOSS;
 let run = makeRun();
@@ -35,7 +35,6 @@ let count = 0;
 let countMessage = '';
 let pausedCount = 0;
 let pausedMessage = '';
-let target = .5;
 let statusFor = 0;
 let lastTime = performance.now();
 let elapsed = 0;
@@ -57,6 +56,8 @@ function focusButton(el) { el?.focus({ preventScroll: true }); }
 function clearPen() {
   keys.clear();
   point.id = null;
+  point.pending.length = 0;
+  point.pressure = 0;
 }
 
 function setScreen(name) {
@@ -130,7 +131,6 @@ function start(mode) {
   activeQuestion = null;
   tried.clear();
   run = makeRun({ learning: mode === 'learning', level });
-  target = run.penY;
   status('');
   countdown('Get your pen ready!');
 }
@@ -239,7 +239,6 @@ function caught() {
       intro: 'Your garden buddy gets another chance. Keep drawing from right here.',
       play: 'Keep drawing', action: () => {
         resumeCaught(run);
-        target = run.penY;
         countdown('A fresh trail!');
       },
       info: `${meters()} m · ${finishedQuestions} of ${total} answered`
@@ -294,7 +293,15 @@ addEventListener('message', event => {
 
 function pointerMove(event) {
   if (event.pointerId !== point.id) return;
-  point.y = view.targetY(event.clientY);
+  const samples = event.getCoalescedEvents?.() || [];
+  for (const sample of samples.length ? samples : [event]) {
+    const next = view.targetPoint(sample.clientX, sample.clientY);
+    if (!next) continue;
+    const last = point.pending.at(-1) || run.pen;
+    if (Math.hypot(last.x - next.x, last.z - next.z) < 2) continue;
+    if (point.pending.length >= 120) point.pending.pop();
+    point.pending.push(next);
+  }
 }
 canvas.addEventListener('pointerdown', event => {
   if (!['run', 'count'].includes(screen) || event.button !== 0 || point.id !== null) return;
@@ -320,7 +327,7 @@ addEventListener('keyup', event => keys.delete(event.code));
 addEventListener('blur', clearPen);
 
 function readController() {
-  if (embedded) return { y: 0, draw: false };
+  if (embedded) return { x: 0, y: 0, draw: false };
   const pad = readPad(Array.from(navigator.getGamepads?.() || []).find(Boolean));
   const { x, y } = moveDirs(pad);
   const act = actionDown(pad, padAction);
@@ -345,19 +352,22 @@ function readController() {
     if (act && !padAction) padFocus?.click();
   }
   padX = x; padY = y; padAction = act; padPause = startButton;
-  return { y, draw: act || !!x || !!y };
+  return { x, y, draw: act || !!x || !!y };
 }
 
 function tick(now) {
   const dt = Math.min(.08, Math.max(0, (now - lastTime) / 1000));
   lastTime = now;
   const controller = readController();
-  const up = keys.has('ArrowUp');
-  const down = keys.has('ArrowDown');
-  const dir = controller.y || (+down - +up);
-  const drawing = point.id !== null || keys.size > 0 || controller.draw;
-  if (point.id !== null) target = point.y;
-  else if (dir) target = Math.max(.12, Math.min(.86, target + dir * dt * .9));
+  const x = controller.x || (+keys.has('ArrowRight') - +keys.has('ArrowLeft'));
+  const z = controller.y || (+keys.has('ArrowDown') - +keys.has('ArrowUp'));
+  const direction = x || z ? { x, z }
+    : keys.has('Space') || controller.draw ? { x: run.pen.dx, z: run.pen.dz } : null;
+  if (direction && point.id === null) point.pending.length = 0;
+  while (point.pending.length && Math.hypot(point.pending[0].x - run.pen.x, point.pending[0].z - run.pen.z) < 2) point.pending.shift();
+  const target = point.pending[0];
+  const drawing = point.id !== null || !!target || !!direction;
+  point.pressure = drawing ? Math.min(1, point.pressure + dt * 1.6) : 0;
   if (screen === 'count') {
     count -= dt;
     const number = String(Math.max(1, Math.ceil(count)));
@@ -371,14 +381,14 @@ function tick(now) {
       }
     }
   } else if (screen === 'run') {
-    for (const event of stepRun(run, dt, { target, drawing })) {
+    for (const event of stepRun(run, dt, { target, direction, pressure: point.pressure })) {
       if (event === 'question') openQuestion();
       if (event === 'caught') caught();
       if (event === 'finish') win();
       if (event === 'dot') status('✦ Ink drop! The boss fell back.');
       if (event === 'wash') status('Splash! Draw around the puddles.');
     }
-    if (screen === 'run' && !drawing && !run.onInk && statusFor <= 0) status('Hold and drag to keep the ink flowing.', 1.5);
+    if (screen === 'run' && !run.onInk && statusFor <= 0) status('Draw a little farther so your buddy can keep running.', 1.5);
     $('distance').textContent = `${meters()} m`;
     $('score').textContent = `💧 ${run.dots}`;
     $('gap').value = run.gap;
@@ -386,7 +396,7 @@ function tick(now) {
   }
   if (statusFor > 0 && (statusFor -= dt) <= 0) status('');
   elapsed += dt;
-  view.paint(run, buddy, screen === 'run' ? run.time : (['menu', 'build'].includes(screen) ? elapsed : run.time), drawing, target);
+  view.paint(run, buddy, screen === 'run' ? run.time : (['menu', 'build'].includes(screen) ? elapsed : run.time), drawing, dt, screen === 'run');
   requestAnimationFrame(tick);
 }
 

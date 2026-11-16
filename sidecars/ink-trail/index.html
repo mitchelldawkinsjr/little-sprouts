@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#111823">
   <title>Ink Trail · Little Sprouts</title>
-  <link rel="stylesheet" href="./trail.css?v=1">
+  <link rel="stylesheet" href="./trail.css?v=2">
   <script type="importmap">{"imports":{"three":"../../vendor/three/build/three.module.js?v=r187"}}</script>
 </head>
 <body>
   <main aria-label="Ink Trail">
-    <canvas id="trail" tabindex="0" aria-label="Ink drawing area. Hold and drag, or use Up and Down to draw."></canvas>
+    <canvas id="trail" tabindex="0" aria-label="Ink drawing area. Hold and drag, or use the arrow keys to draw."></canvas>
     <canvas id="creature" aria-hidden="true"></canvas>
     <header id="hud" hidden>
       <div class="chip"><span class="kicker">INK TRAIL</span><strong id="distance">0 m</strong></div>
@@ -18,7 +18,7 @@
       <div class="chip stats"><strong id="score">💧 0</strong><button id="pause" type="button" aria-label="Pause">Ⅱ</button></div>
     </header>
     <div id="status" role="status" hidden></div>
-    <div id="tip" hidden>Hold and drag to draw · ↑ ↓ or stick</div>
+    <div id="tip" hidden>Draw in any direction · arrows or stick</div>
     <section class="overlay" id="panel" aria-labelledby="title" data-pad-menu>
       <div class="card menu">
         <p class="kicker" id="eyebrow">LITTLE SPROUTS · RUN &amp; DRAW</p>
@@ -30,7 +30,7 @@
           <button id="endless" type="button" hidden>Just draw</button>
           <button id="build" type="button">Build your boss</button>
         </div>
-        <p class="fine" id="help">Hold and drag up or down with your finger or mouse. You can also use the arrows or a controller.</p>
+        <p class="fine" id="help">Hold and drag across the floor with your finger or mouse. You can also draw with the arrows or a controller.</p>
       </div>
     </section>
     <section class="overlay" id="builder" aria-labelledby="builder-title" data-pad-menu hidden>
@@ -58,6 +58,6 @@
     </section>
     <div id="count" hidden><strong id="number"></strong><span id="count-line"></span></div>
   </main>
-  <script type="module" src="./game.mjs?v=1"></script>
+  <script type="module" src="./game.mjs?v=2"></script>
 </body>
 </html>

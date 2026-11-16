@@ -1,5 +1,5 @@
-/** Ink Trail runs on a forward-only scroll. Each pen sample is permanent until it passes offscreen. */
-export const PEN_AHEAD = 174;
+/** Freehand ink on a plane. s is arc length along the stroke, not a screen/world axis. */
+export const PEN_AHEAD = 190;
 export const PEN_WOBBLE = 2.4;
 export const INK_BOOST = 3.5;
 export const COUNT_IN = 2;
@@ -8,15 +8,14 @@ export const QUESTION_SPACING = 730;
 const GAP = { start: 114, max: 152, near: 33, catch: 16 };
 const STEP = 5;
 const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
-const yInBounds = y => clamp(y, 0.12, 0.86);
 
-function seedTrail(run, y = 0.5) {
+function seedTrail(run, x = 0, z = 0) {
   run.trail = [];
-  const first = Math.floor((run.distance - 330) / STEP) * STEP;
-  for (let x = first; x <= run.distance + PEN_AHEAD; x += STEP) {
-    run.trail.push({ x, y, ink: true, style: 'clean' });
+  for (let offset = -160; offset <= 65; offset += STEP) {
+    run.trail.push({ s: run.distance + offset, x: x + offset, z, age: run.time, ink: true, style: 'clean' });
   }
-  run.penY = run.buddyY = y;
+  run.buddy = { x, z, dx: 1, dz: 0 };
+  run.pen = { x: x + 65, z, dx: 1, dz: 0 };
   run.onInk = true;
 }
 
@@ -25,81 +24,129 @@ export function makeRun({ learning = false, level = 1 } = {}) {
     phase: 'run', learning, level, time: 0, distance: 0,
     gap: GAP.start, wobble: 0, boost: 0, safe: 0, dots: 0,
     nextQuestion: learning ? FIRST_QUESTION : Infinity,
-    finishAt: Infinity, objects: [], spawn: 410, row: 0
+    finishAt: Infinity, objects: [], spawn: 245, row: 0
   };
   seedTrail(run);
   return run;
 }
 
-/** Linear interpolation in the stored stroke. A gap is not a valid running surface. */
-export function strokeAt(trail, x) {
-  const n = clamp((x - trail[0].x) / STEP, 0, trail.length - 1);
-  const i = Math.floor(n);
-  const a = trail[i];
-  const b = trail[i + 1] || a;
-  return { y: a.y + (b.y - a.y) * (n - i), ink: a.ink && (n === i || b.ink) };
+/** Drive characters on the very samples the renderer paints, including loops and crossings. */
+export function strokeAt(trail, s) {
+  if (s <= trail[0].s) s = trail[0].s;
+  let l = 0, h = trail.length - 1;
+  while (l + 1 < h) {
+    const m = (l + h) >> 1;
+    if (trail[m].s <= s) l = m;
+    else h = m;
+  }
+  const a = trail[l], b = trail[h];
+  const t = clamp((s - a.s) / (b.s - a.s), 0, 1);
+  return {
+    x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t,
+    dx: (b.x - a.x) / (b.s - a.s), dz: (b.z - a.z) / (b.s - a.s),
+    ink: t === 0 ? a.ink : t === 1 ? b.ink : a.ink && b.ink
+  };
 }
 
-function extendStroke(run, target, drawing, dt) {
-  const first = run.trail[0];
+function extendStroke(run, target, direction, dt, pressure) {
   const last = run.trail.at(-1);
-  const aim = drawing ? yInBounds(target) : run.penY;
-  // Limit sharp turns. The wobble is deterministic, independent of frame rate.
-  run.penY += clamp(aim - run.penY, -dt * 1.25, dt * 1.25);
-  const end = run.distance + PEN_AHEAD;
-  for (let x = last.x + STEP; x <= end; x += STEP) {
+  const pen = run.pen;
+  const vx = target ? target.x - pen.x : direction?.x ?? 0;
+  const vz = target ? target.z - pen.z : direction?.z ?? 0;
+  const length = Math.hypot(vx, vz);
+  if (!Number.isFinite(length) || length < .01) return;
+  const dx = vx / length, dz = vz / length;
+  const room = Math.max(0, run.distance + PEN_AHEAD - last.s);
+  let draw = Math.min(room, dt * (target ? 410 : 215), target ? length : Infinity);
+  // Move the pen in small increments so the terrain, ink and runner use one continuous line.
+  while (draw > .001) {
+    const step = Math.min(draw, STEP);
+    const tail = run.trail.at(-1);
+    const nominal = tail.s + step;
+    pen.x += dx * step;
+    pen.z += dz * step;
+    pen.dx = dx;
+    pen.dz = dz;
     const wavy = run.wobble > 0;
-    const y = run.penY + (wavy ? (0.052 * Math.sin(x / 10) + 0.029 * Math.sin(x / 4.5)) : 0);
-    // A wrong answer skips little dabs, but never takes control away from the child.
-    const ink = drawing && (!wavy || Math.floor(x / 35) % 4 !== 2);
-    run.trail.push({ x, y: yInBounds(y), ink, style: wavy ? 'wobble' : run.boost > 0 ? 'gold' : 'clean' });
+    const jitter = wavy ? 7 * Math.sin(nominal / 8) + 3 * Math.sin(nominal / 3.5) : 0;
+    const x = pen.x - dz * jitter;
+    const z = pen.z + dx * jitter;
+    const s = tail.s + Math.hypot(x - tail.x, z - tail.z);
+    if (s > tail.s + .001) run.trail.push({
+      s, x, z, age: run.time, pressure,
+      ink: !wavy || Math.floor(nominal / 30) % 4 !== 2,
+      style: wavy ? 'wobble' : run.boost > 0 ? 'gold' : 'clean'
+    });
+    draw -= step;
   }
-  const old = Math.floor((run.distance - 365 - first.x) / STEP);
-  if (old > 0) run.trail.splice(0, old);
 }
 
-const ROWS = [[0.3, 0.69], [0.58, 0.31], [0.24, 0.58], [0.68, 0.32], [0.44, 0.71], [0.65, 0.26]];
+const OFFSETS = [-105, 83, -70, 123, 48, -126];
 
-function addObjects(run) {
-  while (run.spawn < run.distance + 760) {
-    const [wash, dot] = ROWS[run.row++ % ROWS.length];
-    run.objects.push({ x: run.spawn, y: wash, type: 'wash', used: false });
-    run.objects.push({ x: run.spawn + 65, y: dot, type: 'dot', used: false });
-    run.spawn += 230;
+function spawnObjects(run) {
+  if (run.distance >= run.spawn) {
+    const side = OFFSETS[run.row++ % OFFSETS.length];
+    const { x, z, dx, dz } = run.pen;
+    run.objects.push({ x: x + dx * 138 - dz * side, z: z + dz * 138 + dx * side, s: run.distance, type: 'wash', used: false });
+    run.objects.push({ x: x + dx * 170 + dz * side * .32, z: z + dz * 170 - dx * side * .32, s: run.distance, type: 'dot', used: false });
+    run.spawn += 210;
   }
-  run.objects = run.objects.filter(item => item.x > run.distance - 370);
+  run.objects = run.objects.filter(item => !item.used && run.distance - item.s < 780);
 }
 
-export function stepRun(run, dt, { target = 0.5, drawing = false } = {}) {
+/** Closest distance to the actually traversed ink, including a turn within this physics frame. */
+function touchesStroke(trail, before, after, item, radius) {
+  let a = strokeAt(trail, before);
+  const hit = b => {
+    const dx = b.x - a.x, dz = b.z - a.z;
+    const t = clamp(((item.x - a.x) * dx + (item.z - a.z) * dz) / (dx * dx + dz * dz || 1), 0, 1);
+    return Math.hypot(item.x - a.x - dx * t, item.z - a.z - dz * t) <= radius;
+  };
+  for (const b of trail) {
+    if (b.s <= before) continue;
+    if (b.s >= after) break;
+    if (hit(b)) return true;
+    a = b;
+  }
+  return hit(strokeAt(trail, after));
+}
+
+export function stepRun(run, dt, { target, direction, pressure = 0 } = {}) {
   if (run.phase !== 'run' || !(dt > 0)) return [];
   const events = [];
   const before = run.distance;
   run.time += dt;
-  run.distance += dt * (109 + (run.level - 1) * 11 + (run.learning ? 0 : Math.min(49, run.time * 0.44)) + (run.boost > 0 ? 32 : 0));
-  run.distance = Math.min(run.distance, run.nextQuestion, run.finishAt);
-  extendStroke(run, target, drawing, dt);
-  const track = strokeAt(run.trail, run.distance);
-  run.onInk = track.ink;
-  run.buddyY = track.ink ? track.y : run.buddyY + (track.y - run.buddyY) * Math.min(1, dt * 7);
-  run.gap += dt * (track.ink ? -(1.3 + (run.level - 1) * 0.8 + (run.learning ? 0 : Math.min(4.4, run.time * 0.043))) : -26);
-  if (run.boost > 0 && track.ink) run.gap += dt * 10;
+  extendStroke(run, target, direction, dt, pressure);
+  const speed = (109 + (run.level - 1) * 11 + (run.learning ? 0 : Math.min(49, run.time * .44)) + (run.boost > 0 ? 32 : 0));
+  run.distance = Math.min(before + dt * (run.onInk ? speed : speed * .77), run.trail.at(-1).s, run.nextQuestion, run.finishAt);
+  run.buddy = strokeAt(run.trail, run.distance);
+  run.moving = run.distance - before > .01;
+  const stopped = run.distance >= run.trail.at(-1).s - .01;
+  run.onInk = run.buddy.ink && !stopped;
+  run.gap += dt * (run.onInk ? -(1.3 + (run.level - 1) * .8 + (run.learning ? 0 : Math.min(4.4, run.time * .043))) : -34);
+  if (run.boost > 0 && run.onInk) run.gap += dt * 10;
   if (run.safe > 0) run.gap = Math.max(GAP.near, run.gap);
-  addObjects(run);
-  for (const item of run.objects) {
-    if (item.used || item.x <= before || item.x > run.distance) continue;
-    const at = strokeAt(run.trail, item.x);
-    if (Math.abs(at.y - item.y) > (item.type === 'dot' ? 0.057 : 0.09)) continue;
-    if (item.type === 'dot') {
-      if (!at.ink) continue;
-      run.dots++;
-      run.gap += 23;
-    } else if (run.safe <= 0 && run.boost <= 0) {
-      run.gap = Math.max(Math.min(run.gap, GAP.near), run.gap - 22);
-      run.safe = 0.85;
-    } else continue;
-    item.used = true;
-    events.push(item.type);
+  spawnObjects(run);
+  if (run.distance > before) {
+    for (const item of run.objects) {
+      if (!touchesStroke(run.trail, before, run.distance, item, item.type === 'dot' ? 17 : 29)) continue;
+      if (item.type === 'dot') {
+        if (!run.onInk) continue;
+        run.dots++;
+        run.gap += 23;
+      } else if (run.safe <= 0 && run.boost <= 0) {
+        run.gap = Math.max(Math.min(run.gap, GAP.near), run.gap - 22);
+        run.safe = .85;
+      } else continue;
+      item.used = true;
+      events.push(item.type);
+    }
   }
+  // Keep enough behind for large boss rigs and for dry ink to fade out.
+  const keep = run.distance - 620;
+  let discard = 0;
+  while (discard < run.trail.length - 2 && run.trail[discard + 1].s < keep) discard++;
+  if (discard) run.trail.splice(0, discard);
   run.gap = Math.min(GAP.max, run.gap);
   run.wobble = Math.max(0, run.wobble - dt);
   run.boost = Math.max(0, run.boost - dt);
@@ -117,7 +164,6 @@ export function stepRun(run, dt, { target = 0.5, drawing = false } = {}) {
   return events;
 }
 
-/** Leave the card on either result. After a miss, retry that same question after the ink recovers. */
 export function answer(run, ok, final = false) {
   if (run.phase !== 'question') return false;
   if (ok) {
@@ -129,17 +175,15 @@ export function answer(run, ok, final = false) {
   } else {
     run.wobble = PEN_WOBBLE;
     run.nextQuestion = run.distance + 480;
-    // Let the child see and recover from the wobble, even if the boss was close.
-    run.gap = Math.max(run.gap, 71);
+    run.gap = Math.max(run.gap, 85);
   }
   run.phase = 'run';
   return true;
 }
 
-/** Learning retries keep distance and the host's current question. Arcade starts a new run. */
 export function resumeCaught(run) {
   if (run.phase !== 'caught' || !run.learning) return false;
-  seedTrail(run, run.buddyY);
+  seedTrail(run, run.buddy.x, run.buddy.z);
   run.phase = 'run';
   run.gap = GAP.start;
   run.safe = 2;

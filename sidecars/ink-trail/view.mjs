@@ -1,286 +1,333 @@
 import * as THREE from 'three';
+import { makeBuddy } from '../../lib/buddy3d.mjs?v=gear2';
 import { drawBuddy } from '../../lib/buddy2d.mjs?v=gear2';
 import { BOSS_EMOJI } from '../../lib/boss-design.mjs';
 import { makeBoss } from '../../lib/boss-model.mjs';
-import { PEN_AHEAD, strokeAt } from './logic.mjs';
+import { strokeAt } from './logic.mjs';
+import { makeInkSurface } from './ink-surface.mjs';
 
-const swatches = {
-  clean: ['81,224,241', '161,249,253'],
-  gold: ['248,174,84', '255,235,168'],
-  wobble: ['235,112,164', '255,193,196']
-};
-const paper = document.createElement('canvas');
-paper.width = paper.height = 128;
-const texture = paper.getContext('2d');
-const grains = texture.createImageData(128, 128);
-for (let i = 0; i < grains.data.length; i += 4) {
-  const noise = Math.imul((i >>> 2) + 1, 0x45d9f3b);
-  const random = Math.imul(noise ^ (noise >>> 16), 0x45d9f3b) >>> 0;
-  const light = (random & 1) !== 0;
-  grains.data.set([light ? 214 : 29, light ? 233 : 48, light ? 238 : 66, ((random >>> 8) % 26) + 4], i);
+const UNIT = 12;
+const INK = { clean: '#7beeff', wobble: '#ff739c', gold: '#ffca72' };
+const pos = p => ({ x: p.x / UNIT, z: p.z / UNIT });
+
+function placeBoss(rig, sample, s) {
+  function place(part, at) {
+    const p = sample(at);
+    part.position.set(p.x / UNIT, .53, p.z / UNIT);
+    part.rotation.y = -Math.atan2(p.dz, p.dx);
+  }
+  place(rig.lead, s);
+  let back = 0;
+  rig.segs.forEach(({ group }, i) => {
+    back += rig.spacing[i] * UNIT * .76;
+    place(group, s - back);
+  });
 }
-texture.putImageData(grains, 0, 0);
 
-export function makeView(canvas, creatures, preview) {
-  const ctx = canvas.getContext('2d');
-  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let width, height, scale, anchor, top, span, paperFill, grain;
-  let design, rig, previewBounds, showingPreview = false;
-  let renderer, scene, camera;
-  try {
-    renderer = new THREE.WebGLRenderer({ canvas: creatures, alpha: true, antialias: true });
-    scene = new THREE.Scene();
-    camera = new THREE.OrthographicCamera(0, 1, 0, -1, 0.1, 1000);
-    camera.position.z = 440;
-    scene.add(new THREE.HemisphereLight('#e6f9ff', '#686286', 2.2));
-    const light = new THREE.DirectionalLight('#fff1d7', 2);
-    light.position.set(-1, 2, 4);
-    scene.add(light);
-  } catch { renderer = null; }
+function buildNib() {
+  const nib = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(.07, .185, 2.1, 18), new THREE.MeshStandardMaterial({
+    color: '#8fdbe9', metalness: .55, roughness: .24
+  }));
+  body.position.y = 1.48;
+  const foot = new THREE.Mesh(new THREE.ConeGeometry(.185, .46, 18), new THREE.MeshStandardMaterial({
+    color: '#152531', metalness: .49, roughness: .28
+  }));
+  foot.rotation.x = Math.PI;
+  foot.position.y = .205;
+  const ring = new THREE.Mesh(new THREE.CylinderGeometry(.194, .197, .1, 18), new THREE.MeshStandardMaterial({
+    color: '#dfedf2', metalness: .45, roughness: .22
+  }));
+  ring.position.y = .49;
+  const shine = new THREE.Mesh(new THREE.CircleGeometry(.34, 24), new THREE.MeshBasicMaterial({
+    color: INK.clean, transparent: true, opacity: .45, depthWrite: false
+  }));
+  shine.rotation.x = -Math.PI / 2;
+  shine.position.y = .018;
+  nib.add(body, ring, foot);
+  return { nib, shine, body };
+}
 
-  function resize() {
-    width = canvas.clientWidth;
-    height = canvas.clientHeight;
-    scale = Math.max(0.49, Math.min(1.38, width / 900));
-    anchor = Math.min(width * 0.38, width * 0.28 + 55);
-    top = Math.min(90, height * 0.24);
-    span = Math.max(50, height - top - 24);
-    const dpr = Math.min(devicePixelRatio || 1, 1.5);
-    canvas.width = Math.round(width * dpr);
-    canvas.height = Math.round(height * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    paperFill = ctx.createRadialGradient(width * .52, height * .33, 10, width * .5, height * .48, Math.max(width, height) * .65);
-    paperFill.addColorStop(0, '#364153');
-    paperFill.addColorStop(.6, '#202b3a');
-    paperFill.addColorStop(1, '#111821');
-    grain = ctx.createPattern(paper, 'repeat');
-    if (!renderer) return;
-    renderer.setPixelRatio(dpr);
-    renderer.setSize(width, height, false);
-    camera.right = width;
-    camera.bottom = -height;
-    camera.updateProjectionMatrix();
+function make3D(canvas, surface, preview, renderer) {
+  const scene = new THREE.Scene();
+  const stage = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(47, 1, .1, 280);
+  const portrait = new THREE.PerspectiveCamera(30, 1, .1, 100);
+  const focus = new THREE.Vector3();
+  const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  const pointer = new THREE.Vector2(), ray = new THREE.Raycaster(), hit = new THREE.Vector3();
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let w = 1, h = 1, rig, previewing = false, hero, lastTrail, lastSample;
+  const objects = new Map();
+  const ink = makeInkSurface(renderer);
+  const cameraCenter = new THREE.Vector3();
+  const tint = new THREE.Color();
+  const viewFloor = new THREE.Color('#25232a');
+  scene.add(ink.mesh);
+  function lights(target) {
+    target.add(new THREE.HemisphereLight('#edf7fb', '#464252', 2.04));
+    const key = new THREE.DirectionalLight('#fff0e3', 2.28);
+    key.position.set(-15, 22, 17);
+    target.add(key);
+    const rim = new THREE.DirectionalLight('#8fcaff', .8);
+    rim.position.set(10, 4, -10);
+    target.add(rim);
+  }
+  lights(scene);
+  lights(stage);
+  const { nib, shine, body } = buildNib();
+  scene.add(nib, shine);
+
+  const geometry = {
+    dot: new THREE.IcosahedronGeometry(.63, 1),
+    disk: new THREE.CircleGeometry(1, 42),
+    shade: new THREE.CircleGeometry(1, 32)
+  };
+  const shadow = new THREE.Mesh(geometry.shade, new THREE.MeshBasicMaterial({
+    color: '#0d0c16', transparent: true, opacity: .3, depthWrite: false
+  }));
+  shadow.rotation.x = -Math.PI / 2;
+  shadow.scale.set(1.08, .83, 1);
+  shadow.position.y = .025;
+  scene.add(shadow);
+
+  const glow = new THREE.CanvasTexture(Object.assign(document.createElement('canvas'), { width: 64, height: 64 }));
+  const ctx = glow.image.getContext('2d');
+  const g = ctx.createRadialGradient(32,32,3,32,32,32);
+  g.addColorStop(0,'#fff'); g.addColorStop(.35,'#ffffff85'); g.addColorStop(1,'#fff0');
+  ctx.fillStyle = g;
+  ctx.fillRect(0,0,64,64);
+
+  function updateObjects(run, time) {
+    const active = new Set(run.objects);
+    for (const [item, group] of objects) if (!active.has(item) || item.used) {
+      group.removeFromParent();
+      group.traverse(o => o.material?.dispose());
+      objects.delete(item);
+    }
+    for (const item of run.objects) {
+      if (item.used) continue;
+      if (!objects.has(item)) {
+        const group = new THREE.Group();
+        const pure = item.type === 'dot';
+        const base = new THREE.Mesh(geometry.disk, new THREE.MeshBasicMaterial({
+          color: pure ? '#ffcf79' : '#a26bc5', transparent: true,
+          opacity: pure ? .68 : .83, map: glow, depthWrite: false
+        }));
+        base.rotation.x = -Math.PI / 2;
+        base.scale.setScalar(pure ? 2.2 : 3.2);
+        base.position.y = .024;
+        group.position.set(item.x / UNIT, 0, item.z / UNIT);
+        group.add(base);
+        if (pure) {
+          const gem = new THREE.Mesh(geometry.dot, new THREE.MeshStandardMaterial({
+            color: '#ffd385', emissive: '#6d2e07', roughness: .38
+          }));
+          gem.scale.y = 1.3;
+          group.add(gem);
+        } else for (let i = 0; i < 5; i++) {
+          const lobe = new THREE.Mesh(geometry.disk, new THREE.MeshBasicMaterial({
+            color: '#da8dde', transparent: true, opacity: .63, map: glow, depthWrite: false
+          }));
+          lobe.rotation.x = -Math.PI / 2;
+          lobe.position.set(Math.cos(i * 2.4) * 1.31, .029 + .001 * i, Math.sin(i * 2.4) * 1.4);
+          lobe.scale.set(1.26, .87, 1);
+          group.add(lobe);
+        }
+        objects.set(item, group);
+        scene.add(group);
+      }
+      const o = objects.get(item);
+      if (item.type === 'dot') {
+        o.children[1].position.y = .94 + Math.sin(time * 3 + item.x) * .22;
+        o.children[1].rotation.y = time * 1.1;
+      }
+    }
   }
 
-  function setBoss(next) {
-    design = next;
+  function resize() {
+    w = Math.max(1, canvas.clientWidth);
+    h = Math.max(1, canvas.clientHeight);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setPixelRatio(Math.min(1.35, devicePixelRatio || 1));
+    renderer.setSize(w, h, false);
+  }
+
+  function targetPoint(clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+    pointer.set((clientX - rect.left) / w * 2 - 1, 1 - (clientY - rect.top) / h * 2);
+    ray.setFromCamera(pointer, camera);
+    if (!ray.ray.intersectPlane(plane, hit)) return null;
+    return { x: hit.x * UNIT, z: hit.z * UNIT };
+  }
+
+  function setBoss(design) {
     rig?.dispose();
-    if (!renderer) return;
     rig = makeBoss(design);
-    rig.lead.rotation.y = -.23;
-    let offset = 0;
-    rig.segs.forEach(({ group }, i) => {
-      offset += rig.spacing[i];
-      group.position.set(-offset, 0, 0);
-    });
-    const bounds = new THREE.Box3().setFromObject(rig.group);
-    previewBounds = { size: bounds.getSize(new THREE.Vector3()), center: bounds.getCenter(new THREE.Vector3()) };
-    scene.add(rig.group);
+    rig.group.scale.setScalar(.76);
+    (previewing ? stage : scene).add(rig.group);
   }
 
   function setPreview(on) {
-    showingPreview = on;
-    creatures.classList.toggle('previewing', on);
-    if (!renderer) {
-      preview.textContent = on && design ? BOSS_EMOJI[design.head] : '';
-      preview.style.fontSize = '48px';
-    }
+    previewing = on;
+    surface.classList.toggle('previewing', on);
+    if (rig) (on ? stage : scene).add(rig.group);
   }
 
-  const screenX = (x, distance) => anchor + (x - distance) * scale;
-  const screenY = y => top + y * span;
-  const targetY = clientY => Math.max(.12, Math.min(.86, (clientY - canvas.getBoundingClientRect().top - top) / span));
-
-  function ellipse(x, y, rx, ry, fill, rotate = 0) {
-    ctx.beginPath();
-    ctx.ellipse(x, y, rx, ry, rotate, 0, Math.PI * 2);
-    ctx.fillStyle = fill;
-    ctx.fill();
-  }
-
-  function background(distance) {
-    ctx.fillStyle = paperFill;
-    ctx.fillRect(0, 0, width, height);
-    ctx.fillStyle = grain;
-    ctx.fillRect(0, 0, width, height);
-    // Fine paper fibers and glints drift past much more slowly than the wet ink.
-    for (let i = 0; i < 38; i++) {
-      const x = ((i * 167 - distance * .1) % (width + 40) + width + 40) % (width + 40);
-      const y = (i * 103.27) % height;
-      ctx.fillStyle = i % 3 ? '#a6daeb20' : '#e3effb3a';
-      ctx.fillRect(x, y, i % 5 + 1, 1);
-    }
-  }
-
-  function stroke(points, distance, time, style) {
-    const [rgb, core] = swatches[style];
-    const spread = Math.max(.8, scale);
-    const last = points.at(-1).x;
-    for (let layer = 0; layer < 5; layer++) {
-      ctx.beginPath();
-      for (let i = 0; i < points.length; i++) {
-        const { x, y } = points[i];
-        const age = Math.min(1, Math.max(0, (distance + PEN_AHEAD - x) / 330));
-        const ruffle = layer === 0 || layer === 1 ? 0 :
-          Math.sin(x / (13 + layer * 4) + time * .7) * spread * (3 + 14 * age) * (layer % 2 ? -1 : 1);
-        const py = screenY(y) + ruffle;
-        if (i === 0) ctx.moveTo(screenX(x, distance), py);
-        else ctx.lineTo(screenX(x, distance), py);
-      }
-      const alpha = Math.min(1, Math.max(.23, 1 - (distance - last) / 560));
-      ctx.lineCap = ctx.lineJoin = 'round';
-      ctx.strokeStyle = layer === 1 ? `rgba(${core},${.9 * alpha})` : `rgba(${rgb},${[.18, 0, .095, .1, .12][layer] * alpha})`;
-      ctx.lineWidth = spread * [16, 3.4, 25, 13, 7][layer];
-      ctx.stroke();
-    }
-    for (const point of points) {
-      if (point.x % 25 !== 0) continue;
-      const p = Math.sin(point.x * .17);
-      const life = Math.min(1, Math.max(0, (distance + PEN_AHEAD - point.x) / 250));
-      const y = screenY(point.y) + p * 27 * life;
-      ellipse(screenX(point.x, distance), y, 1.5 + Math.abs(p) * 3.5, 1 + life * 2.1, `rgba(${rgb},.23)`, p);
-    }
-  }
-
-  function drawStroke(run, time) {
-    let batch = [];
-    for (const sample of run.trail) {
-      if (!sample.ink || (batch.length && batch[0].style !== sample.style)) {
-        if (batch.length) stroke(batch, run.distance, time, batch[0].style);
-        batch = sample.ink && batch.length ? [batch.at(-1)] : [];
-      }
-      if (sample.ink) {
-        // Preserve the previous endpoint at a color change without changing the new style.
-        if (batch.length === 1 && batch[0].style !== sample.style) batch[0] = { ...batch[0], style: sample.style };
-        batch.push(sample);
-      }
-    }
-    if (batch.length) stroke(batch, run.distance, time, batch[0].style);
-  }
-
-  function drawPen(run, drawing, aim) {
-    const x = screenX(run.distance + PEN_AHEAD, run.distance);
-    const y = screenY(run.trail.at(-1).y);
-    const rgb = swatches[run.wobble ? 'wobble' : run.boost ? 'gold' : 'clean'][1];
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate((aim - run.penY) * .75);
-    if (drawing) ellipse(0, 2, 13, 6, `rgba(${rgb},.24)`);
-    ctx.beginPath();
-    ctx.moveTo(0, 1);
-    ctx.lineTo(2, -12);
-    ctx.lineTo(22, -37);
-    ctx.lineTo(28, -32);
-    ctx.lineTo(8, -7);
-    ctx.closePath();
-    ctx.fillStyle = drawing ? `rgb(${rgb})` : '#b4c9d0';
-    ctx.fill();
-    ctx.strokeStyle = '#324b60';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  function drawObjects(run, time) {
-    for (const item of run.objects) {
-      if (item.used) continue;
-      const x = screenX(item.x, run.distance);
-      if (x < -40 || x > width + 40) continue;
-      const y = screenY(item.y);
-      if (item.type === 'wash') {
-        const r = Math.max(13, span * .105);
-        const bloom = ctx.createRadialGradient(x, y, r * .12, x, y, r);
-        bloom.addColorStop(0, '#c67edb60');
-        bloom.addColorStop(.64, '#a866bc43');
-        bloom.addColorStop(1, '#ab6ec800');
-        ellipse(x, y, r, r, bloom);
-        for (let i = 0; i < 4; i++) ellipse(x + Math.sin(i * 2.4) * r * .55, y + Math.cos(i * 2.4) * r * .44, r * .24, r * .12, '#d583df37', i);
-        ellipse(x, y, 5, 4, '#d083dd9c');
-      } else {
-        const bob = reduce ? 0 : Math.sin(item.x + time * 3) * 2;
-        ellipse(x, y + bob, 15, 15, '#ffd58d2e');
-        ellipse(x, y + bob, 7.5, 9, '#ffdb83');
-        ellipse(x - 2, y + bob - 3, 2.6, 2.6, '#fff5c8');
-      }
-    }
-  }
-
-  function drawBoss(run, time) {
-    const x = run.distance - run.gap;
-    if (!renderer) {
-      if (showingPreview) {
-        preview.textContent = BOSS_EMOJI[design?.head];
-      } else {
-        ctx.font = '38px system-ui';
-        ctx.textAlign = 'center';
-        ctx.fillText(BOSS_EMOJI[design?.head] || '🐛', screenX(x, run.distance), screenY(strokeAt(run.trail, x).y) - 4);
-      }
-      return;
-    }
-    const foot = Math.max(12, 24 * scale);
-    const lift = 21 * Math.max(.72, scale);
-    if (showingPreview || renderer.getScissorTest()) {
-      renderer.setScissorTest(false);
-      renderer.clear();
-    }
-    if (showingPreview) {
-      const rect = preview.getBoundingClientRect();
-      const card = preview.closest('.card').getBoundingClientRect();
-      const shownTop = Math.max(rect.top, card.top, 0);
-      const shownBottom = Math.min(rect.bottom, card.bottom, height);
-      if (shownBottom <= shownTop || rect.width <= 7) return;
-      renderer.setScissor(rect.left, height - shownBottom, rect.width, shownBottom - shownTop);
-      renderer.setScissorTest(true);
-      const bounds = previewBounds;
-      const { size, center } = bounds;
-      const unit = Math.min(29, (rect.width - 7) / Math.max(2, size.x), (rect.height - 6) / Math.max(2, size.y));
-      rig.group.position.set(rect.left + rect.width / 2 - center.x * unit, -(rect.top + rect.height / 2) - center.y * unit, 0);
-      rig.group.scale.setScalar(unit);
-      rig.lead.position.set(0, 0, 0);
-      rig.lead.rotation.y = -.23;
-      rig.lead.rotation.z = 0;
-      let offset = 0;
-      rig.segs.forEach(({ group }, i) => {
-        offset += rig.spacing[i];
-        group.position.set(-offset, 0, 0);
-        group.rotation.z = 0;
-      });
-    } else {
-      rig.group.position.set(0, 0, 0);
-      rig.group.scale.setScalar(foot);
-      rig.lead.rotation.y = -.21;
-      const place = (part, px) => {
-        const y = screenY(strokeAt(run.trail, px).y);
-        part.position.set(screenX(px, run.distance) / foot, (lift - y) / foot, 0);
-        const slope = screenY(strokeAt(run.trail, px + 14).y) - screenY(strokeAt(run.trail, px - 14).y);
-        part.rotation.z = -Math.atan2(slope, 28 * scale) * .42;
-      };
-      place(rig.lead, x);
-      let offset = 0;
-      rig.segs.forEach(({ group }, i) => {
-        offset += rig.spacing[i] * foot / scale;
-        place(group, x - offset);
-      });
-    }
-    rig.animate(reduce ? 0 : time, showingPreview ? .6 : 1, !showingPreview && run.gap < 50 ? .75 : 0);
-    renderer.render(scene, camera);
-  }
-
-  function paint(run, buddy, time, drawing, aim) {
-    if (!width || !height || !design) return;
-    const motion = reduce ? 0 : time;
-    background(run.distance);
-    drawObjects(run, motion);
-    drawStroke(run, motion);
-    const buddyHeight = Math.max(49, 84 * scale);
-    drawBuddy(ctx, buddy, anchor, screenY(run.buddyY) + (run.onInk ? 2 : 6), buddyHeight, {
-      step: motion * 14, shadow: false, squash: run.onInk ? 0 : .23
+  function paintPreview(time) {
+    const rect = preview.getBoundingClientRect();
+    const card = preview.closest('.card').getBoundingClientRect();
+    const top = Math.max(0, rect.top, card.top);
+    const bottom = Math.min(h, rect.bottom, card.bottom);
+    renderer.setScissorTest(false);
+    renderer.setClearColor(0,0);
+    renderer.clear();
+    if (!rig || bottom <= top || rect.width <= 0) return;
+    let offset = 0;
+    rig.lead.position.set(0,0,0);
+    rig.lead.rotation.y = 0;
+    rig.head.rotation.y = 0;
+    rig.segs.forEach(({ group },i) => {
+      offset += rig.spacing[i] * .76;
+      group.position.set(-offset,0,0);
+      group.rotation.y = 0;
     });
-    drawPen(run, drawing, aim);
-    drawBoss(run, motion);
+    rig.animate(time,.7);
+    const box = new THREE.Box3().setFromObject(rig.group);
+    box.getCenter(focus);
+    const size = box.getSize(new THREE.Vector3());
+    const zoom = Math.max(size.x * rect.height / rect.width, size.y, size.z) * 2.44;
+    portrait.aspect = rect.width / rect.height;
+    portrait.updateProjectionMatrix();
+    portrait.position.set(focus.x + zoom * .24, focus.y + zoom * .31, focus.z + zoom);
+    portrait.lookAt(focus);
+    renderer.setViewport(rect.left,h-rect.bottom,rect.width,rect.height);
+    renderer.setScissor(rect.left,h-bottom,rect.width,bottom-top);
+    renderer.setScissorTest(true);
+    renderer.render(stage,portrait);
+    renderer.setScissorTest(false);
+    renderer.setViewport(0,0,w,h);
   }
 
+  function paint(run, buddy, clock, drawing, dt, running) {
+    const time = reduced ? 0 : clock;
+    if (previewing) { paintPreview(time); return; }
+    renderer.setClearColor(viewFloor,1);
+    if (hero?.kind !== buddy) {
+      hero?.dispose();
+      hero = makeBuddy(THREE, buddy, { shadow: false });
+      hero.group.scale.setScalar(1.88);
+      scene.add(hero.group);
+    }
+    const a = pos(run.buddy), b = pos(run.trail.at(-1));
+    if (lastTrail !== run.trail) {
+      ink.reset();
+      lastTrail = run.trail;
+      lastSample = null;
+      cameraCenter.set(a.x,0,a.z);
+    }
+    // Keep the view facing the same direction. It pans only when buddy or pen leaves the center.
+    const desiredX = a.x + (b.x - a.x) * .42 + 4.4;
+    const desiredZ = a.z + (b.z - a.z) * .42;
+    const reach = Math.min(1, w / h);
+    const pan = 1 - Math.exp(-dt * 4.3);
+    const soften = (delta, dead) => Math.sign(delta) * Math.max(0, Math.abs(delta) - dead);
+    cameraCenter.x += soften(desiredX - cameraCenter.x, 2.1 * reach) * pan;
+    cameraCenter.z += soften(desiredZ - cameraCenter.z, 2.3 * reach) * pan;
+    const zoom = Math.max(1, Math.min(1.55, .97 / reach));
+    camera.position.set(cameraCenter.x + 1.8 * zoom, 25 * zoom, cameraCenter.z + 18 * zoom);
+    camera.lookAt(cameraCenter);
+    camera.updateMatrixWorld();
+
+    const trail = run.trail, strokes = [];
+    const first = Math.max(1, lastSample ? trail.lastIndexOf(lastSample) + 1 : 1);
+    for (let i = first; i < trail.length; i++) {
+      const p = trail[i-1], q = trail[i];
+      if (q.ink) strokes.push([pos(p.ink ? p : q), { ...pos(q), style: q.style, age: q.age, pressure: q.pressure }]);
+    }
+    if (strokes.length || (running && dt > 0)) ink.frame(a, b, strokes, reduced || !running ? 0 : Math.min(dt,.06), time);
+    lastSample = trail.at(-1);
+    hero.group.position.set(a.x, 0, a.z);
+    hero.group.rotation.y = Math.atan2(run.buddy.dx, run.buddy.dz);
+    hero.animate(dt, running && run.moving && !reduced ? (run.buddy.ink ? .88 : .55) : 0, time);
+    shadow.position.x = a.x;
+    shadow.position.z = a.z;
+    if (rig) {
+      placeBoss(rig, s => strokeAt(trail, s), run.distance - run.gap);
+      rig.animate(time, 1, run.gap < 50 ? .75 : 0);
+    }
+    nib.position.set(b.x,.012,b.z);
+    nib.rotation.x = run.pen.dz * .24;
+    nib.rotation.z = -run.pen.dx * .25;
+    shine.position.set(b.x,.018,b.z);
+    shine.visible = drawing;
+    const color = run.wobble ? INK.wobble : run.boost ? INK.gold : INK.clean;
+    body.material.color.set(color);
+    shine.material.color.copy(tint.set(color));
+    updateObjects(run,time);
+    renderer.render(scene,camera);
+  }
   resize();
   addEventListener('resize', resize);
-  return { paint, resize, setBoss, setPreview, targetY };
+  return { paint, setBoss, setPreview, targetPoint };
+}
+
+function makeFallback(canvas, preview) {
+  const ctx = canvas.getContext('2d');
+  let w, h, ratio, design;
+  const center = { x: 0, z: 0 };
+  const at = p => ({ x: w*.45+(p.x-center.x)*ratio, y: h*.5+(p.z-center.z)*ratio });
+  function resize() {
+    w = canvas.width = canvas.clientWidth;
+    h = canvas.height = canvas.clientHeight;
+    ratio = Math.max(.55,Math.min(1.16,w/670));
+  }
+  resize();
+  addEventListener('resize', resize);
+  return {
+    setBoss(next) { design = next; },
+    setPreview(on) { preview.textContent = on ? BOSS_EMOJI[design?.head] : ''; },
+    targetPoint(x,y) {
+      const rect = canvas.getBoundingClientRect();
+      return { x: center.x+(x-rect.left-w*.45)/ratio, z: center.z+(y-rect.top-h*.5)/ratio };
+    },
+    paint(run, buddy, time, drawing, dt, running) {
+      if (!w || !h) return;
+      center.x = run.buddy.x;
+      center.z = run.buddy.z;
+      ctx.fillStyle = '#302b34';
+      ctx.fillRect(0,0,w,h);
+      ctx.lineCap = 'round';
+      for (let i=1;i<run.trail.length;i++) {
+        const p=run.trail[i-1], q=run.trail[i];
+        if (!q.ink) continue;
+        const a=at(p.ink?p:q), b=at(q);
+        ctx.globalAlpha=Math.max(.13,1-Math.max(0,run.distance-q.s)/590);
+        ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);
+        ctx.strokeStyle=INK[q.style];ctx.lineWidth=q.style==='gold'?9:5;ctx.stroke();
+      }
+      ctx.globalAlpha=1;
+      for (const item of run.objects) if (!item.used) {
+        const p=at(item);ctx.beginPath();ctx.arc(p.x,p.y,item.type==='wash'?19:7,0,Math.PI*2);
+        ctx.fillStyle=item.type==='wash'?'#8e527b':'#ffd385';ctx.fill();
+      }
+      const lead=at(run.buddy), boss=at(strokeAt(run.trail,run.distance-run.gap)), pen=at(run.trail.at(-1));
+      ctx.font='36px system-ui';ctx.textAlign='center';
+      ctx.fillText(BOSS_EMOJI[design?.head]||'🐛',boss.x,boss.y);
+      drawBuddy(ctx,buddy,lead.x,lead.y,58,{ step: running ? time*14 : 0 });
+      ctx.fillText('🖋',pen.x+9,pen.y);
+    }
+  };
+}
+
+export function makeView(canvas, surface, preview) {
+  try {
+    const renderer = new THREE.WebGLRenderer({ canvas: surface, alpha: true, antialias: true });
+    surface.dataset.render = '3d';
+    return make3D(canvas, surface, preview, renderer);
+  } catch {
+    surface.hidden = true;
+    return makeFallback(canvas,preview);
+  }
 }

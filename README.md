@@ -51,7 +51,8 @@ Most rounds are 5, 10, or 15 questions. A right answer on the first try earns a 
 
 ## Ink Trail
 
-Hold and drag to draw wet ink ahead of your garden buddy. Guide the line around purple
+Hold and drag anywhere on the 3D floor to draw wet ink. Your garden buddy follows the
+actual painted stroke, including corners and loops. Guide the line around purple
 puddles and through golden drops to stay ahead of the boss. Learning play uses the
 active learner's questions. A correct answer gives a golden boost. A miss sends the
 buddy back onto a briefly wobbly trail, then brings the same question back. Arcade play

@@ -24,7 +24,7 @@ test('the Ink Trail shelf card, arcade mode, controller, and offline files ship 
   const docker = readFileSync(new URL('../Dockerfile', import.meta.url), 'utf8');
   const warm = readFileSync(new URL('../lib/offline-warm.mjs', import.meta.url), 'utf8');
   assert.match(docker, /COPY sidecars\/ink-trail /);
-  for (const name of ['index.html', 'trail.css', 'game.mjs', 'logic.mjs', 'view.mjs'].map(x => 'sidecars/ink-trail/' + x)
+  for (const name of ['index.html', 'trail.css', 'game.mjs', 'logic.mjs', 'view.mjs', 'ink-surface.mjs'].map(x => 'sidecars/ink-trail/' + x)
     .concat(['boss-design', 'boss-builder', 'boss-model'].map(x => 'lib/' + x + '.mjs'))) {
     assert.ok(existsSync(new URL('../' + name, import.meta.url)), name);
     assert.ok(warm.includes('./' + name), name);
@@ -42,34 +42,44 @@ test('the old Boss Chase save survives in both directions', () => {
   assert.deepEqual([...data.keys()], ['sprouts-boss-v1']);
 });
 
-test('the buddy actually follows the stored stroke, not the current pen position', () => {
+test('the runner follows a freehand corner, then doubles back in floor coordinates', () => {
   const run = makeRun();
-  simulate(run, .5, { drawing: true, target: .28 });
-  assert.ok(run.trail.at(-1).y < .3);
-  assert.equal(run.buddyY, .5, 'the starter stroke is still under the buddy');
-  assert.ok(run.trail.at(-1).x - run.distance <= PEN_AHEAD);
-  simulate(run, 1.7, { drawing: true, target: .7 });
-  assert.equal(run.buddyY, strokeAt(run.trail, run.distance).y);
-  assert.ok(run.buddyY < .69, 'steering does not change the already drawn section');
-  assert.ok(run.trail.length < 112, 'the rolling buffer stays bounded');
+  const settle = (x, z) => {
+    for (let i = 0; i < 110; i++) {
+      stepRun(run, 1 / 60, { target: { x, z } });
+      assert.deepEqual(run.buddy, strokeAt(run.trail, run.distance));
+      if (Math.hypot(run.pen.x-x, run.pen.z-z) < .01) return;
+    }
+    assert.fail('pen never got to its floor-space target');
+  };
+  settle(160, 0);
+  settle(160, -125);
+  settle(25, -125);
+  settle(25, 35); // Cross the starter line without jumping onto it.
+  assert.ok(run.trail.some(p => p.ink && p.z < -124 && p.x > 155));
+  assert.ok(run.trail.some(p => p.ink && p.z < -124 && p.x < 27));
+  const before = run.distance;
+  simulate(run, 1, {});
+  assert.ok(run.distance > before);
+  assert.ok(run.buddy.z < 34.9, 'buddy did not skip ahead at the crossing');
+  assert.ok(run.trail.every((p, i) => i === 0 || p.s > run.trail[i-1].s));
 });
 
-test('uncapped drawing targets stay in bounds and a blank stroke leads to a catch', () => {
+test('a short stroke stops the buddy at the endpoint and lets the boss catch up', () => {
   const run = makeRun({ learning: true });
-  run.gap = 72;
-  simulate(run, .7, { drawing: true, target: 8 });
-  assert.equal(run.trail.at(-1).y, .86);
+  const x = run.pen.x, z = run.pen.z;
   assert.ok(simulate(run, 6).includes('caught'));
-  const distance = run.distance;
+  assert.equal(run.buddy.x, x);
+  assert.equal(run.buddy.z, z);
   assert.ok(resumeCaught(run));
-  assert.equal(run.distance, distance, 'catch does not reset the learning round');
+  assert.equal(run.buddy.x, x);
+  assert.equal(run.pen.z, z);
   assert.equal(run.nextQuestion, FIRST_QUESTION);
-  assert.equal(run.onInk, true);
 });
 
 test('a wrong answer adds skipped ink on the run and reopens a checkpoint without advancing it', () => {
   const run = makeRun({ learning: true });
-  const input = { drawing: true, target: .5 };
+  const input = { direction: { x: 1, z: 0 } };
   assert.deepEqual(simulate(run, 6, input), ['question']);
   assert.equal(run.distance, FIRST_QUESTION);
   simulate(run, 1, input);
@@ -77,16 +87,16 @@ test('a wrong answer adds skipped ink on the run and reopens a checkpoint withou
   assert.ok(answer(run, false));
   assert.equal(run.wobble, PEN_WOBBLE);
   assert.equal(answer(run, false), false);
-  simulate(run, .6, input);
+  simulate(run, .75, input);
   assert.ok(run.trail.some(p => p.style === 'wobble' && !p.ink));
-  assert.ok(simulate(run, 4, input).includes('question'));
+  assert.ok(simulate(run, 5, input).includes('question'));
   assert.equal(run.wobble, 0);
   assert.equal(run.phase, 'question');
 });
 
 test('a right answer pushes the boss back, thickens the ink, and opens the final stretch', () => {
   const run = makeRun({ learning: true });
-  const input = { drawing: true, target: .5 };
+  const input = { direction: { x: 1, z: 0 } };
   simulate(run, 6, input);
   const gap = run.gap;
   assert.ok(answer(run, true, true));
@@ -99,11 +109,25 @@ test('a right answer pushes the boss back, thickens the ink, and opens the final
   assert.equal(run.phase, 'finished');
 });
 
-test('the same ink sample determines whether boosts, puddles, and drops matter', () => {
+test('collectibles and puddles trigger only when the buddy passes their position on the floor', () => {
   const run = makeRun();
-  run.objects.push({ x: 1, y: .5, type: 'wash', used: false }, { x: 3, y: .5, type: 'dot', used: false });
-  assert.deepEqual(stepRun(run, .04, { drawing: true }), ['wash', 'dot']);
+  run.objects.push(
+    { s: 0, x: 1, z: 0, type: 'wash' },
+    { s: 0, x: 3, z: 0, type: 'dot' },
+    { s: 0, x: 3, z: 50, type: 'dot' }
+  );
+  assert.deepEqual(stepRun(run, .04, { direction: { x: 1, z: 0 } }), ['wash', 'dot']);
   assert.equal(run.dots, 1);
   assert.equal(run.nextQuestion, Infinity);
   assert.equal(resumeCaught(run), false);
+});
+
+test('keyboard can draw in all four directions, at a bounded lead', () => {
+  const run = makeRun();
+  for (const [x,z] of [[1,0],[0,-1],[-1,0],[0,1]]) {
+    const before = { ...run.pen };
+    simulate(run, 1, { direction: { x,z } });
+    assert.ok((run.pen.x - before.x)*x + (run.pen.z - before.z)*z > 50);
+    assert.ok(run.trail.at(-1).s - run.distance <= PEN_AHEAD);
+  }
 });
