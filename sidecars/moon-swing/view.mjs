@@ -4,7 +4,7 @@ import { drawBuddy } from '../../lib/buddy2d.mjs?v=gear2';
 import { makeBoss } from '../../lib/boss-model.mjs';
 import { readBoss, PRESETS } from '../../lib/boss-design.mjs';
 import { applyRendererTier, rendererOptions, resolveAutoQuality } from '../../lib/device-tier.mjs?v=low-end1';
-import { ANCHOR, RADIUS, hazardsAt, pickupAt } from './logic.mjs';
+import { RADIUS, hazardsAt, pickupAt } from './logic.mjs';
 import { makeIce } from './ice.mjs';
 import { makeIceMotion } from './motion.mjs';
 
@@ -22,7 +22,7 @@ export function makeView(canvas, backup, labels) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(FOG);
   scene.fog = new THREE.Fog(FOG, 12, 30);
-  const camera = new THREE.PerspectiveCamera(55, 1, .1, 85);
+  const camera = new THREE.PerspectiveCamera(60, 1, .1, 85);
   let renderer = null;
   try {
     renderer = new THREE.WebGLRenderer({ canvas, ...rendererOptions(tier) });
@@ -55,9 +55,12 @@ export function makeView(canvas, backup, labels) {
     w = Math.max(1, labels.clientWidth);
     h = Math.max(1, labels.clientHeight);
     camera.aspect = w / h;
-    const dist = Math.max(13.8, 13.8 / camera.aspect);
-    camera.position.set(0, 4.15 + dist * .135, dist);
-    camera.lookAt(0, 1.9, 0);
+    // The pen's camera, (0, 4, 8) looking at the center, scaled out to frame this larger rink.
+    const k = Math.max(1.6, 1.2 / camera.aspect);
+    camera.position.set(0, 4 * k, 8 * k);
+    camera.lookAt(0, 0, 0);
+    scene.fog.near = 13 * k;
+    scene.fog.far = 20 * k;
     camera.updateProjectionMatrix();
     camera.updateMatrixWorld();
     if (renderer) { renderer.setSize(w, h, false); ice.resize(w, h); }
@@ -92,15 +95,6 @@ export function makeView(canvas, backup, labels) {
     boundary.rotation.x = -Math.PI / 2;
     boundary.position.y = .019;
     scene.add(boundary);
-    const arch = new THREE.Mesh(new THREE.TorusGeometry(.29, .062, 7, 22), cyan);
-    arch.position.set(0, ANCHOR.y, 0);
-    scene.add(arch);
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(.085, .085, 7.4), dim);
-    arm.position.set(0, ANCHOR.y + .28, -3.64);
-    scene.add(arm);
-    const column = new THREE.Mesh(new THREE.BoxGeometry(.23, ANCHOR.y + .3, .23), dim);
-    column.position.set(0, (ANCHOR.y + .3) / 2, -7.39);
-    scene.add(column);
     const lanternGeometry = new THREE.OctahedronGeometry(.24, 0);
     for (let i = 0; i < 8; i++) {
       const a = (i + .5) * Math.PI / 4;
@@ -110,9 +104,9 @@ export function makeView(canvas, backup, labels) {
     }
     const wire = new THREE.BufferGeometry();
     wire.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
-    const rope = new THREE.Line(wire, new THREE.LineBasicMaterial({ color: 0xa4f6ff }));
-    rope.frustumCulled = false;
-    scene.add(rope);
+    const leash = new THREE.Line(wire, new THREE.LineDashedMaterial({ color: 0x7beeff, dashSize: .2, gapSize: .1 }));
+    leash.frustumCulled = false;
+    scene.add(leash);
     const meshList = (count, geometry, material) => Array.from({ length: count }, () => {
       const mesh = new THREE.Mesh(geometry, material);
       scene.add(mesh);
@@ -159,16 +153,14 @@ export function makeView(canvas, backup, labels) {
     return { draw(run, dt, effects) {
       const p = run.p, time = run.time;
       buddy.group.position.set(p.x, p.y, p.z);
-      buddy.group.rotation.y = p.yaw;
+      buddy.group.rotation.y = p.yaw + p.spin;
       buddy.animate(reduced ? 0 : dt, p.y < .06 ? Math.hypot(p.vx, p.vz) / 6 : .12, reduced ? 0 : time);
       shadow.position.set(p.x, .034, p.z);
       shadow.scale.setScalar(Math.max(.38, 1 - p.y * .11));
-      rope.visible = !!p.rope;
-      if (p.rope) {
-        wire.attributes.position.setXYZ(0, 0, ANCHOR.y, 0);
-        wire.attributes.position.setXYZ(1, p.x, p.y + .83, p.z);
-        wire.attributes.position.needsUpdate = true;
-      }
+      wire.attributes.position.setXYZ(0, p.tx, .2, p.tz);
+      wire.attributes.position.setXYZ(1, p.x, p.y, p.z);
+      wire.attributes.position.needsUpdate = true;
+      leash.computeLineDistances();
       effects.marks.forEach((mark, i) => {
         const edge = i * 2;
         trackGeom.attributes.position.setXYZ(edge, mark.x, .024, mark.z);
@@ -309,10 +301,6 @@ export function makeView(canvas, backup, labels) {
     drawBuddy(ctx, kind, 0, 0, buddySize, { alpha: .23, shadow: false, step: reduced ? 0 : t * 12 });
     ctx.restore();
     oval(ground, (16 - Math.min(6, p.y)) * ratio, 4.3 * ratio, 'rgba(19,24,29,.50)');
-    const top = project(0, ANCHOR.y, 0);
-    const rear = project(0, ANCHOR.y + .20, -7.34);
-    line(project(0, 0, -7.34), rear, '#667681', 3 * ratio);
-    line(rear, top, '#75888b', 2 * ratio);
     const hazards = hazardsAt(run);
     for (const item of hazards) {
       const a = project(item.x, item.y, item.z), shadow = project(item.x, 0, item.z);
@@ -358,14 +346,10 @@ export function makeView(canvas, backup, labels) {
       polygon([{ x: a.x, y: a.y - r * 1.35 }, { x: a.x - r * .8, y: a.y - r * .16 },
         { x: a.x, y: a.y + r * 1.28 }], '#ffe099');
     }
-    glow(top, 20 * ratio, 'rgba(140,236,255,.32)');
-    oval(top, 6 * ratio, 4 * ratio, ICE);
-    oval(top, 2.5 * ratio, 1.6 * ratio, '#43545b');
-    if (p.rope) {
-      const end = project(p.x, p.y + .83, p.z);
-      line(top, end, 'rgba(87,179,196,.35)', 5 * ratio);
-      line(top, end, ICE, 1.8 * ratio);
-    }
+    ctx.save();
+    ctx.setLineDash([5 * ratio, 2.5 * ratio]);
+    line(project(p.tx, .2, p.tz), hero, ICE, 1.4 * ratio);
+    ctx.restore();
     drawBuddy(ctx, kind, hero.x, hero.y, buddySize, { shadow: false, step: reduced ? 0 : t * 12 });
     for (const spark of effects.sparks) {
       const a = project(spark.x, spark.y, spark.z);

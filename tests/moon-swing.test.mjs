@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { sidecarArcadeIds, sidecarGame } from '../lib/sidecar.js';
 import { contextFor } from '../lib/speech-core.mjs';
 import { inventory } from '../tools/static-files.mjs';
-import { ANCHOR, MODES, RADIUS, difficulty, hazardsAt, makeRun, markChoice, nextUnlock, pickupAt, placeChoices, step } from '../sidecars/moon-swing/logic.mjs';
+import { MODES, RADIUS, difficulty, hazardsAt, jumpHeight, makeRun, markChoice, nextUnlock, pickupAt, placeChoices, step } from '../sidecars/moon-swing/logic.mjs';
 
 function simulate(run, seconds, input) {
   const events = [];
@@ -13,33 +13,56 @@ function simulate(run, seconds, input) {
   return events;
 }
 
-test('a held rope remains taut in 3D, and jumping releases it without regrabbing while held', () => {
+test('the elastic leash pulls the buddy to the target, overshoots, and keeps it in the rink', () => {
   const run = makeRun();
-  simulate(run, .5, { x: 1, z: -.3, swing: true });
   const p = run.p;
-  assert.ok(p.rope > 0);
-  assert.ok(Math.abs(Math.hypot(p.x - ANCHOR.x, p.y - ANCHOR.y, p.z - ANCHOR.z) - p.rope) < 1e-8);
-  assert.ok(p.y > 0 && p.x > 0);
-  step(run, 1 / 120, { x: 1, swing: true, jump: true });
-  assert.equal(p.rope, 0);
-  assert.ok(p.vy > 8);
-  simulate(run, .3, { x: 1, swing: true });
-  assert.equal(p.rope, 0);
+  step(run, 1 / 120, { aim: { x: 4, z: 0 } });
+  assert.deepEqual([p.tx, p.tz], [4, 0]);
+  let farthest = 0;
+  for (let i = 0; i < 240; i++) { step(run, 1 / 120, {}); farthest = Math.max(farthest, p.x); }
+  assert.ok(farthest > 4.5, 'springy overshoot like the pen');
+  simulate(run, 12, {});
+  assert.ok(Math.hypot(p.x - 4, p.z) < .3, 'settles on the target');
+  assert.ok(Math.abs(Math.atan2(4 - 0, 0) - p.yaw) < 1.6);
+  simulate(run, 3, { x: 1 });
+  assert.ok(Math.hypot(p.tx, p.tz) <= RADIUS + 1e-9);
+  step(run, 1 / 120, { aim: { x: 40, z: 0 } });
+  simulate(run, 2, {});
   assert.ok(Math.hypot(p.x, p.z) <= RADIUS + 1e-8);
-  step(run, 1 / 120, {});
-  assert.equal(p.rearm, true);
 });
 
-test('a suspended gem moves and is collected from a jump, not by passing beneath it', () => {
+test('a hop spins once standing, and faster skating means more turns, a higher and longer hop', () => {
+  const still = makeRun();
+  step(still, 1 / 120, { jump: true });
+  assert.equal(still.p.jump.turns, 1);
+  assert.ok(Math.abs(still.p.jump.dur - .7) < 1e-9);
+  let peak = 0;
+  for (let i = 0; i < 120; i++) { step(still, 1 / 120, {}); peak = Math.max(peak, still.p.y); }
+  assert.ok(peak > .98 && peak <= 1);
+  assert.equal(still.p.jump, null);
+  assert.equal(still.p.y, 0);
+  assert.equal(still.p.spin, 0);
+  const fast = makeRun();
+  fast.p.vx = 26;
+  step(fast, 1 / 120, { jump: true });
+  assert.equal(fast.p.jump.turns, 3);
+  assert.ok(Math.abs(jumpHeight({ t: .55, dur: 1.1, turns: 3 }) - 3) < 1e-9);
+  const capped = makeRun();
+  capped.p.vx = 500;
+  step(capped, 1 / 120, { jump: true });
+  assert.equal(capped.p.jump.turns, 4);
+});
+
+test('a suspended gem moves and is collected from a hop, not by passing beneath it', () => {
   const run = makeRun(1, true);
-  const air = { x: 0, y: 2.6, z: 0, a: 0, air: true, value: 2, taken: false };
+  const air = { x: 0, y: 1.5, z: 0, a: 0, air: true, value: 2, taken: false };
   run.dots = [air];
   assert.notDeepEqual(pickupAt(air, .2), pickupAt(air, .7));
-  run.p.z = 0;
+  Object.assign(run.p, { z: 0, tz: 0 });
   simulate(run, .25, {});
   assert.equal(run.score, 0);
   step(run, 1 / 120, { jump: true });
-  const events = simulate(run, .62, {});
+  const events = simulate(run, .7, {});
   assert.ok(events.some(e => e.type === 'pickup' && e.air));
   assert.equal(run.score, 2);
 });
@@ -49,7 +72,7 @@ test('answer picking accepts one pending catch, retries a miss, then awards one 
   placeChoices(run, [{ index: 0, label: '3' }, { index: 1, label: '6' }]);
   const wrong = run.choices[0], right = run.choices[1];
   const contact = item => {
-    Object.assign(run.p, { x: item.x, y: Math.max(0, item.y - .55), z: item.z, vx: 0, vy: 0, vz: 0 });
+    Object.assign(run.p, { x: item.x, y: Math.max(0, item.y - .55), z: item.z, tx: item.x, tz: item.z, vx: 0, vz: 0 });
     return step(run, 1 / 120, {}).filter(e => e.type === 'pick');
   };
   assert.deepEqual(contact(wrong), [{ type: 'pick', index: 0 }]);
@@ -122,7 +145,6 @@ test('the shelf, controller map, speech, and offline bundle include Moonlight Sw
   const spec = sidecarGame('moon-swing');
   assert.equal(spec.shelf, 'run-jump-dodge');
   assert.ok(sidecarArcadeIds().includes(spec.id));
-  assert.equal(spec.pad.keys.x, 'KeyX');
   assert.equal(spec.pad.keys.a, 'Space');
   assert.equal(contextFor(spec.id), 'gameHost');
   const root = new URL('../', import.meta.url);

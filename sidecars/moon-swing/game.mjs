@@ -2,7 +2,7 @@ import { buddyKind } from '../../lib/buddy3d.mjs?v=gear2';
 import { attachTouchControls, isTouchDevice } from '../../lib/touch-controls.mjs?v=touch3';
 import { localQuestion, normalizeQuestion, LOCAL_ROUND } from '../roll/quiz.mjs?v=roll1';
 import { MODES, difficulty, makeRun, markChoice, nextUnlock, placeChoices, step } from './logic.mjs';
-import { makeView } from './view.mjs?v=ice2';
+import { makeView } from './view.mjs?v=leash1';
 
 const $ = id => document.getElementById(id);
 const embedded = window.parent !== window;
@@ -24,10 +24,9 @@ view.setBuddy(buddyKind());
 const touch = attachTouchControls({
   half: 'left',
   tint: '#a4f8ff',
-  hints: { move: 'Steer' },
+  hints: { move: 'Pull the leash' },
   buttons: [
     { id: 'jump', label: '↗', slot: 0, radius: 34 },
-    { id: 'swing', label: '🪢', slot: 2, radius: 34 },
   ],
   ignore: '#menu, #levels, #hud, #question, #count',
   onFirstTouch() { touchDevice = true; syncTouch(); },
@@ -90,7 +89,7 @@ function home() {
   setPhase('menu');
   $('eyebrow').textContent = 'LITTLE SPROUTS · SWING & COLLECT';
   $('headline').textContent = 'Moonlight Swing';
-  $('description').textContent = 'Swing through a glowing rink. Jump for the high gems and stay clear of the rose-colored obstacles.';
+  $('description').textContent = 'Lead your buddy on a stretchy leash across the glowing rink. Hop and spin for the high gems and stay clear of the rose-colored obstacles.';
   $('target').hidden = false;
   $('target').textContent = mode === 3 ? 'Watch the boss’s feet. Jump when the warning ring lights up.' : 'Arcade goal: ' + run.spec.target + ' points.';
   $('play').textContent = context === 'learning' ? 'Start learning play' : 'Start swinging';
@@ -173,7 +172,6 @@ function pause() {
 $('pause').onclick = pause;
 function win() {
   run.done = true;
-  run.p.rope = 0;
   unlocked = nextUnlock(unlocked, mode);
   try { localStorage.setItem(UNLOCK, String(unlocked)); } catch { /* optional */ }
   setPhase('win');
@@ -242,8 +240,7 @@ addEventListener('message', event => {
 });
 const left = ['ArrowLeft', 'KeyA'], right = ['ArrowRight', 'KeyD'];
 const up = ['ArrowUp', 'KeyW'], down = ['ArrowDown', 'KeyS'];
-const ropeKeys = ['ShiftLeft', 'ShiftRight', 'KeyX'];
-const movement = [...left, ...right, ...up, ...down, ...ropeKeys, 'Space'];
+const movement = [...left, ...right, ...up, ...down, 'Space'];
 const any = codes => codes.some(k => keys.has(k));
 addEventListener('keydown', event => {
   if (event.target?.closest?.('button')) return;
@@ -258,13 +255,12 @@ addEventListener('keyup', event => keys.delete(event.code));
 view.area.addEventListener('pointermove', event => {
   if (phase === 'run' && event.pointerType === 'mouse' && (event.movementX || event.movementY)) {
     const target = view.pickFloor(event.clientX, event.clientY);
-    if (target && Math.hypot(target.x, target.z) < 10) floorAim = target;
+    if (target) floorAim = target;
   }
 });
 view.area.addEventListener('pointerdown', event => {
   if (phase === 'run' && event.pointerType !== 'touch' && event.button === 0) jump = true;
 });
-view.area.addEventListener('pointerleave', () => { floorAim = null; });
 addEventListener('blur', resetInput);
 document.addEventListener('visibilitychange', () => { if (document.hidden) resetInput(); });
 
@@ -283,16 +279,12 @@ function frame(now) {
     touchJump ||= touch.tapped('jump');
     let x = +any(right) - +any(left), z = +any(down) - +any(up);
     if (touch.move.active) { x = touch.move.x; z = touch.move.y; }
-    else if (!x && !z && floorAim) {
-      const dx = floorAim.x - run.p.x, dz = floorAim.z - run.p.z;
-      const m = Math.max(.9, Math.hypot(dx, dz));
-      x = dx / m; z = dz / m;
-    }
-    const swing = any(ropeKeys) || touch.down('swing');
     accumulator += dt;
     while (phase === 'run' && accumulator >= 1 / 120) {
-      const events = step(run, 1 / 120, { x, z, swing, jump: jump || touchJump });
+      // The mouse sets the leash target, as in the pen; keys and sticks slide it.
+      const events = step(run, 1 / 120, { x, z, aim: floorAim, jump: jump || touchJump });
       jump = touchJump = false;
+      floorAim = null;
       accumulator -= 1 / 120;
       for (const e of events) {
         if (e.type === 'pickup') {

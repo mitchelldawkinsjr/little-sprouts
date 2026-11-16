@@ -11,8 +11,8 @@
 </head>
 <body data-game-touch-canvas>
   <main aria-label="Moonlight Swing">
-    <canvas id="world" tabindex="0" aria-label="Moonlight rink. Steer, hold the rope, and jump to catch the tokens."></canvas>
-    <canvas id="backup" tabindex="0" aria-label="Moonlight rink. Steer, hold the rope, and jump to catch the tokens." hidden></canvas>
+    <canvas id="world" tabindex="0" aria-label="Moonlight rink. Pull the leash and hop to catch the tokens."></canvas>
+    <canvas id="backup" tabindex="0" aria-label="Moonlight rink. Pull the leash and hop to catch the tokens." hidden></canvas>
     <div id="labels" aria-label="Floating answers"></div>
     <nav id="levels" aria-label="Difficulty modes" data-pad-menu data-touch-ignore>
       <button type="button" value="1" aria-pressed="true">1 <small>Easy</small></button>
@@ -37,21 +37,21 @@
       <div class="card">
         <p id="eyebrow">LITTLE SPROUTS · SWING &amp; COLLECT</p>
         <h1 id="headline">Moonlight Swing</h1>
-        <p id="description">Swing through a glowing rink and jump for high gems.</p>
+        <p id="description">Skate a glowing rink on a stretchy leash and hop for high gems.</p>
         <p id="target"></p>
         <div class="actions">
           <button id="play" class="primary" type="button" data-pad-back disabled>Start swinging</button>
           <button id="practice" type="button" hidden>Practice questions</button>
         </div>
         <div id="how">
-          <p id="help-keys">Move with arrows, WASD, or the mouse. Hold Shift or controller X for the rope. Press Space, A, or click to jump off.</p>
-          <p id="help-touch" hidden>Drag a thumb on the left to steer. Hold 🪢 to swing, and tap ↗ to jump off and grab things in the air.</p>
+          <p id="help-keys">Point the mouse where your buddy should skate, or slide the leash with arrows, WASD, or the stick. Click, Space, or A to hop. Faster skating means bigger spins.</p>
+          <p id="help-touch" hidden>Drag a thumb on the left to pull the leash. Tap ↗ to hop and spin for things in the air.</p>
           <p>Gold gems are points. In learning play, touch the floating answer. Clear a mode to unlock the next.</p>
         </div>
       </div>
     </section>
     <div id="count" hidden><strong id="count-digit"></strong><span id="count-label" role="status"></span></div>
   </main>
-  <script type="module" src="./game.mjs?v=ice2"></script>
+  <script type="module" src="./game.mjs?v=leash1"></script>
 </body>
 </html>
