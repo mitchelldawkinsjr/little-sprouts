@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url';
+import { inventory } from '../tools/static-files.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
@@ -24,12 +26,13 @@ test('the Ink Trail shelf card, arcade mode, controller, and offline files ship 
   assert.equal(spec.pad.keys.start, 'KeyP');
   assert.equal(sidecarAlone(spec).href, 'sidecars/ink-trail/index.html');
   const docker = readFileSync(new URL('../Dockerfile', import.meta.url), 'utf8');
-  const listed = docker.match(/find ([^\n]+?) -type f/)[1].split(' ');
+  // The deploy's offline list (tools/static-files.mjs) must carry every file the game loads.
+  const listed = inventory(fileURLToPath(new URL('..', import.meta.url))).offline();
   assert.match(docker, /COPY sidecars\/ink-trail /);
   for (const name of ['index.html', 'trail.css', 'game.mjs', 'logic.mjs', 'view.mjs', 'ink-surface.mjs'].map(x => 'sidecars/ink-trail/' + x)
     .concat(['boss-design', 'boss-builder', 'boss-model', 'boss-catch'].map(x => 'lib/' + x + '.mjs'))) {
     assert.ok(existsSync(new URL('../' + name, import.meta.url)), name);
-    assert.ok(listed.includes(name.split('/')[0]), name);
+    assert.ok(listed['./' + name], name);
   }
 });
 
