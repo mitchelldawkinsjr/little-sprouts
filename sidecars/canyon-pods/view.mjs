@@ -254,18 +254,21 @@ export function createView(host, onLost) {
     racer.glow.color.set(paint.trim);
   };
   const soloPaint = { body: 0x677acf, trim: 0xc1d3ff };
-  let friendPod = null, friendKind = null, localKind;
-  const draw = (run, reduced = false, friend = null) => {
-    const list = [run, ...rivals.map((_, i) => rivalAt(i, run.time))];
-    if (friend) list[3] = friend;
-    if (friendPod !== (friend?.pod ?? null) || friendKind !== (friend?.kind ?? null)) {
-      friendPod = friend?.pod ?? null;
-      friendKind = friend?.kind ?? null;
-      paintPod(rivals[2], PODS[friendPod] || soloPaint);
-      seatDriver(rivals[2], friendKind || rivalDrivers(localKind)[2], true);
-    }
+  let localKind;
+  const originalPaint = [PODS[1], PODS[2], soloPaint];
+  const draw = (run, reduced = false, grid = null) => {
+    const list = [run, ...(grid || rivals.map((_, i) => rivalAt(i, run.time)))];
+    const kinds = rivalDrivers(localKind);
+    rivals.forEach((racer, i) => {
+      const state = list[i + 1];
+      const paint = state?.loadout ? PODS[state.loadout.pod] : originalPaint[i];
+      if (racer.paint !== paint) { paintPod(racer, paint); racer.paint = paint; }
+      seatDriver(racer, state?.loadout?.kind || kinds[i], true);
+    });
     [player,...rivals].forEach(({pod,chassis,jets,shield,buddy},i)=>{
       const state = list[i];
+      pod.visible = shadows[i].visible = Boolean(state && !state.dnf);
+      if (!pod.visible) return;
       setTrack(pod,state.d,state.x,.42 + (reduced?0:.08*Math.sin(run.time*12+i)));
       chassis.rotation.z = (state.steer || 0) * .2;
       shield.visible = i === 0 && run.shield;
@@ -301,7 +304,7 @@ export function createView(host, onLost) {
     setBuddy(kind) {
       localKind = buddyKind(kind);
       seatDriver(player, localKind);
-      rivalDrivers(localKind).forEach((kind, i) => seatDriver(rivals[i], i === 2 && friendKind ? friendKind : kind, true));
+
     },
     draw
   };

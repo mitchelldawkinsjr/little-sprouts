@@ -1,10 +1,9 @@
 import { buddyKind } from '../../lib/buddy3d.mjs';
-import { openRoom } from '../../lib/friend-link.mjs?v=sketchbook1';
 import { makeQuiz } from '../../lib/sidecar-quiz.mjs';
 import { attachTouchControls } from '../../lib/touch-controls.mjs?v=touch1';
-import { makeFriendRace, roomCode } from './friends.mjs';
-import { boost, clearGate, LAP, makeRace, position, step } from './logic.mjs';
-import { createView, PODS } from './view.mjs?v=3';
+import { aiGrid, finishOrder, lane, makeFriendRace, roomCode, shortTime } from './friends.mjs';
+import { boost, clearGate, LAP, makeRace, position, RACE, rivalAt, step } from './logic.mjs';
+import { createView, PODS } from './view.mjs?v=4';
 
 const $ = id => document.getElementById(id);
 const quiz = makeQuiz();
@@ -22,10 +21,26 @@ const touch = attachTouchControls({
 });
 touch.setVisible(false);
 
-const invited = roomCode(new URLSearchParams(location.search).get('room'));
+const params = new URLSearchParams(location.search);
+const invited = roomCode(params.get('room'));
 let mode = 'loading', learning = false, run = makeRace(false), selected = 0, kind;
 let view, until = 0, previous = 0, noticeUntil = 0, dirty = true;
-let room = {}, friendRole = '', remote = null, remoteDraw = null, inviteUrl = '', sentAt = -Infinity;
+let room = {}, match = null, inviteUrl = '', sentAt = -Infinity;
+const clearMatch = () => { match = null; run = makeRace(learning); };
+const elapsed = (at = performance.now()) => Math.max(0, at - match.at);
+const racers = (time, dt = null) => {
+  const { grid, self, remote, bots } = match;
+  return [...grid.filter(p => p.id !== self.id).map(p => {
+    const state = remote.get(p.id);
+    const d = state.target.d, x = state.target.x;
+    if (dt === null) return { ...state.target, seat: p.seat, dnf: state.dnf };
+    const f = Math.min(1, dt * 18);
+    state.d += (d - state.d) * f;
+    state.x += (x - state.x) * f;
+    return { ...state.target, d: state.d, x: state.x, dnf: state.dnf, loadout: p.loadout, seat: p.seat };
+  }), ...bots.map(({ seat, bot }) => ({ ...rivalAt(bot, time), seat,
+    ...(time === 0 ? { d: 0, x: lane(seat) } : {}) }))].sort((a, b) => a.seat - b.seat);
+};
 
 addEventListener('message', event => {
   if (event.source !== window.parent || event.origin !== location.origin || event.data?.source !== 'sprouts-sidecar') return;
@@ -62,13 +77,14 @@ function menu(next, heading, description, action = '') {
   $('start').textContent = action;
   $('start').hidden = !action;
   $('start').disabled = false;
+  $('results').hidden = true;
   $('start').toggleAttribute('data-pad-back', next === 'pause' || next === 'friend-pause');
-  $('friends').hidden = learning || !(next === 'intro' || (next === 'result' && !friendRole));
-  const exitRace = next === 'friend-pause' || (next === 'result' && friendRole);
+  $('friends').hidden = learning || !(next === 'intro' || (next === 'result' && !match));
+  const exitRace = next === 'friend-pause' || (next === 'result' && match);
   $('leave').hidden = (!quiz.live && !exitRace) || next === 'loading';
   $('leave').textContent = exitRace ? 'Leave friend race'
     : next === 'result' && learning ? 'Save stars' : 'All games';
-  $('pods').hidden = next !== 'intro' && !(next === 'result' && !learning && !friendRole);
+  $('pods').hidden = next !== 'intro' && !(next === 'result' && !learning && !match);
   $('instructions').hidden = next === 'error';
   const focus = action ? $('start') : $('leave');
   if (!focus.hidden) focus.focus({ preventScroll: true });
@@ -77,7 +93,7 @@ function menu(next, heading, description, action = '') {
 function intro() {
   menu('intro', 'Canyon Pods', learning
     ? 'Pick your pod. Race two laps against three garden buddies and answer at the glowing gates to charge your boost and shield.'
-    : 'Pick your pod for a solo race, or invite a friend for a two-player race.', 'Race!');
+    : 'Pick your pod for a solo race, or race with up to three friends.', 'Race!');
 }
 
 function countdown(seconds, label) {
@@ -96,12 +112,14 @@ function flash(message) {
 
 function paintHud() {
   $('lap').textContent = `LAP ${Math.min(2, 1 + Math.floor(run.d / LAP))} / 2`;
-  $('place').textContent = `${position(run, remote, friendRole)} / 4`;
+  const place = match ? 1 + racers(elapsed() / 1000).filter(r => !r.dnf &&
+    (r.d > run.d || (r.d === run.d && r.seat < match.self.seat))).length : position(run);
+  $('place').textContent = `${place} / 4`;
   $('speed').textContent = `${Math.round(run.speed)} m/s`;
   $('shield').hidden = !run.shield;
   $('charges').textContent = run.charges;
   $('boost-meter').toggleAttribute('data-empty', !run.charges);
-  $('friend-hud').hidden = !friendRole;
+  $('friend-hud').hidden = !match;
 }
 
 function pick(i) {
@@ -131,73 +149,99 @@ function friendPanel() {
 }
 
 function paintRoom() {
-  const { active, connected, localReady, remoteReady, status, code } = room;
-  $('friend-status').textContent = connected && localReady ? 'Ready! Waiting for your friend…'
-    : connected && remoteReady ? 'Your friend is ready. Pick your pod and tap Ready to race.'
-      : status || 'Start a room and send the link to your friend.';
-  $('host').hidden = $('wifi').hidden = !!active;
-  $('ready').hidden = $('friend-pods').hidden = !connected;
-  $('ready').disabled = !!localReady;
-  for (const button of $('friend-pods').children) button.disabled = !!localReady;
+  const { active, connected, players = [], id, status, code, pairing, mode: transport } = room;
+  const me = players.find(p => p.id === id);
+  const host = me?.seat === 0;
+  const lobby = room.state === 'lobby';
+  $('friend-status').textContent = status || (!connected ? 'Start a room and invite your friends.'
+    : players.length < 2 ? 'Waiting for friends…'
+      : me?.ready ? 'Ready! The host starts once everyone is ready.' : 'Pick a pod and tap Ready to race.');
+  $('host').hidden = $('wifi').hidden = $('wifi-join').hidden = !!active;
+  $('ready').hidden = $('friend-pods').hidden = !connected || !lobby;
+  $('ready').disabled = !!me?.ready;
+  $("race-start").hidden = !host || !lobby;
+  $("race-start").disabled = !!pairing || players.length < 2 || !players.every(p => p.ready);
+  $('wifi-add').hidden = !host || !lobby || transport !== 'wifi-host' || players.length >= 4;
+  $('wifi-add').disabled = !!pairing;
+  for (const button of $('friend-pods').children) button.disabled = !!me?.ready;
+  $('roster').hidden = !connected;
+  $('roster').replaceChildren(...players.map(p => {
+    const row = document.createElement('li');
+    row.textContent = `Racer ${p.seat + 1}${p.id === id ? ' (you)' : ''}${p.seat === 0 ? ' · Host' : ''} · ${p.ready ? 'Ready' : 'Picking a pod'}`;
+    return row;
+  }));
   const url = new URL('index.html', location.href);
-  if (code) url.searchParams.set('room', code);
+  if (code) { url.searchParams.set('room', code); url.searchParams.set('v', 'group1'); }
   inviteUrl = code ? url.href : '';
-  $('invite-row').hidden = !code || connected;
+  $('invite-row').hidden = !code || !lobby || players.length >= 4;
   if (inviteUrl) $('invite').href = inviteUrl;
   else $('invite').removeAttribute('href');
 }
 
 const friend = makeFriendRace({
-  open(facade, wifi) {
-    const url = new URL('/link', location.href);
-    url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    return openRoom(url.href, facade, WebSocket, { wifi, wifiChip: false });
-  },
   update(next) {
-    const newlyConnected = next.connected && !room.connected;
+    const hadLobby = room.state === 'lobby';
     room = next;
     paintRoom();
-    if (mode === 'friends' && newlyConnected) $('ready').focus({ preventScroll: true });
+    if (mode === 'friends' && !hadLobby && next.state === 'lobby') $('ready').focus({ preventScroll: true });
   },
-  start(role) {
-    friendRole = role;
-    remote = remoteDraw = null;
+  start({ self, grid, at }) {
+    match = { self, grid, at, bots: aiGrid(grid), remote: new Map(), order: null };
+    for (const p of grid) {
+      if (p.id === self.id) continue;
+      const x = lane(p.seat);
+      match.remote.set(p.id, { d: 0, x, target: { d: 0, x, speed: 0 } });
+    }
     sentAt = -Infinity;
     run = makeRace(false);
-    run.x = role === 'host' ? -2 : 2;
-    view.setPod(selected);
+    run.x = lane(self.seat);
+    view.setPod(self.loadout.pod);
     countdown(3, 'Friend race · Get ready!');
-    sendPose();
+    until = at;
   },
-  pose(next) {
-    remote = next;
+  pose(id, pose) {
+    const player = match?.remote.get(id);
+    if (!player || player.done) return;
+    player.target = { ...pose, d: Math.min(RACE, pose.d) };
     dirty = true;
-    if (mode === 'result' && friendRole) showFriendResult();
+  },
+  finish(id, ms) {
+    const player = match?.remote.get(id);
+    if (!player) return;
+    player.done = true;
+    player.dnf = ms === null;
+    if (!player.dnf) player.target = { ...player.target, d: RACE, speed: 0, boost: false };
+    dirty = true;
+  },
+  results(finishes) {
+    if (!match) return;
+    match.order = finishOrder(match.grid, finishes);
+    if (mode === 'result') showFriendResult();
+    else result();
+  },
+  rematch() {
+    clearMatch();
+    friendPanel();
   },
   lost() {
-    friendRole = '';
-    remote = remoteDraw = null;
-    run = makeRace(false);
+    clearMatch();
     if (mode !== 'error') friendPanel();
   },
 });
 
-function sendPose() {
-  friend.send(run, selected, buddyKind(kind));
-}
-
 function exitFriend() {
   friend.leave();
-  friendRole = '';
-  remote = remoteDraw = null;
-  run = makeRace(learning);
+  clearMatch();
   intro();
 }
 
 $('friends').onclick = friendPanel;
-$('host').onclick = () => friend.host(false);
-$('wifi').onclick = () => friend.host(true);
-$('ready').onclick = () => friend.ready();
+$('host').onclick = () => friend.host();
+$('wifi').onclick = () => friend.hostWifi();
+$('wifi-join').onclick = () => friend.guestWifi();
+$('wifi-add').onclick = () => friend.add();
+$('ready').onclick = () => friend.ready({ pod: selected, kind: buddyKind(kind) });
+$('race-start').onclick = () => friend.start();
 $('friend-back').onclick = exitFriend;
 $('copy').onclick = async () => {
   try {
@@ -216,7 +260,7 @@ $('copy').onclick = async () => {
 addEventListener('pagehide', () => friend.leave());
 
 function pause() {
-  if (mode === 'race' && friendRole) menu('friend-pause', 'Race options', 'Your pod keeps moving while this menu is open.', 'Back to race');
+  if (mode === 'race' && match) menu('friend-pause', 'Race options', 'Your pod keeps moving while this menu is open.', 'Back to race');
   else if (mode === 'friend-pause') {
     setMode('race');
     $('world').focus({ preventScroll: true });
@@ -237,23 +281,36 @@ async function question() {
   countdown(2, answered && !quiz.cleared ? 'Boost and shield ready!' : 'Back to the race');
 }
 
-const rank = () => ['','1st','2nd','3rd','4th'][position(run, remote, friendRole)];
+const rank = place => ['', '1st', '2nd', '3rd', '4th'][place];
 function showFriendResult() {
-  $('description').textContent = remote?.won ? `${rank()} place · ${run.time.toFixed(1)} seconds · Friend: ${remote.time.toFixed(1)} seconds`
-    : `${run.time.toFixed(1)} seconds · Your friend is still racing…`;
-  $('start').disabled = !remote?.won;
-  if (!remote?.won && document.activeElement === $('start')) $('leave').focus({ preventScroll: true });
+  const order = match.order;
+  if (!order) {
+    $('description').textContent = 'Waiting for the other racers to finish…';
+    $('start').disabled = true;
+    $('leave').focus({ preventScroll: true });
+    return;
+  }
+  const mine = order.find(entry => entry.id === match.self.id);
+  $('heading').textContent = mine.ms === null ? 'Race ended' : 'You finished!';
+  $('description').textContent = mine.ms === null ? 'Did not finish this race.'
+    : `${rank(order.indexOf(mine) + 1)} place · ${shortTime(mine.ms)} seconds`;
+  $('results').hidden = false;
+  $('results').replaceChildren(...order.map(entry => {
+    const row = document.createElement('li');
+    row.textContent = `${entry.id ? `Racer ${entry.seat + 1}` : 'Computer racer'}${entry === mine ? ' (you)' : ''} · ${entry.ms === null ? 'DNF' : `${shortTime(entry.ms)} s`}`;
+    return row;
+  }));
+  $('start').disabled = false;
 }
 function result() {
-  if (friendRole) {
-    sendPose();
+  if (match) {
+    if (!match.order) friend.finish(Math.round(elapsed()));
     menu('result', 'You finished!', '', 'Race again');
     showFriendResult();
-  } else menu('result', 'You finished!', `${rank()} place · ${run.time.toFixed(1)} seconds`, learning ? '' : 'Race again');
+  } else menu('result', 'You finished!', `${rank(position(run))} place · ${run.time.toFixed(1)} seconds`, learning ? '' : 'Race again');
 }
-
 $('leave').onclick = () => {
-  if (mode === 'friend-pause' || (mode === 'result' && friendRole)) { exitFriend(); return; }
+  if (mode === 'friend-pause' || (mode === 'result' && match)) { exitFriend(); return; }
   friend.leave();
   if (mode === 'result' && learning) quiz.finish(`2 laps · ${run.time.toFixed(1)} seconds`);
   else quiz.quit();
@@ -262,7 +319,7 @@ $('pause').onclick = pause;
 $('start').onclick = () => {
   if (mode === 'pause' || mode === 'friend-pause') { pause(); return; }
   if (mode !== 'intro' && mode !== 'result') return;
-  if (mode === 'result' && friendRole) { friendPanel(); return; }
+  if (mode === 'result' && match) { friend.rematch(); return; }
   run = makeRace(learning);
   view.setPod(selected);
   countdown(3, 'Get ready!');
@@ -287,8 +344,8 @@ document.addEventListener('keydown', e => {
 document.addEventListener('keyup', e => held.delete(e.code));
 addEventListener('blur', event => { if (event.target === window) clearInput(); });
 document.addEventListener('visibilitychange', () => {
-  if (!friendRole && document.hidden && mode === 'race') pause();
-  if (!friendRole && !document.hidden && mode === 'countdown') until = performance.now() + 2000;
+  if (!match && document.hidden && mode === 'race') pause();
+  if (!match && !document.hidden && mode === 'countdown') until = performance.now() + 2000;
 });
 
 try {
@@ -310,13 +367,15 @@ try {
     intro();
     if (!learning && invited) {
       friendPanel();
-      friend.join(invited);
+      if (params.get('v') === 'group1') friend.join(invited);
+      else $('friend-status').textContent = 'This invite is from an older version. Ask your friend for a new link.';
     }
   });
   const isDown = name => [...held].some(key => movement[key] === name);
   function frame(now) {
     requestAnimationFrame(frame);
-    const dt = Math.min(.05, (now - (previous || now)) / 1000);
+    const since = previous || now;
+    const dt = Math.min(.05, (now - since) / 1000);
     previous = now;
     touch.update();
     if (mode === 'race' || mode === 'friend-pause') {
@@ -324,20 +383,29 @@ try {
       if (racing && touch.tapped('boost')) fireBoost();
       const keys = Number(isDown('right')) - Number(isDown('left'));
       const direction = racing ? (touch.move.active ? touch.move.x : keys) : 0;
-      const event = step(run, dt, direction, racing && (isDown('brake') || touch.down('brake')));
+      const braking = racing && (isDown('brake') || touch.down('brake'));
+      // Match time is wall-clock time. Catch up after a slow render without letting
+      // any physics step exceed its safe range or replaying a held input for seconds.
+      const frameTime = match ? Math.min(.25, elapsed(now) / 1000 - run.time) : dt;
+      let event = '';
+      for (let left = frameTime; left > .00001; left -= .05) {
+        const next = step(run, Math.min(.05, left), direction, braking);
+        if (next) event = next;
+        if (next === 'finish' || next === 'question') break;
+      }
       if (event === 'question') void question();
       else if (event === 'finish') result();
       else if (racing && event === 'charge') flash('Boost charged!');
       else if (racing && event === 'shield') flash('Shield blocked the bump!');
       else if (racing && event === 'bump') flash('Rock bump! Keep racing.');
-      if (friendRole && now - sentAt >= 80 && !run.won) {
-        sendPose();
+      if (match && now - sentAt >= 80 && !run.won) {
+        friend.send(run);
         sentAt = now;
       }
       if (now > noticeUntil) $('toast').hidden = true;
       paintHud();
       dirty = true;
-    } else if (mode === 'countdown' && (!document.hidden || friendRole)) {
+    } else if (mode === 'countdown' && (!document.hidden || match)) {
       const n = Math.ceil((until - now) / 1000);
       if (n <= 0) {
         setMode('race');
@@ -345,14 +413,7 @@ try {
       } else $('digit').textContent = n;
     }
     if (dirty && mode !== 'error') {
-      if (remote) {
-        const factor = Math.min(1, dt * 18);
-        remoteDraw = remoteDraw ? { ...remote, d: remoteDraw.d + (remote.d - remoteDraw.d) * factor,
-          x: remoteDraw.x + (remote.x - remoteDraw.x) * factor } : remote;
-      }
-      view.draw(run, reduced, friendRole
-        ? remoteDraw || { d: 0, x: friendRole === 'host' ? 2 : -2, speed: 0, pod: 1, kind: 'bear' }
-        : null);
+      view.draw(run, reduced, match ? racers(elapsed(now) / 1000, dt) : null);
       dirty = false;
     }
   }

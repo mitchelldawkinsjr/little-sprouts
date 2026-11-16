@@ -554,6 +554,12 @@ export function registerMounts(rt) {
         else rt.question();
         return;
       }
+      // Ink Trail runs a final stretch after its last checkpoint and owns the finish screen.
+      if (g.mode === 'ink-trail') {
+        if (g.index >= rounds) postSidecar({ type: 'clear' });
+        else rt.question();
+        return;
+      }
       // Garden gulp keeps asking for the whole timed round; the game ends it.
       if (g.mode === 'gulp') rt.question();
       else if (g.index >= rounds) rt.finish();
@@ -1539,6 +1545,10 @@ export function registerMounts(rt) {
               if (rt.game !== round || round.finished) return;
               rt.finish(detail || 'round');
             }, 4500);
+            return;
+          }
+          if (round.mode === 'ink-trail') {
+            if (!round.freePlay && detail === 'escape') rt.finish(detail);
             return;
           }
           if (round.mode === 'boss') {

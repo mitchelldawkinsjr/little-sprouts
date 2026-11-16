@@ -1,9 +1,10 @@
 FROM node:24-alpine AS link
 WORKDIR /app
-COPY server/paint-link.mjs /app/paint-link.mjs
+COPY server/paint-link.mjs /app/server/paint-link.mjs
+COPY lib/group-room.mjs /app/lib/group-room.mjs
 ENV PORT=5180
 EXPOSE 5180
-CMD ["node", "paint-link.mjs"]
+CMD ["node", "server/paint-link.mjs"]
 
 FROM node:24-bookworm AS sidecars
 RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates && rm -rf /var/lib/apt/lists/*
@@ -31,6 +32,7 @@ COPY sidecars/dash /usr/share/nginx/html/sidecars/dash
 COPY sidecars/pinecone-trail /usr/share/nginx/html/sidecars/pinecone-trail
 COPY sidecars/pebble /usr/share/nginx/html/sidecars/pebble
 COPY sidecars/boss /usr/share/nginx/html/sidecars/boss
+COPY sidecars/ink-trail /usr/share/nginx/html/sidecars/ink-trail
 COPY sidecars/cabin /usr/share/nginx/html/sidecars/cabin
 COPY sidecars/paint-the-plan /usr/share/nginx/html/sidecars/paint-the-plan
 COPY sidecars/station-scout /usr/share/nginx/html/sidecars/station-scout

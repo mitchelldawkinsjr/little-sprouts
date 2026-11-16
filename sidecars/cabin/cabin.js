@@ -3874,10 +3874,11 @@ function setBusy(on) {
 function raccoonTarget(z) {
   if (!friendHere() || isGuest() || !friend.aim) return nap.t > 0 ? null : 'me';
   return pickTarget(z.position, { x: player.position.x, z: player.position.z, nap: nap.t > 0 },
-    { x: friendBody.position.x, z: friendBody.position.z, nap: friend.nap });
+    { x: friendBody.position.x, z: friendBody.position.z, nap: friend.nap || friend.busy });
 }
 function hurtFriend() {
-  if (friendHurtCd > 0 || friend.nap) return false;
+  // a friend on a question card or picking a prize stands still, so the raccoons leave them be
+  if (friendHurtCd > 0 || friend.nap || friend.busy) return false;
   friendHurtCd = HURT_IFRAMES;
   link.send({ t: 'ouch' });
   audio.bump();
@@ -4078,6 +4079,9 @@ function fromFriend(msg) {
       const healed = state.hp < state.maxHp && nap.t <= 0;
       if (nap.t <= 0) state.hp = Math.min(state.maxHp, state.hp + 1);
       audio.waveClear();
+      // Still on the last round's question or prize: no new card on top. The host only waits so
+      // long (BUSY_MAX), so a slow reader would otherwise get a card every round and never play.
+      if (sidecar.ask || sidecar.waiting || state.choosing) return;
       askBetweenRounds(healed);
     } else if (msg.t === 'over') die();
   }

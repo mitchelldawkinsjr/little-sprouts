@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Canyon Pods · Little Sprouts</title>
-  <link rel="stylesheet" href="./pods.css?v=3">
+  <link rel="stylesheet" href="./pods.css?v=4">
 </head>
 <body>
   <main id="world" tabindex="-1" aria-label="Canyon race"></main>
@@ -24,6 +24,7 @@
       <div class="eyebrow"><span>🏁</span> LITTLE SPROUTS RACING</div>
       <h1 id="heading">Canyon Pods</h1>
       <p id="description">Getting the race ready…</p>
+      <ol id="results" hidden></ol>
       <div id="pods" aria-label="Pick your pod" hidden></div>
       <div class="menu-actions">
         <button id="start" type="button" hidden>Race!</button>
@@ -36,22 +37,26 @@
   <section id="friend-panel" role="dialog" aria-label="Play with a friend" data-pad-menu data-touch-ignore hidden>
     <div class="card">
       <div class="eyebrow">🏁 LITTLE SPROUTS RACING</div>
-      <h1>Race a friend</h1>
-      <p>Two laps, two buddies, and two computer racers. Friend races skip questions and stars.</p>
+      <h1>Race with friends</h1>
+      <p>Race two laps with up to three friends. Computers fill the empty spots. No questions or stars.</p>
       <p id="friend-status" role="status">Start a room and send the link to your friend.</p>
       <p id="invite-row" hidden>
         <a id="invite">Open invite link</a>
         <button id="copy" type="button">Copy invite</button>
       </p>
+      <ul id="roster" aria-label="Racers" hidden></ul>
       <div id="friend-pods" aria-label="Pick your pod" hidden></div>
       <div class="menu-actions">
         <button id="host" type="button">Start a room</button>
-        <button id="wifi" type="button">Same Wi-Fi</button>
+        <button id="wifi" type="button">Host on same Wi-Fi</button>
+        <button id="wifi-join" type="button">Join on same Wi-Fi</button>
+        <button id="wifi-add" type="button" hidden>Add another friend</button>
+        <button id="race-start" type="button" hidden>Start race</button>
         <button id="ready" type="button" hidden>Ready to race</button>
         <button id="friend-back" type="button" data-pad-back>Back to solo</button>
       </div>
     </div>
   </section>
-  <script type="module" src="./game.mjs?v=3"></script>
+  <script type="module" src="./game.mjs?v=4"></script>
 </body>
 </html>

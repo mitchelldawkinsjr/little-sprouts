@@ -59,21 +59,15 @@ export function clearGate(run, rewarded = true) {
 }
 
 // Rivals and timing use simulated race time, which freezes with the player's pod.
+const SPEEDS = [35, 38, 41];
+export const rivalFinish = i => (RACE - (i + 1) * 4) / SPEEDS[i];
 export function rivalAt(i, time) {
-  return { d: Math.min(RACE, (i + 1) * 4 + time * [35, 38, 41][i]),
+  return { d: Math.min(RACE, (i + 1) * 4 + time * SPEEDS[i]),
     x: [-4.5, 0.7, 4.5][i] + 1.35 * Math.sin(time * (0.81 + i * 0.07) + i) };
 }
-export function position(run, friend = null, role = '') {
-  const rivals = role ? [0, 1] : [0, 1, 2];
-  const ahead = rivals.filter(i => rivalAt(i, run.time).d > run.d ||
-    (run.won && (RACE - (i + 1) * 4) / [35, 38, 41][i] < run.time)).length;
-  if (!friend) return 1 + ahead;
-  const ours = Math.round(run.time * 1000);
-  const theirs = Math.round(friend.time * 1000);
-  const friendAhead = run.won && friend.won
-    ? theirs < ours || (theirs === ours && role === 'guest')
-    : friend.d > run.d;
-  return 1 + ahead + Number(friendAhead);
+export function position(run) {
+  return 1 + [0, 1, 2].filter(i => rivalAt(i, run.time).d > run.d ||
+    (run.won && rivalFinish(i) < run.time)).length;
 }
 
 export function step(run, delta, steering = 0, braking = false) {
