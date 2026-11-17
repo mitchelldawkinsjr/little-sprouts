@@ -895,6 +895,7 @@ function placeKit(id, ndc) {
     else if (voxels.VoxelTypeAt(...pos)) voxels.DigVoxel(pos);
   }
   ui.UseKit();
+  window.SproutsSidecar?.sound?.('player.collect');
   blip(520, 0.07);
   setTimeout(() => blip(700, 0.1, 'sine', 0.1), 90);
   burst(new THREE.Vector3(...target.side).add(new THREE.Vector3(0, 1, 0)));
@@ -904,6 +905,7 @@ function placeKit(id, ndc) {
 // Seconds left on super jump and super speed. The lantern is held until night, then lit all night.
 const powers = { jump: 0, speed: 0, lantern: 'off' };   // lantern: 'off' | 'held' | 'lit'
 function powerUp(id) {
+  window.SproutsSidecar?.sound?.('player.power-up');
   if (id === 'lantern') powers.lantern = night.sky?.phase === 'night' ? 'lit' : 'held';
   else powers[id] = POWERS[id].seconds;
 }
