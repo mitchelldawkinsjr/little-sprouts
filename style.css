@@ -896,6 +896,11 @@ footer .credit-link{color:var(--g-primary)}
 /* game cards */
 .shelf2{display:flex;flex-direction:column;gap:20px}
 .gcards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px}
+.discovery-cards{grid-template-columns:repeat(3,minmax(0,1fr))}
+.shelf-sort{display:flex;align-items:center;gap:8px;font-weight:700;color:var(--g-muted)}
+.shelf-sort select{width:auto;min-height:44px;border-radius:16px}
+.gameplay-img{display:block;width:100%;height:100%;object-fit:cover}
+.gcard-pic:has(.gameplay-img),.hero2-pic:has(.gameplay-img){padding:0;overflow:hidden}
 .gcard{display:flex;flex-direction:column;padding:20px;border-radius:32px;background:#fff;box-shadow:var(--g-shadow);transition:box-shadow .2s,transform .2s}
 .gcard:hover{box-shadow:var(--g-shadow-up);transform:translateY(-2px)}
 .gcard.is-next{outline:3px solid var(--g-leaf);outline-offset:-3px}
@@ -931,6 +936,7 @@ footer .credit-link{color:var(--g-primary)}
 @media(max-width:900px){.hero2{grid-template-columns:1fr;gap:20px;padding:24px}.hero2-title{font-size:40px}.gcards{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:700px){.home2{gap:28px}header{padding:10px 16px}.brand-note{display:none}.greet h1{font-size:28px;line-height:36px}.greet-avatar{width:60px;height:60px;font-size:30px}.greet-tools{width:100%}.hero2-title{font-size:34px;line-height:40px}.hero2-art{width:168px;height:168px}.hero2-pic{font-size:76px;border-radius:40px}.btn-go{min-height:56px;padding:0 28px}.subjects{grid-template-columns:repeat(2,minmax(0,1fr))}.sectionhint{display:none}.switcher-menu{left:0;right:auto}footer{padding:16px}}
 @media(max-width:560px){.gcards{grid-template-columns:1fr}.gcard-art{height:140px}}
+@media(max-width:700px){.discovery-cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.discovery .gcard{padding:12px;border-radius:24px}.discovery .gcard-art{height:112px}.discovery .gcard-title{font-size:20px;line-height:24px}.discovery .gcard-blurb{font-size:13px;line-height:19px}.discovery .gcard-meta{flex-wrap:wrap}.discovery .gcard-hear{width:36px;height:36px}.discovery .gcard-chip{font-size:11px;padding:2px 6px}}
 @media(prefers-reduced-motion:reduce){.gcard,.gcard-icon,.hero2-pic,.subject,.btn-go,.btn-soft,.btn-sun,.gcard-play{transition:none}.gcard:hover,.gcard:hover .gcard-icon,.hero2-pic:hover,.btn-go:hover{transform:none}}
 
 /* ===== Redesign part 2: art, header tools, subnav, read strip, body play, helper bars, footer ===== */

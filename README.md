@@ -48,7 +48,9 @@ Joining by sound needs the microphone once, and it works best with the computers
 
 ## How a round works
 
-Home shows **Up next**, then **What shall we play?** with shelves for shapes and colors, words, numbers, and adventures. **How we play** opens Tap, Move, Hunt, or Reach:
+Home starts with **Featured Games**: Block meadow, Sketchbook Mega Ramp, Cabin camp, Boss chase, Skybound climb, and Garden gulp, in that order. Each card shows a picture from the game. **Keep Playing** remembers up to six games for each learner on this browser. **New Games** shows recent additions; **Browse All Games** keeps every available game within reach through the existing categories. All Games and each category offer **Featured first** and **Newest first**. A grown-up's **Up next** pin still appears above the featured games.
+
+**How we play** opens Tap, Move, Hunt, or Reach:
 
 - **Tap** — the child answers on the screen.
 - **Move** — the game calls out a movement, and a grown-up taps when the child lands on the right floor card. Floor cards can be printed from Parent corner.
