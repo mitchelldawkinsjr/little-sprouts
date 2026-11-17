@@ -47,7 +47,7 @@ class FriendMediaPermissionsTests(unittest.TestCase):
             self.assertIn("android.permission.INTERNET", permissions)
 
             features = document.findall("uses-feature")
-            for name in ("android.hardware.camera.any", "android.hardware.microphone"):
+            for name in ("android.hardware.camera", "android.hardware.camera.autofocus", "android.hardware.camera.any", "android.hardware.microphone"):
                 found = [node for node in features if node.get(ANDROID + "name") == name]
                 self.assertEqual(len(found), 1)
                 self.assertEqual(found[0].get(ANDROID + "required"), "false")
