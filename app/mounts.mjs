@@ -500,8 +500,8 @@ export function registerMounts(rt) {
       const audioButton = $('#playAudio');
       audioButton.textContent = rt.data.audio?.muted ? '🔇' : '🎵';
       audioButton.setAttribute('aria-pressed', String(!rt.data.audio?.muted));
-      audioButton.setAttribute('aria-label', rt.data.audio?.muted ? 'Turn game audio on' : 'Mute game audio');
-      audioButton.title = audioButton.getAttribute('aria-label');
+      audioButton.setAttribute('aria-label', 'Game audio');
+      audioButton.title = rt.data.audio?.muted ? 'Turn game audio on' : 'Mute game audio';
       audioButton.onclick = () => {
         rt.updateAudio?.({ muted: !rt.data.audio.muted });
         if (!rt.data.audio.muted) void rt.audio?.unlock();
@@ -525,7 +525,7 @@ export function registerMounts(rt) {
     syncPlayViewButtons();
   }
   function playTopControls(alone = '') {
-    return `<div class="play-actions">${alone}<button type="button" class="quiet icon-btn" id="playListen" aria-label="Hear it again" title="Hear it again">🔈</button><button type="button" class="quiet icon-btn" id="playAudio" aria-label="Mute game audio" title="Mute game audio" aria-pressed="true">🎵</button><button type="button" class="quiet icon-btn" id="playFocus" aria-label="Focus view" title="Focus view" aria-pressed="false">⤡</button><button type="button" class="quiet icon-btn" id="playFull" aria-label="Full screen" title="Full screen" aria-pressed="false">⛶</button></div>`;
+    return `<div class="play-actions">${alone}<button type="button" class="quiet icon-btn" id="playListen" aria-label="Hear it again" title="Hear it again">🔈</button><button type="button" class="quiet icon-btn" id="playAudio" aria-label="Game audio" title="Mute game audio" aria-pressed="true">🎵</button><button type="button" class="quiet icon-btn" id="playFocus" aria-label="Focus view" title="Focus view" aria-pressed="false">⤡</button><button type="button" class="quiet icon-btn" id="playFull" aria-label="Full screen" title="Full screen" aria-pressed="false">⛶</button></div>`;
   }
 
   function showCompletedVerse(g) {
