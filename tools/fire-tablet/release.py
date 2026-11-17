@@ -57,8 +57,19 @@ if previous:
                 raise SystemExit("Signing key changed: refuse to publish an incompatible update")
 
 if sys.argv[2] == "publish":
+    target = os.environ.get("RELEASE_TARGET_SHA", os.environ["GITHUB_SHA"])
+    if os.environ.get("RELEASE_REQUIRE_MAIN_SHA") == "true":
+        if len(target) != 40 or any(char not in "0123456789abcdef" for char in target):
+            raise SystemExit("Invalid automatic APK release commit")
+        headers = {"Accept": "application/vnd.github+json", "User-Agent": "LittleSprouts-release"}
+        if os.environ.get("GH_TOKEN"):
+            headers["Authorization"] = "Bearer " + os.environ["GH_TOKEN"]
+        with urlopen(Request(f"https://api.github.com/repos/{REPO}/git/ref/heads/main", headers=headers), timeout=30) as response:
+            current_main = json.load(response)["object"]["sha"]
+        if target != current_main:
+            raise SystemExit("New commits reached main during signing; refuse to release an out-of-date APK")
     subprocess.run(["gh", "release", "create", version, ASSET, "fire-apk-verification.json", "--repo", REPO,
-                    "--target", os.environ["GITHUB_SHA"], "--latest", "--title", f"Little Sprouts Fire {version}",
+                    "--target", target, "--latest", "--title", f"Little Sprouts Fire {version}",
                     "--notes", "Signed Fire tablet update. Android installation approval is required. See fire-apk-verification.json for version, checksum, and signing certificate."], check=True)
     release = latest()
     if not release or release["tag_name"] != version or release["draft"] or release["prerelease"]:

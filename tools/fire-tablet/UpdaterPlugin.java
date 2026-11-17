@@ -52,7 +52,16 @@ public class UpdaterPlugin extends Plugin {
         conn.setRequestProperty("Accept", "application/vnd.github+json");
         conn.setRequestProperty("User-Agent", "LittleSprouts-FireTablet");
         try {
-          if (conn.getResponseCode() != 200) throw new Exception("Release check HTTP " + conn.getResponseCode());
+          int status = conn.getResponseCode();
+          if (status == 404) {
+            JSObject out = new JSObject();
+            out.put("wifi", true);
+            out.put("available", false);
+            out.put("noRelease", true);
+            call.resolve(out);
+            return;
+          }
+          if (status != 200) throw new Exception("Release check HTTP " + status);
           java.io.ByteArrayOutputStream data = new java.io.ByteArrayOutputStream();
           try (InputStream input = conn.getInputStream()) {
             byte[] buffer = new byte[8192]; int count;
