@@ -140,7 +140,7 @@ const sources = [];
 const synth = {
   spoken: [],
   cancel() {},
-  speak(utterance) { this.spoken.push(utterance); queueMicrotask(() => utterance.onstart?.()); }
+  speak(utterance) { this.spoken.push(utterance); utterance.onstart?.(); }
 };
 class FakeWorker {
   constructor() {
