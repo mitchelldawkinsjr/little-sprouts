@@ -589,11 +589,10 @@ export function registerMounts(rt) {
     }, wait ?? (rt.data.sound ? soundMs : quietMs));
   }
   function endTimed(mode, stopFn) {
-    rt.audio?.play('reward.win');
-    rt.audio?.stop();
     rt.releaseListen();
     const g = rt.game;
     if (!g || g.finished || g.mode !== mode) return;
+    rt.audio?.finish('reward.win');
     leavePlayFullscreen();
     g.finished = true;
     clearTimers(mode);
