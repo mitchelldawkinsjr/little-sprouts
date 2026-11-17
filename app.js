@@ -5,6 +5,7 @@ import { knownVoice } from './lib/speech.js?v=offline4';
 import { findBuiltSidecars } from './lib/sidecar.js?v=offline4';
 import { rt } from './app/runtime.mjs?v=lean-r2';
 import { registerHelpers } from './app/helpers.mjs?v=offline4';
+import { registerGameAudio } from './app/game-audio.mjs?v=1';
 import { registerRound } from './app/round.mjs?v=tablet1';
 import { registerMounts } from './app/mounts.mjs?v=tablet1';
 import { registerParent } from './app/parent.mjs?v=offline4';
@@ -73,6 +74,7 @@ rt.data.characterVoices = !!rt.data.characterVoices;
 if (rt.data.sheet && !Array.isArray(rt.data.sheet.rows)) delete rt.data.sheet;
 
 registerHelpers(rt);
+registerGameAudio(rt);
 registerRound(rt);
 registerMounts(rt);
 registerParent(rt);
