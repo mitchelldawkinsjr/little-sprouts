@@ -36,7 +36,7 @@ jobs:
           fi
           missing=0
           for name in KEYSTORE PASSWORD ALIAS KEY_PASSWORD; do
-            if [[ -z "${!name}" ]]; then echo "Missing signing configuration: $name"; missing=1; fi
+            if [[ -z "${!name}" ]]; then echo "::error title=Missing signing credential::$name is not configured; see tools/fire-tablet/README.md"; missing=1; fi
           done
           if [[ "$missing" == 1 ]]; then
             echo 'Configure the four FIRE_APK_* repository secrets described in tools/fire-tablet/README.md'; exit 1
