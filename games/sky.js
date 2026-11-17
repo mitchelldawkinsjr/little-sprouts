@@ -3,6 +3,7 @@
  * enemy ships that fire back. The dark sky, distant star, and ring are drawn
  * here. No outside game code.
  */
+import { sfx } from '../lib/game-sound.mjs?v=audio2';
 import { gamePaused } from '../lib/hold.js?v=hold2';
 import { clamp, esc } from '../logic.mjs?v=structure3';
 
@@ -266,6 +267,7 @@ export function mountSky(root, { prompt, choices, target, wave, reduced, onDone,
   const hurt = () => {
     if (invuln > 0 || phase !== 'play') return;
     hull -= 1;
+    sfx('boom');
     missed = true;
     bolts.length = 0;
     shots.length = 0;
@@ -375,6 +377,7 @@ export function mountSky(root, { prompt, choices, target, wave, reduced, onDone,
   const fire = () => {
     if (phase !== 'play' || releaseNeeded || cool > 0 || shots.length >= 5) return;
     cool = 0.32;
+    sfx('shoot');
     const speed = Math.max(280, Math.min(width, height) * 0.95);
     shots.push({
       x: ship.x + Math.cos(ship.a) * 20,
@@ -453,11 +456,13 @@ export function mountSky(root, { prompt, choices, target, wave, reduced, onDone,
         phase = 'pop';
         popLeft = 0.32;
         rock.pop = 1;
+        sfx('boom');
         return;
       }
       if (rock.guard > 0) continue;
       rock.guard = 0.8;
       rock.flash = 0.35;
+      sfx('bump');
       missed = true;
       shake();
       call(onMiss, 'rock');

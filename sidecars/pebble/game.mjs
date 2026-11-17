@@ -1,3 +1,4 @@
+import { sfx } from '../../lib/game-sound.mjs?v=audio2';
 import { buddyKind } from '../../lib/buddy3d.mjs';
 import { makeQuiz } from '../../lib/sidecar-quiz.mjs';
 import { checkpointSeconds, hop, makeRun, score, startCheckpointCountdown, steer, step } from './logic.mjs';
@@ -119,7 +120,7 @@ if (view) {
   play.onclick = start;
   $('left').onclick = () => steer(run, -1);
   $('right').onclick = () => steer(run, 1);
-  $('jump').onclick = () => hop(run);
+  $('jump').onclick = () => jump();
   document.addEventListener('keydown', e => {
     // The host's held stick and D-pad arrive as repeated directional keys.
     const lateral = ['ArrowLeft', 'ArrowRight', 'KeyA', 'KeyD'].includes(e.code);
@@ -132,7 +133,7 @@ if (view) {
     if (mode !== modes.play) return;
     if (e.code === 'ArrowLeft' || e.code === 'KeyA') steer(run, -1);
     else if (e.code === 'ArrowRight' || e.code === 'KeyD') steer(run, 1);
-    else if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') hop(run);
+    else if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') jump();
     else return;
     e.preventDefault();
   });
@@ -154,6 +155,11 @@ if (view) {
       : 'Dodge the trees. How high can you score?', 'Roll!');
   });
   let previous = 0;
+  function jump() {
+    const before = run.vy;
+    hop(run);
+    if (run.vy !== before) sfx('jump');
+  }
   function frame(now) {
     requestAnimationFrame(frame);
     const dt = Math.min(.05, (now - (previous || now)) / 1000);
@@ -162,6 +168,7 @@ if (view) {
     if (mode === modes.play) {
       const result = step(run, dt);
       if (result === 'bump' || result === 'shield' || result === 'end') view.hit();
+      if (result) sfx({ bump: 'bump', shield: 'zap', end: 'boom', gate: 'sparkle' }[result]);
       if (result === 'gate') void checkpoint();
       if (result === 'bump') flash('Tree bump! Keep rolling.');
       if (result === 'shield') flash('Your shield blocked that bump!');

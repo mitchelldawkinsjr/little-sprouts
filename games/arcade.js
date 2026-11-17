@@ -1,3 +1,4 @@
+import { sfx } from '../lib/game-sound.mjs?v=audio2';
 import { gamePaused } from '../lib/hold.js?v=hold2';
 import { clamp, esc, rocketZone } from '../logic.mjs?v=structure3';
 import { spriteHtml } from '../lib/home-ui.mjs?v=gear2';
@@ -214,6 +215,7 @@ export function mountCatch(root, { prompt, choices, target, speed, buddy, reduce
     if (session.dead || holdUntil) return;
     missed = true;
     holdUntil = 1;
+    sfx('bump');
     item?.el.classList.add('wrong');
     field.classList.add('shake');
     clearTimeout(waveTimer);
@@ -222,6 +224,7 @@ export function mountCatch(root, { prompt, choices, target, speed, buddy, reduce
   };
   const win = (item) => {
     if (session.dead || holdUntil) return;
+    sfx('pop');
     item.el.classList.add('caught');
     const clean = !missed;
     session.destroy();
@@ -359,6 +362,7 @@ function mountBodyLanes(session, root, { prompt, lanes, correct, watchBody, onDo
     if (session.dead || holdUntil) return;
     missed = true;
     holdUntil = 1;
+    sfx('bump');
     paint(laneNow);
     stage.classList.add('shake');
     clearTimeout(waveTimer);
@@ -372,6 +376,7 @@ function mountBodyLanes(session, root, { prompt, lanes, correct, watchBody, onDo
   };
   const win = () => {
     if (session.dead || holdUntil) return;
+    sfx('pop');
     cols[correct]?.classList.add('caught');
     session.destroy();
     onDone?.(!missed);
@@ -678,6 +683,7 @@ export function mountRocket(root, { altitude = 0.32, seconds = 18, reduced, onEm
     vy = 0;
     fuel = 0;
     sky.classList.add('crashed');
+    sfx('boom');
     shake();
     paint();
     report();
@@ -689,6 +695,7 @@ export function mountRocket(root, { altitude = 0.32, seconds = 18, reduced, onEm
     axis = 0;
     dragging = false;
     steer.hidden = true;
+    sfx(landed ? 'land' : 'fall');
     try { onFlyDone?.({ landed }); } catch { /* the round still ends */ }
   };
   const beginFly = () => {
@@ -716,6 +723,7 @@ export function mountRocket(root, { altitude = 0.32, seconds = 18, reduced, onEm
     });
     paint();
     report();
+    sfx('rise');
     try { onSpace?.(); } catch { /* steering still starts */ }
   };
   session.rocket = {
@@ -732,6 +740,7 @@ export function mountRocket(root, { altitude = 0.32, seconds = 18, reduced, onEm
       live = false;
       fuel = 1;
       impulse(lift);
+      sfx('whoosh');
       paint();
       return true;
     },
@@ -1249,6 +1258,7 @@ export function mountRace(root, { seconds = 18, gateSeconds = 11, reduced, nextG
       if (gate && position >= gateZ) {
         if (aimed() === gate.answer) {
           gates += 1;
+          sfx('whoosh');
           rush = Math.min(RACE_RUSH_MAX, rush * RACE_RUSH);
           fuel = 1;
           flash = 'ok';
@@ -1256,6 +1266,7 @@ export function mountRace(root, { seconds = 18, gateSeconds = 11, reduced, nextG
           stage.classList.remove('shake');
         } else {
           flash = 'bad';
+          sfx('bump');
           hold = 0.7;
           stage.classList.add('shake');
         }

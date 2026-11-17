@@ -5,6 +5,7 @@
  * HTML5 canvas drawing app by William Malone. The pictures here are Little
  * Sprouts’ own.
  */
+import { sfx } from '../lib/game-sound.mjs?v=audio2';
 import { crayonCovered, crayonInk, crayonSamples, regionAt } from '../logic.mjs?v=crayon-more';
 
 let active = null;
@@ -271,6 +272,7 @@ export function mountCrayon(root, { picture, legend = [], brush = 8, cover = 0.3
     const region = regions[index];
     if (!region || region.filled) return;
     region.filled = true;
+    sfx('brush');
     redrawPage();
     call(onFill, { number: region.number, name: region.name });
     if (regions.every(item => item.filled)) finish();
@@ -324,6 +326,7 @@ export function mountCrayon(root, { picture, legend = [], brush = 8, cover = 0.3
     if (noted || finished) return;
     noted = true;
     wrong = true;
+    sfx('bump');
     call(onMiss, { number: region.number, name: region.name });
   };
 

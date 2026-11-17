@@ -3,6 +3,7 @@
  * The holes, the short peek, and the empty-hole miss follow the pure CSS mole pen.
  * These moles and the questions are drawn here.
  */
+import { sfx } from '../lib/game-sound.mjs?v=audio2';
 import { questionHolding } from '../lib/hold.js?v=hold2';
 import { moleHoles, molePick, moleSprite, shuffle } from '../logic.mjs?v=structure3';
 
@@ -296,6 +297,7 @@ export function mountMole(root, { board = {}, reduced, nextQuestion, onPrompt, o
     if (!mole || mole.hit || resolving || over || ending) return;
     if (mole.phase === 'duck' || mole.phase === 'bonk') return;
     mole.hit = true;
+    sfx('bop');
     mole.phase = 'bonk';
     mole.age = 0;
     mole.rise = 1;
@@ -323,6 +325,7 @@ export function mountMole(root, { board = {}, reduced, nextQuestion, onPrompt, o
     const live = actors.some(mole => mole && mole.rise >= 0.45 && !mole.hit);
     if (!live) return;
     puffs.push({ x: hole.x, y: hole.y, age: 0 });
+    sfx('tap');
     slipped = true;
     shake();
     call(onMiss, 'dirt');

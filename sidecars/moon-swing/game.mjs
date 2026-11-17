@@ -1,3 +1,4 @@
+import { sfx } from '../../lib/game-sound.mjs?v=audio2';
 import { buddyKind } from '../../lib/buddy3d.mjs?v=gear2';
 import { attachTouchControls, isTouchDevice } from '../../lib/touch-controls.mjs?v=touch3';
 import { localQuestion, normalizeQuestion, LOCAL_ROUND } from '../roll/quiz.mjs?v=roll1';
@@ -282,11 +283,14 @@ function frame(now) {
     accumulator += dt;
     while (phase === 'run' && accumulator >= 1 / 120) {
       // The mouse sets the leash target, as in the pen; keys and sticks slide it.
+      const wasJumping = !!run.p.jump;
       const events = step(run, 1 / 120, { x, z, aim: floorAim, jump: jump || touchJump });
+      if (!wasJumping && run.p.jump) sfx('jump');
       jump = touchJump = false;
       floorAim = null;
       accumulator -= 1 / 120;
       for (const e of events) {
+        sfx({ pickup: 'sparkle', shield: 'zap', hit: 'bump', pick: 'pop', complete: 'swish' }[e.type]);
         if (e.type === 'pickup') {
           view.burst(run);
           if (e.air) notice('Air gem! +2');

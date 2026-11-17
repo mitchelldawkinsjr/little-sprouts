@@ -15,11 +15,10 @@ import { contextFor, onSpeechStatus, prefetchSpeech, retrySpeech, speak, stop, v
 import { postSidecar, sidecarArcadeIds, sidecarRows } from '../lib/sidecar.js?v=offline4';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { speechFailureText } from '../lib/parent-ui.mjs?v=structure2';
-import { createGameSound } from '../lib/game-sound.mjs?v=audio1';
+import { allowGameSounds, gameSound, sfx } from '../lib/game-sound.mjs?v=audio2';
 
 // These games play their own sounds and music, so the host adds none.
 const OWN_AUDIO = new Set(['lunar', 'rally', 'bike', 'paint', 'roll', 'grass', 'dash', 'boss', 'cabin', 'glow', 'range', 'blocks', 'skybound', 'fishing', 'inkwave', 'station', 'deliveries', 'sketchbook']);
-const gameSound = createGameSound();
 
 export function registerHelpers(rt) {
   Object.assign(rt, {
@@ -237,6 +236,8 @@ export function registerHelpers(rt) {
     return Promise.resolve();
   }
   const hostAudio = mode => !!mode && !OWN_AUDIO.has(mode) && rt.data.sound !== false && !hushed();
+  allowGameSounds(() => hostAudio(rt.game?.mode) && !rt.game.finished);
+  window.sproutsSfx = sfx; // framed games play their action sounds through this page
   // A right, wrong or win sound for games without their own.
   function cue(kind) {
     if (hostAudio(rt.game?.mode)) gameSound[kind]();

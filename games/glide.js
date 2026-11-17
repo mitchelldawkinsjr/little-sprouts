@@ -12,6 +12,7 @@
  * fog, and a plane that chases the pointer. The scene is rebuilt here for current Three.js,
  * the learner's garden buddy flies the plane, and the gems and questions are Little Sprouts'.
  */
+import { sfx } from '../lib/game-sound.mjs?v=audio2';
 import { gamePaused } from '../lib/hold.js?v=hold2';
 import { makeBuddy, buddyKind } from '../lib/buddy3d.mjs?v=gear2';
 import {
@@ -596,6 +597,7 @@ function begin(THREE, stage, session, { reduced, onScore, nextQuestion, onPrompt
   const crash = () => {
     if (safe > 0 || mode !== 'fly') return;
     lives -= 1;
+    sfx('bump');
     safe = SAFE_TIME;
     bump = 1;
     if (lives <= 0) { end('crash'); return; }
@@ -949,6 +951,7 @@ function begin(THREE, stage, session, { reduced, onScore, nextQuestion, onPrompt
       tookAsk = true;
       if (gem.ok) {
         score += 1;
+        sfx('sparkle');
         fuel = Math.min(1, fuel + 0.18);
         gems.forEach(other => { if (other.ask) other.gone = true; });
         asking = false;
@@ -957,6 +960,7 @@ function begin(THREE, stage, session, { reduced, onScore, nextQuestion, onPrompt
         call(onClear, !slipped);
       } else {
         gem.gone = true;
+        sfx('bump');
         slipped = true;
         call(onMiss);
       }
@@ -968,6 +972,7 @@ function begin(THREE, stage, session, { reduced, onScore, nextQuestion, onPrompt
       if (gem.ask || gem.gone) return;
       if (!tookAsk && hits(gem)) {
         score += gem.hot || bonus > 0 ? 2 : 1;
+        sfx('sparkle');
         fuel = Math.min(1, fuel + 0.14);
         tell();
         if (gem.hot) { gem.gone = true; return; }

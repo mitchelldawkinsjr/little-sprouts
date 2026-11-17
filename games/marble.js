@@ -4,6 +4,7 @@
  * into the chain; three or more of the same color pop, then the chain rolls
  * closed and can pop again. Clearing the asked color counts.
  */
+import { sfx } from '../lib/game-sound.mjs?v=audio2';
 import { questionHolding } from '../lib/hold.js?v=hold2';
 import { drawBuddy, buddyKind } from '../lib/buddy2d.mjs?v=gear2';
 import { clamp, esc, marbleLevel } from '../logic.mjs?v=structure3';
@@ -283,6 +284,7 @@ export function mountMarble(root, { buddy, palette, track, reduced, onQuestion, 
 
   const scoreHits = hits => {
     if (!hits || over) return;
+    sfx('pop');
     got += hits;
     points += hits;
     playLevel = marbleLevel(points, step);
@@ -397,6 +399,7 @@ export function mountMarble(root, { buddy, palette, track, reduced, onQuestion, 
       vy: Math.sin(aim) * 620,
       life: 1.4
     };
+    sfx('shoot');
     cool = 0.24;
   };
 
@@ -432,6 +435,7 @@ export function mountMarble(root, { buddy, palette, track, reduced, onQuestion, 
       }
       if (hit) {
         insertShot(shot, hit);
+        sfx('click');
         shot = null;
         const hits = popRuns();
         if (!hits) clean = false;

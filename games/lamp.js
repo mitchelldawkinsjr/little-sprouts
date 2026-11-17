@@ -3,6 +3,7 @@
  * the firefly jar on the stump. A wrong bug flutters away. When the round
  * is done, the jar glows. Little Sprouts original garden scene.
  */
+import { sfx } from '../lib/game-sound.mjs?v=audio2';
 import { questionHolding } from '../lib/hold.js?v=hold2';
 import { lampPick, lampSky, lampStones } from '../logic.mjs?v=lamp';
 
@@ -195,6 +196,7 @@ export function mountLamp(root, { board = {}, reduced, freePlay, rounds = 5, nex
     const choice = choices[index];
     if (choice.splash > 0.2) return;
     if (!freePlay && !choice.ok) {
+      sfx('whoosh');
       choice.splash = 1;
       slipped = true;
       shake();
@@ -216,6 +218,7 @@ export function mountLamp(root, { board = {}, reduced, freePlay, rounds = 5, nex
     };
     choices.splice(index, 1);
     phase = 'rise';
+    sfx('rise');
   };
 
   const paintStone = (stone, x, y, r) => {

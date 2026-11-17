@@ -3,6 +3,7 @@
  * The bob, the 15 second clock, the bust, and the colored-ghost score
  * follow the pure CSS ghost game. These ghosts and the questions are drawn here.
  */
+import { sfx } from '../lib/game-sound.mjs?v=audio2';
 import { questionHolding } from '../lib/hold.js?v=hold2';
 import { shuffle } from '../logic.mjs?v=structure3';
 
@@ -268,6 +269,7 @@ export function mountBust(root, { board = {}, reduced, freePlay, nextQuestion, o
     const risen = ghost.hold || riseOf(ghost) > (reduced ? 0.28 : 0.42);
     if (!risen) return;
     ghost.state = 'bust';
+    sfx(ghost.ok ? 'zap' : 'bop');
     ghost.bustAt = performance.now();
     ghost.hold = false;
     if (!ghost.ok) {

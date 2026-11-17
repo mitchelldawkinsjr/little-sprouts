@@ -1,8 +1,15 @@
+import { sfx } from '../../lib/game-sound.mjs?v=audio2';
 import { buddyKind } from '../../lib/buddy3d.mjs?v=gear2';
 import { readPad, moveDirs, actionDown, held, nextIndex } from '../../lib/pad-core.mjs?v=pad-rt';
 import { makeQuiz } from '../../lib/sidecar-quiz.mjs?v=quiz1';
 import { isTouchDevice } from '../../lib/touch-controls.mjs?v=touch1';
-import { makeRun, stepRun, steer, jump, reward, arcadeBest, MAX_HEARTS } from './logic.mjs?v=1';
+import { makeRun, stepRun, steer, jump as jumpRun, reward, arcadeBest, MAX_HEARTS } from './logic.mjs?v=1';
+
+const jump = run => {
+  const before = run.vy;
+  jumpRun(run);
+  if (run.vy !== before) sfx('jump');
+};
 import { makeWorld } from './world.mjs?v=1';
 
 const $ = id => document.getElementById(id);
@@ -133,6 +140,7 @@ async function checkpoint() {
 }
 
 function handle(event) {
+  sfx({ finish: 'swish', question: 'sparkle', shield: 'zap', bump: 'bump', over: 'fall' }[event]);
   if (event === 'finish') { finishLearning(); return; }
   if (event === 'question') { void checkpoint(); return; }
   if (event === 'shield') say('Your shield blocked a bump!');

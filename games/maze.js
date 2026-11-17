@@ -4,6 +4,7 @@
  * A fall or an empty clock waits for the host to add time.
  * The board is drawn here for Little Sprouts.
  */
+import { sfx } from '../lib/game-sound.mjs?v=audio2';
 import { drawBuddyBall, buddyKind } from '../lib/buddy2d.mjs?v=gear2';
 import { questionHolding } from '../lib/hold.js?v=hold2';
 
@@ -303,6 +304,8 @@ export function mountMaze(root, { clock, buddy, reduced, onTick, onFall, onTime,
       ball.vx = (ball.vx + ax * 7.5 * calm * dt) * (1 - Math.min(1, 1.8 * dt));
       ball.vy = (ball.vy + ay * 7.5 * calm * dt) * (1 - Math.min(1, 1.8 * dt));
       const next = blocked(ball.x, ball.y, ball.x + ball.vx * dt, ball.y + ball.vy * dt);
+      // A real knock on a wall clicks; resting against it stays quiet.
+      if ((next.x === ball.x && Math.abs(ball.vx) > 1.2) || (next.y === ball.y && Math.abs(ball.vy) > 1.2)) sfx('click');
       if (next.x === ball.x) ball.vx = 0;
       if (next.y === ball.y) ball.vy = 0;
       spin += ((next.x - ball.x) + (next.y - ball.y)) / 0.28;
@@ -314,12 +317,14 @@ export function mountMaze(root, { clock, buddy, reduced, onTick, onFall, onTime,
         paused = true;
         if (reported !== 'fall') {
           reported = 'fall';
+          sfx('fall');
           call(onFall);
         }
       } else if (cx === cols - 1 && cy === rows - 1 && Math.hypot(ball.x - (cols - 0.5), ball.y - (rows - 0.5)) < 0.34) {
         paused = true;
         if (reported !== 'goal') {
           reported = 'goal';
+          sfx('sparkle');
           call(onGoal);
         }
       }

@@ -2,6 +2,7 @@
  * Garden chase — steer a beetle through hedge paths. Eat only the berries
  * that match. Stay clear of the snails. Little Sprouts original maze and art.
  */
+import { sfx } from '../lib/game-sound.mjs?v=audio2';
 import { questionHolding } from '../lib/hold.js?v=hold2';
 import { drawBuddy, buddyKind } from '../lib/buddy2d.mjs?v=gear2';
 import { esc, shuffle } from '../logic.mjs?v=structure3';
@@ -320,6 +321,7 @@ export function mountChase(root, { buddy, prompt, choices = [], copies = 2, play
     missed = true;
     dying = 1;
     armed = false;
+    sfx('bump');
     shake();
     call(onMiss, 'bug');
   };
@@ -327,6 +329,7 @@ export function mountChase(root, { buddy, prompt, choices = [], copies = 2, play
     const berry = berries.find(item => !item.gone && item.c === c && item.r === r);
     if (!berry || finished) return;
     berry.gone = true;
+    sfx('chomp');
     if (!berry.ok) {
       missed = true;
       berry.flash = 0.35;

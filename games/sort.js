@@ -2,6 +2,7 @@
  * Sort bins — pour the top balls into a matching tube or an empty one.
  * Each ball rolls out of one tube, across the gap, and down into the next.
  */
+import { sfx } from '../lib/game-sound.mjs?v=audio2';
 import { sortPour, sortPourCount, sortSolved, sortTopRun } from '../logic.mjs?v=sort-roll';
 
 let active = null;
@@ -119,6 +120,7 @@ export function mountSort(root, { tubes = [], pieces = [], capacity = 4, reduced
     const tube = state[index];
     if (selected == null) {
       if (!tube?.length) return;
+      sfx('tap');
       selected = index;
       paint();
       return;
@@ -131,6 +133,7 @@ export function mountSort(root, { tubes = [], pieces = [], capacity = 4, reduced
     const next = sortPour(state, selected, index, cap);
     if (!next) {
       missed = true;
+      sfx('bump');
       const button = rack.querySelector(`[data-tube="${index}"]`);
       button?.classList.remove('wrong');
       void button?.offsetWidth;
@@ -143,6 +146,7 @@ export function mountSort(root, { tubes = [], pieces = [], capacity = 4, reduced
     const count = sortPourCount(state[from], state[index], cap);
     selected = null;
     pouring = true;
+    sfx('roll');
     if (!reduced) await roll(from, index, count);
     if (session.dead) return;
     state = next;

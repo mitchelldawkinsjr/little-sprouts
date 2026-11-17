@@ -3,6 +3,7 @@
  * the answer. Soft gravity, edge bounce (no wrap), and stones that
  * rise toward the learner. Wrong answers crumble. Little Sprouts original.
  */
+import { sfx } from '../lib/game-sound.mjs?v=audio2';
 import { questionHolding } from '../lib/hold.js?v=hold2';
 import { drawBuddy, buddyKind } from '../lib/buddy2d.mjs?v=gear2';
 
@@ -154,6 +155,7 @@ export function mountHop(root, { buddy, board = {}, reduced, nextQuestion, onPro
     for (let i = platforms.length - 1; i >= 0; i--) if (platforms[i].dead) platforms.splice(i, 1);
   };
   const shatter = plat => {
+    sfx('crumble');
     const mid = plat.x + plat.w / 2;
     const kick = 70 * play.scale;
     bits.push(
@@ -340,6 +342,7 @@ export function mountHop(root, { buddy, board = {}, reduced, nextQuestion, onPro
   };
   const rescue = () => {
     if (ending || pause > 0) return;
+    sfx('fall');
     pause = reduced ? 0.3 : 0.45;
     shake();
     if (!loseLife('fall')) return;
@@ -535,6 +538,7 @@ export function mountHop(root, { buddy, board = {}, reduced, nextQuestion, onPro
           }
           player.y = plat.y - player.h;
           player.vy = -jumpV;
+          sfx(plat.spring ? 'jump' : 'bounce');
           if (plat.kind === 'choice' && plat.ok) clearQuestion(plat);
           break;
         }

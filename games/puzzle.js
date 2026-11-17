@@ -3,6 +3,7 @@
  * The glass-piece idea follows the Glass Physics 3D Jigsaw on FreeFrontend.
  * The pictures, cuts, and speech check here are Little Sprouts’ own.
  */
+import { sfx } from '../lib/game-sound.mjs?v=audio2';
 const SIZE = 100;
 let active = null;
 
@@ -146,6 +147,7 @@ export function mountPuzzle(root, { shape = 'circle', pieces = 2, outline = fals
   function lock(shard) {
     if (shard.locked) return;
     shard.locked = true;
+    sfx('snap');
     shard.dragging = false;
     shard.x = 0;
     shard.y = 0;

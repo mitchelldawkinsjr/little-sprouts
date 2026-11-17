@@ -4,6 +4,7 @@
  * and rocks drift in from the edges until they hit the planet or blow up.
  * Drawn here for Little Sprouts. No outside pictures or game code.
  */
+import { sfx } from '../lib/game-sound.mjs?v=audio2';
 import { gamePaused } from '../lib/hold.js?v=hold2';
 import { clamp, esc } from '../logic.mjs?v=structure3';
 
@@ -491,6 +492,7 @@ export function mountPlanet(root, { prompt, choices, target, wave, reduced, onDo
   const call = (fn, arg) => { try { fn?.(arg); } catch { /* the host owns errors */ } };
   const center = () => ({ x: width / 2, y: height / 2, r: planetR() });
   const boom = rock => {
+    sfx('boom');
     bursts.push({
       x: rock.x,
       y: rock.y,
@@ -514,6 +516,7 @@ export function mountPlanet(root, { prompt, choices, target, wave, reduced, onDo
   const hurt = () => {
     if (phase !== 'play') return;
     shields -= 1;
+    sfx('bump');
     missed = true;
     shots.length = 0;
     held.left = held.right = false;
@@ -622,6 +625,7 @@ export function mountPlanet(root, { prompt, choices, target, wave, reduced, onDo
   const fire = () => {
     if (phase !== 'play' || cool > 0 || shots.length >= 8) return;
     cool = reduced ? 0.2 : 0.12;
+    sfx('shoot');
     const { x, y, r } = center();
     const muzzle = turretReach(r);
     const speed = (reduced ? 640 : 980);

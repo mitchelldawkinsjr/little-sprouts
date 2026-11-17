@@ -35,6 +35,7 @@
     <button type="button" id="right" aria-label="Walk right">▶</button>
   </div>
   <script type="module">import { drawBuddy, buddyKind } from "/lib/buddy2d.mjs?v=gear2"; window.SproutsBuddy = { drawBuddy, buddyKind };</script>
-  <script src="garden.js?v=buddy1"></script>
+  <script type="module">import { sfx } from "/lib/game-sound.mjs?v=audio2"; window.SproutsSfx = sfx;</script>
+  <script src="garden.js?v=buddy1-sfx1"></script>
 </body>
 </html>

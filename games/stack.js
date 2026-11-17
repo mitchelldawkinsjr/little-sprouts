@@ -5,6 +5,7 @@
  * The slide, the trim, and the faster rows follow the pure CSS stacker.
  * These blocks and the questions are drawn here.
  */
+import { sfx } from '../lib/game-sound.mjs?v=audio2';
 import { questionHolding } from '../lib/hold.js?v=hold2';
 import { stackCycle, stackLand, stackPick, stackRowWidth, stackStops, stackStopsArcade } from '../logic.mjs?v=stacker';
 
@@ -219,6 +220,7 @@ export function mountStack(root, { board = {}, reduced, freePlay, nextQuestion, 
         pending = { kind: placed.length >= spec.rows ? 'tower' : 'score' };
       }
     }
+    sfx(pending?.kind === 'life' || pending?.kind === 'wrong' ? 'crumble' : 'drop');
     phase = 'fall';
     pause = reduced ? 0.16 : (falls.length ? 0.42 : 0.16);
   };
