@@ -50,6 +50,11 @@ public class UpdaterPlugin extends Plugin {
     }
   }
   private void launchInstaller(File apk) throws Exception {
+    // Fire OS must stage another copy while updating. Report a useful storage
+    // error before the system installer turns it into an ambiguous parse error.
+    long requiredFree = apk.length() + 64L * 1024 * 1024;
+    if (apk.getParentFile().getUsableSpace() < requiredFree)
+      throw new Exception("Not enough internal storage to install the update; free up at least 1 GB and retry");
     Uri uri = FileProvider.getUriForFile(getContext(), getContext().getPackageName()+".updates", apk);
     // Prove that the provider can serve the same verified bytes before handing
     // it to Fire OS's installer; mismatches are actionable here, not a parse popup.
