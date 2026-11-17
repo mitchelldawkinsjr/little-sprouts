@@ -1,6 +1,5 @@
 package org.littlesprouts.learning;
 
-import android.Manifest;
 import android.content.Intent;
 import android.content.Context;
 import android.net.ConnectivityManager;
@@ -26,7 +25,17 @@ import java.util.concurrent.Executors;
 public class UpdaterPlugin extends Plugin {
   private final ExecutorService io = Executors.newSingleThreadExecutor();
   private static final String RELEASES = "https://api.github.com/repos/mitchelldawkinsjr/little-sprouts/releases/latest";
-  private static final String ASSET = "little-sprouts-fire-hd8-release.apk";
+  private static final String ASSET = UpdatePolicy.ASSET;
+  private static long code(android.content.pm.PackageInfo info) {
+    return Build.VERSION.SDK_INT >= 28 ? info.getLongVersionCode() : info.versionCode;
+  }
+  private static java.util.Set<String> signers(android.content.pm.PackageInfo info) {
+    android.content.pm.Signature[] signatures = Build.VERSION.SDK_INT >= 28
+        ? (info.signingInfo == null ? null : info.signingInfo.getApkContentsSigners()) : info.signatures;
+    java.util.Set<String> out = new java.util.HashSet<>();
+    if (signatures != null) for (android.content.pm.Signature signature : signatures) out.add(signature.toCharsString());
+    return out;
+  }
   private boolean onWifi() {
     ConnectivityManager cm = (ConnectivityManager) getContext().getSystemService(Context.CONNECTIVITY_SERVICE);
     if (cm == null) return false;
@@ -44,10 +53,19 @@ public class UpdaterPlugin extends Plugin {
         conn.setRequestProperty("User-Agent", "LittleSprouts-FireTablet");
         try {
           if (conn.getResponseCode() != 200) throw new Exception("Release check HTTP " + conn.getResponseCode());
-          String body = new String(conn.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+          java.io.ByteArrayOutputStream data = new java.io.ByteArrayOutputStream();
+          try (InputStream input = conn.getInputStream()) {
+            byte[] buffer = new byte[8192]; int count;
+            while ((count = input.read(buffer)) != -1) {
+              if (data.size() + count > 2 * 1024 * 1024) throw new Exception("Release response too large");
+              data.write(buffer, 0, count);
+            }
+          }
+          String body = new String(data.toByteArray(), java.nio.charset.StandardCharsets.UTF_8);
           org.json.JSONObject release = new org.json.JSONObject(body);
           String tag = release.getString("tag_name");
-          String current = getContext().getPackageManager().getPackageInfo(getContext().getPackageName(), 0).versionName;
+          android.content.pm.PackageInfo installed = getContext().getPackageManager().getPackageInfo(getContext().getPackageName(), 0);
+          String current = installed.versionName;
           org.json.JSONArray assets = release.getJSONArray("assets");
           String url = null; String digest = null;
           for (int i=0;i<assets.length();i++) {
@@ -55,7 +73,10 @@ public class UpdaterPlugin extends Plugin {
             if (ASSET.equals(a.getString("name"))) { url=a.getString("browser_download_url"); digest=a.optString("digest", ""); }
           }
           JSObject out = new JSObject(); out.put("wifi", true); out.put("version", tag);
-          out.put("current", current); out.put("available", url != null && !tag.equals(current));
+          boolean available = !release.optBoolean("draft") && !release.optBoolean("prerelease")
+              && UpdatePolicy.versionCode(tag) > code(installed)
+              && UpdatePolicy.trustedUrl(url) && UpdatePolicy.trustedDigest(digest);
+          out.put("current", current); out.put("available", available);
           if (url != null) { out.put("url", url); out.put("digest", digest); }
           call.resolve(out);
         } finally { conn.disconnect(); }
@@ -65,16 +86,19 @@ public class UpdaterPlugin extends Plugin {
   @PluginMethod public void install(PluginCall call) {
     String url = call.getString("url");
     String digest = call.getString("digest");
-    if (url == null || !url.startsWith("https://github.com/mitchelldawkinsjr/little-sprouts/releases/download/")) {
+    if (!UpdatePolicy.trustedUrl(url)) {
       call.reject("Untrusted APK URL"); return;
     }
+    if (!UpdatePolicy.trustedDigest(digest)) { call.reject("Missing trusted SHA-256 digest"); return; }
     io.execute(() -> {
       if (!onWifi()) { call.reject("Wi-Fi required"); return; }
+      File directory = new File(getContext().getCacheDir(), "updates");
+      File apk = new File(directory, "little-sprouts-update.apk");
       try {
+        if (!directory.isDirectory() && !directory.mkdirs()) throw new Exception("Cannot create update cache");
         HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
         conn.setConnectTimeout(15000); conn.setReadTimeout(30000);
         conn.setInstanceFollowRedirects(true);
-        File apk = new File(getContext().getCacheDir(), "little-sprouts-update.apk");
         try (InputStream in = conn.getInputStream(); FileOutputStream out = new FileOutputStream(apk)) {
           if (conn.getResponseCode() != 200) throw new Exception("Download HTTP " + conn.getResponseCode());
           byte[] buf = new byte[65536]; int n; long bytes = 0;
@@ -85,20 +109,32 @@ public class UpdaterPlugin extends Plugin {
           }
           if (bytes < 10000) throw new Exception("Incomplete APK");
         } finally { conn.disconnect(); }
-        if (digest == null || !digest.matches("sha256:[a-fA-F0-9]{64}")) throw new Exception("Missing trusted SHA-256 digest");
         MessageDigest sha = MessageDigest.getInstance("SHA-256");
         try (InputStream input = new java.io.FileInputStream(apk)) { byte[] b = new byte[65536]; int n; while ((n=input.read(b))!=-1) sha.update(b,0,n); }
         StringBuilder hex = new StringBuilder(); for(byte b:sha.digest()) hex.append(String.format("%02x",b & 255));
         if (!digest.substring(7).equalsIgnoreCase(hex.toString())) throw new Exception("APK checksum mismatch");
-        android.content.pm.PackageInfo info = getContext().getPackageManager().getPackageArchiveInfo(apk.getAbsolutePath(), 0);
+        android.content.pm.PackageManager pm = getContext().getPackageManager();
+        int flags = Build.VERSION.SDK_INT >= 28 ? android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES : android.content.pm.PackageManager.GET_SIGNATURES;
+        android.content.pm.PackageInfo info = pm.getPackageArchiveInfo(apk.getAbsolutePath(), flags);
         if (info == null || !getContext().getPackageName().equals(info.packageName)) throw new Exception("Unexpected APK package");
+        android.content.pm.PackageInfo installed = pm.getPackageInfo(getContext().getPackageName(), flags);
+        if (code(info) <= code(installed)) throw new Exception("APK is not a newer version");
+        if (signers(info).isEmpty() || !signers(info).equals(signers(installed))) throw new Exception("APK signing certificate differs from the installed app; a one-time manual reinstall is required");
+        if (!onWifi()) throw new Exception("Wi-Fi disconnected");
+        if (Build.VERSION.SDK_INT >= 26 && !pm.canRequestPackageInstalls()) {
+          Intent settings = new Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+              Uri.parse("package:" + getContext().getPackageName()));
+          settings.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+          getContext().startActivity(settings);
+          throw new Exception("Allow Little Sprouts to install unknown apps, then retry the update");
+        }
         Uri uri = FileProvider.getUriForFile(getContext(), getContext().getPackageName()+".updates", apk);
         Intent intent = new Intent(Intent.ACTION_VIEW);
         intent.setDataAndType(uri, "application/vnd.android.package-archive");
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
         getContext().startActivity(intent);
         call.resolve();
-      } catch(Exception e) { call.reject("Update download failed: " + e.getMessage()); }
+      } catch(Exception e) { apk.delete(); call.reject("Update download failed: " + e.getMessage()); }
     });
   }
 }
