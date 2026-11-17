@@ -19,7 +19,12 @@ export function hold(b, on, off) {
   return b;
 }
 export function speak(text) {
-  if (!text || !globalThis.speechSynthesis) return;
+  if (!text) return;
+  if (window.parent !== window) {
+    window.parent.postMessage({ source: SOURCE, type: 'say', text: String(text) }, location.origin);
+    return;
+  }
+  if (!globalThis.speechSynthesis) return;
   const line=new SpeechSynthesisUtterance(text), lang='en-US';
   line.lang=lang;line.rate=.88;
   const voices=speechSynthesis.getVoices();

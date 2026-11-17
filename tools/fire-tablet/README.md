@@ -57,6 +57,16 @@ The native manifest declares network-state and package-install permissions. If A
 
 Existing **debug-signed** installations cannot accept a production-signed update. Install the first production APK manually after backing up any learner data you need; uninstalling can erase local profiles, stars, saves and offline files. Once production signing is installed, future signed updates should preserve data. Devices must permit unknown-app installation for Little Sprouts, have sufficient free storage, and meet Capacitor's Android 6/API 23 minimum; test against the exact Fire OS/WebView version in use.
 
+## Reliable spoken prompts
+
+The generated Android project registers `SproutsSpeech` alongside the updater. App prompts use packaged recordings through native MediaPlayer first, then the tablet's native English TextToSpeech engine for other lines or missing recordings. The APK speech path does not rely on a Kokoro model download or WebView `speechSynthesis`. The website keeps its existing browser speech path.
+
+The tablet needs an available English speech engine/voice for prompts that have no recording. Check its English voice data before testing offline. Parent corner reports native voice readiness; playback failures show **Hear it again** instead of silently treating an unfinished line as completed. A selected Kokoro character voice controls included recordings, while dynamic APK prompts use the available native English voice.
+
+The native bridge checks readiness, handles audio focus and activity pauses, bounds initialization/playback waits, cancels stale utterances and releases native resources. Completion requires the player's or speech engine's actual completion callback. Returning to the app can recover an interrupted current prompt; game changes and explicit stops discard stale recovery work. Diagnostic reports use engine/readiness/status codes and never the spoken question text.
+
+Installing a rebuilt APK is required to receive this native plugin. See [the speech guide](../../docs/voice.md#apk-checks-on-a-physical-fire-hd-8) for the Fire HD 8 test matrix, including new prompts offline, repeated game changes, screen lock/resume, missing voice data, audio-focus interruptions, replay and read-aloud off.
+
 ## Validation and required physical Fire HD 8 checks
 
 Automated checks:
