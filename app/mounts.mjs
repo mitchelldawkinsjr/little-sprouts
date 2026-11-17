@@ -469,7 +469,6 @@ export function registerMounts(rt) {
   function playFocusOn() { return document.body.classList.contains('play-focus'); }
   function setPlayFocus(on) {
     document.body.classList.toggle('play-focus', !!on);
-    try { sessionStorage.setItem('ls:play-focus', on ? '1' : '0'); } catch {}
     syncPlayViewButtons();
   }
   function syncPlayViewButtons() {
@@ -496,7 +495,6 @@ export function registerMounts(rt) {
   }
   function wirePlayViewControls(doListen) {
     playFullscreen ||= makePlayFullscreen(document);
-    try { if (sessionStorage.getItem('ls:play-focus') === '1') document.body.classList.add('play-focus'); } catch {}
     if ($('#playListen')) $('#playListen').onclick = doListen;
     if ($('#playFocus')) $('#playFocus').onclick = () => setPlayFocus(!playFocusOn());
     if ($('#playFull')) $('#playFull').onclick = async () => {
@@ -628,6 +626,7 @@ export function registerMounts(rt) {
   }
   function home(focus, { syncHash = true } = {}) {
     leavePlayFullscreen();
+    document.body.classList.remove('play-focus');
     if (!rt.data.profiles?.length) {
       rt.showWelcome?.();
       return;
@@ -805,6 +804,8 @@ export function registerMounts(rt) {
     rt.ask(`Play ${alone.title} on its own?`, `This round will not be saved. ${alone.note}`, 'Play on its own', { keep: true }).then(ok => { if (ok) go(); });
   }
   function start(mode, { syncHash = true } = {}) {
+    // Every newly opened game starts with a roomy playfield; the Focus button still toggles it.
+    document.body.classList.add('play-focus');
     rt.releaseListen();
     rt.stopSpeech();
     clearTimers('rocket', 'lane', 'hook', 'sky', 'planet', 'match', 'learn', 'bridge', 'chase', 'hop', 'toast', 'glide', 'city', 'lily', 'bust', 'mole', 'cube', 'stack', 'lamp', 'rally', 'verse');
