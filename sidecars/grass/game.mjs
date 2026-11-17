@@ -596,6 +596,7 @@ function reached(spot) {
     state.step++;
     pop();
     chime();
+    call(window.SproutsSidecar?.sound, 'player.collect');
     toast(state.missed ? 'You found it!' : 'Yes! ⭐', 'good');
     askEl.classList.add('done');
     spot.ring.material.color.set('#7cc46a');
@@ -610,6 +611,7 @@ function reached(spot) {
   }
   state.missed = true;
   boop();
+  call(window.SproutsSidecar?.sound, 'player.hit');
   toast('Not that one', 'bad');
   spot.closed = true;
   spot.ring.material.color.set('#9a9a9a');
