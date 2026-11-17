@@ -507,8 +507,9 @@ export function registerMounts(rt) {
         if (!rt.data.audio.muted) void rt.audio?.unlock();
       };
     }
-    if ($('#playFocus')) $('#playFocus').onclick = () => setPlayFocus(!playFocusOn());
+    if ($('#playFocus')) $('#playFocus').onclick = () => { rt.audio?.play('ui.select'); setPlayFocus(!playFocusOn()); };
     if ($('#playFull')) $('#playFull').onclick = async () => {
+      rt.audio?.play('ui.select');
       await playFullscreen.toggle();
       syncPlayViewButtons();
     };
@@ -822,6 +823,9 @@ export function registerMounts(rt) {
     rt.releaseListen();
     rt.stopSpeech();
     rt.audio?.start(mode);
+    void rt.audio?.unlock().then(ready => {
+      if (ready && rt.audio.currentGame === mode) rt.audio.play('ui.start');
+    });
     clearTimers('rocket', 'lane', 'hook', 'sky', 'planet', 'match', 'learn', 'bridge', 'chase', 'hop', 'toast', 'glide', 'city', 'lily', 'bust', 'mole', 'cube', 'stack', 'lamp', 'rally', 'verse');
     const learner = rt.p();
     learner.recentGames = rememberGame(learner, mode);
