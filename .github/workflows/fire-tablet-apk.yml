@@ -39,7 +39,7 @@ jobs:
       - name: Install Capacitor tooling
         working-directory: .fire-build
         run: |
-          npm init -y
+          printf '%s\n' '{"name":"little-sprouts-fire-build","version":"1.0.0","private":true}' > package.json
           npm install --no-audit --no-fund @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7
       - name: Generate Android project
         working-directory: .fire-build
@@ -49,10 +49,15 @@ jobs:
       - name: Build sideloadable debug APK
         working-directory: .fire-build/android
         run: ./gradlew assembleDebug --no-daemon
+      - name: Verify and stage signed APK
+        run: |
+          apk=.fire-build/android/app/build/outputs/apk/debug/app-debug.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify "$apk"
+          cp "$apk" little-sprouts-fire-hd8.apk
       - name: Publish APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: little-sprouts-fire-hd8-debug-apk
-          path: .fire-build/android/app/build/outputs/apk/debug/app-debug.apk
+          path: little-sprouts-fire-hd8.apk
           if-no-files-found: error
           retention-days: 30
