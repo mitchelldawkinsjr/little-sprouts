@@ -496,6 +496,17 @@ export function registerMounts(rt) {
   function wirePlayViewControls(doListen) {
     playFullscreen ||= makePlayFullscreen(document);
     if ($('#playListen')) $('#playListen').onclick = doListen;
+    if ($('#playAudio')) {
+      const audioButton = $('#playAudio');
+      audioButton.textContent = rt.data.audio?.muted ? '🔇' : '🎵';
+      audioButton.setAttribute('aria-pressed', String(!rt.data.audio?.muted));
+      audioButton.setAttribute('aria-label', rt.data.audio?.muted ? 'Turn game audio on' : 'Mute game audio');
+      audioButton.title = audioButton.getAttribute('aria-label');
+      audioButton.onclick = () => {
+        rt.updateAudio?.({ muted: !rt.data.audio.muted });
+        if (!rt.data.audio.muted) void rt.audio?.unlock();
+      };
+    }
     if ($('#playFocus')) $('#playFocus').onclick = () => setPlayFocus(!playFocusOn());
     if ($('#playFull')) $('#playFull').onclick = async () => {
       await playFullscreen.toggle();
@@ -513,7 +524,7 @@ export function registerMounts(rt) {
     syncPlayViewButtons();
   }
   function playTopControls(alone = '') {
-    return `<div class="play-actions">${alone}<button type="button" class="quiet icon-btn" id="playListen" aria-label="Hear it again" title="Hear it again">🔈</button><button type="button" class="quiet icon-btn" id="playFocus" aria-label="Focus view" title="Focus view" aria-pressed="false">⤡</button><button type="button" class="quiet icon-btn" id="playFull" aria-label="Full screen" title="Full screen" aria-pressed="false">⛶</button></div>`;
+    return `<div class="play-actions">${alone}<button type="button" class="quiet icon-btn" id="playListen" aria-label="Hear it again" title="Hear it again">🔈</button><button type="button" class="quiet icon-btn" id="playAudio" aria-label="Mute game audio" title="Mute game audio" aria-pressed="true">🎵</button><button type="button" class="quiet icon-btn" id="playFocus" aria-label="Focus view" title="Focus view" aria-pressed="false">⤡</button><button type="button" class="quiet icon-btn" id="playFull" aria-label="Full screen" title="Full screen" aria-pressed="false">⛶</button></div>`;
   }
 
   function showCompletedVerse(g) {
@@ -578,6 +589,8 @@ export function registerMounts(rt) {
     }, wait ?? (rt.data.sound ? soundMs : quietMs));
   }
   function endTimed(mode, stopFn) {
+    rt.audio?.play('reward.win');
+    rt.audio?.stop();
     rt.releaseListen();
     const g = rt.game;
     if (!g || g.finished || g.mode !== mode) return;
@@ -625,6 +638,7 @@ export function registerMounts(rt) {
     }
   }
   function home(focus, { syncHash = true } = {}) {
+    rt.audio?.stop();
     leavePlayFullscreen();
     document.body.classList.remove('play-focus');
     if (!rt.data.profiles?.length) {
@@ -808,6 +822,7 @@ export function registerMounts(rt) {
     document.body.classList.add('play-focus');
     rt.releaseListen();
     rt.stopSpeech();
+    rt.audio?.start(mode);
     clearTimers('rocket', 'lane', 'hook', 'sky', 'planet', 'match', 'learn', 'bridge', 'chase', 'hop', 'toast', 'glide', 'city', 'lily', 'bust', 'mole', 'cube', 'stack', 'lamp', 'rally', 'verse');
     const learner = rt.p();
     learner.recentGames = rememberGame(learner, mode);
@@ -1437,6 +1452,7 @@ export function registerMounts(rt) {
         onReady() {
           const frame = document.querySelector('iframe.sidecar-frame');
           frame?.focus();
+          postSidecar({ type: 'audio-config', settings: rt.data.audio });
           if (rt.game?.mode === 'bike') postSidecar(rt.bikeConfig(rt.game));
           if (rt.game?.mode === 'quickmath') return;
           if (rt.game && side.lesson) { sendLessonConfig(); return; }
@@ -1447,12 +1463,14 @@ export function registerMounts(rt) {
         },
         // Skybound reloads its page for the next world: tell the new page arcade or the current question again.
         onReload() {
+          postSidecar({ type: 'audio-config', settings: rt.data.audio });
           const g = rt.game;
           if (!g || g.finished || g.mode !== 'skybound') return;
           if (g.freePlay) postSidecar({ type: 'arcade' });
           else if (g.index >= rt.questionCount()) postSidecar({ type: 'clear' });
           else postSidecar(rt.rallyMessage(g));
         },
+        onSound(event, options) { rt.audio?.play(event, options); },
         onProgress(info) {
           if (rt.game?.mode === 'bike' && Number.isFinite(+info?.travel)) rt.game.bikeTravel = +info.travel;
           if (side.lesson && typeof info?.label === 'string') {
