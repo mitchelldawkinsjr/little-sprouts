@@ -37,7 +37,7 @@ The next version for a repository with no published releases is **1.0.0**, versi
 
 1. Open the code PR. **Fire Tablet APK** runs policy/version tests and compiles debug and unsigned release builds without access to production signing credentials. Its downloadable debug APK is for testing only.
 2. Run **Publish Fire Tablet Update**, selecting the PR branch and version `1.0.0`, with **publish unchecked**. This checks secret presence, builds, signs, verifies package/version/icons, and uploads `little-sprouts-fire-production-apk` containing the signed APK plus `fire-apk-verification.json`. It does not create a release. First publication requires comparing the reported certificate fingerprint to the administrator's recorded fingerprint.
-3. After the PR is merged and credentials are configured, run the same workflow from **main**, with the same unpublished version and **publish checked**. Publishing is blocked on any other branch. The workflow refuses lower/equal versions or a changed signing certificate compared to the previous published APK.
+3. For **manual** releases (especially the first production release), run the workflow from **main** with the desired version and **publish checked**. After the first signed release, normal merged app changes are published automatically following successful deploy and verification. Manual publishing is blocked on any other branch. The workflow refuses lower/equal versions or a changed signing certificate.
 4. The workflow creates a public, stable, non-prerelease GitHub Release with the exact asset **`little-sprouts-fire-hd8-release.apk`**, explicitly marks it latest, and checks the public `/releases/latest` response and GitHub's `sha256:` asset digest against the verified APK. `fire-apk-verification.json` records package, versionCode, APK SHA-256, signing-certificate SHA-256 and source-icon SHA-256. A failed post-publication check needs investigation; do not claim publication verification until it passes.
 
 Example dispatches (the first only builds/signs; the second publishes after merge):
@@ -48,6 +48,20 @@ gh workflow run fire-tablet-release.yml --ref main -f version=1.0.0 -f publish=t
 ```
 
 `apksigner verify --verbose --print-certs` verifies the APK before publication and rejects Android Debug certificates. The decoded keystore is restricted to a temporary runner file and removed on exit. Workflows reuse the configured key; they never create release keys.
+
+## Automatic signed updates after a healthy deployment
+
+Once the **first production-signed release** is published and the four signing secrets are configured, merging changes into `main` can publish the next Fire APK automatically:
+
+1. `Deploy to mitch-cloud` deploys the merged `main` commit and checks the VPS container's health.
+2. `Publish Fire Tablet Update` starts **only after that push-based deployment succeeds**. The planning job waits for `Verify Little Sprouts` to succeed for the **exact same commit**. Failure, a missing result or a newer `main` commit prevents publication.
+3. The planner compares source files with the latest stable release tag. Documentation-only, workflow-only and test-only changes do not create APK releases. Game assets, native updater code and packaged web assets do.
+4. The next patch version is calculated from the **latest GitHub Release** (for example, `1.0.0` → `1.0.1`; roll over `1.0.999` → `1.1.0`). The existing signed APK build, policy checks, signing-certificate continuity check and SHA-256 verification still run. Automatic and manual publishing share one concurrency lock.
+5. Before publishing, the workflow checks again that `main` still points to the deployed commit. If newer work lands while signing, it refuses to publish a stale APK. The GitHub Release is tagged at the exact deployed commit, not at an unrelated workflow head.
+
+The automation **never creates a first production signing identity** or publishes an unsigned/debug APK. Bootstrap the first production release with the manual instructions above. The manual `workflow_dispatch` remains available for verifying a signed APK without publishing, controlled releases and retries. Monitor failures in [Publish Fire Tablet Update](../../.github/workflows/fire-tablet-release.yml) / GitHub Actions; a failed check will not create an update.
+
+Installed production-signed Fire tablets are offered a new published version when the app starts or resumes on Wi-Fi. Installation still requires the user's approval in Fire OS; the app cannot silently replace itself.
 
 ## Native updater behavior
 
