@@ -57,7 +57,7 @@ ET.indent(tree, space="    ")
 tree.write(manifest, encoding="utf-8", xml_declaration=True)
 xml = app / "res/xml"
 xml.mkdir(parents=True, exist_ok=True)
-(xml / "sprouts_update_paths.xml").write_text('<?xml version="1.0" encoding="utf-8"?><paths xmlns:android="http://schemas.android.com/apk/res/android"><cache-path name="updates" path="updates/" /></paths>')
+(xml / "sprouts_update_paths.xml").write_text('<?xml version="1.0" encoding="utf-8"?><paths xmlns:android="http://schemas.android.com/apk/res/android"><files-path name="updates" path="updates/" /></paths>')
 gradle = root / ".fire-build/android/app/build.gradle"
 text = gradle.read_text()
 if "// Sprouts native audio assets" not in text:

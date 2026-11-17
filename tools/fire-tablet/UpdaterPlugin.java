@@ -1,6 +1,10 @@
 package org.littlesprouts.learning;
 
 import android.content.Intent;
+import android.content.ClipData;
+import android.content.ActivityNotFoundException;
+import android.content.pm.ResolveInfo;
+import android.os.ParcelFileDescriptor;
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkCapabilities;
@@ -20,12 +24,66 @@ import java.net.URL;
 import java.security.MessageDigest;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.List;
 
 @CapacitorPlugin(name = "SproutsUpdater")
 public class UpdaterPlugin extends Plugin {
   private final ExecutorService io = Executors.newSingleThreadExecutor();
   private static final String RELEASES = "https://api.github.com/repos/mitchelldawkinsjr/little-sprouts/releases/latest";
   private static final String ASSET = UpdatePolicy.ASSET;
+  private static final String APK_MIME = "application/vnd.android.package-archive";
+  private File pendingApk() {
+    // Android may clear cache/ at any time. Keep the verified APK in private files/
+    // until the installer has finished reading it, especially on low-storage tablets.
+    return new File(new File(getContext().getFilesDir(), "updates"), "little-sprouts-update.apk");
+  }
+  private void cleanupInstalledUpdate() {
+    File apk = pendingApk();
+    if (!apk.isFile()) return;
+    try {
+      android.content.pm.PackageManager pm = getContext().getPackageManager();
+      android.content.pm.PackageInfo archived = pm.getPackageArchiveInfo(apk.getAbsolutePath(), 0);
+      android.content.pm.PackageInfo installed = pm.getPackageInfo(getContext().getPackageName(), 0);
+      if (archived == null || code(archived) <= code(installed)) apk.delete();
+    } catch (Exception ignored) {
+      // A failed cleanup must never interfere with checking for an update.
+    }
+  }
+  private void launchInstaller(File apk) throws Exception {
+    // Fire OS must stage another copy while updating. Report a useful storage
+    // error before the system installer turns it into an ambiguous parse error.
+    long requiredFree = apk.length() + 64L * 1024 * 1024;
+    if (apk.getParentFile().getUsableSpace() < requiredFree)
+      throw new Exception("Not enough internal storage to install the update; free up at least 1 GB and retry");
+    Uri uri = FileProvider.getUriForFile(getContext(), getContext().getPackageName()+".updates", apk);
+    // Prove that the provider can serve the same verified bytes before handing
+    // it to Fire OS's installer; mismatches are actionable here, not a parse popup.
+    try (ParcelFileDescriptor descriptor = getContext().getContentResolver().openFileDescriptor(uri, "r")) {
+      if (descriptor == null || (descriptor.getStatSize() >= 0 && descriptor.getStatSize() != apk.length()))
+        throw new Exception("The verified update cannot be read through FileProvider");
+    }
+
+    Intent install = new Intent(Intent.ACTION_INSTALL_PACKAGE);
+    install.setDataAndType(uri, APK_MIME);
+    install.setClipData(ClipData.newRawUri("Little Sprouts APK update", uri));
+    install.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+
+    // Some Fire OS installers hand off to a second activity. Give the resolved
+    // installer package direct permission as well as the temporary intent grant.
+    List<ResolveInfo> handlers = getContext().getPackageManager().queryIntentActivities(
+        install, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY);
+    for (ResolveInfo handler : handlers) {
+      if (handler.activityInfo != null)
+        getContext().grantUriPermission(handler.activityInfo.packageName, uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+    }
+    try {
+      getContext().startActivity(install);
+    } catch (ActivityNotFoundException missing) {
+      // Older/modified Fire OS builds may only support VIEW with the APK MIME.
+      install.setAction(Intent.ACTION_VIEW);
+      getContext().startActivity(install);
+    }
+  }
   private static long code(android.content.pm.PackageInfo info) {
     return Build.VERSION.SDK_INT >= 28 ? info.getLongVersionCode() : info.versionCode;
   }
@@ -45,6 +103,7 @@ public class UpdaterPlugin extends Plugin {
   }
   @PluginMethod public void check(PluginCall call) {
     io.execute(() -> {
+      cleanupInstalledUpdate();
       if (!onWifi()) { JSObject out = new JSObject(); out.put("wifi", false); call.resolve(out); return; }
       try {
         HttpURLConnection conn = (HttpURLConnection) new URL(RELEASES).openConnection();
@@ -101,8 +160,8 @@ public class UpdaterPlugin extends Plugin {
     if (!UpdatePolicy.trustedDigest(digest)) { call.reject("Missing trusted SHA-256 digest"); return; }
     io.execute(() -> {
       if (!onWifi()) { call.reject("Wi-Fi required"); return; }
-      File directory = new File(getContext().getCacheDir(), "updates");
-      File apk = new File(directory, "little-sprouts-update.apk");
+      File apk = pendingApk();
+      File directory = apk.getParentFile();
       try {
         if (!directory.isDirectory() && !directory.mkdirs()) throw new Exception("Cannot create update cache");
         HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
@@ -137,13 +196,12 @@ public class UpdaterPlugin extends Plugin {
           getContext().startActivity(settings);
           throw new Exception("Allow Little Sprouts to install unknown apps, then retry the update");
         }
-        Uri uri = FileProvider.getUriForFile(getContext(), getContext().getPackageName()+".updates", apk);
-        Intent intent = new Intent(Intent.ACTION_VIEW);
-        intent.setDataAndType(uri, "application/vnd.android.package-archive");
-        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
-        getContext().startActivity(intent);
+        launchInstaller(apk);
         call.resolve();
-      } catch(Exception e) { apk.delete(); call.reject("Update download failed: " + e.getMessage()); }
+      } catch(Exception e) {
+        apk.delete();
+        call.reject("Update installation could not start: " + e.getMessage());
+      }
     });
   }
 }
