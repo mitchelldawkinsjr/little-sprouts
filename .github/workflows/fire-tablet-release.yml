@@ -10,28 +10,63 @@ on:
         description: 'Publish after verification (only from merged main)'
         type: boolean
         default: false
+  workflow_run:
+    workflows: [Deploy to mitch-cloud]
+    types: [completed]
+    branches: [main]
 permissions:
   contents: write
+  actions: read
 concurrency:
   group: fire-production-release
   cancel-in-progress: false
 jobs:
+  plan:
+    if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      publish: ${{ steps.auto.outputs.publish }}
+      version: ${{ steps.auto.outputs.version }}
+      sha: ${{ steps.auto.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify deploy and matching main tests, then plan next APK version
+        id: auto
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: python3 tools/fire-tablet/auto_release.py
+
   publish:
+    needs: [plan]
+    if: ${{ !cancelled() && (github.event_name == 'workflow_dispatch' || (needs.plan.result == 'success' && needs.plan.outputs.publish == 'true')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && needs.plan.outputs.sha || github.ref }}
       - name: Verify release configuration
         env:
           KEYSTORE: ${{ secrets.FIRE_APK_KEYSTORE_BASE64 }}
           PASSWORD: ${{ secrets.FIRE_APK_KEYSTORE_PASSWORD }}
           ALIAS: ${{ secrets.FIRE_APK_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.FIRE_APK_KEY_PASSWORD }}
-          VERSION: ${{ inputs.version }}
-          PUBLISH: ${{ inputs.publish }}
+          VERSION: ${{ github.event_name == 'workflow_run' && needs.plan.outputs.version || inputs.version }}
+          PUBLISH: ${{ github.event_name == 'workflow_run' && 'true' || inputs.publish }}
         run: |
           python3 tools/fire-tablet/version.py "$VERSION"
-          if [[ "$PUBLISH" == true && "$GITHUB_REF" != refs/heads/main ]]; then
+          if [[ "$PUBLISH" == true && "$GITHUB_EVENT_NAME" == workflow_dispatch && "$GITHUB_REF" != refs/heads/main ]]; then
             echo 'Merge the release fixes before publishing from main'; exit 1
           fi
           missing=0
@@ -70,7 +105,7 @@ jobs:
           npx --no-install cap sync android
       - name: Install updater and set version
         env:
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ github.event_name == 'workflow_run' && needs.plan.outputs.version || inputs.version }}
         run: |
           python3 tools/fire-tablet/install-updater.py
           python3 tools/fire-tablet/version.py "$VERSION" .fire-build/android/app/build.gradle
@@ -87,13 +122,15 @@ jobs:
           PASSWORD: ${{ secrets.FIRE_APK_KEYSTORE_PASSWORD }}
           ALIAS: ${{ secrets.FIRE_APK_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.FIRE_APK_KEY_PASSWORD }}
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ github.event_name == 'workflow_run' && needs.plan.outputs.version || inputs.version }}
         run: bash tools/fire-tablet/sign-apk.sh
       - name: Verify continuity and optionally publish
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ inputs.version }}
-          PUBLISH: ${{ inputs.publish }}
+          VERSION: ${{ github.event_name == 'workflow_run' && needs.plan.outputs.version || inputs.version }}
+          PUBLISH: ${{ github.event_name == 'workflow_run' && 'true' || inputs.publish }}
+          RELEASE_TARGET_SHA: ${{ github.event_name == 'workflow_run' && needs.plan.outputs.sha || github.sha }}
+          RELEASE_REQUIRE_MAIN_SHA: ${{ github.event_name == 'workflow_run' && 'true' || 'false' }}
         run: |
           mode=verify
           if [[ "$PUBLISH" == true ]]; then mode=publish; fi
