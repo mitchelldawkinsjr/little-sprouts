@@ -184,6 +184,7 @@ export function registerRound(rt) {
     const token = g?.tokens?.[index];
     if (!g || g.finished || g.done || !token) return;
     const ok = !!token.ok;
+    rt.audio?.play(ok ? 'quiz.correct' : 'quiz.incorrect');
     postSidecar({ type: 'mark', index, ok });
     // Arcade picture rounds keep coming with no questions and no end; the game is left from All games.
     if (g.freePlay) {
@@ -1324,6 +1325,7 @@ export function registerRound(rt) {
   function finishRun(g, title, detail) {
     rt.releaseListen();
     if (!g || g.finished) return;
+    rt.audio?.finish('reward.win');
     rt.leavePlayFullscreen();
     g.finished = true;
     rt.clearTimers('bridge');
@@ -1653,6 +1655,7 @@ export function registerRound(rt) {
   function answer(ok, b) {
     const g = rt.game;
     if (!g || g.done || g.flightOver) return;
+    rt.audio?.play(ok ? 'quiz.correct' : 'quiz.incorrect');
     if (g.mode === 'rocket') { rt.resolveRocket(ok, b); return; }
     if (g.mode === 'maze' && g.asking) {
       const kind = g.asking;
@@ -1780,6 +1783,7 @@ export function registerRound(rt) {
     stopHoop();
     const g = rt.game;
     if (!g || g.finished) return;
+    rt.audio?.finish(result?.reason === 'wrong' ? 'player.crash' : 'reward.win');
     rt.leavePlayFullscreen();
     g.finished = true;
     rt.camOff();
@@ -1836,6 +1840,7 @@ export function registerRound(rt) {
     rt.clearTimers('learn', 'chase', 'hop', 'toast', 'glide', 'city', 'aisle', 'lily', 'bust', 'mole', 'cube', 'stack', 'lamp', 'rally', 'verse');
     rt.stopEars();
     const g = rt.game;
+    rt.audio?.finish(detail === 'crash' ? 'player.crash' : 'reward.win');
     g.finished = true;
     rt.camOff();
     // Arcade play asks nothing, so it banks no learning stars (the same as the arcade games built in here).
