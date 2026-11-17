@@ -62,8 +62,6 @@ public class UpdaterPlugin extends Plugin {
             return;
           }
           if (status != 200) throw new Exception("Release check HTTP " + status);
-          String body = new String(conn.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
-          if (conn.getResponseCode() != 200) throw new Exception("Release check HTTP " + conn.getResponseCode());
           java.io.ByteArrayOutputStream data = new java.io.ByteArrayOutputStream();
           try (InputStream input = conn.getInputStream()) {
             byte[] buffer = new byte[8192]; int count;
