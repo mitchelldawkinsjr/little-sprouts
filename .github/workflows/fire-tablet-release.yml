@@ -32,6 +32,10 @@ jobs:
           ALIAS: ${{ secrets.FIRE_APK_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.FIRE_APK_KEY_PASSWORD }}
           VERSION: ${{ inputs.version }}
+        run: |
+          test -n "$KEYSTORE" && test -n "$PASSWORD" && test -n "$ALIAS" && test -n "$KEY_PASSWORD"
+          [[ "$VERSION" =~ ^[0-9]+\\.[0-9]+\\.[0-9]+$ ]]
+          if gh release view "$VERSION" >/dev/null 2>&1; then echo "Release already exists"; exit 1; fi
       - name: Stage app
         run: python3 tools/fire-tablet/stage.py
       - name: Install Capacitor
