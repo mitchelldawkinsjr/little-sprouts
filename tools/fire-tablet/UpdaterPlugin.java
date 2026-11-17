@@ -49,14 +49,14 @@ public class UpdaterPlugin extends Plugin {
           String tag = release.getString("tag_name");
           String current = getContext().getPackageManager().getPackageInfo(getContext().getPackageName(), 0).versionName;
           org.json.JSONArray assets = release.getJSONArray("assets");
-          String url = null;
+          String url = null; String digest = null;
           for (int i=0;i<assets.length();i++) {
             org.json.JSONObject a=assets.getJSONObject(i);
-            if (ASSET.equals(a.getString("name"))) url=a.getString("browser_download_url");
+            if (ASSET.equals(a.getString("name"))) { url=a.getString("browser_download_url"); digest=a.optString("digest", ""); }
           }
           JSObject out = new JSObject(); out.put("wifi", true); out.put("version", tag);
           out.put("current", current); out.put("available", url != null && !tag.equals(current));
-          if (url != null) out.put("url", url);
+          if (url != null) { out.put("url", url); out.put("digest", digest); }
           call.resolve(out);
         } finally { conn.disconnect(); }
       } catch(Exception e) { call.reject("Update check failed: " + e.getMessage()); }
@@ -64,6 +64,7 @@ public class UpdaterPlugin extends Plugin {
   }
   @PluginMethod public void install(PluginCall call) {
     String url = call.getString("url");
+    String digest = call.getString("digest");
     if (url == null || !url.startsWith("https://github.com/mitchelldawkinsjr/little-sprouts/releases/download/")) {
       call.reject("Untrusted APK URL"); return;
     }
@@ -84,6 +85,11 @@ public class UpdaterPlugin extends Plugin {
           }
           if (bytes < 10000) throw new Exception("Incomplete APK");
         } finally { conn.disconnect(); }
+        if (digest == null || !digest.matches("sha256:[a-fA-F0-9]{64}")) throw new Exception("Missing trusted SHA-256 digest");
+        MessageDigest sha = MessageDigest.getInstance("SHA-256");
+        try (InputStream input = new java.io.FileInputStream(apk)) { byte[] b = new byte[65536]; int n; while ((n=input.read(b))!=-1) sha.update(b,0,n); }
+        StringBuilder hex = new StringBuilder(); for(byte b:sha.digest()) hex.append(String.format("%02x",b & 255));
+        if (!digest.substring(7).equalsIgnoreCase(hex.toString())) throw new Exception("APK checksum mismatch");
         android.content.pm.PackageInfo info = getContext().getPackageManager().getPackageArchiveInfo(apk.getAbsolutePath(), 0);
         if (info == null || !getContext().getPackageName().equals(info.packageName)) throw new Exception("Unexpected APK package");
         Uri uri = FileProvider.getUriForFile(getContext(), getContext().getPackageName()+".updates", apk);
