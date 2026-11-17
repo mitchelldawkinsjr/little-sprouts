@@ -1,0 +1,42 @@
+name: Capture PR 20 tablet game layout
+
+on:
+  push:
+    branches: [fix/tablet-game-controls-focus]
+    paths:
+      - .github/workflows/capture-pr20-ui.yml
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install browser controller
+        run: npm install --prefix /tmp/sprouts-capture --no-audit --no-fund playwright-core@1.57.0
+      - name: Start Little Sprouts locally
+        run: |
+          node server/serve.mjs > /tmp/little-sprouts-server.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/ > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/little-sprouts-server.log
+          exit 1
+      - name: Capture real tablet gameplay layouts
+        run: node tools/capture-pr20-ui.mjs
+      - name: Commit screenshots to PR branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/screenshots/tablet-game-toolbar-landscape.png docs/screenshots/tablet-game-focus-landscape.png docs/screenshots/tablet-game-focus-portrait.png
+          git commit -m "Add real tablet game toolbar and focus screenshots"
+          git push origin HEAD:fix/tablet-game-controls-focus
