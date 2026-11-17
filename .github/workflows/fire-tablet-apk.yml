@@ -46,6 +46,8 @@ jobs:
         run: |
           npx cap add android
           npx cap sync android
+      - name: Add native Wi-Fi updater
+        run: python3 tools/fire-tablet/install-updater.py
       - name: Build sideloadable debug APK
         working-directory: .fire-build/android
         run: ./gradlew assembleDebug --no-daemon
