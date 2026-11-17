@@ -103,3 +103,45 @@ test('the shelf keeps its normal viewport and the offline inventory includes the
   assert.ok(files['./lib/play-fullscreen.mjs']);
   assert.match(read('sw.js'), /'\.\/lib\/game-touch\.css'/);
 });
+
+
+test('solo launch shares the game toolbar with focus and fullscreen on every sidecar', () => {
+  const mounts = read('app/mounts.mjs');
+  assert.match(mounts, /function playTopControls\(alone = ''\)/);
+  assert.match(mounts, /<div class="play-actions">\$\{alone\}/);
+  assert.match(mounts, /\$\{playTopControls\(alone\)\}<\/div>\$\{bar\}/);
+  assert.doesNotMatch(mounts, /<\/div>\$\{alone\}\$\{bar\}/);
+  assert.match(mounts, /class="quiet play-alone" id="playAlone"/);
+  assert.match(mounts, /aria-describedby="playAloneNote"/);
+  assert.match(mounts, /if \(\$\('#playAlone'\)\) \$\('#playAlone'\)\.onclick = openSidecarAlone;/);
+});
+
+test('focus and fullscreen keep tablet controls visible and enlarge the sidecar frame', () => {
+  const mounts = read('app/mounts.mjs');
+  const css = read('style.css');
+  assert.doesNotMatch(mounts, /focus\.hidden\s*=\s*playFullscreen/);
+  assert.match(css, /\.playtop\{gap:8px;flex-wrap:nowrap/);
+  assert.match(css, /\.play-actions\{[^}]*flex:0 0 auto/);
+  assert.doesNotMatch(css, /body:is\(\.play-focus,\.play-expanded,\.play-native-full\):has\(\.playtop\) \.play-alone\{display:none\}/);
+  assert.match(css, /body:is\(\.play-focus,\.play-expanded,\.play-native-full\):has\(\.playtop\)>main\{max-width:none/);
+  assert.match(css, /body:is\(\.play-focus,\.play-expanded,\.play-native-full\) \.sidecar-frame\{min-height:0/);
+  assert.match(css, /\.play-alone-short\{display:none\}\s*@media\(max-width:560px\)\{\.play-alone-short\{display:inline\}\}/);
+});
+
+
+test('new games start in Focus, returning to the shelf clears it, and the toggle stays reversible', () => {
+  const mounts = read('app/mounts.mjs');
+  const css = read('style.css');
+  const start = mounts.split('function start(mode, { syncHash = true } = {}) {')[1].split('function paintArcadePrompt(')[0];
+  const home = mounts.split('function home(focus, { syncHash = true } = {}) {')[1].split('function ')[0];
+  const wiring = mounts.split('function wirePlayViewControls(doListen) {')[1].split('function leavePlayFullscreen()')[0];
+
+  assert.match(start, /document\.body\.classList\.add\('play-focus'\)/);
+  assert.match(home, /document\.body\.classList\.remove\('play-focus'\)/);
+  assert.match(wiring, /setPlayFocus\(!playFocusOn\(\)\)/);
+  assert.doesNotMatch(wiring, /sessionStorage\.getItem\('ls:play-focus'\)/);
+  assert.doesNotMatch(mounts, /sessionStorage\.setItem\('ls:play-focus'/);
+  // Questions presented in the host playfield must remain readable in the default Focus view.
+  assert.doesNotMatch(css, /body\.play-focus:not\([^}]+\.playarea h1\{position:absolute/);
+  assert.match(css, /body\.play-focus:has\(\.playtop\) \.playarea h1\{font-size:/);
+});

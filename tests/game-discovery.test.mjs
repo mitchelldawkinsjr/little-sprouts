@@ -6,19 +6,19 @@ import { discoveryHtml, shelfPanelHtml, gameCardHtml, GAMEPLAY_ART } from '../li
 import { sidecarRows } from '../lib/sidecar.js';
 import { inventory } from '../tools/static-files.mjs';
 
-const games = ['shapes', 'gulp', 'skybound', 'boss', 'cabin', 'sketchbook', 'blocks', 'moon-swing', 'canyon-pods'].map(id => [id, id]);
+const games = ['shapes', 'gulp', 'skybound', 'boss', 'cabin', 'sketchbook', 'blocks', 'grass', 'moon-swing', 'canyon-pods'].map(id => [id, id]);
 const ids = rows => rows.map(row => row[0]);
 const card = id => `<article data-test-game="${id}"></article>`;
 
 test('featured games follow the requested order and omit unavailable games', () => {
-  assert.deepEqual(ids(featuredGames(games)), ['blocks', 'sketchbook', 'cabin', 'boss', 'skybound', 'gulp']);
-  assert.deepEqual(ids(featuredGames(games.filter(([id]) => !['blocks', 'boss'].includes(id)))), ['sketchbook', 'cabin', 'skybound', 'gulp']);
+  assert.deepEqual(ids(featuredGames(games)), ['blocks', 'sketchbook', 'cabin', 'boss', 'grass', 'skybound', 'gulp']);
+  assert.deepEqual(ids(featuredGames(games.filter(([id]) => !['blocks', 'boss'].includes(id)))), ['sketchbook', 'cabin', 'grass', 'skybound', 'gulp']);
   assert.deepEqual(featuredGames([]), []);
 });
 
-test('browse sorting features the six picks or uses fixed addition dates, without changing the catalog', () => {
+test('browse sorting features the seven picks or uses fixed addition dates, without changing the catalog', () => {
   const before = [...games];
-  assert.deepEqual(ids(orderGames(games)).slice(0, 6), FEATURED_GAMES);
+  assert.deepEqual(ids(orderGames(games)).slice(0, FEATURED_GAMES.length), FEATURED_GAMES);
   const newest = ids(orderGames(games, 'newest'));
   assert.equal(newest[0], 'moon-swing');
   assert.ok(newest.indexOf('canyon-pods') < newest.indexOf('skybound'));

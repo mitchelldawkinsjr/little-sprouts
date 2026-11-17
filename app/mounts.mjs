@@ -469,7 +469,6 @@ export function registerMounts(rt) {
   function playFocusOn() { return document.body.classList.contains('play-focus'); }
   function setPlayFocus(on) {
     document.body.classList.toggle('play-focus', !!on);
-    try { sessionStorage.setItem('ls:play-focus', on ? '1' : '0'); } catch {}
     syncPlayViewButtons();
   }
   function syncPlayViewButtons() {
@@ -478,10 +477,9 @@ export function registerMounts(rt) {
     const focus = $('#playFocus');
     if (focus) {
       const on = playFocusOn();
-      focus.hidden = playFullscreen.native || playFullscreen.expanded;
       focus.setAttribute('aria-pressed', String(on));
-      focus.setAttribute('aria-label', on ? 'Show controls' : 'Focus view');
-      focus.title = on ? 'Show controls' : 'Focus view';
+      focus.setAttribute('aria-label', on ? 'Exit focus view' : 'Focus view');
+      focus.title = on ? 'Exit focus view' : 'Focus view';
       focus.textContent = on ? '⤢' : '⤡';
     }
     const full = $('#playFull');
@@ -497,7 +495,6 @@ export function registerMounts(rt) {
   }
   function wirePlayViewControls(doListen) {
     playFullscreen ||= makePlayFullscreen(document);
-    try { if (sessionStorage.getItem('ls:play-focus') === '1') document.body.classList.add('play-focus'); } catch {}
     if ($('#playListen')) $('#playListen').onclick = doListen;
     if ($('#playFocus')) $('#playFocus').onclick = () => setPlayFocus(!playFocusOn());
     if ($('#playFull')) $('#playFull').onclick = async () => {
@@ -515,8 +512,8 @@ export function registerMounts(rt) {
     playFullscreen.leave();
     syncPlayViewButtons();
   }
-  function playTopControls() {
-    return `<div class="play-actions"><button type="button" class="quiet icon-btn" id="playListen" aria-label="Hear it again" title="Hear it again">🔈</button><button type="button" class="quiet icon-btn" id="playFocus" aria-label="Focus view" title="Focus view" aria-pressed="false">⤡</button><button type="button" class="quiet icon-btn" id="playFull" aria-label="Full screen" title="Full screen" aria-pressed="false">⛶</button></div>`;
+  function playTopControls(alone = '') {
+    return `<div class="play-actions">${alone}<button type="button" class="quiet icon-btn" id="playListen" aria-label="Hear it again" title="Hear it again">🔈</button><button type="button" class="quiet icon-btn" id="playFocus" aria-label="Focus view" title="Focus view" aria-pressed="false">⤡</button><button type="button" class="quiet icon-btn" id="playFull" aria-label="Full screen" title="Full screen" aria-pressed="false">⛶</button></div>`;
   }
 
   function showCompletedVerse(g) {
@@ -629,6 +626,7 @@ export function registerMounts(rt) {
   }
   function home(focus, { syncHash = true } = {}) {
     leavePlayFullscreen();
+    document.body.classList.remove('play-focus');
     if (!rt.data.profiles?.length) {
       rt.showWelcome?.();
       return;
@@ -796,7 +794,7 @@ export function registerMounts(rt) {
   function aloneBar(spec) {
     const alone = sidecarAlone(spec);
     if (!alone) return '';
-    return `<div class="play-alone"><button type="button" class="quiet" id="playAlone">Play on its own</button><p>${esc(alone.note)}</p></div>`;
+    return `<button type="button" class="quiet play-alone" id="playAlone" aria-label="Play on its own" aria-describedby="playAloneNote"><span class="play-alone-long">Play on its own</span><span class="play-alone-short" aria-hidden="true">Solo</span></button><span class="play-alone-note" id="playAloneNote">${esc(alone.note)}</span>`;
   }
   function openSidecarAlone() {
     const alone = sidecarAlone(sidecarGame(rt.game?.mode));
@@ -806,6 +804,8 @@ export function registerMounts(rt) {
     rt.ask(`Play ${alone.title} on its own?`, `This round will not be saved. ${alone.note}`, 'Play on its own', { keep: true }).then(ok => { if (ok) go(); });
   }
   function start(mode, { syncHash = true } = {}) {
+    // Every newly opened game starts with a roomy playfield; the Focus button still toggles it.
+    document.body.classList.add('play-focus');
     rt.releaseListen();
     rt.stopSpeech();
     clearTimers('rocket', 'lane', 'hook', 'sky', 'planet', 'match', 'learn', 'bridge', 'chase', 'hop', 'toast', 'glide', 'city', 'lily', 'bust', 'mole', 'cube', 'stack', 'lamp', 'rally', 'verse');
@@ -1266,7 +1266,7 @@ export function registerMounts(rt) {
         rt.say(g.prompt);
       } else rt.askBeforePlay(g.prompt);
     };
-    $('#app').innerHTML = `<div class="playtop" data-mode="${esc(g.mode)}"><button class="quiet" id="back">← All games</button><div class="play-main"><b>${esc(g.title)}</b>${tally}</div>${playTopControls()}</div>${alone}${bar}<section class="playarea"><h1>${esc(rt.heading(g))}</h1><button class="speaker" id="listen"><span aria-hidden="true">🔈</span> Hear it again</button>${reveal}${memory}${scene}${body}<p class="feedback" id="feedback" aria-live="polite"></p><button class="primary" id="next" data-camera-go hidden>${g.index + 1 === rounds ? 'See my stars ★' : 'Next adventure →'}</button></section>`;
+    $('#app').innerHTML = `<div class="playtop" data-mode="${esc(g.mode)}"><button class="quiet" id="back">← All games</button><div class="play-main"><b>${esc(g.title)}</b>${tally}</div>${playTopControls(alone)}</div>${bar}<section class="playarea"><h1>${esc(rt.heading(g))}</h1><button class="speaker" id="listen"><span aria-hidden="true">🔈</span> Hear it again</button>${reveal}${memory}${scene}${body}<p class="feedback" id="feedback" aria-live="polite"></p><button class="primary" id="next" data-camera-go hidden>${g.index + 1 === rounds ? 'See my stars ★' : 'Next adventure →'}</button></section>`;
     $('#back').onclick = requestHome;
     if ($('#playAlone')) $('#playAlone').onclick = openSidecarAlone;
     $('#listen').onclick = hearAgain;

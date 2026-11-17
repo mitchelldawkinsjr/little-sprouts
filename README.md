@@ -28,9 +28,11 @@ Starter games save automatically. Select **Save full offline pack** in Parent co
 
 ### Playing on a tablet
 
-Use **Full screen** in a game's top bar to hide the browser chrome when supported.
-If fullscreen is unavailable, **Expand game** fills the available browser viewport
-and keeps the exit button visible. Touch controls and playfields ignore accidental
+Games start in **Focus view** to give the playfield more room on tablets.
+The **Focus** button toggles back to the regular layout; **Play on its own** stays
+beside it for games with a standalone page. Use **Full screen** to hide browser
+chrome when supported, or **Expand game** to fill the browser viewport otherwise.
+Touch controls and playfields ignore accidental
 pinch and double-tap zoom so a second finger can press a game control. The game
 shelf and Parent corner still support browser zoom and scrolling.
 
@@ -48,7 +50,7 @@ Joining by sound needs the microphone once, and it works best with the computers
 
 ## How a round works
 
-Home starts with **Featured Games**: Block meadow, Sketchbook Mega Ramp, Cabin camp, Boss chase, Skybound climb, and Garden gulp, in that order. Each card shows a picture from the game. **Keep Playing** remembers up to six games for each learner on this browser. **New Games** shows recent additions; **Browse All Games** keeps every available game within reach through the existing categories. All Games and each category offer **Featured first** and **Newest first**. A grown-up's **Up next** pin still appears above the featured games.
+Home starts with **Featured Games**: Block meadow, Sketchbook Mega Ramp, Cabin camp, Boss chase, Grass maze, Skybound climb, and Garden gulp, in that order. Each card shows a picture from the game. **Keep Playing** remembers up to six games for each learner on this browser. **New Games** shows recent additions; **Browse All Games** keeps every available game within reach through the existing categories. All Games and each category offer **Featured first** and **Newest first**. A grown-up's **Up next** pin still appears above the featured games.
 
 **How we play** opens Tap, Move, Hunt, or Reach:
 
