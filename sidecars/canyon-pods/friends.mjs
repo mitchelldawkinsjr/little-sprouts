@@ -110,7 +110,7 @@ export function makeFriendRace({ update, start, pose, finish, results, rematch, 
       // The Wi-Fi module is already cached with the app, but only pairing loads its UI and audio.
       const pending = { close() { pending.closed = true; pending.link?.close(); },
         send(data) { pending.link?.send(data); } };
-      import('../../lib/friend-link.mjs?v=group1').then(m => {
+      import('../../lib/friend-link.mjs?v=group2').then(m => {
         if (!pending.closed) pending.link = m.pairLocal(facade, role);
       }).catch(() => {
         if (!pending.closed) facade.dispatchEvent(new Event('close'));

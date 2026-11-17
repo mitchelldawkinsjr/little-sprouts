@@ -4,7 +4,7 @@
    is down. Every other WebSocket is left alone. This copy matches sidecars/paint/link.js. */
 (function () {
   var Native = window.WebSocket;
-  var LINK = '/lib/friend-link.mjs?v=friend2';
+  var LINK = '/lib/friend-link.mjs?v=group2';
 
   function isRoom(url) {
     try { return new URL(url, location.href).pathname === '/link'; } catch (e) { return false; }

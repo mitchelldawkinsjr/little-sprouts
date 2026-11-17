@@ -62,6 +62,31 @@ describe('paint link', () => {
       await new Promise((resolve) => http.close(() => resolve()))
     }
   })
+
+  it('drops a friend who stops answering pings, so the host hears they left', async () => {
+    const http = createServer()
+    attachRelay(http, { pingMs: 50 })
+    await new Promise((resolve) => http.listen(0, '127.0.0.1', resolve))
+    const url = `ws://127.0.0.1:${http.address().port}/link`
+    try {
+      // The host answers each ping by talking; the guest (this test client never pongs) goes quiet.
+      const host = await openSocket(url)
+      host.send(JSON.stringify({ t: 'create' }))
+      const { room } = JSON.parse(await host.next())
+      const keep = setInterval(() => host.send('{}'), 20)
+      const guest = await openSocket(url)
+      guest.send(JSON.stringify({ t: 'join', room }))
+      assert.equal(JSON.parse(await host.next()).here, true)
+      const left = JSON.parse(await host.next())
+      clearInterval(keep)
+      assert.equal(left.t, 'peer')
+      assert.equal(left.here, false)
+      host.close()
+    } finally {
+      http.closeAllConnections?.()
+      await new Promise((resolve) => http.close(() => resolve()))
+    }
+  })
 })
 
 function openSocket(url) {
