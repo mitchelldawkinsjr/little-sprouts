@@ -44,7 +44,6 @@ import {
 } from '../logic.mjs?v=offline1';
 import { canSpeak } from '../lib/speech.js?v=offline4';
 import { makePlayFullscreen } from '../lib/play-fullscreen.mjs';
-import { bakedLines } from '../lib/speech-core.mjs?v=offline4';
 import { mountCatch, mountLanes, mountRace, mountRocket, pokeRocket, stopArcade } from '../games/arcade.js?v=gear2';
 import { mountLunar } from '../games/lunar.js?v=moon-board2';
 import { mountHoop, stopHoop } from '../games/hoop.js?v=hoop-trio-r2';
@@ -1521,9 +1520,10 @@ export function registerMounts(rt) {
           rt.hushed = on ? frame : null;
           if (on) rt.stopSpeech();
         },
-        // A game's own spoken line, such as Block meadow's night warnings. Only lines with a baked clip.
+        // Speech comes from the active, verified game iframe. Dynamic lesson lines
+        // use the same playback owner as recorded warnings and host questions.
         onSay(text) {
-          if (rt.game && !rt.game.finished && bakedLines.includes(text)) rt.say(text);
+          if (rt.game && !rt.game.finished && text.length <= 4000) rt.say(text);
         },
         onSlip() {
           const round = rt.game;

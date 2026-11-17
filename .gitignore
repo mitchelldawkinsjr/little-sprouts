@@ -5,3 +5,8 @@ tools/voice-bake/node_modules/
 
 .env
 tools/build/node_modules/
+.fire-build/
+tools/fire-tablet/node_modules/
+*.jks
+*.keystore
+tools/fire-tablet/__pycache__/
