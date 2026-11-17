@@ -52,7 +52,7 @@ for permission in ("android.permission.ACCESS_NETWORK_STATE", "android.permissio
         document.remove(duplicate)
 # Do not mark camera/microphone as required hardware: older Fire devices or
 # Wi-Fi-only tablets can still play all games that do not capture media.
-for feature in ("android.hardware.camera.any", "android.hardware.microphone"):
+for feature in ("android.hardware.camera", "android.hardware.camera.autofocus", "android.hardware.camera.any", "android.hardware.microphone"):
     entries = [node for node in document.findall("uses-feature") if node.get(attr("name")) == feature]
     if not entries:
         entries = [ET.SubElement(document, "uses-feature", {attr("name"): feature})]
