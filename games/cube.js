@@ -131,7 +131,7 @@ export function mountCube(root, { board = {}, buddy, reduced, nextQuestion, onPr
 
   import(THREE_URL).then(THREE => {
     if (session.dead) return;
-    begin(THREE, stage, session, { board, reduced, nextQuestion, onPrompt, onLives, onMiss, onClear, onOver, onFinished });
+    begin(THREE, stage, session, { board, buddy, reduced, nextQuestion, onPrompt, onLives, onMiss, onClear, onOver, onFinished });
   }).catch(() => {
     if (session.dead) return;
     const wait = stage.querySelector('.cube-wait');
@@ -139,7 +139,7 @@ export function mountCube(root, { board = {}, buddy, reduced, nextQuestion, onPr
   });
 }
 
-function begin(THREE, stage, session, { board, reduced, nextQuestion, onPrompt, onLives, onMiss, onClear, onOver, onFinished }) {
+function begin(THREE, stage, session, { board, buddy, reduced, nextQuestion, onPrompt, onLives, onMiss, onClear, onOver, onFinished }) {
   const wait = stage.querySelector('.cube-wait');
   if (wait) wait.remove();
   const livesEl = stage.querySelector('.cube-lives');

@@ -96,9 +96,11 @@ import {
   ALL_SHELF,
   shelfChipsHtml,
   shelfPanelHtml,
+  discoveryHtml,
   starGardenHtml as gardenHtml,
   homePageHtml
 } from '../lib/home-ui.mjs?v=bloom3';
+import { orderGames, rememberGame } from '../lib/game-discovery.mjs';
 import { wornGear } from '../logic/shop.mjs?v=shop3';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=aviator1';
@@ -340,7 +342,7 @@ export function registerMounts(rt) {
   }
   function recommended() {
     const listed = listedGames();
-    const id = nextUpGame(listed.map(g => g[0]), rt.p());
+    const id = nextUpGame(orderGames(listed).map(g => g[0]), rt.p());
     return listed.find(g => g[0] === id) || listed[0];
   }
   function gameBlurb(gid, desc) {
@@ -387,7 +389,7 @@ export function registerMounts(rt) {
     return card ? upNextHeroHtml({ ...card, learnerName }) : '';
   }
   function shelfPanel(available, openId, nextId) {
-    return shelfPanelHtml(available, openId, nextId, gameCard);
+    return shelfPanelHtml(available, openId, nextId, gameCard, rt.homeSort || 'featured');
   }
   function stopLunar() {
     rt.lunarCourt?.destroy();
@@ -678,7 +680,7 @@ export function registerMounts(rt) {
     const listed = listedGames();
     const available = SHELF_META.map(s => ({ ...s, games: listed.filter(g => shelfOf(g[0]) === s.id) })).filter(s => s.games.length);
     if (focus === 'style') rt.homeHowOpen = true;
-    if (rt.homeShelf !== ALL_SHELF.id && !available.some(s => s.id === rt.homeShelf)) rt.homeShelf = ALL_SHELF.id;
+    if (!['featured', 'newest', ALL_SHELF.id].includes(rt.homeShelf) && !available.some(s => s.id === rt.homeShelf)) rt.homeShelf = 'featured';
     const note = learner.sessions
       ? esc(roundsSentence(learner))
       : 'Most games wait for you. Rocket climb and Gas race keep going until they finish.';
@@ -689,13 +691,14 @@ export function registerMounts(rt) {
       starsChip: esc(starChip(learner)),
       learnerCount: rt.data.profiles.length,
       learnerMenu: rt.data.profiles.map((pr, i) => `<button type="button" class="switcher-item${i === rt.data.active ? ' mine' : ''}" data-learner="${i}"${i === rt.data.active ? ' aria-current="true"' : ''}>${esc(pr.name)}<span>${pr.stars === 1 ? '1 star' : `${pr.stars || 0} stars`}</span></button>`).join(''),
-      upNextHero: next ? upNextHero(next[0], esc(learner.name)) : '',
+      upNextHero: next && listed.some(g => g[0] === learner.upNext) ? upNextHero(learner.upNext, esc(learner.name)) : '',
+      discovery: rt.homeShelf === 'featured' ? discoveryHtml(listed, learner, gameCard) : '',
       progressLine: learner.total ? `${learner.correct / learner.total >= 0.8 ? 'Flourishing' : 'Growing'} (${Math.round(learner.correct / learner.total * 100)}% first tries)` : '',
       subnav: subnavHtml(available, rt.homeShelf),
       bodyPlay: bodyPlayHtml({ learnerName: esc(learner.name), styleId: rt.styleOf(''), styles: rt.styles, cameraOn: rt.data.camera, arcadeOn: !!rt.p().arcade }),
       helperBars: helperBarsHtml(),
       shelfChips: shelfChipsHtml(available, rt.homeShelf),
-      shelfPanel: shelfPanel(available, rt.homeShelf, next?.[0]),
+      shelfPanel: rt.homeShelf === 'featured' ? '' : shelfPanel(available, rt.homeShelf, next?.[0]),
       howWePlay: howWePlay(rt.homeHowOpen),
       starGarden: starGardenHtml(true),
       note,
@@ -704,9 +707,17 @@ export function registerMounts(rt) {
     document.querySelectorAll('[data-shelf]').forEach(b => b.onclick = () => {
       const label = (b.querySelector('.subject-label') || b).textContent.trim();
       rt.homeShelf = b.dataset.shelf;
+      if (rt.homeShelf === 'newest') rt.homeSort = 'newest';
       home('shelf');
       if (rt.data.sound) rt.say?.(label);
     });
+    const sort = $('#shelfSort');
+    if (sort) sort.onchange = () => {
+      rt.homeSort = sort.value;
+      if (rt.homeShelf === 'newest' && rt.homeSort === 'featured') rt.homeShelf = ALL_SHELF.id;
+      home('shelf');
+      $('#shelfSort')?.focus({ preventScroll: true });
+    };
     const howToggle = $('#howToggle');
     if (howToggle) howToggle.onclick = () => { rt.homeHowOpen = !rt.homeHowOpen; home('how'); };
     document.querySelectorAll('[data-style]').forEach(b => b.onclick = () => { rt.p().style = b.dataset.style; rt.save(); home('style'); });
@@ -800,6 +811,7 @@ export function registerMounts(rt) {
     rt.stopSpeech();
     clearTimers('rocket', 'lane', 'hook', 'sky', 'planet', 'match', 'learn', 'bridge', 'chase', 'hop', 'toast', 'glide', 'city', 'lily', 'bust', 'mole', 'cube', 'stack', 'lamp', 'rally', 'verse');
     const learner = rt.p();
+    learner.recentGames = rememberGame(learner, mode);
     learner.lastPlayed = mode;
     rt.save();
     const style = rt.styleOf(mode);
