@@ -1906,6 +1906,7 @@ export function registerMounts(rt) {
           if (meter) meter.setAttribute('aria-valuenow', String(info.left));
         },
         onFall() {
+          rt.audio?.play('player.hit');
           if (g.freePlay) {
             g.court?.revive();
             return;
@@ -1923,6 +1924,7 @@ export function registerMounts(rt) {
         },
         onGoal() {
           if (rt.game !== g || g.finished) return;
+          rt.audio?.play('reward.star');
           g.asked = (g.asked || 0) + 1;
           g.firstCorrect = (g.firstCorrect || 0) + 1;
           g.index++;
@@ -2117,6 +2119,7 @@ export function registerMounts(rt) {
         onMiss(kind) {
           if (rt.game !== g || g.done) return;
           g.missed = true;
+          rt.audio?.play('player.hit');
           const line = kind === 'bug' ? 'A snail got you. Keep going.' : 'That berry is not the one.';
           const feedback = $('#feedback');
           if (feedback && feedback.textContent !== line) {
@@ -2127,6 +2130,7 @@ export function registerMounts(rt) {
         },
         onDone(clean) {
           if (rt.game !== g || g.done) return;
+          rt.audio?.play('player.collect');
           if (!clean) g.missed = true;
           rt.answer(true);
         }
@@ -2146,6 +2150,7 @@ export function registerMounts(rt) {
         onMiss(kind) {
           if (rt.game !== g || g.finished) return;
           g.missed = true;
+          rt.audio?.play('player.hit');
           const line = kind === 'fall' ? 'You fell. You have one less life.' : 'That one breaks. You have one less life.';
           const feedback = $('#feedback');
           if (feedback && feedback.textContent !== line) {
@@ -2251,6 +2256,7 @@ export function registerMounts(rt) {
         onMiss(kind) {
           if (rt.game !== g || g.finished) return;
           g.missed = true;
+          rt.audio?.play('player.crash');
           const line = kind === 'red' ? 'A red cube got you. You have one less life.' : kind === 'pass' ? 'You drove past the answer. Steer into it.' : 'That cube is not the one.';
           const feedback = $('#feedback');
           if (feedback && feedback.textContent !== line) {
