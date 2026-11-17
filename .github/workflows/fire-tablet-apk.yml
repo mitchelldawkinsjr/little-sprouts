@@ -17,7 +17,7 @@ on:
       - 'logic/**'
 jobs:
   apk:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     permissions:
       contents: read
@@ -25,7 +25,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -36,25 +39,30 @@ jobs:
           packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
       - name: Stage offline web assets
         run: python3 tools/fire-tablet/stage.py
+      - name: Test updater policy and release versioning
+        run: |
+          javac -d "$RUNNER_TEMP/updater-tests" tools/fire-tablet/UpdatePolicy.java tools/fire-tablet/UpdatePolicyTest.java
+          java -cp "$RUNNER_TEMP/updater-tests" org.littlesprouts.learning.UpdatePolicyTest
+          python3 -m unittest discover -s tools/fire-tablet -p 'test_*.py'
       - name: Install Capacitor tooling
         working-directory: .fire-build
         run: |
-          printf '%s\n' '{"name":"little-sprouts-fire-build","version":"1.0.0","private":true}' > package.json
-          npm install --no-audit --no-fund @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7
+          cp ../tools/fire-tablet/package.json ../tools/fire-tablet/package-lock.json .
+          npm ci --no-audit --no-fund
       - name: Generate Android project
         working-directory: .fire-build
         run: |
-          npx cap add android
-          npx cap sync android
+          npx --no-install cap add android
+          npx --no-install cap sync android
       - name: Add native Wi-Fi updater
         run: python3 tools/fire-tablet/install-updater.py
       - name: Match launcher icon to PWA
         run: |
-          python3 -m pip install --user Pillow
+          python3 -m pip install Pillow==11.3.0
           python3 tools/fire-tablet/install-icon.py
-      - name: Build sideloadable debug APK
+      - name: Compile debug and release APKs
         working-directory: .fire-build/android
-        run: ./gradlew assembleDebug --no-daemon
+        run: ./gradlew assembleDebug assembleRelease --no-daemon
       - name: Verify and stage signed APK
         run: |
           apk=.fire-build/android/app/build/outputs/apk/debug/app-debug.apk

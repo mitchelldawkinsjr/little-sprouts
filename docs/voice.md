@@ -1,12 +1,13 @@
 # Read-aloud voice
 
-All speech goes through `lib/speech.js`. Games never talk to Kokoro or `speechSynthesis` directly. `app.js` calls `say()`, which calls `speak()`.
+Spoken prompts in the main app go through `lib/speech.js`. `app.js` calls `say()`, which calls `speak()`. The Android APK uses the native speech bridge described below; the website uses Kokoro and its browser fallback. Some standalone sidecar pages have their own browser-speech fallback, so test those pages separately from their embedded APK flow.
 
 | File | Job |
 |---|---|
 | `lib/speech.js` | Public interface. One line at a time, playback, fallback choice, status, and timing logs. |
 | `lib/speech-worker.js` | Loads Kokoro (kokoro-js 1.2.1, Kokoro-82M ONNX, `q8` on WASM), generates lines, and keeps the memory and IndexedDB caches. |
 | `lib/speech-core.mjs` | Pure logic shared by both, plus the tests: cache keys, PCM checks, engine choice, queue, retries, text clean-up, and voice roles. |
+| `tools/fire-tablet/SpeechPlugin.java` | Android-only playback: packaged recordings, English TextToSpeech, audio focus, completion events, timeouts and lifecycle cleanup. |
 | `tests/speech.test.mjs` | Node tests. They run the real `lib/speech.js` and `lib/speech-worker.js` against stand-in Worker, Web Audio, and speech objects. |
 
 ## Using it
@@ -16,14 +17,15 @@ import { speak, speakAndWait, stop, prefetchSpeech, prepareSpeech, getSpeechStat
 
 speak('Find the circle.', voiceId);                    // older call shape; resolves like speakAndWait
 const { status, engine } = await speakAndWait('What is 7 × 8?', { voiceId, context: 'mathCoach' });
-// status: completed | interrupted | failed | skipped. engine: kokoro | browser | null
+// status: completed | interrupted | failed | skipped.
+// engine: native-file | native-tts (APK), kokoro | browser (website), or null
 
 stop();                                                // the current line resolves as interrupted
 prefetchSpeech(['Try another one.'], { priority: 'next' });
 await prepareSpeech({ onProgress: n => {} });          // a grown-up's tap: retries now, reports download progress
 ```
 
-`speakAndWait` options:
+`speakAndWait` options (the `fallback` settings apply to the website):
 
 - `fallback: 'not-ready'` is the default for games. While the model is still downloading, a stored line plays in Kokoro and a new one uses the browser voice.
 - `fallback: 'on-error'` waits for the download. The Parent corner previews use it.
@@ -31,9 +33,40 @@ await prepareSpeech({ onProgress: n => {} });          // a grown-up's tap: retr
 - `interrupt: false` returns `skipped` if another line is playing.
 - `spell: true` reads letters one at a time.
 
-Every promise settles exactly once. There is only one foreground line at a time. Hiding the tab stops the current line.
+Every promise settles exactly once. There is only one foreground line at a time. Hiding the tab stops the current line. On the APK, returning to the foreground can retry the interrupted prompt; changing games or explicitly stopping speech clears that recovery candidate. Stale native callbacks cannot finish a newer request.
 
-## When the browser voice speaks
+## Android APK speech
+
+The APK uses **included recording → native Android TextToSpeech** for app prompts. The native bridge plays matching `voice/1/<voice>/<hash>.m4a` clips from the APK's `assets/public` directory through Android MediaPlayer. Other prompts use the tablet's installed English speech engine. A missing or unreadable recording can use native speech. This path does not need Kokoro's model download or WebView `speechSynthesis`.
+
+The selected Kokoro voice still chooses included recordings. Dynamic APK prompts use the tablet's available offline English voice, so their sound can differ from those recordings. Native speech uses the same media-volume stream as game audio. Embedded lesson prompts are routed to the host speech service as well.
+
+The installed English engine and voice data must be available on the tablet. The bridge checks initialization, language support and offline voice availability. Parent corner reports the tablet's voice readiness; a missing English voice asks a grown-up to check the tablet's speech settings. Selecting a Kokoro voice still selects its included recordings, but dynamically generated APK prompts use the available native English voice rather than promising a matching Kokoro character voice.
+
+Native playback has a bounded initialization and start wait, and a completion watchdog. Success is reported only for MediaPlayer's completion callback or Android TextToSpeech's utterance-completion callback. A timeout, missing voice, failed audio focus or playback error is a failure, not a successful silent line. Native audio focus is held for speech and released when it finishes, stops or loses focus. Pausing the activity stops current speech, and destruction releases the native player and speech engine. Returning and replaying recheck the speech path so an earlier engine failure does not permanently disable read-aloud.
+
+The shared speech queue still prevents overlapping prompts, cancels stale work on game changes and ducks game sounds while speech is playing. A failed line shows one accessible message with **Hear it again**, rather than an alert for every engine callback. The retry uses the speech layer's private failed-prompt candidate; diagnostics do not expose the words spoken. Reading off and friend-join hush still prevent playback.
+
+The website keeps its Kokoro/browser path. Its Web Audio completion watchdog treats missing completion as a failure; a suspended context must not be reported as completed, and a closed context is recreated on the next attempt.
+
+## APK checks on a physical Fire HD 8
+
+Build/install the APK containing the native plugin; changing website files alone does not update an already-installed APK. Automated mocks and Android compilation cannot confirm what comes out of the tablet's speaker.
+
+| Scenario | Expected |
+|---|---|
+| Fresh install, before any voice-model download | Included recordings and a new math/word prompt speak without waiting for Kokoro. |
+| Wi-Fi off after installing the tablet's English voice | Both an included recording and a new prompt speak; no model or network voice is required. |
+| Switch among learning games and 3D sidecars at least 20 times | Each new question speaks once; Hear it again works without overlapping earlier prompts. |
+| Home button, screen lock, or another app interrupts a prompt | Speech stops; returning recovers the current prompt without speaking a prompt from a game already left. |
+| Missing English voice/engine, then configure it in tablet settings | A clear message replaces silence; Hear this voice / Hear it again works after the voice is available. |
+| Another app owns or interrupts audio focus | No silent success; retry works after returning focus to Little Sprouts. |
+| Read-aloud off or join-a-friend hush | No automatic or retry speech leaks through. |
+| Rapid Next, Back, game changes and repeated Hear it again | Stale completions do not finish or cancel the current prompt, and speech does not overlap. |
+
+Record Fire model, Fire OS version, WebView version, English engine/voice readiness, whether the failed line used a packaged recording or native speech, and the safe error code. Keep learner names and question text out of shared diagnostic logs.
+
+## When the website's browser voice speaks
 
 | Kokoro state | New line | Line already stored |
 |---|---|---|
@@ -98,6 +131,8 @@ Text is cleaned before speaking and before building keys:
 ## Debugging
 
 Open with `?voicedebug`, or on localhost. Each line is logged with `console.debug('[voice]', …)`, and `sproutsVoice.status()` returns the state, counters, and the last 50 lines. Logs hold engine, voice, role, length, source, fallback reason, and timings. They never hold the words spoken, and nothing leaves the device.
+
+APK status also identifies the native path and native English/offline readiness. Read-aloud failure messages use known reason codes, not raw native exceptions. Do not infer audible success from a resolved plugin call unless its status is completed; do not treat a timeout as completed playback.
 
 ## Measured on October 24, 2026
 

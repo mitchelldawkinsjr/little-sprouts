@@ -11,9 +11,10 @@ import {
   wordsFor,
   versePack
 } from '../logic.mjs?v=offline1';
-import { contextFor, onSpeechStatus, prefetchSpeech, speak, stop, voiceFor } from '../lib/speech.js?v=offline4';
+import { contextFor, onSpeechStatus, prefetchSpeech, retrySpeech, speak, stop, voiceFor } from '../lib/speech.js?v=offline4';
 import { postSidecar, sidecarArcadeIds, sidecarRows } from '../lib/sidecar.js?v=offline4';
 import { $, esc } from './runtime.mjs?v=lean-r2';
+import { speechFailureText } from '../lib/parent-ui.mjs?v=structure2';
 
 export function registerHelpers(rt) {
   Object.assign(rt, {
@@ -35,7 +36,7 @@ export function registerHelpers(rt) {
     releaseListen,
     askBeforePlay,
     wordPrompt,
-    stopSpeech: stop,
+    stopSpeech,
     focusHeading,
     shape,
     swatch,
@@ -183,12 +184,51 @@ export function registerHelpers(rt) {
   }
   // A game's join-a-friend card is up (see onHush in mounts.mjs). Ends when its frame is gone.
   const hushed = () => !!rt.hushed?.isConnected;
+  function hideSpeechNotice() {
+    document.querySelector('#speechNotice')?.remove();
+  }
+  function stopSpeech(reason) {
+    hideSpeechNotice();
+    stop(reason);
+  }
+  function speechNotice(error) {
+    if (!error || !rt.data.sound || hushed()) { hideSpeechNotice(); return; }
+    let notice = document.querySelector('#speechNotice');
+    if (!notice) {
+      notice = document.createElement('aside');
+      notice.id = 'speechNotice';
+      notice.setAttribute('role', 'status');
+      notice.setAttribute('aria-live', 'polite');
+      notice.style.cssText = 'display:flex;align-items:center;flex-wrap:wrap;gap:12px;padding:12px 16px;margin:12px auto;max-width:1100px;border:2px solid #c39945;border-radius:16px;background:#fff4d5;color:#284737';
+      const text = document.createElement('span');
+      text.dataset.speechNoticeText = '';
+      notice.append(text);
+      const retry = document.createElement('button');
+      retry.type = 'button';
+      retry.className = 'quiet';
+      retry.textContent = '🔊 Hear it again';
+      retry.onclick = () => {
+        if (!rt.data.sound || hushed()) { hideSpeechNotice(); return; }
+        void retrySpeech();
+      };
+      notice.append(retry);
+      document.querySelector('#app')?.before(notice);
+    }
+    const text = speechFailureText(error);
+    const message = notice.querySelector('[data-speech-notice-text]');
+    // Do not announce the same failure again for unrelated status updates.
+    if (message.textContent !== text) message.textContent = text;
+  }
   function say(t) {
-    if (rt.data.sound && !hushed()) speak(t, voiceNow(), { context: contextFor(rt.game?.mode), queue: true });
+    if (rt.data.sound && !hushed()) {
+      return speak(t, voiceNow(), { context: contextFor(rt.game?.mode), queue: true });
+    }
   }
   // For a tap on Hear it again: cut in instead of waiting behind the line already playing.
   function sayNow(t) {
-    if (rt.data.sound && !hushed()) return speak(t, voiceNow(), { context: contextFor(rt.game?.mode) });
+    if (rt.data.sound && !hushed()) {
+      return speak(t, voiceNow(), { context: contextFor(rt.game?.mode) });
+    }
     return Promise.resolve();
   }
   function releaseListen() {
@@ -229,6 +269,7 @@ export function registerHelpers(rt) {
     if (event.target?.closest?.('#listenBack')) document.querySelector('#back')?.click();
   });
   onSpeechStatus(shot => {
+    speechNotice(shot.speechError);
     const now = !!shot.speaking;
     if (now === rt.talking) return;
     rt.talking = now;
