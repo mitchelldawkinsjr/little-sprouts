@@ -29,16 +29,15 @@ with zipfile.ZipFile(apk) as archive:
     source = hashlib.sha256(Path("icons/icon-512.png").read_bytes()).hexdigest()
     if hashlib.sha256(archive.read("assets/public/icons/icon-512.png")).hexdigest() != source:
         raise SystemExit("Bundled PWA icon differs from canonical source")
-    # AAPT may crunch PNGs and add density API qualifiers; compare decoded artwork.
-    generated = Path(".fire-build/android/app/src/main/res")
-    for path in generated.glob("mipmap-*/ic_launcher*.png"):
-        density = path.parent.name
-        resource = next(name for name in archive.namelist()
-                        if re.fullmatch(r"res/" + density + r"(?:-v[0-9]+)?/" + path.name, name))
-        actual = Image.open(io.BytesIO(archive.read(resource))).convert("RGBA")
-        expected_image = Image.open(path).convert("RGBA")
-        if actual.size != expected_image.size or actual.tobytes() != expected_image.tobytes():
-            raise SystemExit(f"Launcher icon mismatch: {path}")
+    # Release builds shorten resource paths (res/xy.png), so match launcher icons by decoded pixels.
+    packed = {Image.open(io.BytesIO(archive.read(name))).convert("RGBA").tobytes()
+              for name in archive.namelist() if name.startswith("res/") and name.endswith(".png")}
+    generated = list(Path(".fire-build/android/app/src/main/res").glob("mipmap-*/ic_launcher*.png"))
+    if not generated:
+        raise SystemExit("No generated launcher icons to verify")
+    for path in generated:
+        if Image.open(path).convert("RGBA").tobytes() not in packed:
+            raise SystemExit(f"Launcher icon missing or changed in APK: {path}")
 metadata = {
     "package": "org.littlesprouts.learning", "version": version,
     "versionCode": version_code(version), "sha256": hashlib.sha256(Path(apk).read_bytes()).hexdigest(),
