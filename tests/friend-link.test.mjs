@@ -49,6 +49,13 @@ test('friend link: an answer keeps one address, prefers plain IPv4, and says act
   assert.ok(bytes.length < packSignal(CHROME_OFFER, { kind: 'offer', session: 7 }).length);
 });
 
+test('friend link: a home-network address beats a VPN address', () => {
+  const sdp = ANSWER_V4.replace('192.168.1.42 50000', '100.101.5.7 50001')
+    .replace('a=candidate:2311075926', 'a=candidate:9 1 udp 2122260223 192.168.1.42 50000 typ host\r\na=candidate:2311075926');
+  const back = unpackSignal(packSignal(sdp, { kind: 'answer', session: 7 }));
+  assert.match(back.sdp, /192\.168\.1\.42 50000 typ host/);
+});
+
 test('friend link: damaged or foreign bytes are ignored', () => {
   const bytes = packSignal(CHROME_OFFER, { kind: 'offer', session: 1 });
   const bad = Uint8Array.from(bytes);

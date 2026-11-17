@@ -2,7 +2,7 @@ import { makeQuiz } from '../../lib/sidecar-quiz.mjs';
 import { attachTouchControls, isTouchDevice } from '../../lib/touch-controls.mjs?v=touch1';
 import { buddyGear, buddyKind, makeBuddy } from '../../lib/buddy3d.mjs';
 import { isPerformanceTier, resolveAutoQuality } from '../../lib/device-tier.mjs';
-import { openRoom } from '../../lib/friend-link.mjs?v=sketchbook1';
+import { openRoom } from '../../lib/friend-link.mjs?v=group2';
 import { worldFriendStatus, makeWorldFriends } from '../../lib/world-friends.mjs';
 import { friendRoomCode, makeFriendSession, packFriendPose, readFriendPose } from './friends.mjs?v=1';
 import { distanceTo, LANDMARKS, makeTrail, MEGA_RAMP, pastRampLanding, RAMP_LANDING, STOPS } from './checkpoints.mjs?v=trail6';

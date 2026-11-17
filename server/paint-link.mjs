@@ -12,8 +12,11 @@ const GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
 const ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789'
 const MAX_BYTES = 1_000_000
 const attached = new WeakSet()
+// Proxies in front (NPM, nginx) cut a quiet socket after about a minute; a ping every
+// PING_MS keeps a waiting room open, and a socket that misses a pong is dropped.
+const PING_MS = 20_000
 
-export function attachRelay(httpServer) {
+export function attachRelay(httpServer, { pingMs = PING_MS } = {}) {
   if (attached.has(httpServer)) return
   attached.add(httpServer)
   const rooms = new Map()
@@ -24,7 +27,7 @@ export function attachRelay(httpServer) {
   httpServer.on('upgrade', (request, socket, head) => {
     const path = (request.url ?? '').split('?')[0]
     if (path !== '/link') return
-    const peer = accept(request, socket, head)
+    const peer = accept(request, socket, head, pingMs)
     if (!peer) return
     peer.onMessage = (text) => onMessage(peer, text)
     peer.onClose = () => {
@@ -138,7 +141,7 @@ export function attachRelay(httpServer) {
   }
 }
 
-function accept(request, socket, head) {
+function accept(request, socket, head, pingMs) {
   const key = request.headers['sec-websocket-key']
   if (!key || request.headers.upgrade?.toLowerCase() !== 'websocket') {
     socket.end('HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n')
@@ -151,14 +154,21 @@ function accept(request, socket, head) {
     'Connection: Upgrade\r\n' +
     `Sec-WebSocket-Accept: ${acceptKey}\r\n\r\n`
   )
-  const peer = new Peer(socket)
+  const peer = new Peer(socket, pingMs)
   if (head?.length) peer.push(head)
   return peer
 }
 
 class Peer {
-  constructor(socket) {
+  constructor(socket, pingMs) {
     this.socket = socket
+    this.alive = true
+    this.pinger = setInterval(() => {
+      if (!this.alive) { this.close(); return }
+      this.alive = false
+      this.frame(0x9, Buffer.alloc(0))
+    }, pingMs)
+    this.pinger.unref?.()
     this.open = true
     this.done = false
     this.buf = Buffer.alloc(0)
@@ -173,6 +183,7 @@ class Peer {
 
   push(chunk) {
     if (this.done) return
+    this.alive = true
     this.buf = this.buf.length ? Buffer.concat([this.buf, chunk]) : chunk
     if (this.buf.length > MAX_BYTES) {
       this.close()
@@ -274,6 +285,7 @@ class Peer {
     if (this.done) return
     this.done = true
     this.open = false
+    clearInterval(this.pinger)
     this.onClose()
   }
 }
