@@ -1325,7 +1325,7 @@ export function registerRound(rt) {
   function finishRun(g, title, detail) {
     rt.releaseListen();
     if (!g || g.finished) return;
-    rt.audio?.finish('reward.win');
+    rt.audio?.finish(/ran out|caught|done\.|lost|missed|fell/i.test(title) ? 'player.hit' : 'reward.win');
     rt.leavePlayFullscreen();
     g.finished = true;
     rt.clearTimers('bridge');
