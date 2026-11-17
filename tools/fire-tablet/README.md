@@ -3,7 +3,7 @@
 This workflow packages the **existing static Little Sprouts app** with Capacitor and produces an installable **debug APK** as a GitHub Actions artifact. It does not require Google Play or Amazon Appstore.
 
 ## Build
-GitHub Actions → **Fire Tablet APK** → **Run workflow**. Download the artifact named `little-sprouts-fire-hd8-debug-apk`, unzip it, and transfer `app-debug.apk` to the Fire tablet. Enable **Install unknown apps** for the app used to open the APK, then open it.
+Open the **Fire Tablet APK** check for the pull request. After it succeeds, download the `little-sprouts-fire-hd8-debug-apk` artifact from the run summary, unzip it, and transfer `little-sprouts-fire-hd8.apk` to the Fire tablet. After the workflow lands on the default branch, you can also run it manually under **Actions → Fire Tablet APK**. Enable **Install unknown apps** for the app used to open the APK, then open it.
 
 ## Important limitations / acceptance testing
 - This is a first build pipeline, **not yet a verified working Fire HD 8 release**. Check the workflow logs and test on the physical device.
