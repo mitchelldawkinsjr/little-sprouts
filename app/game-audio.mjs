@@ -17,8 +17,8 @@ export function registerGameAudio(rt) {
     if (button) {
       button.textContent = rt.data.audio.muted ? '🔇' : '🎵';
       button.setAttribute('aria-pressed', String(!rt.data.audio.muted));
-      button.setAttribute('aria-label', rt.data.audio.muted ? 'Turn game audio on' : 'Mute game audio');
-      button.title = button.getAttribute('aria-label');
+      button.setAttribute('aria-label', 'Game audio');
+      button.title = rt.data.audio.muted ? 'Turn game audio on' : 'Mute game audio';
     }
     return rt.data.audio;
   };
