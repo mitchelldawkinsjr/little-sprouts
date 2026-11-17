@@ -35,10 +35,28 @@ if not any(action.get(attr("name")) == "android.intent.action.TTS_SERVICE"
         queries = ET.SubElement(document, "queries")
     intent = ET.SubElement(queries, "intent")
     ET.SubElement(intent, "action", {attr("name"): "android.intent.action.TTS_SERVICE"})
-for permission in ("android.permission.ACCESS_NETWORK_STATE", "android.permission.REQUEST_INSTALL_PACKAGES"):
+# Capacitor 7's BridgeWebChromeClient already prompts at runtime when the
+# embedded HTTPS WebView calls getUserMedia. Without Android manifest entries
+# that prompt cannot grant the camera (QR scan) or microphone (pairing chirps).
+# It also requests MODIFY_AUDIO_SETTINGS alongside RECORD_AUDIO.
+media_permissions = (
+    "android.permission.CAMERA",
+    "android.permission.RECORD_AUDIO",
+    "android.permission.MODIFY_AUDIO_SETTINGS",
+)
+for permission in ("android.permission.ACCESS_NETWORK_STATE", "android.permission.REQUEST_INSTALL_PACKAGES", *media_permissions):
     entries = [node for node in document.findall("uses-permission") if node.get(attr("name")) == permission]
     if not entries:
         ET.SubElement(document, "uses-permission", {attr("name"): permission})
+    for duplicate in entries[1:]:
+        document.remove(duplicate)
+# Do not mark camera/microphone as required hardware: older Fire devices or
+# Wi-Fi-only tablets can still play all games that do not capture media.
+for feature in ("android.hardware.camera.any", "android.hardware.microphone"):
+    entries = [node for node in document.findall("uses-feature") if node.get(attr("name")) == feature]
+    if not entries:
+        entries = [ET.SubElement(document, "uses-feature", {attr("name"): feature})]
+    entries[0].set(attr("required"), "false")
     for duplicate in entries[1:]:
         document.remove(duplicate)
 providers = [node for node in application.findall("provider")
