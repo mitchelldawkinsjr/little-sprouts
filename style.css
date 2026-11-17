@@ -216,7 +216,7 @@ body:is(.play-focus,.play-expanded,.play-native-full):has(.playtop)>header{displ
 body:is(.play-focus,.play-expanded,.play-native-full):has(.playtop)>main{max-width:none;padding:max(4px,env(safe-area-inset-top)) max(6px,env(safe-area-inset-right)) max(6px,env(safe-area-inset-bottom)) max(6px,env(safe-area-inset-left))}
 body:is(.play-focus,.play-expanded,.play-native-full):has(.playtop) .progress{display:none}
 body:is(.play-focus,.play-expanded,.play-native-full):has(.playtop) .playarea{padding:6px;border:0;border-radius:12px;background:transparent}
-body.play-focus:not(.play-expanded,.play-native-full):has(.playtop) .playarea h1{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+body.play-focus:has(.playtop) .playarea h1{font-size:clamp(18px,2.6vw,28px);margin:0 0 4px}
 body:is(.play-focus,.play-expanded,.play-native-full):has(.playtop) .playarea>.speaker{display:none}
 body:is(.play-focus,.play-expanded,.play-native-full):has(.playtop) .feedback{margin:2px 0;font-size:14px}
 body:is(.play-focus,.play-expanded,.play-native-full):has(.playtop) .playtop{padding:2px 0}
