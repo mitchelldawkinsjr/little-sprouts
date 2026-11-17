@@ -15,6 +15,11 @@ import { contextFor, onSpeechStatus, prefetchSpeech, retrySpeech, speak, stop, v
 import { postSidecar, sidecarArcadeIds, sidecarRows } from '../lib/sidecar.js?v=offline4';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { speechFailureText } from '../lib/parent-ui.mjs?v=structure2';
+import { createGameSound } from '../lib/game-sound.mjs?v=audio1';
+
+// These games play their own sounds and music, so the host adds none.
+const OWN_AUDIO = new Set(['lunar', 'rally', 'bike', 'paint', 'roll', 'grass', 'dash', 'boss', 'cabin', 'glow', 'range', 'blocks', 'skybound', 'fishing', 'inkwave', 'station', 'deliveries', 'sketchbook']);
+const gameSound = createGameSound();
 
 export function registerHelpers(rt) {
   Object.assign(rt, {
@@ -231,6 +236,17 @@ export function registerHelpers(rt) {
     }
     return Promise.resolve();
   }
+  const hostAudio = mode => !!mode && !OWN_AUDIO.has(mode) && rt.data.sound !== false && !hushed();
+  // A right, wrong or win sound for games without their own.
+  function cue(kind) {
+    if (hostAudio(rt.game?.mode)) gameSound[kind]();
+  }
+  // Each game's own loop; it stops by itself once this round ends or music is switched off.
+  function startGameMusic() {
+    const g = rt.game;
+    if (!hostAudio(g?.mode) || rt.data.music === false) { gameSound.stopMusic(); return; }
+    gameSound.startMusic(g.mode, () => rt.game === g && !g.finished && hostAudio(g.mode) && rt.data.music !== false);
+  }
   function releaseListen() {
     rt.listenToken += 1;
     document.body.classList.remove('listen-first');
@@ -273,6 +289,7 @@ export function registerHelpers(rt) {
     const now = !!shot.speaking;
     if (now === rt.talking) return;
     rt.talking = now;
+    gameSound.duck(now);
     postSidecar({ type: 'duck', on: now });
   });
   function wordPrompt(mode, word, style) {
@@ -315,6 +332,8 @@ export function registerHelpers(rt) {
     return p().skills?.[id]?.[progressKey(styleOf(id), skillLevel(id))] || { total: 0, correct: 0, sessions: 0 };
   }
   Object.assign(rt, {
+    cue,
+    startGameMusic,
     p,
     questionCount,
     band,

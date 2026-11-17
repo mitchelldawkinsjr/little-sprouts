@@ -88,6 +88,7 @@ export function registerParent(rt) {
       words: $('#words').value,
       verse: $('#verse')?.value || '',
       sound: $('#sound').checked,
+      music: $('#music').checked,
       voice: $('#voice').value,
       characterVoices: $('#characterVoices').checked,
       camera: $('#camera').checked,
@@ -115,6 +116,7 @@ export function registerParent(rt) {
     $('#words').value = x.words.join(', ');
     if ($('#verse')) $('#verse').value = x.verse || '';
     $('#sound').checked = rt.data.sound;
+    $('#music').checked = rt.data.music !== false;
     $('#voice').value = knownVoice(rt.data.voice);
     $('#characterVoices').checked = !!rt.data.characterVoices;
     paintVoiceStatus(getSpeechStatus());
@@ -298,6 +300,7 @@ export function registerParent(rt) {
       span: ['single', 'twelves', 'wide'].includes($('#rallySpan').value) ? $('#rallySpan').value : 'twelves'
     };
     rt.data.sound = $('#sound').checked;
+    rt.data.music = $('#music').checked;
     rt.data.voice = knownVoice($('#voice').value);
     rt.data.characterVoices = $('#characterVoices').checked;
     rt.data.camera = $('#camera').checked;

@@ -817,6 +817,7 @@ export function registerMounts(rt) {
     rt.game = { mode, style, key: progressKey(style, rt.skillLevel(mode)), index: 0, firstCorrect: 0, missed: false, done: false, finished: false, freePlay: mode === 'quickmath' || (!!learner.arcade && rt.ARCADE_PLAY.has(mode)) };
     if (syncHash) rt.setHash?.(`play/${mode}`);
     rt.question();
+    rt.startGameMusic();
     if (rt.game?.mode === mode) rt.prefetchRound(rt.game);
   }
   function paintArcadePrompt(mode) {

@@ -4,10 +4,10 @@ import { roundCount, stageOf, profileSprite, SPRITES } from './logic.mjs?v=offli
 import { knownVoice } from './lib/speech.js?v=offline4';
 import { findBuiltSidecars } from './lib/sidecar.js?v=offline4';
 import { rt } from './app/runtime.mjs?v=lean-r2';
-import { registerHelpers } from './app/helpers.mjs?v=offline4';
-import { registerRound } from './app/round.mjs?v=tablet1';
-import { registerMounts } from './app/mounts.mjs?v=tablet1';
-import { registerParent } from './app/parent.mjs?v=offline4';
+import { registerHelpers } from './app/helpers.mjs?v=audio1';
+import { registerRound } from './app/round.mjs?v=audio1';
+import { registerMounts } from './app/mounts.mjs?v=audio1';
+import { registerParent } from './app/parent.mjs?v=audio1';
 import { registerShop } from './app/shop.mjs?v=bloom1';
 import { registerRouter } from './app/router.mjs?v=shop1';
 import { diagnostic, startDiagnostics } from './lib/diagnostics.mjs';

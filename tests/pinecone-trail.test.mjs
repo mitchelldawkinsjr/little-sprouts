@@ -138,7 +138,7 @@ test('the host retries wrong checkpoint answers and banks a completed learning s
   let saves = 0;
   const rt = {
     game: g, data: { active: 0, sound: false, profiles: [learner] }, p: () => learner,
-    questionCount: () => 5, save() { saves++; }, say: line => lines.push(line)
+    questionCount: () => 5, save() { saves++; }, say: line => lines.push(line), cue() {}
   };
   registerRound(rt);
   rt.question = () => { g.done = g.missed = false; };

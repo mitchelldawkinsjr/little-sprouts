@@ -185,6 +185,7 @@ export function registerRound(rt) {
     if (!g || g.finished || g.done || !token) return;
     const ok = !!token.ok;
     postSidecar({ type: 'mark', index, ok });
+    rt.cue(ok ? 'right' : 'wrong');
     // Arcade picture rounds keep coming with no questions and no end; the game is left from All games.
     if (g.freePlay) {
       g.done = true;
@@ -1653,6 +1654,7 @@ export function registerRound(rt) {
   function answer(ok, b) {
     const g = rt.game;
     if (!g || g.done || g.flightOver) return;
+    rt.cue(ok ? 'right' : 'wrong');
     if (g.mode === 'rocket') { rt.resolveRocket(ok, b); return; }
     if (g.mode === 'maze' && g.asking) {
       const kind = g.asking;
@@ -1837,6 +1839,7 @@ export function registerRound(rt) {
     rt.stopEars();
     const g = rt.game;
     g.finished = true;
+    if (detail !== 'crash') rt.cue('win');
     rt.camOff();
     // Arcade play asks nothing, so it banks no learning stars (the same as the arcade games built in here).
     if (g.freePlay && g.mode !== 'quickmath') {
