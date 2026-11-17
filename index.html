@@ -137,7 +137,20 @@
           <div class="pc-two pc-tiles">
             <div class="pc-tile"><h3>This device</h3>
         <label class="check switch"><input type="checkbox" id="sound" role="switch"> Read prompts aloud for every learner</label>
-        <p class="hint">This sound setting is shared by every learner on this browser.</p>
+        <p class="hint">Narration is separate from music and gameplay sound. Questions remain audible when music is muted.</p>
+        <fieldset class="game-audio-settings">
+          <legend>🎵 Game audio</legend>
+          <label class="check switch"><input type="checkbox" id="audioMuted" role="switch"> Mute game music and effects</label>
+          <p class="hint">These sound levels stay on this device and work offline.</p>
+          <label for="audioMaster">Overall game volume <output for="audioMaster" id="audioMasterValue">75%</output></label>
+          <input id="audioMaster" type="range" min="0" max="100" step="5" value="75">
+          <label for="audioMusic">Background music <output for="audioMusic" id="audioMusicValue">22%</output></label>
+          <input id="audioMusic" type="range" min="0" max="100" step="5" value="20">
+          <label for="audioEffects">Game sound effects <output for="audioEffects" id="audioEffectsValue">65%</output></label>
+          <input id="audioEffects" type="range" min="0" max="100" step="5" value="65">
+          <label for="audioAmbience">Nature and ambient sounds <output for="audioAmbience" id="audioAmbienceValue">18%</output></label>
+          <input id="audioAmbience" type="range" min="0" max="100" step="5" value="20">
+        </fieldset>
         <label>Read-aloud voice<select id="voice"></select></label>
         <button type="button" class="quiet voice-preview" id="hearVoice">Hear this voice</button>
         <label class="check switch"><input type="checkbox" id="characterVoices" role="switch"> Give game hosts their own voices</label>
