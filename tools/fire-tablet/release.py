@@ -18,7 +18,10 @@ ASSET = "little-sprouts-fire-hd8-release.apk"
 
 def latest():
     try:
-        with urlopen(Request(API, headers={"Accept": "application/vnd.github+json", "User-Agent": "LittleSprouts-release"}), timeout=30) as response:
+        headers = {"Accept": "application/vnd.github+json", "User-Agent": "LittleSprouts-release"}
+        if os.environ.get("GH_TOKEN"):  # unauthenticated calls share the runner IP's rate limit
+            headers["Authorization"] = "Bearer " + os.environ["GH_TOKEN"]
+        with urlopen(Request(API, headers=headers), timeout=30) as response:
             return json.load(response)
     except HTTPError as error:
         if error.code == 404:
