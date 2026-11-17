@@ -479,8 +479,8 @@ export function registerMounts(rt) {
     if (focus) {
       const on = playFocusOn();
       focus.setAttribute('aria-pressed', String(on));
-      focus.setAttribute('aria-label', on ? 'Show controls' : 'Focus view');
-      focus.title = on ? 'Show controls' : 'Focus view';
+      focus.setAttribute('aria-label', on ? 'Exit focus view' : 'Focus view');
+      focus.title = on ? 'Exit focus view' : 'Focus view';
       focus.textContent = on ? '⤢' : '⤡';
     }
     const full = $('#playFull');
