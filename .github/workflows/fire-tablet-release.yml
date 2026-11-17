@@ -61,6 +61,10 @@ jobs:
           text=re.sub(r'versionCode\s+\d+', f'versionCode {code}', text, count=1)
           path.write_text(text)
           PY
+      - name: Match launcher icon to PWA
+        run: |
+          python3 -m pip install --user Pillow
+          python3 tools/fire-tablet/install-icon.py
       - name: Build release APK
         working-directory: .fire-build/android
         run: ./gradlew assembleRelease --no-daemon
