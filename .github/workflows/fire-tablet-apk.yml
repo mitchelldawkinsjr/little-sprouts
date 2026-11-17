@@ -48,6 +48,10 @@ jobs:
           npx cap sync android
       - name: Add native Wi-Fi updater
         run: python3 tools/fire-tablet/install-updater.py
+      - name: Match launcher icon to PWA
+        run: |
+          python3 -m pip install --user Pillow
+          python3 tools/fire-tablet/install-icon.py
       - name: Build sideloadable debug APK
         working-directory: .fire-build/android
         run: ./gradlew assembleDebug --no-daemon
