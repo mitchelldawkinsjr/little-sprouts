@@ -273,6 +273,7 @@ export function registerHelpers(rt) {
     const now = !!shot.speaking;
     if (now === rt.talking) return;
     rt.talking = now;
+    rt.audio?.duck(now);
     postSidecar({ type: 'duck', on: now });
   });
   function wordPrompt(mode, word, style) {
