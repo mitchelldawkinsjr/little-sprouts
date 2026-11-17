@@ -1,6 +1,6 @@
 # Home game discovery
 
-The default home view shows Featured Games, Keep Playing (when available), and six New Games. Categories and All Games remain available in the top navigation and below these rows. Featured games use real 640 × 360 JPEG captures in `icons/gameplay/`, included in the normal offline inventory.
+The default home view shows Featured Games, Keep Playing (when available), and six New Games. Categories and All Games remain available in the top navigation and below these rows. Every game uses a real game capture in `icons/gameplay/`, included in the normal offline inventory. Capture a representative playfield or title scene as a small JPEG when adding a game; the test suite checks thumbnail coverage for the entire catalog.
 
 `lib/game-discovery.mjs` owns the featured order and addition dates. The featured order is:
 

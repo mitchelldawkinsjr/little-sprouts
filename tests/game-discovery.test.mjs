@@ -76,10 +76,10 @@ test('all-games and category sorting preserve membership and expose the active s
   assert.deepEqual([...category.matchAll(/data-test-game="([^"]+)"/g)].map(m=>m[1]), ['blocks','gulp']);
 });
 
-test('featured gameplay pictures are served in the offline pack and retain accessible play buttons', () => {
+test('every game has a gameplay picture in the offline pack and an accessible play button', () => {
   const root = new URL('../', import.meta.url).pathname;
   const manifest = inventory(root).offline();
-  for(const id of FEATURED_GAMES) {
+  for(const id of Object.keys(GAME_ADDED)) {
     assert.ok(GAMEPLAY_ART.has(id));
     assert.ok(existsSync(new URL(`../icons/gameplay/${id}.jpg`, import.meta.url)));
     assert.ok(manifest[`./icons/gameplay/${id}.jpg`]);
