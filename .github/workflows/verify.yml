@@ -18,6 +18,8 @@ jobs:
           node-version: 24
       - name: Run game, offline, and operations tests
         run: node --test tests/*.test.mjs server/*.test.mjs
+      - name: Test automatic Fire APK release policy (no signing keys)
+        run: python3 -m unittest discover -s tools/fire-tablet -p 'test_*.py'
       - name: Check production bundle and startup budgets
         run: |
           npm --prefix tools/build ci --no-audit --no-fund
