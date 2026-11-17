@@ -20,6 +20,7 @@ class InstallerHandoffTests(unittest.TestCase):
         self.assertNotIn("<cache-path", INSTALLER)
         self.assertIn('getContentResolver().openFileDescriptor(uri, "r")', PLUGIN)
         self.assertIn("descriptor.getStatSize() != apk.length()", PLUGIN)
+        self.assertIn("apk.getParentFile().getUsableSpace() < requiredFree", PLUGIN)
 
     def test_user_confirmed_package_install_has_temporary_uri_permissions(self):
         self.assertIn('new Intent(Intent.ACTION_INSTALL_PACKAGE)', PLUGIN)
