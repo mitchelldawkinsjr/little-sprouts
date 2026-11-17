@@ -103,3 +103,27 @@ test('the shelf keeps its normal viewport and the offline inventory includes the
   assert.ok(files['./lib/play-fullscreen.mjs']);
   assert.match(read('sw.js'), /'\.\/lib\/game-touch\.css'/);
 });
+
+
+test('solo launch shares the game toolbar with focus and fullscreen on every sidecar', () => {
+  const mounts = read('app/mounts.mjs');
+  assert.match(mounts, /function playTopControls\(alone = ''\)/);
+  assert.match(mounts, /<div class="play-actions">\$\{alone\}/);
+  assert.match(mounts, /\$\{playTopControls\(alone\)\}<\/div>\$\{bar\}/);
+  assert.doesNotMatch(mounts, /<\/div>\$\{alone\}\$\{bar\}/);
+  assert.match(mounts, /class="quiet play-alone" id="playAlone"/);
+  assert.match(mounts, /aria-describedby="playAloneNote"/);
+  assert.match(mounts, /if \(\$\('#playAlone'\)\) \$\('#playAlone'\)\.onclick = openSidecarAlone;/);
+});
+
+test('focus and fullscreen keep tablet controls visible and enlarge the sidecar frame', () => {
+  const mounts = read('app/mounts.mjs');
+  const css = read('style.css');
+  assert.doesNotMatch(mounts, /focus\.hidden\s*=\s*playFullscreen/);
+  assert.match(css, /\.playtop\{gap:8px;flex-wrap:nowrap/);
+  assert.match(css, /\.play-actions\{[^}]*flex:0 0 auto/);
+  assert.doesNotMatch(css, /body:is\(\.play-focus,\.play-expanded,\.play-native-full\):has\(\.playtop\) \.play-alone\{display:none\}/);
+  assert.match(css, /body:is\(\.play-focus,\.play-expanded,\.play-native-full\):has\(\.playtop\)>main\{max-width:none/);
+  assert.match(css, /body:is\(\.play-focus,\.play-expanded,\.play-native-full\) \.sidecar-frame\{min-height:0/);
+  assert.match(css, /\.play-alone-short\{display:none\}\s*@media\(max-width:560px\)\{\.play-alone-short\{display:inline\}\}/);
+});
