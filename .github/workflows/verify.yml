@@ -44,3 +44,22 @@ jobs:
           assert.ok(starter <= 32_000_000, 'starter offline pack exceeds 32 MB without Reach');
           console.log(JSON.stringify({ appGzip: size('app.js.gz'), cssGzip: size('style.css.gz'), starter }));
           JS
+
+  iphone-speech:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        browser: [webkit, chromium]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm --prefix tools/browser ci --no-audit --no-fund
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+        working-directory: tools/browser
+      - name: Check iPhone read-aloud playback and recovery
+        run: npm --prefix tools/browser run test:iphone
+        env:
+          SPEECH_BROWSER: ${{ matrix.browser }}

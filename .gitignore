@@ -5,6 +5,7 @@ tools/voice-bake/node_modules/
 
 .env
 tools/build/node_modules/
+tools/browser/node_modules/
 .fire-build/
 tools/fire-tablet/node_modules/
 *.jks
