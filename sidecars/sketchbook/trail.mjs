@@ -649,7 +649,10 @@ try {
     onError() { error('Sketchbook Mega Ramp could not load its world. Save it again while online, then try again.'); }
   });
   crashBursts = makeCrashBursts(runtime, state.world.graphicsWorld, { performance: performanceTier, reduced });
-  vehicleCrashes = watchVehicleCrashes(state.world, hit => crashBursts.spawn(hit));
+  vehicleCrashes = watchVehicleCrashes(state.world, hit => {
+    crashBursts.spawn(hit);
+    window.SproutsSidecar?.sound?.('vehicle.explosion', { volume: Math.min(1, hit.strength || 1) });
+  });
   const view = canvas();
   view.tabIndex = 0;
   view.setAttribute('aria-label', 'Sketchbook Mega Ramp playground');

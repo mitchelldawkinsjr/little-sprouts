@@ -88,6 +88,8 @@ export function registerParent(rt) {
       words: $('#words').value,
       verse: $('#verse')?.value || '',
       sound: $('#sound').checked,
+      gameAudio: ['Master','Music','Effects','Ambience'].map(key => $('#audio' + key).value),
+      audioMuted: $('#audioMuted').checked,
       voice: $('#voice').value,
       characterVoices: $('#characterVoices').checked,
       camera: $('#camera').checked,
@@ -115,6 +117,13 @@ export function registerParent(rt) {
     $('#words').value = x.words.join(', ');
     if ($('#verse')) $('#verse').value = x.verse || '';
     $('#sound').checked = rt.data.sound;
+    const currentAudio = rt.data.audio;
+    $('#audioMuted').checked = !!currentAudio?.muted;
+    for (const [field, name] of [['master','Master'],['music','Music'],['sfx','Effects'],['ambience','Ambience']]) {
+      const slider = $('#audio' + name);
+      slider.value = Math.round((currentAudio?.[field] ?? 0) * 100);
+      $('#audio' + name + 'Value').textContent = slider.value + '%';
+    }
     $('#voice').value = knownVoice(rt.data.voice);
     $('#characterVoices').checked = !!rt.data.characterVoices;
     paintVoiceStatus(getSpeechStatus());
@@ -298,6 +307,13 @@ export function registerParent(rt) {
       span: ['single', 'twelves', 'wide'].includes($('#rallySpan').value) ? $('#rallySpan').value : 'twelves'
     };
     rt.data.sound = $('#sound').checked;
+    rt.updateAudio?.({
+      muted: $('#audioMuted').checked,
+      master: Number($('#audioMaster').value) / 100,
+      music: Number($('#audioMusic').value) / 100,
+      sfx: Number($('#audioEffects').value) / 100,
+      ambience: Number($('#audioAmbience').value) / 100
+    });
     rt.data.voice = knownVoice($('#voice').value);
     rt.data.characterVoices = $('#characterVoices').checked;
     rt.data.camera = $('#camera').checked;
@@ -506,6 +522,11 @@ export function registerParent(rt) {
   };
   $('#stage').onchange = () => { if (!rt.loadingForm) paintStageTopics(); };
   $('#words').addEventListener('input', e => { if (e.isTrusted) paintWords(); });
+  $('#parentForm').addEventListener('input', e => {
+    if (e.target.matches('#audioMaster,#audioMusic,#audioEffects,#audioAmbience')) {
+      $('#'+ e.target.id + 'Value').textContent = e.target.value + '%';
+    }
+  });
   $('#parentForm').addEventListener('change', e => { if (!rt.loadingForm && e.target.id !== 'wordAdd' && e.isTrusted) paintPortal(); });
   $('#voice').innerHTML = voices.map(([id, label]) => `<option value="${esc(id)}">${esc(label)}</option>`).join('');
   async function hearWith(button, lines) {

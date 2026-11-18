@@ -1032,6 +1032,7 @@ function grab(a) {
     explode(a.group.position);
     for (const it of column.items) { it.group.visible = false; it.gone = true; }
     chime();
+    call(window.SproutsSidecar?.sound, 'player.power-up');
     toast(state.missed ? 'You got it! Zoom!' : 'Yes! Zoom! ⭐', 'good');
     askEl.classList.add('done');
     paintHud();
@@ -1073,6 +1074,7 @@ function crashBoss(t) {
   state.stunUntil = state.t + 1.3;
   state.gap = gapAfter(state.gap, 'crash');
   bonk();
+  call(window.SproutsSidecar?.sound, 'boss.attack');
   const what = t.kind === 'jelly' ? 'jellyfish' : t.kind === 'puffer' ? 'puffer' : t.kind;
   toast(`The boss hit a ${what}!`, 'good');
   if (t.kind !== 'vent') knock(t, -1);
@@ -1092,6 +1094,7 @@ function caught() {
   keys.up = keys.down = keys.left = keys.right = false;
   pointerAim = null;
   chomp();
+  call(window.SproutsSidecar?.sound, 'player.hit');
   askEl.hidden = true;
   instructionsEl.hidden = true;
   caughtEl.textContent = 'Chomp!';
@@ -1164,6 +1167,7 @@ function getAway() {
   dropColumn();
   state.stunUntil = state.t + 99;
   fanfare();
+  call(window.SproutsSidecar?.sound, 'boss.defeat');
   caughtEl.textContent = 'Got away!';
   caughtEl.classList.add('show', 'free');
   speak('You got away!');

@@ -496,8 +496,20 @@ export function registerMounts(rt) {
   function wirePlayViewControls(doListen) {
     playFullscreen ||= makePlayFullscreen(document);
     if ($('#playListen')) $('#playListen').onclick = doListen;
-    if ($('#playFocus')) $('#playFocus').onclick = () => setPlayFocus(!playFocusOn());
+    if ($('#playAudio')) {
+      const audioButton = $('#playAudio');
+      audioButton.textContent = rt.data.audio?.muted ? '🔇' : '🎵';
+      audioButton.setAttribute('aria-pressed', String(!rt.data.audio?.muted));
+      audioButton.setAttribute('aria-label', 'Game audio');
+      audioButton.title = rt.data.audio?.muted ? 'Turn game audio on' : 'Mute game audio';
+      audioButton.onclick = () => {
+        rt.updateAudio?.({ muted: !rt.data.audio.muted });
+        if (!rt.data.audio.muted) void rt.audio?.unlock();
+      };
+    }
+    if ($('#playFocus')) $('#playFocus').onclick = () => { rt.audio?.play('ui.select'); setPlayFocus(!playFocusOn()); };
     if ($('#playFull')) $('#playFull').onclick = async () => {
+      rt.audio?.play('ui.select');
       await playFullscreen.toggle();
       syncPlayViewButtons();
     };
@@ -513,7 +525,7 @@ export function registerMounts(rt) {
     syncPlayViewButtons();
   }
   function playTopControls(alone = '') {
-    return `<div class="play-actions">${alone}<button type="button" class="quiet icon-btn" id="playListen" aria-label="Hear it again" title="Hear it again">🔈</button><button type="button" class="quiet icon-btn" id="playFocus" aria-label="Focus view" title="Focus view" aria-pressed="false">⤡</button><button type="button" class="quiet icon-btn" id="playFull" aria-label="Full screen" title="Full screen" aria-pressed="false">⛶</button></div>`;
+    return `<div class="play-actions">${alone}<button type="button" class="quiet icon-btn" id="playListen" aria-label="Hear it again" title="Hear it again">🔈</button><button type="button" class="quiet icon-btn" id="playAudio" aria-label="Game audio" title="Mute game audio" aria-pressed="true">🎵</button><button type="button" class="quiet icon-btn" id="playFocus" aria-label="Focus view" title="Focus view" aria-pressed="false">⤡</button><button type="button" class="quiet icon-btn" id="playFull" aria-label="Full screen" title="Full screen" aria-pressed="false">⛶</button></div>`;
   }
 
   function showCompletedVerse(g) {
@@ -581,6 +593,7 @@ export function registerMounts(rt) {
     rt.releaseListen();
     const g = rt.game;
     if (!g || g.finished || g.mode !== mode) return;
+    rt.audio?.finish('reward.win');
     leavePlayFullscreen();
     g.finished = true;
     clearTimers(mode);
@@ -625,6 +638,7 @@ export function registerMounts(rt) {
     }
   }
   function home(focus, { syncHash = true } = {}) {
+    rt.audio?.stop();
     leavePlayFullscreen();
     document.body.classList.remove('play-focus');
     if (!rt.data.profiles?.length) {
@@ -808,6 +822,10 @@ export function registerMounts(rt) {
     document.body.classList.add('play-focus');
     rt.releaseListen();
     rt.stopSpeech();
+    rt.audio?.start(mode);
+    void rt.audio?.unlock().then(ready => {
+      if (ready && rt.audio.currentGame === mode) rt.audio.play('ui.start');
+    });
     clearTimers('rocket', 'lane', 'hook', 'sky', 'planet', 'match', 'learn', 'bridge', 'chase', 'hop', 'toast', 'glide', 'city', 'lily', 'bust', 'mole', 'cube', 'stack', 'lamp', 'rally', 'verse');
     const learner = rt.p();
     learner.recentGames = rememberGame(learner, mode);
@@ -1437,6 +1455,7 @@ export function registerMounts(rt) {
         onReady() {
           const frame = document.querySelector('iframe.sidecar-frame');
           frame?.focus();
+          postSidecar({ type: 'audio-config', settings: rt.data.audio });
           if (rt.game?.mode === 'bike') postSidecar(rt.bikeConfig(rt.game));
           if (rt.game?.mode === 'quickmath') return;
           if (rt.game && side.lesson) { sendLessonConfig(); return; }
@@ -1447,12 +1466,14 @@ export function registerMounts(rt) {
         },
         // Skybound reloads its page for the next world: tell the new page arcade or the current question again.
         onReload() {
+          postSidecar({ type: 'audio-config', settings: rt.data.audio });
           const g = rt.game;
           if (!g || g.finished || g.mode !== 'skybound') return;
           if (g.freePlay) postSidecar({ type: 'arcade' });
           else if (g.index >= rt.questionCount()) postSidecar({ type: 'clear' });
           else postSidecar(rt.rallyMessage(g));
         },
+        onSound(event, options) { rt.audio?.play(event, options); },
         onProgress(info) {
           if (rt.game?.mode === 'bike' && Number.isFinite(+info?.travel)) rt.game.bikeTravel = +info.travel;
           if (side.lesson && typeof info?.label === 'string') {
@@ -1885,6 +1906,7 @@ export function registerMounts(rt) {
           if (meter) meter.setAttribute('aria-valuenow', String(info.left));
         },
         onFall() {
+          rt.audio?.play('player.hit');
           if (g.freePlay) {
             g.court?.revive();
             return;
@@ -1902,6 +1924,7 @@ export function registerMounts(rt) {
         },
         onGoal() {
           if (rt.game !== g || g.finished) return;
+          rt.audio?.play('reward.star');
           g.asked = (g.asked || 0) + 1;
           g.firstCorrect = (g.firstCorrect || 0) + 1;
           g.index++;
@@ -2096,6 +2119,7 @@ export function registerMounts(rt) {
         onMiss(kind) {
           if (rt.game !== g || g.done) return;
           g.missed = true;
+          rt.audio?.play('player.hit');
           const line = kind === 'bug' ? 'A snail got you. Keep going.' : 'That berry is not the one.';
           const feedback = $('#feedback');
           if (feedback && feedback.textContent !== line) {
@@ -2106,6 +2130,7 @@ export function registerMounts(rt) {
         },
         onDone(clean) {
           if (rt.game !== g || g.done) return;
+          rt.audio?.play('player.collect');
           if (!clean) g.missed = true;
           rt.answer(true);
         }
@@ -2125,6 +2150,7 @@ export function registerMounts(rt) {
         onMiss(kind) {
           if (rt.game !== g || g.finished) return;
           g.missed = true;
+          rt.audio?.play('player.hit');
           const line = kind === 'fall' ? 'You fell. You have one less life.' : 'That one breaks. You have one less life.';
           const feedback = $('#feedback');
           if (feedback && feedback.textContent !== line) {
@@ -2230,6 +2256,7 @@ export function registerMounts(rt) {
         onMiss(kind) {
           if (rt.game !== g || g.finished) return;
           g.missed = true;
+          rt.audio?.play('player.crash');
           const line = kind === 'red' ? 'A red cube got you. You have one less life.' : kind === 'pass' ? 'You drove past the answer. Steer into it.' : 'That cube is not the one.';
           const feedback = $('#feedback');
           if (feedback && feedback.textContent !== line) {

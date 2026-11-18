@@ -1250,3 +1250,11 @@ footer{gap:16px;flex-wrap:wrap}
 /* The redesigned star shop scrolls like any web page too (it no longer carries .playarea.shop). */
 body:has(.shop2){height:auto;min-height:100dvh;overflow:visible;display:block}
 body:has(.playtop) .shop2{overflow:visible;min-height:0}
+
+/* Independent offline music, effects and ambience controls. */
+.game-audio-settings{display:grid;grid-template-columns:1fr;gap:5px;margin:12px 0;padding:12px;border:1px solid #a9c9b3;border-radius:12px;min-width:0}
+.game-audio-settings legend{font-weight:750;padding:0 6px}
+.game-audio-settings>label:not(.check){display:flex;gap:6px;justify-content:space-between;align-items:center;font-size:.89rem}
+.game-audio-settings output{font-variant-numeric:tabular-nums}
+.game-audio-settings input[type=range]{width:100%;accent-color:#2f735b;min-height:26px}
+#playAudio[aria-pressed="false"]{opacity:.72}
