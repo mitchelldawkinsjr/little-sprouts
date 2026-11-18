@@ -3,6 +3,7 @@
  * The learner times the stick every time. A right answer makes the
  * landing wide. A wrong answer makes it a thin strip.
  */
+import { sfx } from '../lib/game-sound.mjs?v=audio2';
 import { gamePaused } from '../lib/hold.js?v=hold2';
 import { drawBuddy, buddyKind } from '../lib/buddy2d.mjs?v=gear2';
 import { bridgeReach, bridgeWindow } from '../logic.mjs?v=bridge-run';
@@ -220,6 +221,7 @@ export function mountBridge(root, { buddy, span, stops = 5, reduced, onCrossed, 
         rotation = Math.min(Math.PI / 2, rotation + 3.4 * calm * dt);
         if (rotation >= Math.PI / 2 - 0.001) {
           rotation = Math.PI / 2;
+          sfx('drop');
           const zone = landing();
           missed = !bridgeReach(stick, zone.near, zone.far);
           if (!missed && stick < near()) stick = near();
@@ -233,9 +235,11 @@ export function mountBridge(root, { buddy, span, stops = 5, reduced, onCrossed, 
           heroX = limit;
           if (missed) {
             mode = 'fall';
+            sfx('fall');
             pose = 0.85;
           } else {
             mode = 'landed';
+            sfx('land');
             pose = 0.4;
           }
         }

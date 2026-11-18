@@ -3,6 +3,7 @@
  * Matching tokens melt together with the gooey blur from Cassie Evans’s blobby background.
  * The tokens are drawn here. This is not a fruit-merge game.
  */
+import { sfx } from '../lib/game-sound.mjs?v=audio2';
 import { mergePromote } from '../logic.mjs?v=learn-three';
 
 let active = null;
@@ -200,6 +201,7 @@ export function mountMerge(root, { queue = [], chain = [], target = '', size = 6
 
   const succeed = (a, b, id) => {
     done = true;
+    sfx('pop');
     const label = String(id).startsWith('big:') ? a.label : String(id);
     bodies.splice(0, bodies.length, {
       id,
@@ -219,6 +221,7 @@ export function mountMerge(root, { queue = [], chain = [], target = '', size = 6
   const drop = () => {
     if (done || session.dead || !waiting.length) return;
     const item = waiting.shift();
+    sfx('drop');
     const r = radiusFor();
     const x = 18 + aim * (width - 36);
     bodies.push({ ...item, x: Math.min(width - r - 8, Math.max(r + 8, x)), y: r + 8, vx: 0, vy: 0, r });
@@ -262,6 +265,7 @@ export function mountMerge(root, { queue = [], chain = [], target = '', size = 6
               a.cool = true;
               setTimeout(() => { a.cool = false; }, 800);
               missed = true;
+              sfx('bump');
               call(onMiss);
             }
           }

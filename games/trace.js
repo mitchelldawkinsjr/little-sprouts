@@ -2,6 +2,7 @@
  * Trace drive — follow the guide, then a small car drives the same line.
  * The path, the car, and the questions are Little Sprouts’ own.
  */
+import { sfx } from '../lib/game-sound.mjs?v=audio2';
 import { traceOnPath } from '../logic.mjs?v=learn-three';
 
 let active = null;
@@ -190,6 +191,7 @@ export function mountTrace(root, { kind = 'shape', name = 'circle', guide = 8, f
     stroke = 0;
     index = 0;
     missed = true;
+    sfx('bump');
     paint();
     scheduleFade();
     call(onMiss);
@@ -215,6 +217,7 @@ export function mountTrace(root, { kind = 'shape', name = 'circle', guide = 8, f
     const route = strokes.flat();
     if (!route.length) { call(onDone, !missed); return; }
     car.setAttribute('visibility', 'visible');
+    sfx('roll');
     call(onDrive);
     const started = performance.now();
     const duration = reduced ? 2400 : Math.min(2600, Math.max(1500, route.length * 24));

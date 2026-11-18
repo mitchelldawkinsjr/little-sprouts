@@ -330,6 +330,7 @@ function cameraGoal(overview) {
 function moveCamera(dt, snap = false) {
   const overview = state.map || state.phase === 'look' || state.phase === 'menu';
   const goal = cameraGoal(overview);
+  askEl.classList.toggle('dock', !overview);
   const k = snap ? 1 : 1 - Math.exp(-dt * (overview ? 3 : 5));
   camPos.lerp(goal.pos, k);
   camLook.lerp(goal.look, k);

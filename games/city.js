@@ -4,6 +4,7 @@
  * Fly through the ring with the answer. The ground or a building ends the flight.
  * The flight idea follows TurdleTips' Paper City Glider. The plane, city, and rings are drawn here.
  */
+import { sfx } from '../lib/game-sound.mjs?v=audio2';
 import { moveDirs, readPad } from '../lib/pad-core.mjs?v=pad-rt';
 import {
   resolveAutoQuality, pixelRatioCap, rendererOptions, isPerformanceTier
@@ -424,6 +425,7 @@ function begin(THREE, stage, host, session, { board, reduced, nextQuestion, onPr
   const end = () => {
     if (closed) return;
     closed = true;
+    sfx('boom');
     call(onOver, 'crash');
   };
 
@@ -512,6 +514,7 @@ function begin(THREE, stage, host, session, { board, reduced, nextQuestion, onPr
       if (ring.gone) continue;
       if (!crossedRing(prevZ, plane.position.z, ring.z, plane.position.x, plane.position.y, ring.x, ring.y, RING)) continue;
       ring.gone = true;
+      sfx(ring.ok ? 'whoosh' : 'bump');
       dropMesh(ring.mesh);
       if (ring.ok) {
         asking = false;

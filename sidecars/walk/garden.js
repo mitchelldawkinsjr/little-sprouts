@@ -93,6 +93,9 @@
     signs.forEach(function (sign) { stopMotion(sign.view); });
     signs = [];
   }
+  var lastStep = 0;
+  // Action sounds come from lib/game-sound.mjs, loaded as a module in index.html.
+  function sound(kind) { if (window.SproutsSfx) window.SproutsSfx(kind); }
   function moving() {
     return held.left !== held.right;
   }
@@ -100,6 +103,7 @@
     if (sign.skip || settled) return;
     sign.skip = true;
     busy = true;
+    sound('bump');
     send('slip');
     var away = buddy.x + BUDDY_W / 2 < sign.view.x + sign.view.width / 2 ? -56 : 56;
     face(away < 0 ? 'standLeft' : 'standRight');
@@ -125,6 +129,7 @@
     settled = true;
     busy = true;
     face(pose.indexOf('Left') > 0 ? 'standLeft' : 'standRight');
+    sound('jump');
     send('pick', { index: index });
     if (reduced) return;
     var ground = buddy.y;
@@ -327,6 +332,8 @@
     }
     face(dir < 0 ? 'walkLeft' : 'walkRight');
     buddy.x = clamp(buddy.x + dir * speed, 8, WORLD_W - BUDDY_W - 8);
+    var now = performance.now();
+    if (now - lastStep > 320) { lastStep = now; sound('step'); }
   }
   function draw() {
     ctx.clearRect(0, 0, WORLD_W, WORLD_H);

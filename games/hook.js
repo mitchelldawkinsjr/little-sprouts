@@ -3,6 +3,7 @@
  * The drop-and-steer loop follows the idea in Hooked (cnrasili/Hooked).
  * Pictures here are drawn on the canvas. That project's art and music are not used.
  */
+import { sfx } from '../lib/game-sound.mjs?v=audio2';
 import { gamePaused } from '../lib/hold.js?v=hold2';
 import { clamp, esc } from '../logic.mjs?v=structure3';
 
@@ -341,6 +342,7 @@ export function mountHook(root, { prompt, choices, target, cast, reduced, onDone
   const miss = (kind, item, listName) => {
     if (phase !== 'fish') return;
     missed = true;
+    sfx(listName === 'junk' ? 'bump' : 'splash');
     phase = 'pause';
     pauseUntil = performance.now() + 420;
     const bag = listName === 'junk' ? junk : fish;
@@ -354,6 +356,7 @@ export function mountHook(root, { prompt, choices, target, cast, reduced, onDone
     if (phase !== 'fish') return;
     if (!item.ok) { miss('fish', item, 'fish'); return; }
     phase = 'reel';
+    sfx('splash');
     caught = item;
     const at = fish.indexOf(item);
     if (at >= 0) fish.splice(at, 1);

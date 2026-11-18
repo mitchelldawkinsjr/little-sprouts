@@ -3,6 +3,7 @@
  * the flower pot with the right answer. Rolling apples and creek mist are
  * the hazards. Ride the floating pots. Little Sprouts original scene.
  */
+import { sfx } from '../lib/game-sound.mjs?v=audio2';
 import { questionHolding } from '../lib/hold.js?v=hold2';
 import { drawBuddy, buddyKind } from '../lib/buddy2d.mjs?v=gear2';
 import { lilyPads, lilyRide, lilyOverlap } from '../logic.mjs?v=lily-cross';
@@ -177,6 +178,7 @@ export function mountLily(root, { buddy, board = {}, reduced, nextQuestion, onPr
     hurtKind = kind;
     slipped = true;
     lives -= 1;
+    sfx(kind === 'water' ? 'splash' : 'bump');
     stage.classList.remove('shake');
     void stage.offsetWidth;
     stage.classList.add('shake');
@@ -226,6 +228,7 @@ export function mountLily(root, { buddy, board = {}, reduced, nextQuestion, onPr
       dir
     };
     face = dir;
+    sfx('jump');
   };
 
   const draw = (w, h) => {

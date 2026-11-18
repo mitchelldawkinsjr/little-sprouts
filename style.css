@@ -405,6 +405,11 @@ body:has(.playtop) #arcade>.puzzle-stage{display:grid;flex-direction:unset;overf
 .market-pad [data-dir="right"]{grid-area:right}
 .glide{position:relative;height:420px;border-radius:20px;overflow:hidden;background:#8ebed4;border:1px solid #d3dccb}
 .glide canvas{width:100%;height:100%;display:block;touch-action:none;cursor:pointer}
+.glide-ask{position:absolute;left:50%;bottom:10px;z-index:2;transform:translateX(-50%);max-width:calc(100% - 24px);box-sizing:border-box;padding:6px 14px;border-radius:16px;background:#fbf5eaee;color:#2f2418;font:800 clamp(15px,2.6vw,19px)/1.25 Outfit,sans-serif;text-align:center;pointer-events:none;box-shadow:0 4px 12px #2f241833}
+.glide-ask[hidden]{display:none}
+.glide-ask .countrow{font-size:22px;gap:2px 8px;margin:4px 0 0}
+.glide-ask .numpath{margin:4px auto 0;gap:4px}.glide-ask .numpath span{width:28px;height:28px;font-size:14px}
+.playarea:has(.glide-ask:not([hidden]))>h1{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
 .pad{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
 .bridge-hold{display:block;width:min(100%,280px);margin:8px auto 0;height:64px}
 .bridge-hold[hidden]{display:none}

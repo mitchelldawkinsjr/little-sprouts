@@ -3,6 +3,7 @@
  * The arc, the speeding spawn, and the lives follow the toast catcher pen.
  * These toasts and the questions are drawn here.
  */
+import { sfx } from '../lib/game-sound.mjs?v=audio2';
 import { questionHolding } from '../lib/hold.js?v=hold2';
 
 const VIEW_W = 450;
@@ -199,6 +200,7 @@ export function mountToast(root, { board = {}, reduced, paceFor, nextQuestion, o
     replay = true;
     slipped = true;
     lives = Math.max(0, lives - 1);
+    sfx('drop');
     queue = [];
     toasts.length = 0;
     shake();
@@ -214,6 +216,7 @@ export function mountToast(root, { board = {}, reduced, paceFor, nextQuestion, o
   };
   const pop = toast => {
     if (!toast || toast.state !== 'fly' || resolving || over || ending) return;
+    sfx(toast.ok ? 'pop' : 'bop');
     if (!toast.ok) {
       toast.burnt = true;
       toast.state = 'up';

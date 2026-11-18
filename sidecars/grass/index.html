@@ -38,6 +38,10 @@
       #show .countrow.array { display: grid; grid-template-columns: repeat(var(--cols, 5), auto); }
       #show .countrow span, #show .numpath span { min-width: 26px; padding: 2px 4px; border-radius: 8px; background: #fbf5ea; color: #2f2418; font-size: clamp(18px, 4.5vw, 24px); }
       #show .numpath .here { outline: 3px solid #db8b32; }
+      /* While running, the camera looks up-screen, so the question docks small at the bottom. */
+      #ask.dock { top: auto; bottom: 12px; width: auto; max-width: calc(100% - 24px); padding: 6px 14px; font-size: clamp(15px, 2.6vw, 19px); background: #2f2418cc; }
+      #ask.dock #show span { font-size: clamp(14px, 3vw, 18px); }
+      #ask.dock ~ #hint { display: none; }
       #ask.done { background: #2f7d52ee; }
       #ask.done::after { content: ' ✓'; }
       #toast { position: fixed; left: 50%; top: 44%; z-index: 2; transform: translate(-50%, -50%); padding: 10px 22px; border-radius: 999px; font-weight: 800; font-size: clamp(26px, 6vw, 40px); pointer-events: none; white-space: nowrap; }
@@ -96,6 +100,6 @@
         </div>
       </div>
     </div>
-    <script type="module" src="./game.mjs?v=offline4"></script>
+    <script type="module" src="./game.mjs?v=dock1"></script>
   </body>
 </html>

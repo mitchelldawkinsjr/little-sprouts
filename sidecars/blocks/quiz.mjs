@@ -29,6 +29,12 @@ function numberChoices(rnd, answer, n, max) {
 
 /** A simple question for the game's own page. Kinds take turns. */
 export function localQuestion(rnd, index = 0) {
+  // The first one each visit is the tough question: a bigger sum, for the fortress.
+  if (index === 0) {
+    const a = 6 + Math.floor(rnd() * 7);
+    const b = 4 + Math.floor(rnd() * 6);
+    return { key: 'local-tough', prompt: `What is ${a} + ${b}?`, show: '', kind: 'math', tough: true, choices: numberChoices(rnd, a + b, 4, 20) };
+  }
   const kind = ['add', 'color', 'count', 'shape'][Math.abs(index) % 4];
   const key = `local-${index}`;
   if (kind === 'add') {
@@ -86,6 +92,7 @@ export function normalizeAsk(msg) {
     letters,
     choices,
     freeEvery: Math.round(+msg.freeEvery) || 0,
+    tough: msg.tough === true,
     sound: msg.sound !== false
   };
 }

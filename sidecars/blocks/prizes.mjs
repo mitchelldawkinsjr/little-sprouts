@@ -6,16 +6,28 @@
 
 export const KITS = {
   house: { label: 'little house', icon: '🏠', line: 'You got a little house! Tap the ground to put it down.' },
+  fortress: { label: 'fortress', icon: '🏰', line: 'You got a fortress! Tap the ground to put it down.' },
   stairs: { label: 'stairs', icon: '🪜', line: 'You got stairs! Tap the ground to put them down.' },
   bridge: { label: 'bridge', icon: '🌉', line: 'You got a bridge! Tap the ground to put it down.' },
+  pyramid: { label: 'pyramid', icon: '🔺', line: 'You got a pyramid! Tap the ground to put it down, then climb it.' },
+  garden: { label: 'flower garden', icon: '🌷', line: 'You got a flower garden! Tap the ground to put it down.' },
+  rainbow: { label: 'rainbow wall', icon: '🌈', line: 'You got a rainbow wall! Tap the ground to put it down.' },
   tree: { label: 'tree', icon: '🌳', line: 'You got a tree! Tap the ground to put it down.' }
 };
-export const KIT_ORDER = ['house', 'stairs', 'bridge', 'tree'];
+// The home (a fortress, or the little house) comes from the tough question; these take turns after it.
+export const KIT_ORDER = ['stairs', 'bridge', 'pyramid', 'garden', 'rainbow', 'tree'];
+
+// The first gift box of every visit asks a tough question. Right the first time: a fortress.
+// Right after a miss: the little house. Either way every visit gets a home.
+export const TOUGH_LINE = 'A tough question! Get it right the first time to win a fortress.';
+export function toughPrize(missed) {
+  return missed ? 'house' : 'fortress';
+}
 
 // seconds: how long it lasts once on. The lantern waits for the night, then lasts all night.
 export const POWERS = {
   lantern: { label: 'Lantern', icon: '🏮', line: 'You got a lantern! At night, the bugs stay away from you.' },
-  jump: { label: 'Super jump', icon: '🦘', seconds: 40, jump: 1.45, line: 'Super jump! You can jump extra high for a little while.' },
+  jump: { label: 'Super jump', icon: '🦘', seconds: 90, jump: 1.45, line: 'Super jump! You can jump extra high for a little while.' },
   speed: { label: 'Super speed', icon: '⚡', seconds: 40, speed: 1.8, line: 'Super speed! You can run extra fast for a little while.' }
 };
 export const POWER_ORDER = ['lantern', 'jump', 'speed'];
@@ -28,7 +40,8 @@ export const NEW_DAY = 'A new day! Find the gift boxes for a house or a power-up
 
 /** Every prize line, for baking voice clips. */
 export const PRIZE_LINES = [
-  ...KIT_ORDER.map(id => KITS[id].line),
+  ...Object.values(KITS).map(kit => kit.line),
+  TOUGH_LINE,
   ...POWER_ORDER.map(id => POWERS[id].line),
   TOO_CLOSE,
   NEW_DAY
@@ -72,6 +85,39 @@ export function kitCells(id) {
   } else if (id === 'bridge') {
     // Three wide and ten long, level with the ground the child taps, so it reaches over water.
     for (let f = 0; f < 10; f++) for (let r = -1; r <= 1; r++) add(r, -1, f, 'planks');
+  } else if (id === 'fortress') {
+    // Nine by nine stone walls four high, a flat roof, battlements, four corner towers, and a door
+    // facing the child. Hollow inside, so it counts as shelter from the night bugs.
+    for (let r = -4; r <= 4; r++) for (let f = 0; f <= 8; f++) {
+      add(r, -1, f, 'planks');
+      const edge = Math.abs(r) === 4 || f === 0 || f === 8;
+      const corner = Math.abs(r) >= 3 && (f <= 1 || f >= 7);
+      const top = corner ? 6 : 3;
+      for (let y = 0; y <= top; y++) {
+        if (!edge && !corner) add(r, y, f, y === 3 ? 'stone' : '');
+        else if (r === 0 && f === 0 && y < 2) add(r, y, f, y === 0 ? 'door' : 'door_top');
+        else if (y === 1 && ((Math.abs(r) === 2 && (f === 0 || f === 8)) || (Math.abs(r) === 4 && f === 4))) add(r, y, f, 'window');
+        else add(r, y, f, corner && y >= 4 ? 'brick' : 'stone');
+      }
+      // Battlements: every other block along the top of the walls.
+      if (edge && !corner && (r + f) % 2 === 0) add(r, 4, f, 'brick');
+      // Tower tops get a red flag block in the very corner.
+      if (Math.abs(r) === 4 && (f === 0 || f === 8)) add(r, 7, f, 'red');
+    }
+  } else if (id === 'pyramid') {
+    // Seven by seven sand steps, each layer one block in, so walking up climbs it.
+    for (let y = 0; y <= 3; y++) for (let r = -3 + y; r <= 3 - y; r++) for (let f = y; f <= 6 - y; f++) add(r, y, f, y === 3 ? 'yellow' : 'sand');
+  } else if (id === 'garden') {
+    // A five by five flower bed in the ground with a low brick edge round it.
+    for (let r = -3; r <= 3; r++) for (let f = 0; f <= 6; f++) {
+      const edge = Math.abs(r) === 3 || f === 0 || f === 6;
+      add(r, -1, f, edge ? 'brick' : 'flower');
+      if (edge) add(r, 0, f, 'brick');
+    }
+  } else if (id === 'rainbow') {
+    // A wall seven blocks long, one stripe of each colour from the bottom up.
+    const stripes = ['purple', 'blue', 'green', 'yellow', 'orange', 'red'];
+    for (let r = -3; r <= 3; r++) stripes.forEach((type, y) => add(r, y, 1, type));
   } else if (id === 'tree') {
     const f0 = 1;
     for (let y = 0; y <= 3; y++) add(0, y, f0, 'tree_bark');

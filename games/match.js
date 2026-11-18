@@ -3,6 +3,7 @@
  * The flip-and-match idea follows the animated emoji memory game.
  * These cards are shapes, colors, numbers, and words drawn here.
  */
+import { sfx } from '../lib/game-sound.mjs?v=audio2';
 import { shuffle } from '../logic.mjs?v=structure3';
 
 let active = null;
@@ -57,6 +58,7 @@ export function mountMatch(root, { faces = [], reduced, onPair, onMiss, onDone }
     const card = cards[index];
     if (!card || lock || done || card.matched || card.up) return;
     card.up = true;
+    sfx('flip');
     open.push(index);
     paint();
     if (open.length < 2) return;
@@ -64,6 +66,7 @@ export function mountMatch(root, { faces = [], reduced, onPair, onMiss, onDone }
     if (cards[a].id === cards[b].id) {
       cards[a].matched = true;
       cards[b].matched = true;
+      sfx('sparkle');
       matched += 1;
       open = [];
       paint();

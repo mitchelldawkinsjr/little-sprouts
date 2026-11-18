@@ -1,3 +1,4 @@
+import { sfx } from '../../lib/game-sound.mjs?v=audio2';
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { questionHolding } from '../../lib/hold.js?v=hold2';
@@ -450,6 +451,7 @@ function fly(dt) {
 
 function applyEvents(events) {
   events.forEach(event => {
+    sfx(event.type === 'over' ? (event.crashed ? 'boom' : 'land') : { pick: 'whoosh', slip: 'bump' }[event.type]);
     if (event.type === 'pick') send('pick', { index: event.index });
     else if (event.type === 'slip') send('slip');
     else if (event.type === 'over') send('finish', { detail: event.crashed ? 'crash' : 'flew' });

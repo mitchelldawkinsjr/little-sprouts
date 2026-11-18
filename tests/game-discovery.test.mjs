@@ -6,17 +6,17 @@ import { discoveryHtml, shelfPanelHtml, gameCardHtml, GAMEPLAY_ART } from '../li
 import { sidecarRows } from '../lib/sidecar.js';
 import { inventory } from '../tools/static-files.mjs';
 
-const games = ['shapes', 'gulp', 'skybound', 'boss', 'cabin', 'sketchbook', 'blocks', 'grass', 'moon-swing', 'canyon-pods'].map(id => [id, id]);
+const games = ['shapes', 'gulp', 'skybound', 'boss', 'cabin', 'sketchbook', 'blocks', 'grass', 'moon-swing', 'ink-trail', 'canyon-pods'].map(id => [id, id]);
 const ids = rows => rows.map(row => row[0]);
 const card = id => `<article data-test-game="${id}"></article>`;
 
 test('featured games follow the requested order and omit unavailable games', () => {
-  assert.deepEqual(ids(featuredGames(games)), ['blocks', 'sketchbook', 'cabin', 'boss', 'grass', 'skybound', 'gulp']);
-  assert.deepEqual(ids(featuredGames(games.filter(([id]) => !['blocks', 'boss'].includes(id)))), ['sketchbook', 'cabin', 'grass', 'skybound', 'gulp']);
+  assert.deepEqual(ids(featuredGames(games)), ['blocks', 'boss', 'grass', 'skybound', 'gulp', 'ink-trail', 'moon-swing', 'sketchbook', 'cabin']);
+  assert.deepEqual(ids(featuredGames(games.filter(([id]) => !['blocks', 'boss'].includes(id)))), ['grass', 'skybound', 'gulp', 'ink-trail', 'moon-swing', 'sketchbook', 'cabin']);
   assert.deepEqual(featuredGames([]), []);
 });
 
-test('browse sorting features the seven picks or uses fixed addition dates, without changing the catalog', () => {
+test('browse sorting features the featured picks or uses fixed addition dates, without changing the catalog', () => {
   const before = [...games];
   assert.deepEqual(ids(orderGames(games)).slice(0, FEATURED_GAMES.length), FEATURED_GAMES);
   const newest = ids(orderGames(games, 'newest'));
@@ -87,4 +87,32 @@ test('every game has a gameplay picture in the offline pack and an accessible pl
     assert.match(html, new RegExp(`src="icons/gameplay/${id}.jpg"`));
     assert.match(html, new RegExp(`class="gcard-play" data-game="${id}" aria-label="Play`));
   }
+});
+
+test('home New Games row shows the hand-picked games in order', () => {
+  const html = discoveryHtml([['inkwave'], ['fishing'], ['roll'], ['moon-swing'], ['glide'], ['dash']], {}, card);
+  const row = html.split('data-discovery="new"')[1].split('</section>')[0];
+  assert.deepEqual([...row.matchAll(/data-test-game="([^"]+)"/g)].map(m => m[1]), ['moon-swing', 'dash', 'roll', 'glide']);
+});
+
+test('every registered game sits on a real home shelf', async () => {
+  const { SHELF_META, shelfOf } = await import('../lib/home-ui.mjs');
+  const { sidecarGame } = await import('../lib/sidecar.js');
+  const shelves = new Set(SHELF_META.map(s => s.id));
+  const helpers = readFileSync(new URL('../app/helpers.mjs', import.meta.url), 'utf8');
+  const builtins = [...helpers.split('const games = ')[1].split('.concat(sidecarRows())')[0].matchAll(/\['([\w-]+)',/g)].map(m => m[1]);
+  for (const id of [...builtins, ...sidecarRows().map(row => row[0])]) {
+    assert.ok(shelves.has(shelfOf(id, sidecarGame(id)?.shelf)), id);
+  }
+});
+
+test('lib/sidecar.js is imported with one version everywhere, so the built-game list is shared', async () => {
+  const { readdirSync } = await import('node:fs');
+  const files = ['app.js', ...readdirSync(new URL('../app/', import.meta.url)).map(f => `app/${f}`), ...readdirSync(new URL('../lib/', import.meta.url)).map(f => `lib/${f}`)]
+    .filter(f => /\.m?js$/.test(f));
+  const versions = new Set();
+  for (const f of files) {
+    for (const m of readFileSync(new URL(`../${f}`, import.meta.url), 'utf8').matchAll(/sidecar\.js\?v=([\w-]+)/g)) versions.add(m[1]);
+  }
+  assert.equal(versions.size, 1, `sidecar.js versions: ${[...versions].join(', ')}`);
 });

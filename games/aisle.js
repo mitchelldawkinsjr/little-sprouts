@@ -5,8 +5,9 @@
  * standing in. Up and down exist at the ends of an aisle, where the
  * aisles meet. The market and the shopper are drawn here.
  */
+import { sfx } from '../lib/game-sound.mjs?v=audio2';
 import { gamePaused } from '../lib/hold.js?v=hold2';
-import { spriteHtml } from '../lib/home-ui.mjs?v=gear2';
+import { spriteHtml } from '../lib/home-ui.mjs?v=rivals1';
 import { buddyKind, buddyGear } from '../lib/buddy3d.mjs?v=gear2';
 import { esc } from '../logic.mjs?v=structure3';
 
@@ -184,6 +185,7 @@ export function mountAisle(root, { buddy, board = {}, reduced, nextQuestion, onP
     const button = engine.querySelector(`.market-good[data-spot="${keyOf(item)}"]`);
     if (!item.ok) {
       item.tried = true;
+      sfx('bump');
       slipped = true;
       button?.classList.add('tried');
       if (button) button.inert = true;
@@ -196,6 +198,7 @@ export function mountAisle(root, { buddy, board = {}, reduced, nextQuestion, onP
       return;
     }
     item.tried = true;
+    sfx('pop');
     button?.classList.add('pocketed');
     phase = 'pocket';
     engine.classList.add('pocket');
@@ -273,6 +276,7 @@ export function mountAisle(root, { buddy, board = {}, reduced, nextQuestion, onP
     if (next.row === at.row && next.col === at.col) return;
     const dir = next.col < at.col ? 'left' : next.col > at.col ? 'right' : next.row < at.row ? 'up' : 'down';
     at = next;
+    sfx('step');
     face(dir);
     if (!reduced && phase === 'shop') lockWalk();
     else paintHere();

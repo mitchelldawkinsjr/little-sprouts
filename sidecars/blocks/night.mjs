@@ -70,8 +70,22 @@ export function feetBlock(eyeY) {
 
 export const BUGS = {
   caterpillar: { speed: 3.1, reach: 1.7, delay: 0, label: 'caterpillar' },
-  spider: { speed: 4.0, reach: 1.8, delay: 7, label: 'spider' }
+  spider: { speed: 4.0, reach: 1.8, delay: 7, label: 'spider' },
+  // Made fresh each night from the Boss chase parts (lib/boss-design.mjs).
+  boss: { speed: 3.5, reach: 1.8, delay: 12, label: 'night bug' }
 };
+export const MAX_BUGS = 8;
+
+/**
+ * Who comes out on night n (0 for the first): the caterpillar and the spider, then one more
+ * made-up bug each night after, up to MAX_BUGS. Later ones wait a little longer to set out.
+ */
+export function nightBugs(n) {
+  const count = Math.min(MAX_BUGS, 2 + Math.max(0, Math.floor(n) || 0));
+  return Array.from({ length: count }, (_, i) => i === 0 ? { kind: 'caterpillar', delay: BUGS.caterpillar.delay }
+    : i === 1 ? { kind: 'spider', delay: BUGS.spider.delay }
+    : { kind: 'boss', delay: BUGS.boss.delay + (i - 2) * 5 });
+}
 export const COME_FROM = 30;    // the bugs start this far away, out in the dark
 export const CIRCLE = 7;        // around a safe player, they keep this far off
 
@@ -110,5 +124,6 @@ export const LINES = {
   night: 'It is night. The bugs are out. Stay inside!',
   morning: 'Good morning! The bugs went home.',
   caterpillar: 'Munch! The caterpillar got you. Hide inside a house at night.',
-  spider: 'Munch! The spider got you. Hide inside a house at night.'
+  spider: 'Munch! The spider got you. Hide inside a house at night.',
+  boss: 'Munch! A night bug got you. Hide inside a house at night.'
 };

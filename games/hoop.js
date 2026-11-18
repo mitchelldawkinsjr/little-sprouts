@@ -3,6 +3,7 @@
  * Three hoops sit across the gym. The one you drop through is the answer.
  * The throw, the arc, and the net follow the flick-to-shoot hoop.
  */
+import { sfx } from '../lib/game-sound.mjs?v=audio2';
 import { questionHolding } from '../lib/hold.js?v=hold2';
 
 let active = null;
@@ -103,6 +104,7 @@ export function mountHoop(root, { locked = false, reduced = false, stats = {}, h
     phase = 'back';
     backAt = performance.now();
     scored = true;
+    sfx(kind === 'brick' ? 'drop' : 'swish');
     if (kind === 'swish') {
       streak += 1;
       score += Math.abs(ball.vx) > 520 ? 3 : 2;
@@ -284,6 +286,7 @@ export function mountHoop(root, { locked = false, reduced = false, stats = {}, h
     phase = 'fly';
     ball.vx = vx;
     ball.vy = vy;
+    sfx('whoosh');
     ball.thrownAt = performance.now();
   };
 

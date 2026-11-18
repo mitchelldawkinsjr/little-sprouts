@@ -20,10 +20,11 @@ import { voxel_block_builder } from './engine/voxel-block-builder.js?v=blocks5';
 import { questionHolding } from '../../lib/hold.js?v=hold2';
 import { actionDown, axisDir, held, moveDirs, nextIndex, readPad } from '../../lib/pad-core.mjs?v=pad-blocks';
 import { resolveAutoQuality, pixelRatioCap, rendererOptions, isPerformanceTier } from '../../lib/device-tier.mjs?v=low-end1';
-import { chestDistance, goalFrom, localQuestion, nextLetterOk, normalizeAsk, readSave } from './quiz.mjs?v=blocks5';
-import { BUGS, COME_FROM, CYCLE, LINES, NIGHT, bugTarget, canGrab, feetBlock, sheltered, skyAt, stepToward } from './night.mjs?v=blocks5';
-import { animate as animateBug, dropBug, makeCaterpillar, makeSpider } from './bugs.js?v=blocks5';
-import { DAY_BOXES, KITS, NEW_DAY, POWERS, TOO_CLOSE, boosts, facingFromYaw, kitCells, kitToWorld, prizeFor } from './prizes.mjs?v=blocks5';
+import { chestDistance, goalFrom, localQuestion, nextLetterOk, normalizeAsk, readSave } from './quiz.mjs?v=fort1';
+import { BUGS, COME_FROM, CYCLE, LINES, MAX_BUGS, NIGHT, bugTarget, canGrab, feetBlock, nightBugs, sheltered, skyAt, stepToward } from './night.mjs?v=fort1';
+import { bossName, randomBoss } from '../../lib/boss-design.mjs';
+import { animate as animateBug, dropBug, makeBossBug, makeCaterpillar, makeSpider } from './bugs.js?v=fort1';
+import { DAY_BOXES, KITS, NEW_DAY, POWERS, TOO_CLOSE, TOUGH_LINE, boosts, facingFromYaw, kitCells, kitToWorld, prizeFor, toughPrize } from './prizes.mjs?v=fort1';
 import { makeWorldFriends, mountWorldFriendControls } from '../../lib/world-friends.mjs';
 import { SEND_EVERY, SKY_EVERY, STILL_EVERY, readEdit, readSpot, worldCollector, worldParts } from './friends.mjs?v=blocks5';
 import { BUDDIES, buddyGear, buddyKind, makeBuddy } from '../../lib/buddy3d.mjs?v=gear2';
@@ -339,7 +340,7 @@ function paintCard() {
   const ask = quest.ask;
   $('cardPrompt').textContent = ask.prompt || 'Pick one.';
   $('cardShow').innerHTML = ask.show || '';
-  $('cardSay').textContent = '';
+  $('cardSay').textContent = ask.tough ? (quest.missed ? 'Get it right for a little house.' : '🏰 Tough question! Right the first time wins a fortress.') : '';
   const choices = $('cardChoices');
   const spelling = ask.kind === 'spell';
   $('cardSlots').hidden = !spelling;
@@ -393,6 +394,7 @@ function spellTap(button) {
     button.classList.add('wrong');
     setTimeout(() => button.classList.remove('wrong'), 300);
     $('cardSay').textContent = 'Not that letter. Try another.';
+    quest.missed = true;
     if (!quest.slipped) {
       quest.slipped = true;
       send('slip');
@@ -413,6 +415,7 @@ function mark(ok) {
   if (!quest.open) return;
   quest.pending = false;
   if (!ok) {
+    quest.missed = true;
     if (quest.picked) {
       quest.picked.classList.add('wrong');
       quest.picked.disabled = true;
@@ -424,11 +427,12 @@ function mark(ok) {
   }
   quest.picked?.classList.add('right');
   quest.rights++;
+  const tough = !!quest.ask.tough;
   quest.solvedKey = quest.ask.key;
   quest.ask = null;
   const reward = texture_defs.REWARDS.find(t => !ui.Unlocked.includes(t));
   if (reward) ui.Unlock(reward);
-  const prize = prizeFor(quest.rights);
+  const prize = tough ? { kind: 'kit', id: toughPrize(quest.missed) } : prizeFor(quest.rights);
   // With the bugs turned off there is no night, so a lantern would never light.
   if (bugsOff && prize.id === 'lantern') prize.id = 'jump';
   const won = prize.kind === 'kit' ? KITS[prize.id] : POWERS[prize.id];
@@ -478,6 +482,11 @@ function takeAsk(ask) {
   soundOn = ask.sound;
   quest.goal = goalFrom(ask, quest.goal);
   quest.ask = ask;
+  quest.missed = false;
+  if (ask.tough) {
+    note(`🏰 ${TOUGH_LINE}`, 4.5);
+    speakLine(TOUGH_LINE);
+  }
   if (quest.open) paintCard();
   paintHud();
 }
@@ -627,10 +636,11 @@ function spawnBug(kind) {
     const z = feet.z + Math.sin(angle) * far;
     const y = groundUnder(x, z, null);
     if (y == null) continue;
-    const model = kind === 'spider' ? makeSpider() : makeCaterpillar();
+    const design = kind === 'boss' ? randomBoss(rnd) : null;
+    const model = design ? makeBossBug(design) : kind === 'spider' ? makeSpider() : makeCaterpillar();
     model.segs.forEach(seg => seg.position.set(x, y, z));
     renderer.scene_.add(model.group);
-    const bug = { kind, model, x, z, y, spin: angle, heading: angle + Math.PI, t: rnd() * 10, state: 'come', fade: 0 };
+    const bug = { kind, model, name: design ? bossName(design) : '', x, z, y, spin: angle, heading: angle + Math.PI, t: rnd() * 10, state: 'come', fade: 0 };
     placeBug(bug, 0);
     night.bugs.push(bug);
     return true;
@@ -642,9 +652,10 @@ function spawnBug(kind) {
 function placeBug(bug, dt) {
   const m = bug.model;
   const size = bug.state === 'leave' ? Math.max(0.01, 1 - bug.fade) : Math.min(1, bug.fade + 0.01);
-  m.lead.position.set(bug.x, bug.y, bug.z);
+  const base = m.base ?? (bug.kind === 'spider' ? 1.3 : 1.25);
+  const lift = (m.lift || 0) * base * size;
+  m.lead.position.set(bug.x, bug.y + lift, bug.z);
   m.lead.rotation.y = bug.heading - Math.PI / 2;
-  const base = bug.kind === 'spider' ? 1.3 : 1.25;
   m.lead.scale.setScalar(base * size);
   for (let i = 1; i < m.segs.length; i++) {
     const seg = m.segs[i];
@@ -652,12 +663,12 @@ function placeBug(bug, dt) {
     const dx = seg.position.x - ahead.x;
     const dz = seg.position.z - ahead.z;
     const far = Math.hypot(dx, dz) || 1;
-    const gap = m.gap * size;
+    const gap = (m.gaps?.[i] ?? m.gap) * size;
     if (far > gap) {
       seg.position.x = ahead.x + (dx / far) * gap;
       seg.position.z = ahead.z + (dz / far) * gap;
     }
-    const y = groundUnder(seg.position.x, seg.position.z, seg.position.y);
+    const y = groundUnder(seg.position.x, seg.position.z, seg.position.y - lift) + lift;
     seg.position.y += (y - seg.position.y) * Math.min(1, dt * 8 || 1);
     seg.rotation.y = Math.atan2(-dx, -dz) - Math.PI / 2;
     seg.scale.setScalar(base * size);
@@ -670,10 +681,11 @@ function stepBugs(dt, now) {
   const paused = quest.open || questionHolding();
   if (sky.bugs && !bugsOff) {
     const into = sky.phase === 'night' ? NIGHT - sky.left : 0;
-    for (const kind of Object.keys(BUGS)) {
-      const key = `${sky.night}:${kind}`;
-      if (!night.spawned.has(key) && into >= BUGS[kind].delay && spawnBug(kind)) night.spawned.add(key);
-    }
+    // Two bugs the first night, one more each night after. Fewer on a low-power device.
+    nightBugs(sky.night).slice(0, lowGpu ? 5 : MAX_BUGS).forEach(({ kind, delay }, i) => {
+      const key = `${sky.night}:${i}`;
+      if (!night.spawned.has(key) && into >= delay && spawnBug(kind)) night.spawned.add(key);
+    });
   }
   // A lit lantern keeps the bugs off just like a house: they circle at a distance.
   const safe = checkSafe(now) || powers.lantern === 'lit';
@@ -769,7 +781,7 @@ function letGo() {
   document.body.classList.remove('grabbed');
   player.Teleport(spot.clone());
   tools.enabled = !quest.open;
-  note(`The ${BUGS[g.bug.kind].label} let you go. Build a house with a roof and walls, then go inside.`, 4.5);
+  note(`${g.bug.name || `The ${BUGS[g.bug.kind].label}`} let you go. Build a house with a roof and walls, then go inside.`, 4.5);
   setTimeout(() => $('fade').classList.remove('on'), 250);
 }
 
@@ -853,6 +865,12 @@ addEventListener('keydown', event => {
 addEventListener('keyup', event => keys.delete(event.code));
 addEventListener('blur', () => keys.clear());
 view.addEventListener('wheel', event => { event.preventDefault(); ui.CycleBuildIcon_(event.deltaY > 0 ? 1 : -1); }, { passive: false });
+// Over the block bar, the mouse wheel scrolls it sideways.
+$('bar').addEventListener('wheel', event => {
+  if (!event.deltaY || Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
+  event.preventDefault();
+  $('bar').scrollLeft += event.deltaY;
+}, { passive: false });
 
 function ndcOf(event) {
   const rect = renderer.threejs_.domElement.getBoundingClientRect();

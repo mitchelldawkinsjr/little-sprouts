@@ -4,6 +4,7 @@
  * The path, the rush, and the lives follow Jason Leisure's Red vs Blue.
  * The questions and the on-screen buttons are Little Sprouts' own.
  */
+import { sfx } from '../lib/game-sound.mjs?v=audio2';
 import { cubeLanes, cubeOverlap } from '../logic.mjs?v=cube-dash';
 import {
   resolveAutoQuality, pixelRatioCap, rendererOptions, isPerformanceTier
@@ -276,11 +277,12 @@ function begin(THREE, stage, session, { board, buddy, reduced, nextQuestion, onP
   };
 
   const grounded = () => player.y <= GROUND_TOP + player.h / 2 + 0.06 && player.vy <= 0.35;
-  const jump = () => { if (phase === 'play' && grounded()) player.vy = JUMP; };
+  const jump = () => { if (phase === 'play' && grounded()) { player.vy = JUMP; sfx('jump'); } };
 
   const hurt = () => {
     if (invuln > 0 || phase !== 'play') return;
     lives -= 1;
+    sfx('bump');
     invuln = 0.9;
     player.z += 1.5;
     if (asking) {
@@ -377,11 +379,13 @@ function begin(THREE, stage, session, { board, buddy, reduced, nextQuestion, onP
     if (touched) {
       if (touched.ok) {
         const clean = !slipped;
+        sfx('pop');
         clearAnswers();
         askWait = 1.15;
         call(onClear, clean);
       } else {
         slipped = true;
+        sfx('bump');
         drop(touched);
         answers.splice(answers.indexOf(touched), 1);
         player.z += 0.7;

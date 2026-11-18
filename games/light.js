@@ -7,6 +7,7 @@
  * The ring, the chase, and the one-bulb window follow Catch That Light.
  * This ring and the questions are drawn here.
  */
+import { sfx } from '../lib/game-sound.mjs?v=audio2';
 
 export const LIGHT_BULBS = 60;
 const LIGHT_PACES = { stroll: 5, bike: 4, car: 3, jet: 2, rocket: 1 };
@@ -432,6 +433,7 @@ export function mountLight(root, { level = 1, reduced = false, onPick, onCatch, 
     if (phase !== 'run' || locked) return;
     locked = true;
     verdict = lightVerdictAt(angle, level, marks);
+    sfx(verdict === 'catch' ? 'sparkle' : 'bump');
     phase = 'flash';
     flashUntil = performance.now() + (reduced ? 520 : 880);
     catchBtn.textContent = verdict === 'catch'

@@ -1,3 +1,4 @@
+import { sfx } from '../../lib/game-sound.mjs?v=audio2';
 import { englishLine } from '../../lib/english-voice.mjs?v=en1';
 /**
  * Garden gulp — drag to move a hole through a garden. Swallow what fits.
@@ -452,7 +453,7 @@ class Game {
 
     const now = performance.now() / 1000;
     stepHole(this.you, this.localInput, dt);
-    trySwallowBits(this.you, this.bits);
+    if (trySwallowBits(this.you, this.bits)) sfx('chomp');
     this.quiz.tick(now);
 
     if (this.linkRole === 'host' && this.them) {
@@ -475,8 +476,8 @@ class Game {
       }
       stepHole(bot, input, dt, 7.5);
       trySwallowBits(bot, this.bits);
-      tryRivalGulp(bot, this.you, now);
-      tryRivalGulp(this.you, bot, now);
+      if (tryRivalGulp(bot, this.you, now)) sfx('fall');
+      if (tryRivalGulp(this.you, bot, now)) sfx('chomp');
     }
 
     this.timeLeft -= dt;
@@ -684,6 +685,7 @@ class Quiz {
     if (choice.ok) {
       hole.r = rightAnswerGrow(hole.r);
       hole.stars += 1;
+      if (mine) sfx('pop');
       if (mine) this.toast(this.answered ? 'More! ⭐' : 'Yes! ⭐', 'good');
       if (!this.answered) {
         this.answered = true;
@@ -699,6 +701,7 @@ class Quiz {
     hole.misses += 1;
     hole.hurtUntil = performance.now() / 1000 + 0.8;
     if (mine) {
+      sfx('bump');
       this.toast('Not yet', 'bad');
       if (this.source === 'host' && !this.answered) sendHost('pick', { index: choice.index });
     }

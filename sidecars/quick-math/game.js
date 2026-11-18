@@ -234,6 +234,7 @@
     state.selectedChoice = answer;
     const correct = answer === state.question.answer;
     state.feedback = { correct, correctAnswer: state.question.answer };
+    if (window.SproutsSfx) window.SproutsSfx(correct ? 'sparkle' : 'bump');
     if (correct) {
       state.score += 1;
       state.streak += 1;

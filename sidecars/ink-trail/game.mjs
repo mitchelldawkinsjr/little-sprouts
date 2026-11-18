@@ -1,3 +1,4 @@
+import { sfx } from '../../lib/game-sound.mjs?v=audio2';
 import { buddyKind } from '../../lib/buddy3d.mjs?v=gear2';
 import { BOSS_EMOJI, DEFAULT_BOSS, bossName, readBoss } from '../../lib/boss-design.mjs';
 import { makeBossBuilder } from '../../lib/boss-builder.mjs';
@@ -447,6 +448,7 @@ function tick(now) {
     const nextBoss = run.bosses.find(boss => !boss.active);
     const events = stepRun(run, dt, { target, direction, pressure: point.pressure });
     for (const event of events) {
+      sfx({ caught: 'bump', finish: 'swish', join: 'whoosh', dot: 'sparkle', wash: 'splash' }[event]);
       if (event === 'question') openQuestion();
       if (event === 'caught') caught();
       if (event === 'finish') win();

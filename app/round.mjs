@@ -38,33 +38,33 @@ import {
   verseWithRef
 } from '../logic.mjs?v=offline1';
 import { canSpeak, commonLines, prefetchSpeech } from '../lib/speech.js?v=offline4';
-import { stopArcade } from '../games/arcade.js?v=gear2';
-import { stopHoop } from '../games/hoop.js?v=hoop-trio-r2';
-import { stopHook } from '../games/hook.js?v=ask-first2-r2';
-import { stopSky } from '../games/sky.js?v=ask-first2-r2';
-import { stopPlanet } from '../games/planet.js?v=sky-rocks2';
-import { stopPuzzle } from '../games/puzzle.js?v=puzzle-glass';
-import { stopMatch } from '../games/match.js?v=pair-match2';
-import { stopChase } from '../games/chase.js?v=gear2';
-import { stopHop } from '../games/hop.js?v=gear2';
-import { stopToast } from '../games/toast.js?v=ask-first-r2';
-import { stopGlide } from '../games/glide.js?v=gear2';
-import { stopCity } from '../games/city.js?v=low-end1';
-import { stopAisle } from '../games/aisle.js?v=gear2';
-import { stopLily } from '../games/lily.js?v=gear2';
-import { stopBust } from '../games/bust.js?v=ghost-same2-r2';
-import { stopMole } from '../games/mole.js?v=mole-pop3';
-import { stopCube } from '../games/cube.js?v=gear2';
-import { stopStack } from '../games/stack.js?v=stack-words-r2';
-import { stopLamp } from '../games/lamp.js?v=lamp-r2';
-import { stopTrace } from '../games/trace.js?v=trace-car2';
-import { stopSort } from '../games/sort.js?v=sort-roll';
-import { stopMerge } from '../games/merge.js?v=goo-jar2';
-import { stopCrayon } from '../games/crayon.js?v=crayon-more';
-import { stopMarble } from '../games/marble.js?v=gear2';
-import { stopBridge } from '../games/bridge.js?v=gear2';
-import { stopMaze } from '../games/maze.js?v=gear2';
-import { lessonResult, postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=offline4';
+import { stopArcade } from '../games/arcade.js?v=gear2-sfx1-h1';
+import { stopHoop } from '../games/hoop.js?v=hoop-trio-r2-sfx1';
+import { stopHook } from '../games/hook.js?v=ask-first2-r2-sfx1';
+import { stopSky } from '../games/sky.js?v=ask-first2-r2-sfx1';
+import { stopPlanet } from '../games/planet.js?v=sky-rocks2-sfx1';
+import { stopPuzzle } from '../games/puzzle.js?v=puzzle-glass-sfx1';
+import { stopMatch } from '../games/match.js?v=pair-match2-sfx1';
+import { stopChase } from '../games/chase.js?v=gear2-sfx1';
+import { stopHop } from '../games/hop.js?v=gear2-sfx1';
+import { stopToast } from '../games/toast.js?v=ask-first-r2-sfx1';
+import { stopGlide } from '../games/glide.js?v=boom1-ask1';
+import { stopCity } from '../games/city.js?v=low-end1-sfx1';
+import { stopAisle } from '../games/aisle.js?v=gear2-sfx1-h1';
+import { stopLily } from '../games/lily.js?v=gear2-sfx1';
+import { stopBust } from '../games/bust.js?v=ghost-same2-r2-sfx1';
+import { stopMole } from '../games/mole.js?v=mole-pop3-sfx1';
+import { stopCube } from '../games/cube.js?v=gear2-sfx1';
+import { stopStack } from '../games/stack.js?v=stack-words-r2-sfx1';
+import { stopLamp } from '../games/lamp.js?v=lamp-r2-sfx1';
+import { stopTrace } from '../games/trace.js?v=trace-car2-sfx1';
+import { stopSort } from '../games/sort.js?v=sort-roll-sfx1';
+import { stopMerge } from '../games/merge.js?v=goo-jar2-sfx1';
+import { stopCrayon } from '../games/crayon.js?v=crayon-more-sfx1';
+import { stopMarble } from '../games/marble.js?v=gear2-sfx1';
+import { stopBridge } from '../games/bridge.js?v=gear2-sfx1';
+import { stopMaze } from '../games/maze.js?v=gear2-sfx1';
+import { lessonResult, postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=power1';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=aviator1';
 
@@ -172,6 +172,7 @@ export function registerRound(rt) {
       message.gates = rallyGates(message.stops);
     }
     if (g.mode === 'flight' || g.mode === 'blocks') message.freeEvery = rallyClearCount(rt.questionCount());
+    if (g.mode === 'blocks' && g.tough) message.tough = true;
     if (g.mode === 'moon-swing' || g.mode === 'ink-trail' || g.mode === 'pinecone-trail' || g.mode === 'range' || g.mode === 'roll' || g.mode === 'grass' || g.mode === 'glow' || g.mode === 'dash' || g.mode === 'boss') message.total = rt.questionCount();
     return message;
   }
@@ -185,6 +186,7 @@ export function registerRound(rt) {
     if (!g || g.finished || g.done || !token) return;
     const ok = !!token.ok;
     postSidecar({ type: 'mark', index, ok });
+    rt.cue(ok ? 'right' : 'wrong');
     // Arcade picture rounds keep coming with no questions and no end; the game is left from All games.
     if (g.freePlay) {
       g.done = true;
@@ -236,6 +238,8 @@ export function registerRound(rt) {
             ? (ok ? 'Yes! Shield charged.' : 'Not yet. Pick another one.')
           : g.mode === 'cabin'
             ? (ok ? 'Yes! The cabin stays cozy.' : 'Not yet. Pick another one.')
+          : g.mode === 'paint-rivals'
+            ? (ok ? 'Yes! Power-up!' : 'Not yet. Keep going!')
           : g.mode === 'inkwave'
             ? (ok ? 'Yes! Super ink!' : 'Not yet. Pick another one.')
           : g.mode === 'fishing'
@@ -314,7 +318,11 @@ export function registerRound(rt) {
     g.built = '';
     g.target2 = null;
     g.show = '';
-    const l = rt.skillLevel(g.mode);
+    // Block meadow's first gift box each game is a tough question (one level up) for a fortress.
+    g.tough = g.mode === 'blocks' && !g.freePlay && !g.toughAsked;
+    if (g.tough) g.toughAsked = true;
+    const base = rt.skillLevel(g.mode);
+    const l = g.tough ? Math.max(base, Math.min(3, base + 1)) : base;
     g.level = l;
     const { n, ss, cs } = rt.pools(l);
     g.title = rt.games.find(x => x[0] === g.mode)[1];
@@ -1653,6 +1661,7 @@ export function registerRound(rt) {
   function answer(ok, b) {
     const g = rt.game;
     if (!g || g.done || g.flightOver) return;
+    rt.cue(ok ? 'right' : 'wrong');
     if (g.mode === 'rocket') { rt.resolveRocket(ok, b); return; }
     if (g.mode === 'maze' && g.asking) {
       const kind = g.asking;
@@ -1837,6 +1846,7 @@ export function registerRound(rt) {
     rt.stopEars();
     const g = rt.game;
     g.finished = true;
+    if (detail !== 'crash') rt.cue('win');
     rt.camOff();
     // Arcade play asks nothing, so it banks no learning stars (the same as the arcade games built in here).
     if (g.freePlay && g.mode !== 'quickmath') {

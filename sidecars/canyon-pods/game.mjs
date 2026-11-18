@@ -1,3 +1,4 @@
+import { sfx } from '../../lib/game-sound.mjs?v=audio2';
 import { buddyKind } from '../../lib/buddy3d.mjs';
 import { makeQuiz } from '../../lib/sidecar-quiz.mjs';
 import { attachTouchControls } from '../../lib/touch-controls.mjs?v=touch1';
@@ -269,7 +270,7 @@ function pause() {
 }
 
 function fireBoost() {
-  if (mode === 'race' && boost(run)) flash('Boost!');
+  if (mode === 'race' && boost(run)) { sfx('whoosh'); flash('Boost!'); }
 }
 
 async function question() {
@@ -393,6 +394,7 @@ try {
         if (next) event = next;
         if (next === 'finish' || next === 'question') break;
       }
+      if (racing && event) sfx({ charge: 'sparkle', shield: 'zap', bump: 'bump', finish: 'swish' }[event]);
       if (event === 'question') void question();
       else if (event === 'finish') result();
       else if (racing && event === 'charge') flash('Boost charged!');

@@ -12,6 +12,7 @@
  * fog, and a plane that chases the pointer. The scene is rebuilt here for current Three.js,
  * the learner's garden buddy flies the plane, and the gems and questions are Little Sprouts'.
  */
+import { sfx } from '../lib/game-sound.mjs?v=audio2';
 import { gamePaused } from '../lib/hold.js?v=hold2';
 import { makeBuddy, buddyKind } from '../lib/buddy3d.mjs?v=gear2';
 import {
@@ -142,7 +143,7 @@ export function mountGlide(root, { reduced, onScore, nextQuestion, onPrompt, onC
     }
   };
   active = session;
-  root.innerHTML = `<div class="glide-play"><div class="glide" role="application" aria-label="Move your finger or the mouse and the plane follows. Grab the gem with the answer." style="background:linear-gradient(#e4e0ba,#f7d9aa)"><p class="city-wait" style="margin:0;padding:24px;text-align:center;font:700 18px Outfit,sans-serif;color:#5a3a22">The island is coming.</p></div></div>`;
+  root.innerHTML = `<div class="glide-play"><div class="glide" role="application" aria-label="Move your finger or the mouse and the plane follows. Grab the gem with the answer." style="background:linear-gradient(#e4e0ba,#f7d9aa)"><p class="city-wait" style="margin:0;padding:24px;text-align:center;font:700 18px Outfit,sans-serif;color:#5a3a22">The island is coming.</p><div class="glide-ask" hidden><span id="glideAsk"></span><div id="glideShow"></div></div></div></div>`;
   const stage = root.querySelector('.glide');
   import(THREE_URL).then(THREE => {
     if (session.dead) return;
@@ -496,6 +497,60 @@ function begin(THREE, stage, session, { reduced, onScore, nextQuestion, onPrompt
     track.remove(ob.mesh);
     ob.mesh.traverse(o => { if (o.geometry && o.geometry !== stormGeom && o.geometry !== boltGeom) o.geometry.dispose(); });
   };
+  // Crash debris: chunks in the colors of what the plane hit. A small pool, reused every crash.
+  const DEBRIS = {
+    ground: [COLORS.lightgreen, COLORS.green, COLORS.brown],
+    hill: [0x9a7556, 0x7a5a40, COLORS.green],
+    storm: [0x737884, 0x9aa0ab, 0xffd23a],
+    plane: [COLORS.red, COLORS.white, 0xffa53a, 0xffd23a]
+  };
+  const chunkGeom = box(6, 6, 6);
+  const chunkMats = new Map();
+  const chunkMat = c => {
+    if (!chunkMats.has(c)) chunkMats.set(c, flat(c));
+    return chunkMats.get(c);
+  };
+  const chunks = Array.from({ length: lowGpu ? 24 : 48 }, () => {
+    const m = new THREE.Mesh(chunkGeom, chunkMat(COLORS.white));
+    m.visible = false;
+    scene.add(m);
+    return { m, vx: 0, vy: 0, vz: 0, spin: 0, life: 0, max: 1, fall: 0 };
+  });
+  let nextChunk = 0;
+  const burst = (kind, count, power = 1) => {
+    const colors = DEBRIS[kind];
+    for (let i = 0; i < count; i++) {
+      const c = chunks[nextChunk];
+      nextChunk = (nextChunk + 1) % chunks.length;
+      const a = Math.random() * TAU;
+      const speed = (40 + Math.random() * 90) * power * calm;
+      c.vx = Math.cos(a) * speed - 30;
+      c.vy = Math.abs(Math.sin(a)) * speed * (kind === 'ground' ? 1.2 : 0.8) + (kind === 'storm' ? 0 : 30);
+      c.vz = (Math.random() - 0.5) * speed;
+      // Dirt and rock drop; cloud puffs and fire float.
+      c.fall = kind === 'storm' || (kind === 'plane' && i % 2) ? 20 : 260;
+      c.spin = (Math.random() - 0.5) * 14;
+      c.max = c.life = 0.7 + Math.random() * 0.6;
+      c.m.material = chunkMat(colors[i % colors.length]);
+      c.m.scale.setScalar((kind === 'storm' ? 1.4 : 0.8) + Math.random() * 0.9 * power);
+      c.m.position.set(pos.x, pos.y, LANE_Z + (Math.random() - 0.5) * 10);
+      c.m.visible = true;
+    }
+  };
+  const stepChunks = dt => chunks.forEach(c => {
+    if (c.life <= 0) return;
+    c.life -= dt;
+    if (c.life <= 0) { c.m.visible = false; return; }
+    c.vy -= c.fall * dt;
+    c.m.position.x += c.vx * dt;
+    c.m.position.y += c.vy * dt;
+    c.m.position.z += c.vz * dt;
+    c.m.rotation.x += c.spin * dt;
+    c.m.rotation.y += c.spin * 0.7 * dt;
+    // Chunks of one color share a material, so they fade by shrinking, not opacity.
+    c.m.scale.multiplyScalar(c.life / c.max < 0.4 ? 1 - dt * 3 : 1);
+  });
+
   // Answers win: a storm next to a labeled gem moves up or down out of its way, and a gem
   // over a hill floats above the peak. Every answer stays reachable without a bump.
   const NEAR = 0.14;
@@ -593,9 +648,12 @@ function begin(THREE, stage, session, { reduced, onScore, nextQuestion, onPrompt
   };
 
   // A bump costs a heart, blinks the plane, and lifts it clear.
-  const crash = () => {
+  const crash = kind => {
     if (safe > 0 || mode !== 'fly') return;
     lives -= 1;
+    sfx('bump');
+    burst(kind, lives <= 0 ? 18 : 14);
+    if (lives <= 0) burst('plane', 22, 1.4);
     safe = SAFE_TIME;
     bump = 1;
     if (lives <= 0) { end('crash'); return; }
@@ -848,7 +906,7 @@ function begin(THREE, stage, session, { reduced, onScore, nextQuestion, onPrompt
         ctx.font = '800 18px Outfit, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('Too low! Pull up!', width / 2, height - 56);
+        ctx.fillText('Too low! Pull up!', width / 2, height - 130);
       }
     } else card();
   };
@@ -891,6 +949,7 @@ function begin(THREE, stage, session, { reduced, onScore, nextQuestion, onPrompt
     // The bump shake and blink wear off even after the flight ends.
     safe = Math.max(0, safe - dt);
     bump = Math.max(0, bump - dt * 1.4);
+    stepChunks(dt);
     if (mode !== 'fly') return;
     bonus = Math.max(0, bonus - dt);
     fuel = Math.max(0, fuel - 0.03 * dt);
@@ -911,17 +970,17 @@ function begin(THREE, stage, session, { reduced, onScore, nextQuestion, onPrompt
       }
     }
     const here = onLand(pos.x, pos.y);
-    if (here.alt < GROUND_CLEAR) crash();
+    if (here.alt < GROUND_CLEAR) crash('ground');
     for (let i = obstacles.length - 1; i >= 0; i--) {
       const ob = obstacles[i];
       const d = wrap(here.angle - (ob.a + turn)) * LAND_R;
       if (ob.kind === 'hill') {
-        if (Math.abs(d) < ob.base + 12 && hitsHill(d, here.alt, ob)) crash();
+        if (Math.abs(d) < ob.base + 12 && hitsHill(d, here.alt, ob)) crash('hill');
       } else {
         const dy = here.alt - ob.height;
         if (d * d + dy * dy < (ob.radius + 12) ** 2) {
           // A storm cloud you bump puffs away, so it can't catch you twice.
-          crash();
+          crash('storm');
           ob.hit = true;
         }
       }
@@ -949,6 +1008,7 @@ function begin(THREE, stage, session, { reduced, onScore, nextQuestion, onPrompt
       tookAsk = true;
       if (gem.ok) {
         score += 1;
+        sfx('sparkle');
         fuel = Math.min(1, fuel + 0.18);
         gems.forEach(other => { if (other.ask) other.gone = true; });
         asking = false;
@@ -957,6 +1017,7 @@ function begin(THREE, stage, session, { reduced, onScore, nextQuestion, onPrompt
         call(onClear, !slipped);
       } else {
         gem.gone = true;
+        sfx('bump');
         slipped = true;
         call(onMiss);
       }
@@ -968,6 +1029,7 @@ function begin(THREE, stage, session, { reduced, onScore, nextQuestion, onPrompt
       if (gem.ask || gem.gone) return;
       if (!tookAsk && hits(gem)) {
         score += gem.hot || bonus > 0 ? 2 : 1;
+        sfx('sparkle');
         fuel = Math.min(1, fuel + 0.14);
         tell();
         if (gem.hot) { gem.gone = true; return; }

@@ -105,23 +105,23 @@ test('right answers take turns: a build kit, then a power-up, each list going ro
   const { prizeFor, KIT_ORDER, POWER_ORDER } = await import('../sidecars/blocks/prizes.mjs');
   const firstSix = [1, 2, 3, 4, 5, 6].map(prizeFor);
   assert.deepEqual(firstSix.map(p => p.kind), ['kit', 'power', 'kit', 'power', 'kit', 'power']);
-  assert.equal(firstSix[0].id, 'house', 'the first prize is a house, ready for the first night');
+  assert.equal(firstSix[0].id, KIT_ORDER[0]);
   assert.equal(firstSix[1].id, 'lantern');
   assert.equal(prizeFor(1 + KIT_ORDER.length * 2).id, KIT_ORDER[0]);
   assert.equal(prizeFor(2 + POWER_ORDER.length * 2).id, POWER_ORDER[0]);
 });
 
-test('a house kit is a night shelter with its door shut, and not with it open', async () => {
+for (const [kit, middle] of [['house', 2], ['fortress', 4]]) test(`a ${kit} kit is a night shelter with its door shut, and not with it open`, async () => {
   const { kitCells, kitToWorld, facingFromYaw } = await import('../sidecars/blocks/prizes.mjs');
   const { solid } = (await import('../sidecars/blocks/engine/texture-defs.js')).texture_defs;
   for (const yaw of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
     const base = [10, 5, 20];
     const facing = facingFromYaw(yaw);
     const world = new Map();
-    for (const c of kitCells('house')) world.set(kitToWorld(c, base, facing).join(','), c.type);
+    for (const c of kitCells(kit)) world.set(kitToWorld(c, base, facing).join(','), c.type);
     const solidAt = (x, y, z) => solid(world.get([x, y, z].join(',')) || '');
     // The middle of the house: two steps in from the door.
-    const inside = kitToWorld({ r: 0, y: 0, f: 2 }, base, facing);
+    const inside = kitToWorld({ r: 0, y: 0, f: middle }, base, facing);
     assert.equal(world.get(inside.join(',')), '', 'hollow inside');
     assert.ok(sheltered(solidAt, inside[0], inside[1], inside[2]), `safe inside, yaw ${yaw}`);
     // The door faces the child: the tapped spot is the door.
@@ -189,4 +189,29 @@ test('each new morning in free build brings a few gift boxes back', async () => 
   assert.ok(DAY_BOXES >= 1);
   assert.ok(PRIZE_LINES.includes(NEW_DAY));
   assert.ok(bakedLines.includes(NEW_DAY));
+});
+
+test('the tough question gives a fortress first time, else the little house, so every visit gets a home', async () => {
+  const { toughPrize, KITS, KIT_ORDER, TOUGH_LINE, PRIZE_LINES } = await import('../sidecars/blocks/prizes.mjs');
+  assert.equal(toughPrize(false), 'fortress');
+  assert.equal(toughPrize(true), 'house');
+  assert.ok(KITS.fortress && KITS.house);
+  assert.ok(!KIT_ORDER.includes('house') && !KIT_ORDER.includes('fortress'));
+  assert.ok(PRIZE_LINES.includes(TOUGH_LINE) && bakedLines.includes(TOUGH_LINE));
+  const { localQuestion, normalizeAsk } = await import('../sidecars/blocks/quiz.mjs');
+  assert.equal(localQuestion(Math.random, 0).tough, true);
+  assert.ok(!localQuestion(Math.random, 1).tough);
+  const ask = { choices: [{ label: '1', ok: true }, { label: '2' }] };
+  assert.equal(normalizeAsk({ ...ask, tough: true }).tough, true);
+  assert.equal(normalizeAsk(ask).tough, false);
+});
+
+test('two bugs the first night, one more each night, up to the most', async () => {
+  const { nightBugs, MAX_BUGS } = await import('../sidecars/blocks/night.mjs');
+  assert.deepEqual(nightBugs(0).map(b => b.kind), ['caterpillar', 'spider']);
+  assert.deepEqual(nightBugs(1).map(b => b.kind), ['caterpillar', 'spider', 'boss']);
+  assert.equal(nightBugs(3).length, 5);
+  assert.equal(nightBugs(99).length, MAX_BUGS);
+  const delays = nightBugs(99).map(b => b.delay);
+  assert.ok(delays.every((d, i) => !i || d >= delays[i - 1]), 'later bugs set out later');
 });
