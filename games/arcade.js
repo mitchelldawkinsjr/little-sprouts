@@ -1,7 +1,7 @@
 import { sfx } from '../lib/game-sound.mjs?v=audio2';
 import { gamePaused } from '../lib/hold.js?v=hold2';
 import { clamp, esc, rocketZone } from '../logic.mjs?v=structure3';
-import { spriteHtml } from '../lib/home-ui.mjs?v=gear2';
+import { spriteHtml } from '../lib/home-ui.mjs?v=rivals1';
 import { buddyKind, buddyGear } from '../lib/buddy3d.mjs?v=gear2';
 const pointHits = (nx, ny, stage, item, pad = 24) => {
   const x = stage.left + nx * stage.width;

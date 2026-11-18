@@ -12,13 +12,13 @@ import {
   versePack
 } from '../logic.mjs?v=offline1';
 import { contextFor, onSpeechStatus, prefetchSpeech, retrySpeech, speak, stop, voiceFor } from '../lib/speech.js?v=offline4';
-import { postSidecar, sidecarArcadeIds, sidecarRows } from '../lib/sidecar.js?v=offline4';
+import { postSidecar, sidecarArcadeIds, sidecarRows } from '../lib/sidecar.js?v=power1';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { speechFailureText } from '../lib/parent-ui.mjs?v=structure2';
 import { allowGameSounds, gameSound, sfx } from '../lib/game-sound.mjs?v=audio2';
 
 // These games play their own sounds and music, so the host adds none.
-const OWN_AUDIO = new Set(['lunar', 'rally', 'bike', 'paint', 'roll', 'grass', 'dash', 'boss', 'cabin', 'glow', 'range', 'blocks', 'skybound', 'fishing', 'inkwave', 'station', 'deliveries', 'sketchbook']);
+const OWN_AUDIO = new Set(['lunar', 'rally', 'bike', 'paint', 'roll', 'grass', 'dash', 'boss', 'cabin', 'glow', 'range', 'blocks', 'skybound', 'fishing', 'inkwave', 'station', 'deliveries', 'sketchbook', 'paint-rivals']);
 
 export function registerHelpers(rt) {
   Object.assign(rt, {

@@ -12,7 +12,7 @@
   <link rel="icon" href="icons/icon-192.png" type="image/png">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
   <link rel="stylesheet" href="vendor/fonts/fonts.css?v=r187">
-  <link rel="stylesheet" href="style.css?v=tablet1">
+  <link rel="stylesheet" href="style.css?v=tablet1-ask1">
   <link rel="stylesheet" href="lib/game-touch.css?v=1">
 </head>
 <body>
@@ -149,7 +149,9 @@
         <p class="offline-status" id="offlineStatus" role="status" aria-live="polite">Checking which games are saved for offline play…</p>
         <progress id="offlineBar" class="offline-bar" max="1" value="0"></progress>
         <p class="hint">Starter saves the smaller games automatically. Full also saves Backroad rally, Skybound climb, Sky deliveries, the Reach camera model, and Tidewater fishing on devices that can run it. Updates reuse files already saved.</p>
-        <button type="button" class="quiet" id="saveFullOffline">Save full offline pack</button></div>
+        <button type="button" class="quiet" id="saveFullOffline">Save full offline pack</button>
+        <button type="button" class="quiet" id="resetAppCache">Clear app cache and reload</button>
+        <p class="hint">Use this if games look out of date. It clears the saved offline games and loads the newest version. Learners, progress, settings, and the voice stay. Offline games save again afterward.</p></div>
           </div>
         </section>
         <section class="pc-card">
@@ -328,7 +330,7 @@
     <button type="button" class="quiet" id="listenAgain">Hear it again</button>
     <button type="button" class="quiet" id="listenBack">← All games</button>
   </div>
-  <script type="module" src="app.js?v=audio2"></script>
+  <script type="module" src="app.js?v=reset2"></script>
   <script type="module" src="lib/fire-updater.js"></script>
 </body>
 </html>

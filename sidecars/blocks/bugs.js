@@ -3,6 +3,8 @@
 // `mouth` marks where a caught player's eyes are held, just in front of the jaws, and `face`
 // where the camera looks while held.
 import * as THREE from '../../vendor/three/build/three.module.js?v=r187';
+// 'three' in boss-model resolves to the same file through the page's import map.
+import { makeBoss } from '../../lib/boss-model.mjs';
 
 const mat = color => new THREE.MeshLambertMaterial({ color, flatShading: true });
 // Eyes glow a little so the bugs can be seen in the dark.
@@ -129,8 +131,27 @@ export function makeSpider(scale = 1.3) {
   return { kind: 'spider', group, lead, segs: [lead], head, jaw, mouth, face, body, gap: 0, legs };
 }
 
+/* ---------- made-up bugs: any Boss chase design, stood on the ground ---------- */
+
+export function makeBossBug(design) {
+  const boss = makeBoss(design);
+  const mouth = new THREE.Object3D();
+  mouth.position.set(2.8, 0.2, 0);
+  boss.head.add(mouth);
+  const face = new THREE.Object3D();
+  face.position.set(0.8, 0, 0);
+  boss.head.add(face);
+  // Boss chase swims with the middle on the path; here the lowest part (legs) stands on the ground.
+  boss.group.updateMatrixWorld(true);
+  const lift = Math.max(0, -new THREE.Box3().setFromObject(boss.group).min.y / boss.scale);
+  const base = 1.2 * boss.scale;
+  const gaps = [0, ...boss.spacing.map(d => d / boss.scale * base)];
+  return { kind: 'boss', boss, group: boss.group, lead: boss.lead, segs: [boss.lead, ...boss.segs.map(seg => seg.group)], head: boss.head, jaw: boss.jaw, mouth, face, gap: 1.25 * base, gaps, base, lift, legs: [] };
+}
+
 /** Walk cycle: legs step and the body bobs. `pace` grows with speed; `t` is the bug's own clock. */
 export function animate(bug, t, pace, chomp = 0) {
+  if (bug.boss) { bug.boss.animate(t, pace, chomp ? 1 : 0); return; }
   if (bug.kind === 'spider') {
     for (const leg of bug.legs) {
       const s = Math.sin(t * 9 * pace + leg.phase);
@@ -150,4 +171,6 @@ export function animate(bug, t, pace, chomp = 0) {
 /** Throw away a bug's meshes. The shared materials and box stay for the next night. */
 export function dropBug(scene, bug) {
   scene.remove(bug.group);
+  // A made-up bug has its own materials.
+  bug.boss?.dispose();
 }

@@ -44,7 +44,7 @@ import {
 } from '../logic.mjs?v=offline1';
 import { canSpeak } from '../lib/speech.js?v=offline4';
 import { makePlayFullscreen } from '../lib/play-fullscreen.mjs';
-import { mountCatch, mountLanes, mountRace, mountRocket, pokeRocket, stopArcade } from '../games/arcade.js?v=gear2-sfx1';
+import { mountCatch, mountLanes, mountRace, mountRocket, pokeRocket, stopArcade } from '../games/arcade.js?v=gear2-sfx1-h1';
 import { mountLunar } from '../games/lunar.js?v=moon-board2';
 import { mountHoop, stopHoop } from '../games/hoop.js?v=hoop-trio-r2-sfx1';
 import { lightMarkSlots, mountLight, stopLight } from '../games/light.js?v=light-pace-icons-sfx1';
@@ -56,9 +56,9 @@ import { mountMatch, stopMatch } from '../games/match.js?v=pair-match2-sfx1';
 import { mountChase, stopChase } from '../games/chase.js?v=gear2-sfx1';
 import { mountHop, stopHop } from '../games/hop.js?v=gear2-sfx1';
 import { mountToast, stopToast } from '../games/toast.js?v=ask-first-r2-sfx1';
-import { mountGlide, stopGlide } from '../games/glide.js?v=gear2-sfx1';
+import { mountGlide, stopGlide } from '../games/glide.js?v=boom1-ask1';
 import { mountCity, stopCity } from '../games/city.js?v=low-end1-sfx1';
-import { mountAisle, stopAisle } from '../games/aisle.js?v=gear2-sfx1';
+import { mountAisle, stopAisle } from '../games/aisle.js?v=gear2-sfx1-h1';
 import { mountLily, stopLily } from '../games/lily.js?v=gear2-sfx1';
 import { mountBust, stopBust } from '../games/bust.js?v=ghost-same2-r2-sfx1';
 import { mountMole, stopMole } from '../games/mole.js?v=mole-pop3-sfx1';
@@ -80,7 +80,7 @@ import {
   sidecarGame,
   sidecarIsBuilt,
   stopSidecar
-} from '../lib/sidecar.js?v=offline4';
+} from '../lib/sidecar.js?v=power1';
 import {
   SHELF_META,
   shelfOf as shelfIdOf,
@@ -98,8 +98,8 @@ import {
   discoveryHtml,
   starGardenHtml as gardenHtml,
   homePageHtml
-} from '../lib/home-ui.mjs?v=bloom3';
-import { orderGames, rememberGame } from '../lib/game-discovery.mjs';
+} from '../lib/home-ui.mjs?v=rivals1';
+import { orderGames, rememberGame } from '../lib/game-discovery.mjs?v=rivals1';
 import { wornGear } from '../logic/shop.mjs?v=shop3';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=aviator1';
@@ -828,6 +828,12 @@ export function registerMounts(rt) {
     if (title) title.textContent = rt.heading(g);
     const show = $(`#${mode}Show`);
     if (show) show.innerHTML = g.show || '';
+    // Games that put the question on their own stage (Island glide) have an Ask line too.
+    const ask = $(`#${mode}Ask`);
+    if (ask) {
+      ask.textContent = g.prompt || '';
+      ask.parentElement.hidden = !g.prompt;
+    }
     const stage = document.querySelector(`.${mode}`);
     if (stage) stage.setAttribute('aria-label', `${g.prompt} ${cfg.aria}`);
     if (cfg.reveal) bindRocketReveal(g);
@@ -1467,7 +1473,7 @@ export function registerMounts(rt) {
           // Arcade picture rounds: the goal was said at the start; don't stop play to read it each time.
           if (rt.game?.freePlay && side.arcadeVia === 'pictures') return;
           // Garden gulp and Garden dash keep moving while the question is read, so just say it.
-          if (rt.game?.mode === 'gulp' || rt.game?.mode === 'dash' || rt.game?.mode === 'boss' || rt.game?.mode === 'deliveries' || rt.game?.mode === 'moon-swing') { if (!rt.game.finished) rt.say(rt.game.prompt); return; }
+          if (rt.game?.mode === 'gulp' || rt.game?.mode === 'dash' || rt.game?.mode === 'boss' || rt.game?.mode === 'deliveries' || rt.game?.mode === 'moon-swing' || rt.game?.mode === 'paint-rivals') { if (!rt.game.finished) rt.say(rt.game.prompt); return; }
           if (rt.game && !rt.game.finished) rt.askBeforePlay(rt.game.prompt);
         },
         onReplay() {

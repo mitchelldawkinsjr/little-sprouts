@@ -34,8 +34,11 @@
     #note { position: fixed; left: 50%; top: 64px; transform: translateX(-50%); z-index: 3; margin: 0; padding: 8px 16px; border-radius: 14px; background: var(--leaf); color: var(--paper); font-weight: 800; font-size: clamp(16px, 2.6vw, 22px); pointer-events: none; text-align: center; max-width: 86vw; }
     #note[hidden] { display: none; }
 
-    #bar { position: fixed; left: 50%; bottom: max(12px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 3; display: flex; gap: 6px; padding: 6px; border-radius: 16px; background: #16382cb3; max-width: calc(100vw - 24px); overflow-x: auto; scrollbar-width: none; }
-    #bar::-webkit-scrollbar { display: none; }
+    #bar { position: fixed; left: 50%; bottom: max(12px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 3; display: flex; gap: 6px; padding: 6px; border-radius: 16px; background: #16382cb3; max-width: calc(100vw - 24px); overflow-x: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #faf9f5aa transparent; }
+    /* A swipe scrolls the bar, so every block and kit can be reached however many there are. */
+    #bar { touch-action: pan-x !important; }
+    #bar::-webkit-scrollbar { height: 5px; }
+    #bar::-webkit-scrollbar-thumb { background: #faf9f5aa; border-radius: 3px; }
     .icon-bar-item { flex: 0 0 auto; width: 48px; height: 48px; border: 3px solid transparent; border-radius: 10px; background-size: cover; image-rendering: pixelated; cursor: pointer; padding: 0; }
     .icon-bar-item.highlight { border-color: var(--paper); transform: translateY(-3px); box-shadow: 0 3px 0 #0004; }
     .icon-bar-item.dig-slot { background: #faf9f5; font-size: 26px; line-height: 1; display: flex; align-items: center; justify-content: center; }
@@ -137,6 +140,7 @@
     </div>
   </div>
   <div id="loading"><span class="sprout" aria-hidden="true">🌱</span><span id="loadingText">Growing the meadow…</span></div>
-  <script type="module" src="game.js?v=group1"></script>
+  <script type="importmap">{ "imports": { "three": "../../vendor/three/build/three.module.js?v=r187" } }</script>
+  <script type="module" src="game.js?v=fort1"></script>
 </body>
 </html>

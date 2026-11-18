@@ -32,8 +32,8 @@ import {
   voiceFor,
   voices
 } from '../lib/speech.js?v=offline4';
-import { sidecarGame, sidecarIsBuilt } from '../lib/sidecar.js?v=offline4';
-import { spriteHtml } from '../lib/home-ui.mjs?v=gear2';
+import { sidecarGame, sidecarIsBuilt } from '../lib/sidecar.js?v=power1';
+import { spriteHtml } from '../lib/home-ui.mjs?v=rivals1';
 import { wornGear } from '../logic/shop.mjs?v=shop3';
 import { voiceStatusText } from '../lib/parent-ui.mjs?v=structure2';
 import { refreshDiagnostics } from '../lib/diagnostics.mjs';

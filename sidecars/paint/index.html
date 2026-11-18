@@ -19,11 +19,11 @@
         buttons: [{ button: 'a', label: '⬆️', slot: 0 }, { button: 'lb', label: '💨', slot: 1 }],
         hints: { move: 'Run', aim: 'Look + paint' },
         tint: '#ff9a6a',
-        ignore: '#overlay, #menu-card',
+        ignore: '#overlay, #menu-card, #quiz',
       });
     </script>
-    <script type="module" crossorigin src="./assets/index-BWzy7L7v-en1.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-Cj79EYcE.css">
+    <script type="module" crossorigin src="./assets/index-QwJfwAMJ.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BJbjw6xH.css">
     <!-- A phone on its side is shorter than the menu card: let the card scroll, starting at its top. -->
     <style>#overlay{overflow-y:auto;align-items:safe center;-webkit-overflow-scrolling:touch}</style>
   </head>
@@ -71,12 +71,12 @@
             <figcaption id="you-name">You</figcaption>
           </figure>
           <div class="tape-stats">
-            <div class="tape-row score">
+            <div class="tape-row" id="row-right" hidden>
               <span class="val" id="you-right">0%</span>
               <span class="name">Right side</span>
               <span class="val" id="bot-right">0%</span>
             </div>
-            <div class="tape-row">
+            <div class="tape-row score" id="row-ground">
               <span class="val" id="you-ground">0%</span>
               <span class="name">All ground</span>
               <span class="val" id="bot-ground">0%</span>

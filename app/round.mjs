@@ -38,7 +38,7 @@ import {
   verseWithRef
 } from '../logic.mjs?v=offline1';
 import { canSpeak, commonLines, prefetchSpeech } from '../lib/speech.js?v=offline4';
-import { stopArcade } from '../games/arcade.js?v=gear2-sfx1';
+import { stopArcade } from '../games/arcade.js?v=gear2-sfx1-h1';
 import { stopHoop } from '../games/hoop.js?v=hoop-trio-r2-sfx1';
 import { stopHook } from '../games/hook.js?v=ask-first2-r2-sfx1';
 import { stopSky } from '../games/sky.js?v=ask-first2-r2-sfx1';
@@ -48,9 +48,9 @@ import { stopMatch } from '../games/match.js?v=pair-match2-sfx1';
 import { stopChase } from '../games/chase.js?v=gear2-sfx1';
 import { stopHop } from '../games/hop.js?v=gear2-sfx1';
 import { stopToast } from '../games/toast.js?v=ask-first-r2-sfx1';
-import { stopGlide } from '../games/glide.js?v=gear2-sfx1';
+import { stopGlide } from '../games/glide.js?v=boom1-ask1';
 import { stopCity } from '../games/city.js?v=low-end1-sfx1';
-import { stopAisle } from '../games/aisle.js?v=gear2-sfx1';
+import { stopAisle } from '../games/aisle.js?v=gear2-sfx1-h1';
 import { stopLily } from '../games/lily.js?v=gear2-sfx1';
 import { stopBust } from '../games/bust.js?v=ghost-same2-r2-sfx1';
 import { stopMole } from '../games/mole.js?v=mole-pop3-sfx1';
@@ -64,7 +64,7 @@ import { stopCrayon } from '../games/crayon.js?v=crayon-more-sfx1';
 import { stopMarble } from '../games/marble.js?v=gear2-sfx1';
 import { stopBridge } from '../games/bridge.js?v=gear2-sfx1';
 import { stopMaze } from '../games/maze.js?v=gear2-sfx1';
-import { lessonResult, postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=offline4';
+import { lessonResult, postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=power1';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=aviator1';
 
@@ -172,6 +172,7 @@ export function registerRound(rt) {
       message.gates = rallyGates(message.stops);
     }
     if (g.mode === 'flight' || g.mode === 'blocks') message.freeEvery = rallyClearCount(rt.questionCount());
+    if (g.mode === 'blocks' && g.tough) message.tough = true;
     if (g.mode === 'moon-swing' || g.mode === 'ink-trail' || g.mode === 'pinecone-trail' || g.mode === 'range' || g.mode === 'roll' || g.mode === 'grass' || g.mode === 'glow' || g.mode === 'dash' || g.mode === 'boss') message.total = rt.questionCount();
     return message;
   }
@@ -237,6 +238,8 @@ export function registerRound(rt) {
             ? (ok ? 'Yes! Shield charged.' : 'Not yet. Pick another one.')
           : g.mode === 'cabin'
             ? (ok ? 'Yes! The cabin stays cozy.' : 'Not yet. Pick another one.')
+          : g.mode === 'paint-rivals'
+            ? (ok ? 'Yes! Power-up!' : 'Not yet. Keep going!')
           : g.mode === 'inkwave'
             ? (ok ? 'Yes! Super ink!' : 'Not yet. Pick another one.')
           : g.mode === 'fishing'
@@ -315,7 +318,11 @@ export function registerRound(rt) {
     g.built = '';
     g.target2 = null;
     g.show = '';
-    const l = rt.skillLevel(g.mode);
+    // Block meadow's first gift box each game is a tough question (one level up) for a fortress.
+    g.tough = g.mode === 'blocks' && !g.freePlay && !g.toughAsked;
+    if (g.tough) g.toughAsked = true;
+    const base = rt.skillLevel(g.mode);
+    const l = g.tough ? Math.max(base, Math.min(3, base + 1)) : base;
     g.level = l;
     const { n, ss, cs } = rt.pools(l);
     g.title = rt.games.find(x => x[0] === g.mode)[1];
