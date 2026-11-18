@@ -1,0 +1,7 @@
+{
+  "name": "little-sprouts-browser-checks",
+  "private": true,
+  "type": "module",
+  "scripts": { "test:iphone": "node iphone-speech.mjs" },
+  "devDependencies": { "playwright": "1.62.1" }
+}
