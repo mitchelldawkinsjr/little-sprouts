@@ -6,7 +6,7 @@ import { operations } from './operations.mjs';
 test('diagnostics only accepts the fixed schema and produces low-cardinality metrics', async t => {
   const origin = 'https://sprouts.example';
   const logs = [];
-  const ops = operations({ origin, measurementId: 'G-TEST123', log: line => logs.push(line) });
+  const ops = operations({ origin, log: line => logs.push(line) });
   const server = createServer(async (req, res) => {
     if (!await ops(req, res)) res.writeHead(404).end();
   });
@@ -18,7 +18,6 @@ test('diagnostics only accepts the fixed schema and produces low-cardinality met
   });
 
   assert.equal((await request('/healthz')).status, 200);
-  assert.deepEqual(await (await request('/for-parents/analytics.json')).json(), { measurementId: 'G-TEST123' });
   assert.equal((await post([['app_ready', 620], ['sidecar_ready', 240], ['offline_saved_kb', 14000]])).status, 204);
   assert.equal((await post([['app_ready', 620, 'name']])).status, 400);
   assert.equal((await post([['app_ready', 620]], 'https://other.example')).status, 403);

@@ -6,7 +6,7 @@
   <meta name="referrer" content="no-referrer">
   <title>Little Sprouts for parents and educators</title>
   <link rel="stylesheet" href="/for-parents/parents.css">
-  <script type="module" src="/for-parents/analytics.mjs"></script>
+  <script type="module" src="/lib/gtm.mjs?v=gtm1"></script>
 </head>
 <body>
   <main>
@@ -14,11 +14,9 @@
     <h1>Playful learning, made for little minds.</h1>
     <p>Little Sprouts is a collection of learning and arcade games. Learner profiles and progress stay in your browser. Save games over Wi-Fi to play on the go.</p>
     <a class="launch" href="/">Open Little Sprouts</a>
-    <section hidden id="measurement" aria-labelledby="measurement-title">
-      <h2 id="measurement-title">Optional traffic measurement</h2>
-      <p>This informational page is for parents and educators. If you turn on Google Analytics, it can measure traffic here using analytics cookies and browser information. The learner app does not load Google Analytics. Leaving this off does not affect play.</p>
-      <button type="button" id="gaConsent" aria-pressed="false">Allow analytics here</button>
-      <p id="gaStatus" role="status"></p>
+    <section aria-labelledby="measurement-title">
+      <h2 id="measurement-title">Anonymous usage counts</h2>
+      <p>Little Sprouts uses Google Analytics to count visits and which games get played, so we can fix problems and improve the games. It never sends a learner's name, grade or answers, and advertising features are turned off. Learner profiles and progress stay in your browser.</p>
     </section>
   </main>
 </body>

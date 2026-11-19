@@ -292,7 +292,7 @@ class Peer {
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href
 if (isMain) {
-  const ops = operations({ origin: process.env.SPROUTS_ORIGIN, measurementId: process.env.SPROUTS_GA4_MEASUREMENT_ID })
+  const ops = operations({ origin: process.env.SPROUTS_ORIGIN })
   const server = createServer(async (req, res) => {
     if (await ops(req, res)) return
     res.writeHead(404)
