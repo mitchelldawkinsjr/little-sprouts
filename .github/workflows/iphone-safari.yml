@@ -52,6 +52,7 @@ jobs:
           curl -fsS http://127.0.0.1:4179/tools/iphone-simulator/speech.html >/dev/null
           xcrun simctl openurl "$SPROUTS_SIMULATOR_ID" http://127.0.0.1:4179/tools/iphone-simulator/speech.html
       - name: Test actual iOS Safari recordings and system speech
+        id: safari_test
         run: |
           set -euo pipefail
           xcodegen generate --spec tools/iphone-simulator/project.yml
@@ -62,7 +63,20 @@ jobs:
             -parallel-testing-enabled NO \
             -derivedDataPath "$RUNNER_TEMP/sprouts-safari-build" \
             -resultBundlePath "$RUNNER_TEMP/sprouts-safari.xcresult" \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee "$RUNNER_TEMP/sprouts-safari-build.log"
+      - name: Summarize native Safari results
+        if: always()
+        env:
+          SPROUTS_SAFARI_TEST_OUTCOME: ${{ steps.safari_test.outcome }}
+        run: |
+          if [ -d "$RUNNER_TEMP/sprouts-safari.xcresult" ]; then
+            xcrun xcresulttool get test-results summary \
+              --path "$RUNNER_TEMP/sprouts-safari.xcresult" \
+              --format json > "$RUNNER_TEMP/sprouts-safari-summary.json" || true
+          fi
+          python3 tools/iphone-simulator/report-results.py \
+            "$RUNNER_TEMP/sprouts-safari-summary.json" \
+            "$RUNNER_TEMP/sprouts-safari-build.log"
       - name: Capture simulator evidence
         if: always()
         run: |
@@ -76,6 +90,8 @@ jobs:
           path: |
             ${{ runner.temp }}/sprouts-safari.xcresult
             ${{ runner.temp }}/sprouts-safari-result.png
+            ${{ runner.temp }}/sprouts-safari-summary.json
+            ${{ runner.temp }}/sprouts-safari-build.log
             ${{ runner.temp }}/sprouts-speech-server.log
             ${{ runner.temp }}/sprouts-simulators.json
           if-no-files-found: warn

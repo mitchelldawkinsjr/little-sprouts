@@ -13,7 +13,9 @@ start 1500 ms after a real tap to exercise iOS's asynchronous speech permission
 boundary. Included recordings still use real Web Audio. Missing
 simulator runtimes, English voices, playback completion events, or successful
 results fail the job. The workflow retains the XCTest result bundle and simulator
-screenshot, including on failure.
+screenshot, including on failure. Native XCTest summary JSON and the build log
+are retained as well. Failed native test messages are surfaced as GitHub check
+annotations, and missing XCTest results are explicitly reported as unverified.
 
 The small XCTest host application only supplies a test runner; it is not a new
 Little Sprouts app and requires no signing credentials. The test page contains
