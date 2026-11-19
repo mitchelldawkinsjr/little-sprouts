@@ -87,12 +87,20 @@ const FILES = {
 
 test('saves only what this device needs: its own voice, and one copy of each Rally sound', async () => {
   const sw = worker(FILES);
-  await sw.warm({ voices: ['af_heart'], opus: true });
+  await sw.warm({ voices: ['af_heart'], opus: true, big: true });
   const saved = await sw.saved();
   assert.ok(saved.includes('/voice/1/af_heart/a.m4a'));
   assert.ok(saved.includes('/sidecars/rally/audio/beep.opus'));
   assert.ok(!saved.includes('/voice/1/bm_george/a.m4a'));
   assert.ok(!saved.includes('/sidecars/rally/audio/beep.m4a'));
+});
+
+test('Backroad rally is saved only while Big games are on, and its files go when they are turned off', async () => {
+  const sw = worker(FILES);
+  await sw.warm({ voices: ['af_heart'], opus: true, big: true });
+  assert.ok((await sw.saved()).includes('/sidecars/rally/audio/beep.opus'));
+  await sw.warm({ voices: ['af_heart'], opus: true, big: false });
+  assert.ok(!(await sw.saved()).some(path => path.startsWith('/sidecars/rally/')));
 });
 
 test('a second save downloads nothing when no file changed', async () => {
@@ -167,14 +175,16 @@ test('starter saves the Reach camera files when it is enabled', async () => {
   assert.ok((await sw.saved()).includes('/vendor/mediapipe/model'));
 });
 
-test('Tidewater is saved only in the Full pack, and only on a device that can draw with WebGPU', async () => {
+test('Tidewater is saved only in the Full pack, with Big games on, on a device that can draw with WebGPU', async () => {
   const tide = '/sidecars/field-guide-fishing/tidewater-coast.html';
   const sw = worker({ ...FILES, [tide]: 'tide' });
-  await sw.warm({ pack: 'starter', webgpu: true });
+  await sw.warm({ pack: 'starter', webgpu: true, big: true });
   assert.ok(!(await sw.saved()).includes(tide));
-  await sw.warm({ pack: 'full', webgpu: false });
+  await sw.warm({ pack: 'full', webgpu: false, big: true });
   assert.ok(!(await sw.saved()).includes(tide));
-  await sw.warm({ pack: 'full', webgpu: true });
+  await sw.warm({ pack: 'full', webgpu: true, big: false });
+  assert.ok(!(await sw.saved()).includes(tide), 'Big games off');
+  await sw.warm({ pack: 'full', webgpu: true, big: true });
   assert.ok((await sw.saved()).includes(tide));
 });
 

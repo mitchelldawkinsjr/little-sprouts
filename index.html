@@ -150,7 +150,10 @@
             <div class="pc-tile"><h3>Offline play</h3>
         <p class="offline-status" id="offlineStatus" role="status" aria-live="polite">Checking which games are saved for offline play…</p>
         <progress id="offlineBar" class="offline-bar" max="1" value="0"></progress>
-        <p class="hint">Starter saves the smaller games automatically. Full also saves Backroad rally, Skybound climb, Sky deliveries, the Reach camera model, and Tidewater fishing on devices that can run it. Updates reuse files already saved.</p>
+        <p class="hint">Starter saves the smaller games automatically. Full also saves Skybound climb, Sky deliveries, the Reach camera model, and the Big games when they're on. Updates reuse files already saved.</p>
+        <div id="bigGamesRow"><label class="check switch"><input type="checkbox" id="bigGames" role="switch"> Big games: Backroad rally and Tidewater fishing</label>
+        <p class="hint">About 160 MB together. On shows them on the shelf, and the full offline pack saves them. Off hides them and frees their space. On in a web browser; off in the installed app until you turn it on.</p></div>
+        <p class="hint" id="bigGamesTablet" hidden>The tablet app doesn't include Backroad rally or Tidewater fishing, to keep it small. They play in a web browser.</p>
         <button type="button" class="quiet" id="saveFullOffline">Save full offline pack</button>
         <button type="button" class="quiet" id="resetAppCache">Clear app cache and reload</button>
         <p class="hint">Use this if games look out of date. It clears the saved offline games and loads the newest version. Learners, progress, settings, and the voice stay. Offline games save again afterward.</p></div>
@@ -332,7 +335,7 @@
     <button type="button" class="quiet" id="listenAgain">Hear it again</button>
     <button type="button" class="quiet" id="listenBack">← All games</button>
   </div>
-  <script type="module" src="app.js?v=reset2-boss1-3d4"></script>
+  <script type="module" src="app.js?v=reset2-boss1-3d4-big1"></script>
   <script type="module" src="lib/fire-updater.js"></script>
 </body>
 </html>
