@@ -1,0 +1,54 @@
+name: Bake missing skyscraper reward recordings
+
+on:
+  push:
+    branches: [chore/bake-skyscraper-voice]
+
+permissions:
+  contents: read
+
+jobs:
+  bake:
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install pinned Kokoro tooling
+        run: npm --prefix tools/voice-bake ci --no-audit --no-fund
+      - name: Generate real recordings using the existing bake tool
+        run: node tools/bake-voice.mjs
+      - name: Validate prize and recording coverage
+        run: node --test tests/blocks.test.mjs tests/speech.test.mjs
+      - name: Stage the nine new recordings with checksums
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { createHash } from 'node:crypto';
+          import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+          import { dirname, join } from 'node:path';
+          import { bakedPath, voiceIds } from './lib/speech-core.mjs';
+          const text = 'You got a skyscraper! Tap the ground to build a tall tower.';
+          const root = '.baked-skyscraper';
+          const rows = [];
+          for (const voice of voiceIds) {
+            const path = bakedPath({ voice, text });
+            assert.ok(path);
+            const bytes = readFileSync(path);
+            assert.ok(bytes.length > 1000, `${voice}: empty recording`);
+            const dest = join(root, path);
+            mkdirSync(dirname(dest), { recursive: true });
+            copyFileSync(path, dest);
+            rows.push({ voice, path, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') });
+          }
+          writeFileSync(join(root, 'manifest.json'), JSON.stringify({ text, clips: rows }, null, 2));
+          console.log(JSON.stringify(rows));
+          JS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: skyscraper-reward-recordings
+          path: .baked-skyscraper/
+          if-no-files-found: error
+          retention-days: 7
