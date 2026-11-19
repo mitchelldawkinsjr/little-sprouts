@@ -1,0 +1,67 @@
+name: Read CI failure evidence
+on:
+  push:
+    branches: ['diagnose/ci-evidence-20261119']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read fixed run logs and surface sanitized failure context
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json, re, subprocess
+          from urllib.parse import urlsplit, urlunsplit
+          repo = 'mitchelldawkinsjr/little-sprouts'
+          runs = [44536222217, 44536222119, 44536220927]
+          def redact(text):
+              def clean_url(match):
+                  try:
+                      url = urlsplit(match.group())
+                      return urlunsplit((url.scheme, url.hostname or '', url.path, '', ''))
+                  except ValueError:
+                      return '[redacted URL]'
+              text = re.sub(r'https?://[^\s"<>]+', clean_url, text)
+              text = re.sub(r'\b(?:gh[pousr]_[A-Za-z0-9_]+|github_pat_[A-Za-z0-9_]+|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)\b', '[redacted credential]', text)
+              text = re.sub(r'(?i)(\b(?:authorization|password|key_password|keystore|gh_token|token|secret)\b\s*[=:]\s*)[^\s,;]+', r'\1[redacted]', text)
+              return text
+          def notice(title, text):
+              text = redact(text)
+              chunks = [text[i:i+3400] for i in range(0, len(text), 3400)] or ['No failure text returned.']
+              for i, chunk in enumerate(chunks):
+                  escaped = chunk.replace('%','%25').replace('\r','%0D').replace('\n','%0A')
+                  print(f'::notice title={title} {i+1}/{len(chunks)}::{escaped}', flush=True)
+          def cli(args):
+              p = subprocess.run(['gh', *args], capture_output=True, text=True, timeout=90)
+              return p.returncode, p.stdout, p.stderr
+          for run in runs:
+              code, out, error = cli(['api', f'repos/{repo}/actions/runs/{run}'])
+              if code:
+                  notice(f'Run {run}', 'Cannot read run metadata: ' + error)
+                  continue
+              metadata = json.loads(out)
+              notice(f'Run {run} metadata', json.dumps({key:metadata.get(key) for key in ['id','run_attempt','head_sha','status','conclusion']}))
+              code, out, error = cli(['run','view',str(run),'--repo',repo,'--log-failed'])
+              if code:
+                  job_code, jobs_text, job_error = cli(['api',f'repos/{repo}/actions/runs/{run}/jobs'])
+                  logs=[]
+                  if not job_code:
+                      for job in json.loads(jobs_text).get('jobs',[]):
+                          if job.get('conclusion') == 'failure':
+                              log_code, log_text, log_error = cli(['api',f'repos/{repo}/actions/jobs/{job["id"]}/logs'])
+                              logs.append(log_text if not log_code else log_error)
+                  out='\n'.join(logs) or error or job_error
+              lines = out.splitlines()
+              matches=[i for i,line in enumerate(lines) if re.search(r'(?i)(error:|failure|exception|failed|not found|no such file|could not|command not found|timed out|permission denied|exit code|ENOENT|ERR_)',line)]
+              selected=set()
+              for i in matches[-16:]:
+                  selected.update(range(max(0,i-3),min(len(lines),i+5)))
+              excerpt='\n'.join(lines[i] for i in sorted(selected)) if selected else '\n'.join(lines[-55:])
+              notice(f'Run {run} failure evidence', excerpt[-22000:])
+          PY
