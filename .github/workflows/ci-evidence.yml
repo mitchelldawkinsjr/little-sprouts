@@ -52,8 +52,13 @@ jobs:
                   job_code, jobs_text, job_error = cli(['api',f'repos/{repo}/actions/runs/{run}/jobs'])
                   logs=[]
                   if not job_code:
-                      for job in json.loads(jobs_text).get('jobs',[]):
-                          if job.get('conclusion') == 'failure':
+                      jobs = json.loads(jobs_text).get('jobs',[])
+                      if run == 44536222217:
+                          jobs = [{'id':135602234569, 'conclusion':'failure', 'steps':[]}]
+                      for job in jobs:
+                          failed_steps = [{key:step.get(key) for key in ['name','status','conclusion','started_at','completed_at']} for step in job.get('steps',[]) if step.get('conclusion') == 'failure']
+                          notice(f'Run {run} job {job["id"]}', json.dumps({'status':job.get('status'),'conclusion':job.get('conclusion'),'failed_steps':failed_steps}))
+                          if job.get('conclusion') == 'failure' or failed_steps:
                               log_code, log_text, log_error = cli(['api',f'repos/{repo}/actions/jobs/{job["id"]}/logs'])
                               logs.append(log_text if not log_code else log_error)
                   out='\n'.join(logs) or error or job_error
