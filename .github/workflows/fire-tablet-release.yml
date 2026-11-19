@@ -87,6 +87,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+      # Reuses downloaded Gradle dependencies so Maven Central doesn't rate-limit (429) the runner.
+      - uses: gradle/actions/setup-gradle@v4
       - uses: android-actions/setup-android@v4
         with:
           packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
@@ -115,7 +117,8 @@ jobs:
           python3 tools/fire-tablet/install-icon.py
       - name: Build release APK
         working-directory: .fire-build/android
-        run: ./gradlew assembleRelease --no-daemon
+        # One retry after a pause: Maven Central sometimes answers 429 Too Many Requests.
+        run: ./gradlew assembleRelease --no-daemon || { sleep 90; ./gradlew assembleRelease --no-daemon; }
       - name: Sign and verify production APK
         env:
           KEYSTORE: ${{ secrets.FIRE_APK_KEYSTORE_BASE64 }}
