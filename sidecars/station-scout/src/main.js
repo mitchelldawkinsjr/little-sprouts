@@ -35,14 +35,17 @@ const QUALITY = {
 };
 let qName = params.get('q') || (() => { try { return localStorage.getItem('sakura.q'); } catch (e) { return null; } })() || (isTouch || Math.min(innerWidth,innerHeight)<530 ? 'low' : 'medium');
 if (!QUALITY[qName]) qName = 'high';
+// Lite mode (lib/lite-mode.js) on a weak device: the low preset unless ?q= asks otherwise.
+const liteLevel = window.SproutsLite?.level ?? 0;
+if (liteLevel && !params.get('q')) qName = 'low';
 const quality = { ...QUALITY[qName] };
 if (SHOT) { quality.pixelRatio = 1; }
 
 // ------------------------------------------------------------------ renderer & scene
 const canvas = $('scene');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false, preserveDrawingBuffer: SHOT });
-renderer.setPixelRatio(LITE ? (isTouch ? .68 : .82) : 1);
-renderer.shadowMap.enabled = !LITE;
+renderer.setPixelRatio(LITE ? (isTouch ? .68 : .82) : liteLevel ? quality.pixelRatio : 1);
+renderer.shadowMap.enabled = !LITE && liteLevel < 2;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.NoToneMapping;

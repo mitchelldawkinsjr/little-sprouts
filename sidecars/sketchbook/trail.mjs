@@ -14,7 +14,9 @@ const quiz = makeQuiz();
 const trail = makeTrail();
 const runtime = globalThis.Sketchbook;
 const supported = !!runtime?.World;
-const performanceTier = isPerformanceTier(resolveAutoQuality());
+/** Lite mode (lib/lite-mode.js) on a weak device: performance settings always, and lighter physics from level 2. */
+const liteLevel = globalThis.SproutsLite?.level ?? 0;
+const performanceTier = isPerformanceTier(resolveAutoQuality()) || liteLevel > 0;
 const state = { world: null, buddy: null, ready: false, arcade: !quiz.live, responded: false, finished: false };
 let vehicleCrashes, crashBursts;
 let fromHost, paused, driving, flightHint, onRamp = false, returningToTrail = false, pickerFromMenu = false, timer = 0, motion = 0, touch, touchDevice = false;
@@ -648,6 +650,10 @@ try {
     onReady() { void loaded().catch(() => error('Sketchbook Mega Ramp could not start. Reload once online, then try again.')); },
     onError() { error('Sketchbook Mega Ramp could not load its world. Save it again while online, then try again.'); }
   });
+  // Fewer solver passes per physics step: the car still drives, with a little less exact stacking.
+  if (liteLevel >= 2 && state.world.physicsWorld?.solver) state.world.physicsWorld.solver.iterations = 6;
+  // When lite mode steps down mid-drive, draw fewer pixels right away (the same cap the world uses).
+  addEventListener('sprouts-lite', () => state.world?.renderer?.setPixelRatio(Math.min(devicePixelRatio, 0.8)));
   crashBursts = makeCrashBursts(runtime, state.world.graphicsWorld, { performance: performanceTier, reduced });
   vehicleCrashes = watchVehicleCrashes(state.world, hit => crashBursts.spawn(hit));
   const view = canvas();

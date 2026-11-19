@@ -66,8 +66,25 @@ const GradeShader = {
 				shadow = s9 * ( 1.0 / 9.0 );`);
 })();
 
+/** Lite mode's level on this device (lib/lite-mode.js), 0 when it isn't loaded. */
+const liteLevel = () => globalThis.SproutsLite?.level ?? 0;
+
+/**
+ * The quality preset to draw with: the player's choice, capped on a weak device. Lite level 1 caps at medium,
+ * 2 and up at low. Saved settings stay as they are, so a stronger device still gets the player's choice.
+ */
+function liteQuality(choice) {
+  const order = ['low', 'medium', 'high', 'ultra'];
+  const want = QUALITY[choice] ? choice : 'high';
+  const level = liteLevel();
+  const cap = level >= 2 ? 'low' : level === 1 ? 'medium' : 'ultra';
+  return QUALITY[order[Math.min(order.indexOf(want), order.indexOf(cap))]];
+}
+
 export class Renderer {
   constructor(container, settings) {
+    // Lite mode stepping down mid-match rebuilds at the lower preset (lib/lite-mode.js).
+    addEventListener('sprouts-lite', () => { if (this.scene) this.applySettings(this.settings); });
     const r = (this.renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance', stencil: false }));
     r.outputColorSpace = THREE.SRGBColorSpace;
     r.toneMapping = THREE.NeutralToneMapping;
@@ -81,7 +98,7 @@ export class Renderer {
     this.container = container;
     this.scene = null; this.camera = null;
     this.settings = settings;
-    this.q = QUALITY[settings.quality] || QUALITY.high;
+    this.q = liteQuality(settings.quality);
     this._w = 0; this._h = 0;
   }
 
@@ -122,7 +139,7 @@ export class Renderer {
     // optional screen-FX pass (src/fx/screenfx.js) — runs in HDR linear space before tone mapping/output
     if (this.extraPass) comp.addPass(this.extraPass);
     comp.addPass(new OutputPass());
-    r.shadowMap.enabled = this.settings.shadows !== false;
+    r.shadowMap.enabled = this.settings.shadows !== false && liteLevel() < 2;
     this._w = w; this._h = h;
     this.grade.uniforms.uAspect.value = w / h;
   }
@@ -136,8 +153,8 @@ export class Renderer {
   applySettings(settings) {
     const prevQ = this.q;
     this.settings = settings;
-    this.q = QUALITY[settings.quality] || QUALITY.high;
-    const shadowChanged = this.renderer.shadowMap.enabled !== (settings.shadows !== false);
+    this.q = liteQuality(settings.quality);
+    const shadowChanged = this.renderer.shadowMap.enabled !== (settings.shadows !== false && liteLevel() < 2);
     if (prevQ !== this.q || shadowChanged) {
       if (prevQ !== this.q) this.dynScale = 1;
       this._buildComposer();

@@ -1,7 +1,7 @@
 // INKWAVE — boot, main loop and game-flow orchestration (menus ⇄ attract mode ⇄ matches ⇄ results).
 import * as THREE from 'three';
 import { G, on, emit, clamp, damp } from './core/ctx.js';
-import { Renderer } from './core/renderer.js';
+import { Renderer } from './core/renderer.js?v=lite1';
 import { Input } from './core/input.js';
 import {
   DEFAULT_SETTINGS, QUALITY, TEAM_PALETTES, COLORBLIND_PALETTE, TEAM_NAMES, WEAPONS, WEAPON_ORDER, SUB, SPECIALS,
