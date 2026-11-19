@@ -29,9 +29,12 @@ export function toughPrize(missed) {
 export const POWERS = {
   lantern: { label: 'Lantern', icon: '🏮', line: 'You got a lantern! At night, the bugs stay away from you.' },
   jump: { label: 'Super jump', icon: '🦘', seconds: 90, jump: 1.45, line: 'Super jump! You can jump extra high for a little while.' },
+  strength: { label: 'Strong sword', icon: '💪', seconds: 60, line: 'Strong sword! Your sword hits harder for one minute.' },
   speed: { label: 'Super speed', icon: '⚡', seconds: 40, speed: 1.8, line: 'Super speed! You can run extra fast for a little while.' }
 };
-export const POWER_ORDER = ['lantern', 'jump', 'speed'];
+export const POWER_ORDER = ['lantern', 'jump', 'speed', 'strength'];
+export const FIRST_HOME_CHOICES = ['fortress', 'house', 'skyscraper'];
+export function allRewards() { return [...Object.keys(KITS).map(id => ({ kind: 'kit', id })), ...POWER_ORDER.map(id => ({ kind: 'power', id }))]; }
 
 export const TOO_CLOSE = 'Too close. Step back, then try again.';
 
