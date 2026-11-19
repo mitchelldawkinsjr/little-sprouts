@@ -47,21 +47,10 @@ jobs:
                   continue
               metadata = json.loads(out)
               notice(f'Run {run} metadata', json.dumps({key:metadata.get(key) for key in ['id','run_attempt','head_sha','status','conclusion']}))
-              code, out, error = cli(['run','view',str(run),'--repo',repo,'--attempt','1','--log-failed'])
+              job = {44536222217:135602234569, 44536222119:135602235211, 44536220927:135602239376}[run]
+              code, out, error = cli(['api',f'repos/{repo}/actions/jobs/{job}/logs'])
               if code:
-                  job_code, jobs_text, job_error = cli(['api',f'repos/{repo}/actions/runs/{run}/jobs'])
-                  logs=[]
-                  if not job_code:
-                      jobs = json.loads(jobs_text).get('jobs',[])
-                      if run == 44536222217:
-                          jobs = [{'id':135602234569, 'conclusion':'failure', 'steps':[]}]
-                      for job in jobs:
-                          failed_steps = [{key:step.get(key) for key in ['name','status','conclusion','started_at','completed_at']} for step in job.get('steps',[]) if step.get('conclusion') == 'failure']
-                          notice(f'Run {run} job {job["id"]}', json.dumps({'status':job.get('status'),'conclusion':job.get('conclusion'),'failed_steps':failed_steps}))
-                          if job.get('conclusion') == 'failure' or failed_steps:
-                              log_code, log_text, log_error = cli(['api',f'repos/{repo}/actions/jobs/{job["id"]}/logs'])
-                              logs.append(log_text if not log_code else log_error)
-                  out='\n'.join(logs) or error or job_error
+                  out = 'Job ' + str(job) + ' log download failed: ' + error
               lines = out.splitlines()
               matches=[i for i,line in enumerate(lines) if re.search(r'(?i)(error:|failure|exception|failed|not found|no such file|could not|command not found|timed out|permission denied|exit code|ENOENT|ERR_)',line)]
               selected=set()
