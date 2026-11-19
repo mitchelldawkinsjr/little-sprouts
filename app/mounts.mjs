@@ -98,8 +98,8 @@ import {
   discoveryHtml,
   starGardenHtml as gardenHtml,
   homePageHtml
-} from '../lib/home-ui.mjs?v=rivals1';
-import { orderGames, rememberGame } from '../lib/game-discovery.mjs?v=rivals1';
+} from '../lib/home-ui.mjs?v=rivals1-chase1';
+import { orderGames, rememberGame } from '../lib/game-discovery.mjs?v=rivals1-chase1';
 import { wornGear } from '../logic/shop.mjs?v=shop3';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=aviator1';
