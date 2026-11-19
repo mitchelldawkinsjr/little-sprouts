@@ -6,6 +6,8 @@ import { sfx } from '../lib/game-sound.mjs?v=audio2';
 import { questionHolding } from '../lib/hold.js?v=hold2';
 import { drawBuddy, buddyKind } from '../lib/buddy2d.mjs?v=gear2';
 import { esc, shuffle } from '../logic.mjs?v=structure3';
+import { drawBoss2d } from '../lib/boss-2d.mjs?v=chase1';
+import { bossName } from '../lib/boss-design.mjs';
 
 const UNIT = 10;
 const STEP = 2;
@@ -225,7 +227,29 @@ function drawHedges(ctx, map, cell, ox, oy) {
   }
 }
 
-export function mountChase(root, { buddy, prompt, choices = [], copies = 2, playerSpeed = 3.4, bugSpeed = 2.15, bugs = 1, reduced, onDone, onMiss }) {
+/** The child's built boss hunts slower than the buddy can run, so it can always be outrun; a bigger boss is slower. */
+const BOSS_PACE = { 1: 0.78, 2: 0.68, 3: 0.6 };
+const BOSS_START = [9, 1];
+
+/** Where a hunting boss turns at a crossing: the open way (not back, unless it must) that gets closest to the buddy. */
+export function bossTurn(map, c, r, dir, target, wander = 0) {
+  const back = { left: 'right', right: 'left', up: 'down', down: 'up' }[dir];
+  const open = DIRS.filter(d => {
+    const [dx, dy] = delta(d);
+    return isFloor(map, c + Math.sign(dx), r + Math.sign(dy));
+  });
+  const ways = open.filter(d => d !== back);
+  const pool = ways.length ? ways : open;
+  if (!pool.length) return dir;
+  if (wander > 0 && Math.random() < wander) return pool[Math.floor(Math.random() * pool.length)];
+  const far = d => {
+    const [dx, dy] = delta(d);
+    return Math.hypot(c + Math.sign(dx) - target[0], r + Math.sign(dy) - target[1]);
+  };
+  return pool.reduce((best, d) => (far(d) < far(best) ? d : best));
+}
+
+export function mountChase(root, { buddy, prompt, choices = [], copies = 2, playerSpeed = 3.4, bugSpeed = 2.15, bugs = 1, boss = null, reduced, onDone, onMiss }) {
   const kind = buddyKind(buddy);
   stopChase();
   const session = {
@@ -244,7 +268,7 @@ export function mountChase(root, { buddy, prompt, choices = [], copies = 2, play
   const calm = reduced ? 0.62 : 1;
   const playerRate = (5.2 * playerSpeed / 3.4) * calm;
   const bugRate = (4.4 * bugSpeed / 2.15) * calm;
-  root.innerHTML = `<div class="chase-play"><div class="chase" role="application" aria-label="${esc(prompt)}. Steer through the garden paths. Eat only the matching berries. Stay away from the snails."><canvas></canvas></div><div class="steer pad"><button type="button" class="steer-btn" data-dir="left" aria-label="Move left">←</button><button type="button" class="steer-btn" data-dir="up" aria-label="Move up">↑</button><button type="button" class="steer-btn" data-dir="down" aria-label="Move down">↓</button><button type="button" class="steer-btn" data-dir="right" aria-label="Move right">→</button></div></div>`;
+  root.innerHTML = `<div class="chase-play"><div class="chase" role="application" aria-label="${esc(prompt)}. Steer through the garden paths. Eat only the matching berries. Stay away from the snails${boss ? ` and ${esc(bossName(boss))}` : ''}."><canvas></canvas></div><div class="steer pad"><button type="button" class="steer-btn" data-dir="left" aria-label="Move left">←</button><button type="button" class="steer-btn" data-dir="up" aria-label="Move up">↑</button><button type="button" class="steer-btn" data-dir="down" aria-label="Move down">↓</button><button type="button" class="steer-btn" data-dir="right" aria-label="Move right">→</button></div></div>`;
   const stage = root.querySelector('.chase');
   const canvas = stage.querySelector('canvas');
   const ctx = canvas.getContext('2d');
@@ -289,6 +313,10 @@ export function mountChase(root, { buddy, prompt, choices = [], copies = 2, play
     };
   });
   const player = { x: 9 * UNIT, y: 19 * UNIT, dir: 'none', due: '' };
+  // Build your boss: the design the child made, hunting through the hedges. `trail` is where its head has been.
+  const hunter = boss ? { x: BOSS_START[0] * UNIT, y: BOSS_START[1] * UNIT, dir: 'down', trail: [], design: boss, name: bossName(boss) } : null;
+  const bossRate = hunter ? playerRate * (BOSS_PACE[boss.size] ?? 0.68) : 0;
+  let bossAcc = 0;
   let missed = false;
   let finished = false;
   let dying = 0;
@@ -314,16 +342,25 @@ export function mountChase(root, { buddy, prompt, choices = [], copies = 2, play
     dying = 0;
   };
   const gap = snail => Math.hypot(snail.x - player.x, snail.y - player.y);
-  const touching = () => critters.some(snail => gap(snail) < 10);
-  const passed = () => critters.every(snail => gap(snail) >= 24);
+  const bossHere = () => hunter && gap(hunter) < 10;
+  const touching = () => critters.some(snail => gap(snail) < 10) || bossHere();
+  const passed = () => critters.every(snail => gap(snail) >= 24) && (!hunter || gap(hunter) >= 24);
   const caught = () => {
     if (finished || dying > 0 || !armed) return;
+    const byBoss = bossHere();
     missed = true;
     dying = 1;
     armed = false;
     sfx('bump');
     shake();
-    call(onMiss, 'bug');
+    call(onMiss, byBoss ? 'boss' : 'bug');
+    // The boss goes back to its den, so the buddy gets a fair start.
+    if (byBoss) {
+      hunter.x = BOSS_START[0] * UNIT;
+      hunter.y = BOSS_START[1] * UNIT;
+      hunter.dir = 'down';
+      hunter.trail.length = 0;
+    }
   };
   const eatBerry = (c, r) => {
     const berry = berries.find(item => !item.gone && item.c === c && item.r === r);
@@ -395,6 +432,20 @@ export function mountChase(root, { buddy, prompt, choices = [], copies = 2, play
     go();
   };
 
+  const stepBoss = () => {
+    if (onGrid(hunter)) {
+      const c = Math.round(hunter.x / UNIT);
+      const r = Math.round(hunter.y / UNIT);
+      // A little wandering, so a child can lose it round a hedge.
+      hunter.dir = bossTurn(map, c, r, hunter.dir, [player.x / UNIT, player.y / UNIT], 0.15);
+    }
+    const next = moved(hunter, hunter.dir);
+    hunter.trail.unshift([hunter.x, hunter.y]);
+    if (hunter.trail.length > 60) hunter.trail.length = 60;
+    hunter.x = next.x;
+    hunter.y = next.y;
+  };
+
   const fit = () => {
     const cssW = Math.max(280, stage.clientWidth || 640);
     const cssH = Math.max(220, stage.clientHeight || 480);
@@ -427,6 +478,14 @@ export function mountChase(root, { buddy, prompt, choices = [], copies = 2, play
       const [x, y] = at(snail.x, snail.y);
       drawSnail(ctx, x, y, cell, snail.color, snail.dir, tick);
     });
+    if (hunter) {
+      const [hx, hy] = at(hunter.x, hunter.y);
+      const trail = hunter.trail.map(([tx, ty]) => {
+        const [px, py] = at(tx, ty);
+        return [px + cell / 2, py + cell / 2];
+      });
+      drawBoss2d(ctx, hunter.design, { x: hx + cell / 2, y: hy + cell / 2, s: cell, dir: hunter.dir, trail, tick });
+    }
     const [px, py] = at(player.x, player.y);
     drawBeetle(ctx, kind, px, py, cell, player.dir === 'none' ? 'up' : player.dir, dying, player.dir !== 'none');
     berries.forEach(berry => {
@@ -499,11 +558,14 @@ export function mountChase(root, { buddy, prompt, choices = [], copies = 2, play
       let snailSteps = 0;
       [playerAcc, playerSteps] = takeSteps(playerAcc, playerRate, dt);
       [ghostAcc, snailSteps] = takeSteps(ghostAcc, bugRate, dt);
-      const cycles = Math.max(playerSteps, snailSteps);
+      let bossSteps = 0;
+      if (hunter) [bossAcc, bossSteps] = takeSteps(bossAcc, bossRate, dt);
+      const cycles = Math.max(playerSteps, snailSteps, bossSteps);
       for (let i = 0; i < cycles; i++) {
         if (i < playerSteps) stepPlayer();
         if (dying > 0) break;
         if (i < snailSteps) critters.forEach(stepSnail);
+        if (i < bossSteps) stepBoss();
         if (touching()) {
           if (armed) {
             caught();
