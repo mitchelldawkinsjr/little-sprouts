@@ -49,9 +49,56 @@ export function makeGarageBody(T, choice) {
   return group;
 }
 
+export function tuneGarageHandling(car, choice) {
+  const ray = car?.rayCastVehicle;
+  if (!ray?.wheelInfos?.length) return false;
+  const selected = garageVehicle(choice);
+  if (!ray.userData) ray.userData = {};
+  let stock = ray.userData.sproutsGarageStock;
+  if (!stock) {
+    stock = {
+      wheels: ray.wheelInfos.map(w => ({
+        frictionSlip: w.frictionSlip,
+        suspensionStiffness: w.suspensionStiffness,
+        suspensionRestLength: w.suspensionRestLength,
+        dampingCompression: w.dampingCompression,
+        dampingRelaxation: w.dampingRelaxation
+      })),
+      engine: ray.applyEngineForce,
+      steer: ray.setSteeringValue
+    };
+    ray.userData.sproutsGarageStock = stock;
+    if (typeof stock.engine === 'function') {
+      ray.applyEngineForce = function(force, index) {
+        return stock.engine.call(this, force * (this.userData.sproutsGarageSpeed ?? 1), index);
+      };
+    }
+    if (typeof stock.steer === 'function') {
+      ray.setSteeringValue = function(angle, index) {
+        return stock.steer.call(this, angle * (this.userData.sproutsGarageSteer ?? 1), index);
+      };
+    }
+  }
+  ray.userData.sproutsGarageSpeed = selected.speed;
+  ray.userData.sproutsGarageSteer = selected.grip;
+  ray.wheelInfos.forEach((wheel, index) => {
+    const original = stock.wheels[index];
+    for (const field of ['frictionSlip', 'suspensionStiffness', 'suspensionRestLength', 'dampingCompression', 'dampingRelaxation']) {
+      if (!Number.isFinite(original[field])) continue;
+      const multiplier = field === 'frictionSlip' ? selected.grip
+        : field === 'suspensionRestLength' ? selected.suspension
+        : field === 'suspensionStiffness' ? 1 / selected.suspension
+        : Math.sqrt(1 / selected.suspension);
+      wheel[field] = original[field] * multiplier;
+    }
+  });
+  return true;
+}
+
 export function applyGarageVehicle(T, car, choice) {
   if (!car || !car.modelContainer || !car.rayCastVehicle?.wheelInfos?.length) return false;
   const selected = garageVehicle(choice);
+  tuneGarageHandling(car, selected.id);
   const container = car.modelContainer;
   if (!container.userData.sproutsGarageOriginal) {
     container.userData.sproutsGarageOriginal = [...container.children];
