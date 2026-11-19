@@ -150,6 +150,16 @@ test('kits face the way the child looks', async () => {
   assert.deepEqual(kitToWorld({ r: 1, y: 0, f: 1 }, [0, 0, 0], [0, -1]), [1, 0, -1]);
 });
 
+test('first home choices and boss loot include every reward', async () => {
+  const { FIRST_HOME_CHOICES, KITS, POWERS, allRewards } = await import('../sidecars/blocks/prizes.mjs');
+  assert.deepEqual(FIRST_HOME_CHOICES, ['fortress', 'house', 'skyscraper']);
+  assert.ok(FIRST_HOME_CHOICES.every(id => id in KITS));
+  const rewards = allRewards();
+  assert.ok(Object.keys(KITS).every(id => rewards.some(r => r.kind === 'kit' && r.id === id)));
+  assert.ok(Object.keys(POWERS).every(id => rewards.some(r => r.kind === 'power' && r.id === id)));
+  assert.equal(POWERS.strength.seconds, 60);
+});
+
 test('every prize line has a baked voice clip, and kits survive a save', async () => {
   const { PRIZE_LINES } = await import('../sidecars/blocks/prizes.mjs');
   for (const line of PRIZE_LINES) assert.ok(bakedLines.includes(line), line);
