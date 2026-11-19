@@ -6,13 +6,13 @@ import { discoveryHtml, shelfPanelHtml, gameCardHtml, GAMEPLAY_ART } from '../li
 import { sidecarRows } from '../lib/sidecar.js';
 import { inventory } from '../tools/static-files.mjs';
 
-const games = ['shapes', 'gulp', 'skybound', 'boss', 'cabin', 'sketchbook', 'blocks', 'grass', 'moon-swing', 'ink-trail', 'canyon-pods'].map(id => [id, id]);
+const games = ['shapes', 'gulp', 'skybound', 'boss', 'cabin', 'sketchbook', 'blocks', 'grass', 'moon-swing', 'ink-trail', 'canyon-pods', 'chase'].map(id => [id, id]);
 const ids = rows => rows.map(row => row[0]);
 const card = id => `<article data-test-game="${id}"></article>`;
 
 test('featured games follow the requested order and omit unavailable games', () => {
-  assert.deepEqual(ids(featuredGames(games)), ['blocks', 'boss', 'grass', 'skybound', 'gulp', 'ink-trail', 'moon-swing', 'sketchbook', 'cabin']);
-  assert.deepEqual(ids(featuredGames(games.filter(([id]) => !['blocks', 'boss'].includes(id)))), ['grass', 'skybound', 'gulp', 'ink-trail', 'moon-swing', 'sketchbook', 'cabin']);
+  assert.deepEqual(ids(featuredGames(games)), ['blocks', 'boss', 'grass', 'skybound', 'gulp', 'ink-trail', 'chase', 'sketchbook', 'cabin']);
+  assert.deepEqual(ids(featuredGames(games.filter(([id]) => !['blocks', 'boss'].includes(id)))), ['grass', 'skybound', 'gulp', 'ink-trail', 'chase', 'sketchbook', 'cabin']);
   assert.deepEqual(featuredGames([]), []);
 });
 
@@ -90,9 +90,9 @@ test('every game has a gameplay picture in the offline pack and an accessible pl
 });
 
 test('home New Games row shows the hand-picked games in order', () => {
-  const html = discoveryHtml([['inkwave'], ['fishing'], ['roll'], ['moon-swing'], ['glide'], ['dash']], {}, card);
+  const html = discoveryHtml([['bike'], ['inkwave'], ['fishing'], ['roll'], ['moon-swing'], ['glide'], ['dash']], {}, card);
   const row = html.split('data-discovery="new"')[1].split('</section>')[0];
-  assert.deepEqual([...row.matchAll(/data-test-game="([^"]+)"/g)].map(m => m[1]), ['moon-swing', 'dash', 'roll', 'glide']);
+  assert.deepEqual([...row.matchAll(/data-test-game="([^"]+)"/g)].map(m => m[1]), ['bike', 'moon-swing', 'dash', 'roll', 'glide']);
 });
 
 test('every registered game sits on a real home shelf', async () => {
