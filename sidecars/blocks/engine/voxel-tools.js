@@ -123,11 +123,11 @@ export const voxel_tools = (() => {
       piece(0.15, 0.15, 0.2, gold, 0, 0, 0.7);
       // A chunky toy bow with a visible string and nocked arrow.
       this.bow_ = new THREE.Group();
-      const wood = new THREE.MeshLambertMaterial({ color: 0x9b6439, depthTest: false });
+      const bowWood = new THREE.MeshLambertMaterial({ color: 0x9b6439, depthTest: false });
       const string = new THREE.MeshBasicMaterial({ color: 0xf8f4df, depthTest: false });
       const shaft = new THREE.MeshLambertMaterial({ color: 0xf5d89c, depthTest: false });
       for (const [y, tilt] of [[0.42, -0.35], [-0.42, 0.35]]) {
-        const limb = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.85, 0.14), wood);
+        const limb = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.85, 0.14), bowWood);
         limb.position.set(0, y, 0); limb.rotation.z = tilt; this.bow_.add(limb);
       }
       const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 1.7, 5), string);
