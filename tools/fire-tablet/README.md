@@ -63,11 +63,26 @@ The automation **never creates a first production signing identity** or publishe
 
 Installed production-signed Fire tablets are offered a new published version when the app starts or resumes on Wi-Fi. Installation still requires the user's approval in Fire OS; the app cannot silently replace itself.
 
+## Friend share camera and microphone (QR + pairing chirps)
+
+The in-app **Play with a friend → Join/Start on same Wi-Fi** card uses `getUserMedia` for **two distinct purposes**:
+
+- **Camera:** `Scan friend's code` opens the live camera, displays a video preview and decodes a QR code locally using bundled `jsQR`. No QR images or video are uploaded.
+- **Microphone:** Joining/hosting can listen for the other device's pairing chirps through the bundled `ggwave` decoder. Captured audio is processed locally, not recorded or uploaded. If microphone access is denied, QR pairing remains available; a device can still play outgoing chirps.
+
+The Android build declares `CAMERA`, `RECORD_AUDIO`, and `MODIFY_AUDIO_SETTINGS` in its manifest. Camera and microphone hardware features are **optional**, so tablets without one of those devices can still install Little Sprouts and use other games. Capacitor **7.6.10** already handles `WebChromeClient.onPermissionRequest` for video/audio capture and asks the user for Android runtime permissions; do not replace its WebChromeClient or automatically approve everything. The existing game iframe delegates `camera; microphone` from the app's packaged HTTPS origin.
+
+**Test on Fire OS:** install a newly built production-signed APK over the existing app (same keystore/package), start a friend room and choose **Scan friend's code**, then approve **Camera** when prompted. Start or join the room and approve **Microphone** when prompted. Confirm the preview recognizes another device's QR code, chirps can be received, and denying either permission shows a specific message while the other pairing method still works. Repeat after sleeping and resuming the tablet to confirm tracks are released.
+
+**If permissions were previously denied:** open **Settings → Apps → Little Sprouts → Permissions**, allow Camera and Microphone, then reopen the pairing card. The exact Fire OS settings labels may vary. Also confirm the Fire tablet's device-level camera/mic privacy controls allow capture. A newly installed APK with the updated manifest is required; merely deploying the website/PWA cannot add Android native permissions to an already-installed app.
+
+The manifest is generated from `tools/fire-tablet/install-updater.py` on **both** debug and signed-release APK builds. `test_media_permissions.py` generates a test manifest twice to verify permissions, deduplication, and optional hardware flags. `tests/friend-media.test.mjs` checks the browser path and error messages.
+
 ## Native updater behavior
 
 Launch/resume and the update button check the public GitHub latest-release endpoint only on a Wi-Fi network with Internet capability. The updater offers stable semantic versions whose mapped versionCode exceeds the installed app, with the exact asset name, trusted repository download URL and a valid SHA-256 digest. It downloads over HTTPS, checks Wi-Fi throughout, enforces a size limit, verifies the checksum, package ID, higher archive versionCode and the same installed signing certificate, and grants the Android installer read access to the verified APK through a narrowly scoped FileProvider. The file stays in private non-cache storage during installation, with temporary URI permissions (including ClipData) for Fire OS package installers; stale files are removed after a successful update. Invalid downloads are deleted.
 
-The native manifest declares network-state and package-install permissions. If Android requires source approval, the updater opens **Allow from this source** for Little Sprouts and asks the user to retry. Android's package installer requires user confirmation; the updater cannot silently approve installation. Wi-Fi checks run while the app is open, not as an OS background job. PR #17's no-release UI behavior is outside these changes.
+The native manifest declares network-state, package-install, camera, microphone and audio-settings permissions. If Android requires source approval, the updater opens **Allow from this source** for Little Sprouts and asks the user to retry. Android's package installer requires user confirmation; the updater cannot silently approve installation. Wi-Fi checks run while the app is open, not as an OS background job. PR #17's no-release UI behavior is outside these changes.
 
 Existing **debug-signed** installations cannot accept a production-signed update. Install the first production APK manually after backing up any learner data you need; uninstalling can erase local profiles, stars, saves and offline files. Once production signing is installed, future signed updates should preserve data. Devices must permit unknown-app installation for Little Sprouts, have sufficient free storage, and meet Capacitor's Android 6/API 23 minimum; test against the exact Fire OS/WebView version in use.
 

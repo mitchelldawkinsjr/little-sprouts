@@ -9,6 +9,46 @@ Spoken prompts in the main app go through `lib/speech.js`. `app.js` calls `say()
 | `lib/speech-core.mjs` | Pure logic shared by both, plus the tests: cache keys, PCM checks, engine choice, queue, retries, text clean-up, and voice roles. |
 | `tools/fire-tablet/SpeechPlugin.java` | Android-only playback: packaged recordings, English TextToSpeech, audio focus, completion events, timeouts and lifecycle cleanup. |
 | `tests/speech.test.mjs` | Node tests. They run the real `lib/speech.js` and `lib/speech-worker.js` against stand-in Worker, Web Audio, and speech objects. |
+| `tests/speech-ios.test.mjs` | iPhone gesture gates, delayed speech, recordings, pause, and background recovery with stand-ins. |
+| `tools/browser/iphone-speech.mjs` | WebKit and Chromium touch checks with real recording playback and a simulated iOS speech gate. |
+
+## iPhone Safari and the Home Screen app
+
+iOS unlocks browser speech separately from Web Audio. Calling only
+`AudioContext.resume()` does not permit `speechSynthesis.speak()` after a file
+fetch, cache lookup, or worker message. WebKit can silently ignore that first
+delayed speech request without sending an error or start event.
+
+On a trusted `touchend`, `click`, or `keydown`, the shared voice module resumes
+Web Audio and sends one empty, muted browser utterance inside the gesture. This
+unlocks later questions without speaking extra words or canceling an active
+question. Synthetic clicks cannot unlock it. Subsequent gestures also resume a
+paused browser speech service; closed Web Audio contexts are recreated. Android
+continues to use its native bridge.
+
+The iOS restriction is implemented in WebKit's
+[`SpeechSynthesis::speak()`](https://github.com/WebKit/WebKit/blob/7c0987e6939e7e87c5fa4c3e55253d4a57675636/Source/WebCore/Modules/speech/SpeechSynthesis.cpp#L162).
+Linux WebKit does not include that iOS-only gate, so the browser test models it
+explicitly while using real trusted touch events and real Web Audio. Run:
+
+```sh
+npm --prefix tools/browser ci
+cd tools/browser
+npx playwright install --with-deps webkit
+npm run test:iphone
+```
+
+CI runs that check with WebKit and Chromium. It decodes and plays a real shipped
+AAC recording, then checks delayed questions, paused speech, and failed-question
+retry. The Node suite additionally checks background interruptions and stale
+completion callbacks.
+
+Before shipping, check audible output on a physical iPhone in both Safari and
+the installed Home Screen app: launch a game by tapping, hear a question that
+has no included recording, tap Hear it again, answer several questions, lock and
+unlock the phone, then return and tap again. Also check included recordings and
+Read aloud off. This Linux environment has no Apple iPhone simulator; WebKit
+checks cannot verify the device's voice service, speaker, or silent-switch behavior.
 
 ## Using it
 
