@@ -15,5 +15,5 @@ for runtime, rows in devices.items():
 if not candidates:
     sys.exit("No available iPhone Simulator. This is a failed device check, not a pass.")
 version, name, udid = max(candidates)
-print(f"Selected {name}, iOS {'.'.join(map(str, version))}", file=sys.stderr)
+print(f"::notice title=iPhone Simulator runtime::Selected {name}, iOS {'.'.join(map(str, version))}", file=sys.stderr)
 print(udid)
