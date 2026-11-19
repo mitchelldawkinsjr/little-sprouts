@@ -27,6 +27,8 @@ const SHELL = [
 const LARGE_GAMES = /^\.\/sidecars\/(rally|skybound|sky-deliveries|field-guide-fishing)\//;
 /** Tidewater draws with WebGPU only: a device without it never saves the game. */
 const WEBGPU_GAMES = /^\.\/sidecars\/field-guide-fishing\//;
+/** Big games: Backroad rally and Tidewater, saved only when the page says Big games are on (lib/big-games.mjs BIG_PATHS). */
+const BIG_GAMES = /^\.\/sidecars\/(rally|field-guide-fishing)\//;
 const LISTED = /^\.\/(sidecars|vendor|lib|app|logic|games|icons|voice)\//;
 
 self.addEventListener('install', event => {
@@ -183,11 +185,12 @@ async function sameFile(saved, stamp) {
  * The files this device needs. Every voice is shipped, but only the voices this family hears are
  * saved. Backroad rally ships each sound twice and plays the .opus copy when the browser can.
  */
-function wanted(list, { voices = [], opus = false, pack = 'full', camera = false, webgpu = false } = {}) {
+function wanted(list, { voices = [], opus = false, pack = 'full', camera = false, webgpu = false, big = false } = {}) {
   const keepVoices = new Set(voices);
   const out = {};
   for (const [path, stamp] of Object.entries(list)) {
     if (pack === 'starter' && LARGE_GAMES.test(path)) continue;
+    if (!big && BIG_GAMES.test(path)) continue;
     if (!webgpu && WEBGPU_GAMES.test(path)) continue;
     if (!camera && pack === 'starter' && path.startsWith('./vendor/mediapipe/')) continue;
     const voice = /^\.\/voice\/[^/]+\/([^/]+)\//.exec(path);
@@ -216,7 +219,9 @@ async function prune(cache, list, need, stamps) {
   for (const req of await cache.keys()) {
     const path = pathOf(req.url);
     if (new URL(req.url).search
-      || (LISTED.test(path) && (!list[path] || (path.startsWith('./voice/') && !need[path])))) {
+      || (LISTED.test(path) && (!list[path] || (path.startsWith('./voice/') && !need[path])))
+      // Big games turned off: their saved files go, freeing the space.
+      || (BIG_GAMES.test(path) && !need[path])) {
       await cache.delete(req);
       delete stamps[path];
     }
@@ -324,6 +329,7 @@ self.addEventListener('message', event => {
     pack: event.data.pack === 'starter' ? 'starter' : 'full',
     camera: event.data.camera === true,
     webgpu: event.data.webgpu === true,
+    big: event.data.big === true,
   };
   if (!running) {
     nextOptions = options;

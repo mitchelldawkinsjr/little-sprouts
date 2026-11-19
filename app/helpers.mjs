@@ -12,7 +12,7 @@ import {
   versePack
 } from '../logic.mjs?v=offline1';
 import { contextFor, onSpeechStatus, prefetchSpeech, retrySpeech, speak, stop, voiceFor } from '../lib/speech.js?v=offline4';
-import { postSidecar, sidecarArcadeIds, sidecarRows } from '../lib/sidecar.js?v=power8-bike1';
+import { postSidecar, sidecarArcadeIds, sidecarRows } from '../lib/sidecar.js?v=power9-bike1';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { speechFailureText } from '../lib/parent-ui.mjs?v=structure2';
 import { allowGameSounds, gameSound, sfx } from '../lib/game-sound.mjs?v=audio2';

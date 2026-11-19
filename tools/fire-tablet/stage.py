@@ -10,11 +10,22 @@ www.mkdir(parents=True, exist_ok=True)
 # The app is a static site, not a root-level Vite/npm application.
 # Preserve relative paths used by game shelves and imported ES modules.
 directories = ("sidecars", "vendor", "lib", "app", "logic", "games", "icons", "voice", "for-parents")
+# The two biggest games (about 160 MB) stay out of the tablet app; the app hides them (lib/big-games.mjs).
+BIG_GAMES = {"rally", "field-guide-fishing"}
+skip_common = shutil.ignore_patterns(".git", "node_modules", "*.map")
+
+
+def skip(directory, names):
+    ignored = set(skip_common(directory, names))
+    if Path(directory) == root / "sidecars":
+        ignored |= BIG_GAMES & set(names)
+    return ignored
+
+
 for name in directories:
     src = root / name
     if src.is_dir():
-        shutil.copytree(src, www / name, dirs_exist_ok=True,
-                        ignore=shutil.ignore_patterns(".git", "node_modules", "*.map"))
+        shutil.copytree(src, www / name, dirs_exist_ok=True, ignore=skip)
 
 for src in root.iterdir():
     if src.is_file() and src.suffix.lower() in (".html", ".js", ".mjs", ".css", ".csv", ".json", ".webmanifest", ".svg", ".png", ".ico", ".woff", ".woff2"):

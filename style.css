@@ -295,6 +295,7 @@ body:has(.playtop) #arcade>.puzzle-stage{display:grid;flex-direction:unset;overf
 .chase{background:#c9b896}
 .hop{background:linear-gradient(#cfe6d4,#e8f0d8)}
 .chase canvas,.hop canvas{width:100%;height:100%;display:block;touch-action:none}
+.chase canvas[hidden]{display:none}
 .chase.shake,.hop.shake,.toast.shake,.mole.shake,.bust.shake{animation:arcadeshake .28s ease}
 .toast-play{max-width:720px;margin:8px auto 0;touch-action:none;user-select:none;display:flex;flex-direction:column;min-height:0}
 #toastShow:empty{display:none}
@@ -1255,3 +1256,25 @@ footer{gap:16px;flex-wrap:wrap}
 /* The redesigned star shop scrolls like any web page too (it no longer carries .playarea.shop). */
 body:has(.shop2){height:auto;min-height:100dvh;overflow:visible;display:block}
 body:has(.playtop) .shop2{overflow:visible;min-height:0}
+/* Garden chase start screen: a card over the garden (like Grass maze), and the boss builder beside the boss. */
+.chase-menu{position:absolute;inset:0;z-index:2;display:grid;place-items:center;padding:14px;background:linear-gradient(180deg,#bfe3f2bb,#4f8a2cbb);overflow:auto}
+.chase-menu.building{place-items:center start;background:transparent}
+.chase-card{width:min(420px,100%);max-height:100%;overflow:auto;background:var(--paper);border-radius:20px;padding:18px 20px 16px;box-shadow:0 18px 40px #2f241833;text-align:left}
+.chase-card[hidden]{display:none}
+.chase-card h2{margin:0 0 6px;font-size:clamp(24px,5vw,34px)}
+.chase-card p{margin:0 0 8px;font-size:14px;line-height:1.45}
+.chase-help{margin:0 0 12px;padding-left:1.1em;font-size:14px;line-height:1.5}
+.chase-help li:empty{display:none}
+.chase-actions{display:flex;flex-wrap:wrap;gap:8px}
+.chase-actions button[hidden]{display:none}
+.chase-builder{width:min(360px,100%)}
+.chase-builder .boss-name{margin:0 0 8px;font-weight:700;font-size:17px}
+.chase-builder .presets{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
+.chase-builder .preset{width:42px;height:42px;border-radius:12px;font-size:22px;line-height:1;background:#eef2e7;border:2px solid transparent}
+.chase-builder .preset.on{border-color:#9db08c;background:#e1ebd2}
+.chase-builder .pick{display:grid;grid-template-columns:42px 1fr 42px;align-items:center;gap:6px;margin:0 0 5px}
+.chase-builder .pick button{min-height:40px;border-radius:12px;font-size:20px;line-height:1;background:#eef2e7}
+.chase-builder .pick .what{text-align:center;font-weight:600;font-size:14px}
+.chase-builder .pick .what small{display:block;color:var(--muted)}
+.chase-builder .chase-actions{margin-top:8px}
+@media(max-width:700px){.chase-menu.building{place-items:end center}.chase-builder h2{display:none}.chase-builder .pick .what small{display:none}}

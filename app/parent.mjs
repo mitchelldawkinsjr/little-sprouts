@@ -32,7 +32,8 @@ import {
   voiceFor,
   voices
 } from '../lib/speech.js?v=offline4';
-import { sidecarGame, sidecarIsBuilt } from '../lib/sidecar.js?v=power8-bike1';
+import { findBuiltSidecars, sidecarGame, sidecarIsBuilt } from '../lib/sidecar.js?v=power9-bike1';
+import { bigGamesOn, nativeApp, setBigGames } from '../lib/big-games.mjs';
 import { spriteHtml } from '../lib/home-ui.mjs?v=rivals1';
 import { wornGear } from '../logic/shop.mjs?v=shop3';
 import { voiceStatusText } from '../lib/parent-ui.mjs?v=structure2';
@@ -117,6 +118,9 @@ export function registerParent(rt) {
     if ($('#verse')) $('#verse').value = x.verse || '';
     $('#sound').checked = rt.data.sound;
     $('#music').checked = rt.data.music !== false;
+    $('#bigGames').checked = bigGamesOn();
+    $('#bigGamesRow').hidden = nativeApp();
+    $('#bigGamesTablet').hidden = !nativeApp();
     $('#voice').value = knownVoice(rt.data.voice);
     $('#characterVoices').checked = !!rt.data.characterVoices;
     paintVoiceStatus(getSpeechStatus());
@@ -301,6 +305,11 @@ export function registerParent(rt) {
     };
     rt.data.sound = $('#sound').checked;
     rt.data.music = $('#music').checked;
+    // Big games on or off: the shelf and the offline save follow right away (turning off deletes their saved files).
+    if (!nativeApp() && $('#bigGames').checked !== bigGamesOn()) {
+      setBigGames($('#bigGames').checked);
+      void findBuiltSidecars().catch(() => {});
+    }
     rt.data.voice = knownVoice($('#voice').value);
     rt.data.characterVoices = $('#characterVoices').checked;
     rt.data.camera = $('#camera').checked;

@@ -143,6 +143,87 @@ test('Safari cancellation callbacks from an abandoned attempt cannot cancel its 
   assert.equal((await line).status, 'completed');
 });
 
+for (const error of ['interrupted', 'canceled']) {
+  test(`unexpected Safari ${error} offers a user-controlled retry without replaying automatically`, async () => {
+    const { speech, started, dispatch } = await iphone();
+    dispatch('touchend');
+    const question = 'A private question interrupted by the device.';
+    const first = speech.speakAndWait(question);
+    await flush();
+    started[0].onerror({ error });
+    assert.deepEqual(await first, { status: 'failed', engine: 'browser' });
+    assert.equal(speech.getSpeechStatus().speechError, 'browser-interrupted');
+    assert.equal(speech.getSpeechStatus().metrics.failed, 1);
+    assert.ok(!JSON.stringify(speech.getSpeechStatus()).includes(question));
+    await flush();
+    assert.equal(started.length, 1, 'a partially heard question must not replay by itself');
+
+    dispatch('touchend');
+    const retry = speech.retrySpeech();
+    await flush();
+    assert.equal(started.length, 2);
+    assert.equal(started[1].text, question);
+    started[0].onerror({ error });
+    started[0].onend();
+    assert.equal(speech.getSpeechStatus().metrics.completed, 0, 'old callbacks cannot finish the retry');
+    started[1].onend();
+    assert.deepEqual(await retry, { status: 'completed', engine: 'browser' });
+    assert.equal(speech.getSpeechStatus().speechError, null);
+    assert.equal((await speech.retrySpeech()).status, 'skipped');
+  });
+}
+
+test('an unexpected browser cancellation before onstart also offers retry without a timed replay', async () => {
+  const { speech, dispatch } = await iphone();
+  dispatch('touchend');
+  let attempts = 0;
+  globalThis.speechSynthesis.speak = utterance => {
+    attempts++;
+    queueMicrotask(() => utterance.onerror({ error: 'canceled' }));
+  };
+  const line = speech.speakAndWait('A question canceled before speech started.');
+  assert.equal((await line).status, 'failed');
+  assert.equal(speech.getSpeechStatus().speechError, 'browser-interrupted');
+  await new Promise(resolve => setTimeout(resolve, 450));
+  assert.equal(attempts, 1);
+});
+
+test('a platform interruption releases the next queued question and completion clears the old retry', async () => {
+  const { speech, started, dispatch } = await iphone();
+  dispatch('touchend');
+  const errors = [];
+  speech.onSpeechStatus(status => { if (status.speechError) errors.push(status.speechError); });
+  const first = speech.speakAndWait('An interrupted queued line.', { queue: true });
+  const second = speech.speakAndWait('The current question queued behind it.', { queue: true });
+  await flush();
+  started[0].onerror({ error: 'interrupted' });
+  assert.equal((await first).status, 'failed');
+  await flush();
+  assert.equal(started.length, 2, 'a platform interruption must not leave queued questions silent');
+  assert.ok(errors.includes('browser-interrupted'));
+  assert.equal(started[1].text, 'The current question queued behind it.');
+  started[1].onend();
+  assert.equal((await second).status, 'completed');
+  assert.equal((await speech.retrySpeech()).status, 'skipped', 'a successful newer question supersedes the old retry');
+  assert.equal(started.length, 2, 'the interrupted text was never replayed automatically');
+});
+
+test('explicit stop still cancels current and queued questions without a failure or retry', async () => {
+  const { speech, started, dispatch } = await iphone();
+  dispatch('touchend');
+  const first = speech.speakAndWait('A question stopped by the app.', { queue: true });
+  const second = speech.speakAndWait('A queued question stopped with it.', { queue: true });
+  await flush();
+  globalThis.speechSynthesis.cancel = () => started[0].onerror({ error: 'canceled' });
+  speech.stop();
+  assert.equal((await first).status, 'interrupted');
+  assert.equal((await second).status, 'interrupted');
+  assert.equal(speech.getSpeechStatus().speechError, null);
+  assert.equal(speech.getSpeechStatus().metrics.failed, 0);
+  assert.equal((await speech.retrySpeech()).status, 'skipped');
+  assert.equal(started.length, 1);
+});
+
 test('a synchronous browser start retains its completion timeout', async t => {
   const { speech, dispatch } = await iphone();
   dispatch('touchend');

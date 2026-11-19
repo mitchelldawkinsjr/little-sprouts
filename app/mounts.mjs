@@ -53,7 +53,7 @@ import { mountSky, stopSky } from '../games/sky.js?v=ask-first2-r2-sfx1';
 import { mountPlanet, stopPlanet } from '../games/planet.js?v=sky-rocks2-sfx1';
 import { mountPuzzle, stopPuzzle } from '../games/puzzle.js?v=puzzle-glass-sfx1';
 import { mountMatch, stopMatch } from '../games/match.js?v=pair-match2-sfx1';
-import { mountChase, stopChase } from '../games/chase.js?v=gear2-sfx1';
+import { mountChase, stopChase } from '../games/chase.js?v=gear2-sfx1-boss1-3d4';
 import { mountHop, stopHop } from '../games/hop.js?v=gear2-sfx1';
 import { mountToast, stopToast } from '../games/toast.js?v=ask-first-r2-sfx1';
 import { mountGlide, stopGlide } from '../games/glide.js?v=boom1-ask1';
@@ -80,7 +80,7 @@ import {
   sidecarGame,
   sidecarIsBuilt,
   stopSidecar
-} from '../lib/sidecar.js?v=power8-bike1';
+} from '../lib/sidecar.js?v=power9-bike1';
 import {
   SHELF_META,
   shelfOf as shelfIdOf,
@@ -103,6 +103,7 @@ import { orderGames, rememberGame } from '../lib/game-discovery.mjs?v=rivals1';
 import { wornGear } from '../logic/shop.mjs?v=shop3';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=aviator1';
+import { bossName, readBoss } from '../lib/boss-design.mjs';
 
 const words = list => new Set(list.split(' '));
 const SCREEN = words('catch lanes');
@@ -1149,6 +1150,16 @@ export function registerMounts(rt) {
       });
     }
   }
+  // ---- Garden chase: Build your boss. The boss is the one saved by any game's builder (Boss chase shares it);
+  // "No boss" turns it off for Garden chase only.
+  const CHASE_BOSS_OFF = 'sprouts-chase-boss-off';
+  function chaseBoss() {
+    try { if (localStorage.getItem(CHASE_BOSS_OFF) === '1') return null; } catch { /* private window */ }
+    return readBoss();
+  }
+  function setChaseBoss(on) {
+    try { on ? localStorage.removeItem(CHASE_BOSS_OFF) : localStorage.setItem(CHASE_BOSS_OFF, '1'); } catch { /* private window */ }
+  }
   function renderGame() {
     stopArcade();
     stopLunar();
@@ -1205,6 +1216,8 @@ export function registerMounts(rt) {
       const court = g.level >= 3 ? 'The hoop drifts, and a rock is in the way.' : g.level >= 2 ? 'The hoop drifts.' : 'The hoop stays still.';
       body = `<p class="hint">Shooting on ${esc(g.place)}. ${court}</p><div id="arcade"></div>${g.freePlay ? '' : `<div class="choices">${picks}</div>`}`;
     }
+    // Garden chase's start screen is the garden itself, with its own menu card (games/chase.js).
+    else if (chase && g.phase === 'ready') body = '<div id="arcade"></div>';
     else if (HAS_READY.has(g.mode) && g.phase === 'ready') body = `<p>${howTo}</p><button class="primary" id="arm">I’m ready! →</button>`;
     else if (chase) body = `<div id="chaseShow">${g.show || ''}</div><div id="arcade"></div>`;
     else if (bridge) body = `<div id="askShow">${g.show || ''}</div><div id="arcade"></div><div class="choices" id="askChoices">${picks}</div>`;
@@ -1284,6 +1297,8 @@ export function registerMounts(rt) {
       if (title) title.textContent = g.prompt;
       $('#reveal').hidden = true;
     };
+    // The menu card says how to play, so the big heading would only repeat it ("Hear it again" still reads it).
+    if (chase && g.phase === 'ready') $('.playarea h1')?.remove();
     if ($('#arm')) {
       if (g.mode === 'lanes' && g.style !== 'reach') {
         g.pace = g.pace || 'steady';
@@ -2088,22 +2103,34 @@ export function registerMounts(rt) {
         }
       });
     }
-    if (chase && g.phase !== 'ready') {
+    if (chase) {
+      const ready = g.phase === 'ready';
       mountChase($('#arcade'), {
         buddy: profileSprite(rt.p(), rt.data.active),
         prompt: g.prompt,
-        choices: g.tokens,
+        choices: ready ? [] : g.tokens,
+        intro: ready ? {
+          howTo: g.howTo,
+          onPlay() {
+            if (rt.game !== g) return;
+            g.started = true;
+            rt.question();
+          },
+          saveBoss() { setChaseBoss(true); },
+          noBoss() { setChaseBoss(false); }
+        } : null,
         copies: g.board.copies,
         cols: g.board.cols,
         rows: g.board.rows,
         playerSpeed: g.board.player,
         bugSpeed: g.board.bug,
         bugs: g.board.bugs,
+        boss: chaseBoss(),
         reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
         onMiss(kind) {
           if (rt.game !== g || g.done) return;
           g.missed = true;
-          const line = kind === 'bug' ? 'A snail got you. Keep going.' : 'That berry is not the one.';
+          const line = kind === 'boss' ? `${bossName(chaseBoss())} got you. Keep going.` : kind === 'bug' ? 'A snail got you. Keep going.' : 'That berry is not the one.';
           const feedback = $('#feedback');
           if (feedback && feedback.textContent !== line) {
             feedback.textContent = line;
