@@ -174,11 +174,22 @@ const cam = { x: 0, y: 0, shake: 0 };
 function addShake(v) { cam.shake = Math.min(28, cam.shake + v); }
 
 const GRAV = 0.34, SUB = 4, WHEEL_R = 16, WHEEL_BASE = 50, WHEEL_OFF_Y = 14;
-const SPRING = 0.22, DAMP = 0.28, ENGINE = 0.72, TOP = 34, FRICTION = 0.78, AIR_CTRL = 0.02, MAX_AV = 0.06;
+const SPRING = 0.22, DAMP = 0.28, ENGINE = 0.72, TOP = 34, FRICTION = 0.78, AIR_CTRL = 0.05, MAX_AV = 0.085;
+/** Wheelie: how far the nose lifts while leaning back with the gas on (radians from the slope), and without gas. */
+const WHEELIE = 0.62, WHEELIE_COAST = 0.34;
+/** A wheelie this long (frames, about 2/3 of a second) or longer scores when it ends. */
+const WHEELIE_MIN = 40;
+/** Top spin while leaning in the air: a full flip fits in a crest jump of 25 or so frames of air. */
+const MAX_AV_AIR = 0.25;
+/** A flip counts this close to a full turn (radians): the landing already settles the bike onto its wheels from there. */
+const FLIP_SLACK = 0.7;
 
 let bike, level, levelIdx, prevGround, peakFall, airTime, flipAccum, frameAngStart;
 let lastCheckpoint, totalFlips, comboScore, elapsed, crashFreeze, finished, finishStars;
-let planted = true, airScale = 0, learnerLevel = 1, learnerReduced = false;
+// Tilt is always on: lean back and forward on the ground (wheelies) and in the air (flips).
+// `gentle` (Level 1, or reduced motion) keeps it forgiving: a tip-over bounces back upright instead of crashing.
+let gentle = true, airScale = 0.85, learnerLevel = 1, learnerReduced = false;
+let wheelieFrames = 0, wheelieGap = 0, totalWheelies = 0, flashWheelie = null;
 let rideTime = 0, askAfter = 9, sproutsPaused = false, boostUntil = 0, scareUntil = 0, scareSafeUntil = 0;
 let onAsk = function () {};
 let rewardScale = { boost: 1, slow: 1 };
@@ -186,13 +197,16 @@ let rewardScale = { boost: 1, slow: 1 };
 function inScare(now = performance.now()) {
   return now < scareUntil;
 }
-function canLean(now = performance.now()) {
-  return !planted || inScare(now);
+function canLean() {
+  return true;
 }
 function leanScale(now = performance.now()) {
   if (inScare(now)) return Math.max(airScale, 1.15);
   return airScale;
 }
+
+/** An angle folded into -π..π, so "back to upright" takes the short way round after a flip. */
+function turnOf(a) { return Math.atan2(Math.sin(a), Math.cos(a)); }
 
 function rot(ox, oy, a) { const c = Math.cos(a), s = Math.sin(a); return { x: ox * c - oy * s, y: ox * s + oy * c }; }
 
@@ -206,6 +220,7 @@ function startLevel(idx) {
   lastCheckpoint = 150;
   spawnBikeAt(150);
   totalFlips = 0; comboScore = 0; elapsed = 0; crashFreeze = 0;
+  wheelieFrames = 0; totalWheelies = 0; flashWheelie = null;
   finished = false; finishStars = 0;
   particles.length = 0;
   cam.x = bike.x - W * 0.34; cam.y = bike.y - H * 0.52; cam.shake = 0;
@@ -221,6 +236,7 @@ function clearRideKeys() {
 function physicsStep(scale) {
   const b = bike;
   let onGround = false;
+  const touching = { rear: false, front: false };
   b.vy += GRAV * scale;
 
   for (const side of [-1, 1]) {
@@ -230,6 +246,7 @@ function physicsStep(scale) {
     const pen = (wy + WHEEL_R) - gy;
     if (pen > 0) {
       onGround = true;
+      touching[side < 0 ? 'rear' : 'front'] = true;
       const slope = terrainSlope(wx, level);
       const nlen = Math.hypot(slope, 1);
       const nx = slope / nlen, ny = -1 / nlen;
@@ -263,14 +280,17 @@ function physicsStep(scale) {
   const now = performance.now();
   const leaning = canLean(now);
   const air = leanScale(now);
-  const avCap = inScare(now) ? MAX_AV * 1.55 : MAX_AV;
+  // Real air (a few frames off the dirt, not a wheelie's bounce): leaning spins fast enough to flip.
+  const flying = !onGround && airTime >= 4;
+  const avCap = inScare(now) ? MAX_AV * 1.55 : flying && (input.back() || input.fwd()) ? MAX_AV_AIR : MAX_AV;
+  const spin = (flying ? AIR_CTRL : 0.02) * air * scale;
   if (!onGround) {
     if (leaning && air > 0) {
-      if (input.back()) b.av -= AIR_CTRL * air * scale;
-      if (input.fwd()) b.av += AIR_CTRL * air * scale;
+      if (input.back()) b.av -= spin;
+      if (input.fwd()) b.av += spin;
     } else {
       const want = Math.atan(terrainSlope(b.x, level));
-      b.av += (want - b.ang) * 0.05 * scale;
+      b.av += turnOf(want - b.ang) * 0.05 * scale;
     }
   } else if (!leaning) {
     const want = Math.atan(terrainSlope(b.x, level));
@@ -288,7 +308,8 @@ function physicsStep(scale) {
   if (onGround && leaning) {
     const want = Math.atan(terrainSlope(b.x, level));
     let lean = 0;
-    if (input.back() && b.vx > 0.35) lean -= 0.95;
+    // Lean back: the front wheel lifts into a wheelie, higher with the gas on.
+    if (input.back() && b.vx > 0.35) lean -= input.gas() ? WHEELIE : WHEELIE_COAST;
     if (input.fwd()) lean += 0.55;
     b.ang += ((want + lean) - b.ang) * (1 - Math.pow(0.45, scale));
     if (lean) b.av *= 0.2;
@@ -297,9 +318,22 @@ function physicsStep(scale) {
 
   if (leaning && now >= scareSafeUntil) {
     const head = rot(0, -36, b.ang);
-    if (b.y + head.y > terrainY(b.x + head.x, level) + 4) return { onGround, crash: true };
+    // A crash is the rider's head in the dirt with the bike well off its wheels; landing a flip nearly upright rides on.
+    const tipped = Math.abs(turnOf(b.ang - Math.atan(terrainSlope(b.x, level)))) > 1.05;
+    if (tipped && b.y + head.y > terrainY(b.x + head.x, level) + 4) return { onGround, touching, crash: true };
   }
-  return { onGround, crash: false };
+  return { onGround, touching, crash: false };
+}
+
+/** Gentle riders (Level 1, reduced motion): a tip-over bounces the bike back onto its wheels, a little slower. */
+function softRecover() {
+  bike.ang = Math.atan(terrainSlope(bike.x, level));
+  bike.av = 0;
+  bike.vx *= 0.55;
+  bike.y = Math.min(bike.y, terrainY(bike.x, level) - 40);
+  wheelieFrames = 0;
+  audio.thud(5);
+  addShake(5);
 }
 
 function doCrash() {
@@ -333,13 +367,35 @@ function updatePlay(dt) {
 
   elapsed += dt;
   frameAngStart = bike.ang;
-  let grounded = false, crashed = false;
+  let grounded = false, crashed = false, rear = false, front = false;
   for (let i = 0; i < SUB; i++) {
     const r = physicsStep(1 / SUB);
     if (r.onGround) grounded = true;
+    if (r.touching.rear) rear = true;
+    if (r.touching.front) front = true;
     if (r.crash) { crashed = true; break; }
   }
+  if (crashed && gentle && !inScare()) { softRecover(); crashed = false; }
   if (crashed) { doCrash(); return; }
+
+  // Wheelie: riding on the back wheel with lean back held. A long one scores when it ends.
+  // A wheelie survives a short bounce (a few frames with the back wheel off the dirt too); the front touching ends it.
+  const onBack = grounded && rear && !front;
+  const wheelie = input.back() && bike.vx > 1 && !front && (onBack || (wheelieFrames && ++wheelieGap <= 8));
+  if (onBack) wheelieGap = 0;
+  if (wheelie) wheelieFrames++;
+  else if (wheelieFrames) {
+    wheelieGap = 0;
+    if (wheelieFrames >= WHEELIE_MIN) {
+      const secs = wheelieFrames / 60;
+      const pts = Math.round(secs * 100);
+      totalWheelies++;
+      comboScore += pts;
+      audio.flip(0);
+      flashWheelie = { secs, pts, t: 90 };
+    }
+    wheelieFrames = 0;
+  }
 
   const nowMs = performance.now();
   const boostCap = inScare(nowMs) ? TOP * 1.55 : TOP * 1.25;
@@ -368,9 +424,11 @@ function updatePlay(dt) {
       }
     }
     if (airTime > 8 && canLean()) {
-      const n = Math.floor(Math.abs(flipAccum) / (Math.PI * 2));
-      if (n > 0) { totalFlips += n; comboScore += n * 250; audio.flip(n); flashFlip = { n, t: 90 }; }
+      const n = Math.floor((Math.abs(flipAccum) + FLIP_SLACK) / (Math.PI * 2));
+      if (n > 0) { totalFlips += n; comboScore += n * 250; audio.flip(n); flashFlip = { n, t: 90, back: flipAccum < 0 }; }
     }
+    // Landed: count the bike's angle as one turn again, so it doesn't unwind the flip on the ground.
+    bike.ang = turnOf(bike.ang);
     airTime = 0; flipAccum = 0; peakFall = 0;
   }
   prevGround = grounded;
@@ -741,7 +799,7 @@ function drawHUD() {
   const spd = Math.floor(Math.hypot(bike.vx, bike.vy) * 3);
   ctx.fillText('Time  ' + fmtTime(elapsed), 28, 60);
   ctx.fillText('Dist  ' + distM + ' / ' + finM + ' m', 28, 80);
-  ctx.fillText('Speed ' + spd + '   Flips ' + totalFlips, 28, 100);
+  ctx.fillText('Speed ' + spd + '   Flips ' + totalFlips + '   Wheelies ' + totalWheelies, 28, 100);
   panel(W / 2 - 200, 16, 400, 16, 8);
   const prog = Math.min(1, bike.x / level.finish);
   ctx.fillStyle = '#ffd34d'; roundRect(W / 2 - 198, 18, 396 * prog, 12, 6); ctx.fill();
@@ -752,8 +810,21 @@ function drawHUD() {
     flashFlip.t--;
     ctx.globalAlpha = Math.min(1, flashFlip.t / 30);
     ctx.fillStyle = '#ffd34d'; ctx.font = 'bold 44px Trebuchet MS'; ctx.textAlign = 'center';
-    const label = flashFlip.n > 1 ? flashFlip.n + 'x FLIP! +' + flashFlip.n * 250 : 'FLIP! +250';
+    const name = flashFlip.back ? 'BACKFLIP' : 'FRONT FLIP';
+    const label = (flashFlip.n > 1 ? flashFlip.n + 'x ' : '') + name + '! +' + flashFlip.n * 250;
     ctx.fillText(label, W / 2, 150 - (90 - flashFlip.t) * 0.4);
+    ctx.textAlign = 'left'; ctx.globalAlpha = 1;
+  }
+  // A wheelie in progress shows its time; a finished one pops its score.
+  if (wheelieFrames >= 12) {
+    ctx.fillStyle = '#7fe0ff'; ctx.font = 'bold 30px Trebuchet MS'; ctx.textAlign = 'center';
+    ctx.fillText('WHEELIE ' + (wheelieFrames / 60).toFixed(1) + 's', W / 2, 200);
+    ctx.textAlign = 'left';
+  } else if (flashWheelie && flashWheelie.t > 0) {
+    flashWheelie.t--;
+    ctx.globalAlpha = Math.min(1, flashWheelie.t / 30);
+    ctx.fillStyle = '#7fe0ff'; ctx.font = 'bold 36px Trebuchet MS'; ctx.textAlign = 'center';
+    ctx.fillText('WHEELIE ' + flashWheelie.secs.toFixed(1) + 's! +' + flashWheelie.pts, W / 2, 200 - (90 - flashWheelie.t) * 0.3);
     ctx.textAlign = 'left'; ctx.globalAlpha = 1;
   }
 }
@@ -838,7 +909,7 @@ function drawMenu() {
     : 'Up or W throttle. Down or S brake. Left lean back. Right lean forward. R restart. P pause.';
   ctx.fillText(hint, W / 2, 430);
   ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.font = '13px Trebuchet MS';
-  ctx.fillText('Land flips for bonus points. Clear a level fast for 3 stars.', W / 2, 458);
+  ctx.fillText('Lean back with the gas for a wheelie. Lean in the air to flip. Land them for bonus points.', W / 2, 458);
   menuBtns = [topBtns.mute];
   topBtns.mute.t = audio.enabled ? 'Snd' : 'Off';
   btn(topBtns.mute, hover === 'mute');
@@ -866,7 +937,7 @@ function drawComplete() {
   ctx.fillStyle = '#fff'; ctx.font = '26px Trebuchet MS';
   ctx.fillText('Time: ' + fmtTime(elapsed), W / 2, 320);
   ctx.font = '20px Trebuchet MS'; ctx.fillStyle = '#cfd6e0';
-  ctx.fillText('Flips: ' + totalFlips + '    Bonus: ' + comboScore, W / 2, 354);
+  ctx.fillText('Flips: ' + totalFlips + '    Wheelies: ' + totalWheelies + '    Bonus: ' + comboScore, W / 2, 354);
   if (bestTimes[levelIdx] != null) ctx.fillText('Best: ' + fmtTime(bestTimes[levelIdx]), W / 2, 384);
   ctx.textAlign = 'left';
   const hasNext = levelIdx + 1 < LEVELS.length;
@@ -984,8 +1055,8 @@ function applyLearner(levelNo, reduced) {
   const lv = Math.min(3, Math.max(1, levelNo | 0 || 1));
   learnerLevel = lv;
   learnerReduced = !!reduced;
-  planted = lv < 2 || !!reduced;
-  airScale = planted ? 0 : lv === 2 ? 0.7 : 1;
+  gentle = lv < 2 || !!reduced;
+  airScale = gentle ? 0.85 : lv === 2 ? 1 : 1.15;
   askAfter = learnerReduced ? 11 : lv >= 3 ? 7 : 9;
   const idx = Math.min(LEVELS.length - 1, reduced ? 0 : lv - 1);
   if (state !== 'play' || levelIdx !== idx) startLevel(idx);
@@ -1079,7 +1150,12 @@ window.DirtRampage = {
       level: learnerLevel,
       airControl: airScale > 0,
       reduced: learnerReduced,
-      planted,
+      gentle,
+      wheelie: wheelieFrames,
+      flips: totalFlips,
+      wheelies: totalWheelies,
+      air: airTime,
+      spin: +flipAccum.toFixed(2),
       grounded: !!prevGround,
       vx: bike ? +bike.vx.toFixed(2) : 0,
       ang: bike ? +bike.ang.toFixed(3) : 0,
