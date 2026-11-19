@@ -8,7 +8,7 @@ import { friendRoomCode, makeFriendSession, packFriendPose, readFriendPose } fro
 import { distanceTo, LANDMARKS, makeTrail, MEGA_RAMP, pastRampLanding, RAMP_LANDING, STOPS } from './checkpoints.mjs?v=trail6';
 
 import { GARAGE, garageChoice, saveGarageChoice } from './garage.mjs';
-import { applyGarageVehicle } from './garage-body.mjs';
+import { applyGarageVehicle, clearGarageVisuals } from './garage-body.mjs?v=sculpted1';
 import { makeCrashBursts, vehicleKind, watchVehicleCrashes } from './vehicle-crash.mjs';
 
 const $ = id => document.getElementById(id);
@@ -613,6 +613,7 @@ const startingPlaces = {
 function launchStart(id) {
   crashBursts.clear();
   vehicleCrashes.clear();
+  for (const car of state.world.vehicles) clearGarageVisuals(car);
   hideMenus();
   state.ready = false;
   onRamp = id === MEGA_RAMP && !state.arcade && !trail.index;
