@@ -38,13 +38,17 @@ const report = entry => {
 onSpeechStatus(status => {
   if (status.speechError) report({ error: status.speechError });
 });
+let voicePoll;
 function voices() {
   const english = speechSynthesis.getVoices().filter(voice => /^en([-_]|$)/i.test(voice.lang));
-  document.querySelector('#voices').textContent = english.length ? 'English voice ready' : 'Waiting for English voice';
+  const message = english.length ? 'English voice ready' : 'Waiting for English voice';
+  const output = document.querySelector('#voices');
+  if (output.textContent !== message) output.textContent = message;
+  if (english.length) clearInterval(voicePoll);
+  return english.length > 0;
 }
-voices();
 speechSynthesis.addEventListener('voiceschanged', voices);
-setInterval(voices, 1000);
+if (!voices()) voicePoll = setInterval(voices, 1000);
 
 async function check(selector, text, expectedEngine, label) {
   const output = document.querySelector(selector);

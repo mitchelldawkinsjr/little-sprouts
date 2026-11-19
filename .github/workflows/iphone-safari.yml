@@ -72,7 +72,7 @@ jobs:
           if [ -d "$RUNNER_TEMP/sprouts-safari.xcresult" ]; then
             xcrun xcresulttool get test-results summary \
               --path "$RUNNER_TEMP/sprouts-safari.xcresult" \
-              --format json > "$RUNNER_TEMP/sprouts-safari-summary.json" || true
+              --compact > "$RUNNER_TEMP/sprouts-safari-summary.json" || true
           fi
           python3 tools/iphone-simulator/report-results.py \
             "$RUNNER_TEMP/sprouts-safari-summary.json" \
