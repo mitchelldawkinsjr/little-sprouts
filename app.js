@@ -1,13 +1,13 @@
-import './lib/pad.js?v=offline4';
+import './lib/pad.js?v=offline4-bike1';
 import './lib/tilt.js?v=ask-first';
 import { roundCount, stageOf, profileSprite, SPRITES } from './logic.mjs?v=offline1';
 import { knownVoice } from './lib/speech.js?v=offline4';
-import { findBuiltSidecars } from './lib/sidecar.js?v=power8';
+import { findBuiltSidecars } from './lib/sidecar.js?v=power8-bike1';
 import { rt } from './app/runtime.mjs?v=lean-r2';
-import { registerHelpers } from './app/helpers.mjs?v=audio2-rivals1';
-import { registerRound } from './app/round.mjs?v=audio2-fort1';
-import { registerMounts } from './app/mounts.mjs?v=audio2-rivals1';
-import { registerParent } from './app/parent.mjs?v=audio1';
+import { registerHelpers } from './app/helpers.mjs?v=audio2-rivals1-bike1';
+import { registerRound } from './app/round.mjs?v=audio2-fort1-bike1';
+import { registerMounts } from './app/mounts.mjs?v=audio2-rivals1-bike1';
+import { registerParent } from './app/parent.mjs?v=audio1-bike1';
 import { registerShop } from './app/shop.mjs?v=bloom1';
 import { registerRouter } from './app/router.mjs?v=shop1';
 import { diagnostic, startDiagnostics } from './lib/diagnostics.mjs';
@@ -104,6 +104,6 @@ requestAnimationFrame(() => requestAnimationFrame(() => {
   diagnostic('app_ready', Math.min(300000, Math.round(performance.now())));
   // Load the question sheet and start offline caching after the first view can paint.
   rt.loadSheet();
-  void import('./lib/offline-warm.mjs?v=reset1').then(({ warmOffline }) => warmOffline())
+  void import('./lib/offline-warm.mjs?v=reset1-bike1').then(({ warmOffline }) => warmOffline())
     .catch(() => diagnostic('worker_failed'));
 }));
