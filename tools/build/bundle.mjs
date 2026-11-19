@@ -26,7 +26,11 @@ const result = await build({
       api.onResolve({ filter: /^\.{1,2}\// }, args => {
         const clean = args.path.split('?')[0];
         if (clean.endsWith('/camera.js')) return { path: '/lib/camera.js', external: true };
-        return { path: resolve(args.resolveDir, clean) };
+        // Garden chase's 3D view stays a separate file loaded when a round starts, so three.js (resolved by
+        // the page's import map) never joins the app bundle. It keeps its ?v= tag for the caching proxy.
+        const file = resolve(args.resolveDir, clean);
+        if (file.endsWith('/games/chase3d.js')) return { path: `/games/chase3d.js${args.path.slice(clean.length)}`, external: true };
+        return { path: file };
       });
     }
   }]
