@@ -20,7 +20,7 @@ test('static build emits a catalog separately from complete offline stamps and g
   add('lib/sidecar.js', "const a = [{src: 'sidecars/dash/index.html?x=1'}, {src: 'sidecars/rally/index.html?v=2'}, {src: 'sidecars/field-guide-fishing/tidewater-coast.html?v=3'}]");
   add('sidecars/dash/index.html');
   add('sidecars/field-guide-fishing/tidewater-coast.html');
-  add('for-parents/analytics.mjs');
+  add('for-parents/parents.css');
   const build = inventory(root);
   assert.deepEqual(build.sidecars(), ['sidecars/dash/index.html', 'sidecars/field-guide-fishing/tidewater-coast.html']);
   const offline = build.offline();
@@ -28,7 +28,7 @@ test('static build emits a catalog separately from complete offline stamps and g
   assert.ok(offline['./sidecars/dash/index.html']);
   // Tidewater is listed; the service worker saves it only for Full on a WebGPU device.
   assert.ok(offline['./sidecars/field-guide-fishing/tidewater-coast.html']);
-  assert.ok(!offline['./for-parents/analytics.mjs']);
+  assert.ok(!offline['./for-parents/parents.css']);
   const metrics = build.compress();
   assert.equal(metrics.files, 1);
   assert.equal(gunzipSync(readFileSync(join(root, 'app.js.gz'))).toString(), js);

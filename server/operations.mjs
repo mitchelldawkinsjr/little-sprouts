@@ -5,9 +5,8 @@ const MAX_BATCH = 24
 const MS_BUCKETS = [250, 500, 1000, 2000, 5000, 15000, 60000]
 const KB_BUCKETS = [1000, 5000, 10000, 25000, 50000, 100000, 250000, 500000]
 
-export function operations({ origin, measurementId = '', log = console.log } = {}) {
+export function operations({ origin, log = console.log } = {}) {
   const allowed = new Set(Array.isArray(origin) ? origin : origin ? [origin] : [])
-  const id = /^G-[A-Z0-9]{4,20}$/.test(measurementId) ? measurementId : ''
   const counts = Object.fromEntries(Object.keys(signals).map(name => [name, 0]))
   const histograms = {
     app_ready: { name: 'app_ready_ms', buckets: MS_BUCKETS },
@@ -25,10 +24,6 @@ export function operations({ origin, measurementId = '', log = console.log } = {
       return true
     }
     if (path === '/healthz') return send(200, 'ok\n')
-    if (path === '/for-parents/analytics.json') {
-      if (req.method !== 'GET') return send(405)
-      return send(200, JSON.stringify({ measurementId: id }), 'application/json')
-    }
     // nginx never proxies this path publicly. Scrape on the private Docker network.
     if (path === '/metrics') {
       const lines = [

@@ -104,6 +104,7 @@ import { wornGear } from '../logic/shop.mjs?v=shop3';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=aviator1';
 import { bossName, readBoss } from '../lib/boss-design.mjs';
+import { trackGame } from '../lib/gtm.mjs?v=gtm1';
 
 const words = list => new Set(list.split(' '));
 const SCREEN = words('catch lanes');
@@ -817,6 +818,7 @@ export function registerMounts(rt) {
     const style = rt.styleOf(mode);
     rt.game = { mode, style, key: progressKey(style, rt.skillLevel(mode)), index: 0, firstCorrect: 0, missed: false, done: false, finished: false, freePlay: mode === 'quickmath' || (!!learner.arcade && rt.ARCADE_PLAY.has(mode)) };
     if (syncHash) rt.setHash?.(`play/${mode}`);
+    trackGame(mode);
     rt.question();
     rt.startGameMusic();
     if (rt.game?.mode === mode) rt.prefetchRound(rt.game);

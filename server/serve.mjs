@@ -37,7 +37,7 @@ const types = {
 const build = inventory(root)
 const port = Number(process.env.PORT) || 8000
 const localOrigins = [`http://127.0.0.1:${port}`, `http://localhost:${port}`]
-const ops = operations({ origin: process.env.SPROUTS_ORIGIN || localOrigins, measurementId: process.env.SPROUTS_GA4_MEASUREMENT_ID })
+const ops = operations({ origin: process.env.SPROUTS_ORIGIN || localOrigins })
 const server = createServer(async (req, res) => {
   if (await ops(req, res)) return
   if (req.method !== 'GET' && req.method !== 'HEAD') {

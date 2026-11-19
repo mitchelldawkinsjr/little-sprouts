@@ -6,15 +6,23 @@ Little Sprouts has three separate signals:
 | --- | --- | --- |
 | First-party HTTP traffic | `docker compose -f docker-compose.prod.yml logs --since 1h app` | Fixed route categories, HTTP status, request duration and response bytes. Requests include reloads, bots and service-worker cache fills. They are not visits or unique people. |
 | Technical diagnostics | Parent corner locally, private Prometheus `link:5180/metrics` and `link` container logs for opted-in devices | First screen/game-ready timing, script/promise/worker errors, offline pack results and size, and speech fallbacks. |
-| GA4 | Realtime and Acquisition reports for the configured web stream | Traffic on the optional informational page for parents and educators only. Does not measure learner visits, activity or offline gameplay. |
+| GA4 via Tag Manager `GTM-55XZ4GQX` | GA4 Realtime, Reports → Engagement → Events (`game_start`) | Visits to the app and parent page, and which games are opened. Anonymous: no names, grades, answers or user IDs; ad signals denied. Nothing is sent while offline. |
 
-## Enable GA4 on the parent/educator landing page
+## GA4 through Google Tag Manager
 
-1. Create or choose a dedicated GA4 web stream for `https://grow.360web.cloud/for-parents/`. Turn off Enhanced Measurement, Google signals and ads personalization for this deployment. Do not link an advertising destination or set a user ID. Review the applicable disclosure and privacy settings for the informational page before enabling the stream.
-2. In the deployment directory on the VPS, put `SPROUTS_GA4_MEASUREMENT_ID=G-...` in the existing Compose `.env` (excluded from Git and deployment sync). For a different deployed hostname also set `SPROUTS_ORIGIN` to that exact origin without a trailing slash.
-3. Recreate the service with `docker compose -f docker-compose.prod.yml up -d`. Open `/for-parents/` in a clean browser. There should be no Google tag request before consent. Opt in and check that the dedicated stream shows a page view in Realtime. Opt back out and verify that a reload does not load the tag. Repeat on the root app and a sidecar. Neither should load the GA tag, even with consent on the informational page.
+`lib/gtm.mjs` loads container `GTM-55XZ4GQX` in the app (imported by `app/mounts.mjs`) and on `/for-parents/`. It sets consent defaults first: `analytics_storage` granted, every `ad_*` signal denied, plus `ads_data_redaction`. Collecting only visit and game counts, without ads or profiles, relies on COPPA's "support for internal operations" exception. Keep it that way: never push learner data to `dataLayer`, and add no ad or remarketing tags to the container. Sidecars opened on their own page (not inside the app) are not counted.
 
-The request for configuration happens only on the informational page. An unset/invalid ID hides the control and never loads the tag. No Google SDK or Measurement Protocol secret is in the learner app. Page views use a canonical path and an external referrer origin if available. No historical GA data is imported. To see traffic on the learner site, use the first-party HTTP counts.
+One-time setup:
+
+1. **GA4** (analytics.google.com): create a property and a Web data stream for `https://grow.360web.cloud`. Copy its measurement ID (`G-...`). In Admin → Data collection, leave **Google signals** off. Don't link Google Ads. In Admin → Data retention, choose 2 months.
+2. **GTM** (tagmanager.google.com), container `GTM-55XZ4GQX`:
+   - Tag **Google tag**, tag ID = the `G-...` ID, trigger **Initialization - All Pages**.
+   - Variable **Data Layer Variable**, name `game_id`.
+   - Trigger **Custom Event**, event name `game_start`.
+   - Tag **Google Analytics: GA4 Event**, measurement ID = the `G-...` ID, event name `game_start`, parameter `game_id` = `{{game_id}}`, trigger = the `game_start` trigger.
+   - **Submit** and publish the container.
+3. **GA4** Admin → Custom definitions → create a custom dimension `game_id` (event scope), so games appear by name in reports.
+4. Open the live site, play a game, and check GA4 Realtime for a page view and `game_start`.
 
 ## Verify production diagnostics
 

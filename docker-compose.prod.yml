@@ -13,7 +13,6 @@ services:
       target: link
     environment:
       SPROUTS_ORIGIN: "${SPROUTS_ORIGIN:-https://grow.360web.cloud}"
-      SPROUTS_GA4_MEASUREMENT_ID: "${SPROUTS_GA4_MEASUREMENT_ID:-}"
     container_name: little-sprouts-link
     restart: unless-stopped
     networks:
