@@ -30,7 +30,7 @@ index ae93c3e..607fa52 100644
 -export { World } from './world/World';
 \ No newline at end of file
 +export { World } from './world/World';
-+export { BoxBufferGeometry, CircleBufferGeometry, ConeBufferGeometry, Group, LatheBufferGeometry, Mesh, MeshBasicMaterial, MeshStandardMaterial, PlaneBufferGeometry, Quaternion, SphereBufferGeometry, TorusBufferGeometry, Vector2, Vector3 } from "three";
++export { BoxBufferGeometry, BufferGeometry, CircleBufferGeometry, ConeBufferGeometry, Float32BufferAttribute, Group, LatheBufferGeometry, Mesh, MeshBasicMaterial, MeshStandardMaterial, PlaneBufferGeometry, Quaternion, SphereBufferGeometry, TorusBufferGeometry, Vector2, Vector3 } from "three";
 diff --git a/src/ts/world/World.ts b/src/ts/world/World.ts
 index 266b6a2..287f397 100644
 --- a/src/ts/world/World.ts

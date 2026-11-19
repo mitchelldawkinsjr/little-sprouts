@@ -18,6 +18,16 @@ Run `node server/serve.mjs` at the repo root. Choose **Sketchbook Mega Ramp** on
 
 Hard car, airplane, and helicopter crashes play a large 3D burst with sparks and smoke at the point of impact. Gentle landings and low-speed bumps stay quiet. The effect is local to this screen during friend play, works offline, and doesn't change how vehicles handle or respawn.
 
+### Garage
+
+Open **Menu → Vehicle garage** to select the Classic Car, Performance SUV, Sports Coupe, Wedge Supercar, Muscle Car, or Dune Buggy. Your choice is saved on this device and applies to the cars at each starting place. Each keeps its existing speed, grip, and suspension settings.
+
+The five new vehicles use original, texture-free bodywork fitted to the stock wheelbase: sloped glass, shaped shoulders and wheel openings, lamps, and distinct rooflines. The buggy has an open roll cage, seats, and exposed engine. Tires and five-spoke rims follow the original wheel objects. The Classic Car keeps the original model and wheel materials.
+
+Compare the [original bodies](../../docs/screenshots/sketchbook-garage-before.png) and [sculpted garage](../../docs/screenshots/sketchbook-garage-after.png), rendered from the game's actual geometry and wheels.
+
+`garage-models.mjs` builds and batches the body details into at most seven meshes per car; the four rim faces share one geometry. `garage-body.mjs` attaches them without replacing the chassis, collision shapes, or wheel contacts, and disposes the custom geometry/materials when switching vehicles or starting places. No textures, remote assets, or additional Three.js runtime are needed. Run `node --test tests/sketchbook-garage.test.mjs` to check mesh validity, rendering budgets, physics preservation, and resource cleanup.
+
 The build ships with the repository, so no npm install is needed to play. All runtime assets are same-origin, each below the service worker's 20 MB per-file limit. Open Little Sprouts online until the offline download is ready before using it off-network.
 
 ## Rebuild the vendor engine

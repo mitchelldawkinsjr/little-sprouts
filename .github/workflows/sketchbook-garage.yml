@@ -21,6 +21,7 @@ jobs:
         run: |
           node --check sidecars/sketchbook/garage.mjs
           node --check sidecars/sketchbook/garage-body.mjs
+          node --check sidecars/sketchbook/garage-models.mjs
           node --check sidecars/sketchbook/trail.mjs
       - name: Test garage
         run: node --test tests/sketchbook-garage.test.mjs
