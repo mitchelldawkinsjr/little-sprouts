@@ -4,7 +4,7 @@ body { margin: 0; overflow: hidden; background: #b7dbaa; }
 #canvas { position: fixed; inset: 0; display: block; touch-action: none; }
 #loading-screen { z-index: 5; }
 #ui-container, .dg.ac { display: none !important; }
-#trail-hud, #trail-guide, #trail-help, #trail-notice, #trail-boarding, #trail-panel, #trail-picker, #trail-friend-panel {
+#trail-hud, #trail-guide, #trail-help, #trail-notice, #trail-boarding, #trail-panel, #trail-picker, #trail-friend-panel, #trail-garage-panel {
   position: fixed;
   z-index: 25;
   color: #163d36;
@@ -55,7 +55,7 @@ body { margin: 0; overflow: hidden; background: #b7dbaa; }
   box-shadow: 0 4px 0 #58764e, 0 7px 16px #1127175c;
   font-size: 13px;
 }
-#trail-panel, #trail-picker, #trail-friend-panel {
+#trail-panel, #trail-picker, #trail-friend-panel, #trail-garage-panel {
   z-index: 50; left: 50%; top: 50%; transform: translate(-50%, -50%);
   box-sizing: border-box;
   width: min(560px, calc(100% - 28px));
@@ -78,7 +78,7 @@ body { margin: 0; overflow: hidden; background: #b7dbaa; }
   font-size: .74rem;
   font-weight: 850;
 }
-#trail-panel h2, #trail-picker h2, #trail-friend-panel h2 {
+#trail-panel h2, #trail-picker h2, #trail-friend-panel, #trail-garage-panel h2 {
   color: #173e35;
   margin: 5px 0 2px;
   font-size: clamp(20px, 4.6vw, 30px);
@@ -90,7 +90,7 @@ body { margin: 0; overflow: hidden; background: #b7dbaa; }
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 9px;
 }
-#trail-actions button, #trail-scenarios button, #trail-picker .trail-back, #trail-friend-panel button {
+#trail-actions button, #trail-scenarios button, #trail-picker .trail-back, #trail-friend-panel, #trail-garage-panel button {
   cursor: pointer; background: #fffef8; border: 1px solid #b8d0b3;
   border-radius: 15px; padding: 7px 11px; min-height: 48px;
   color: #1b4538; font: inherit;
@@ -123,10 +123,10 @@ body { margin: 0; overflow: hidden; background: #b7dbaa; }
 #trail-scenarios button:first-child { background: #fff1bf; border-color: #dbc16c; }
 #trail-scenarios button:first-child .trail-icon { background: #ffdf82; }
 #trail-picker .trail-back { margin-top: 10px; }
-#trail-actions button:hover, #trail-scenarios button:hover, #trail-picker .trail-back:hover, #trail-friend-panel button:hover { background: #edf9de; }
+#trail-actions button:hover, #trail-scenarios button:hover, #trail-picker .trail-back:hover, #trail-friend-panel, #trail-garage-panel button:hover { background: #edf9de; }
 button:focus-visible, button.pad-focus { outline: 3px solid #075f51; outline-offset: 2px; }
 @media (max-height: 360px) {
-  #trail-panel, #trail-picker, #trail-friend-panel { max-height: 94vh; padding: 12px; border-radius: 18px; }
+  #trail-panel, #trail-picker, #trail-friend-panel, #trail-garage-panel { max-height: 94vh; padding: 12px; border-radius: 18px; }
   #trail-actions button.trail-card, #trail-scenarios button.trail-card { min-height: 52px; }
 }
 @media (max-width: 345px) {
@@ -180,7 +180,7 @@ body[data-trail-touch] #trail-help, .pad-cursor, .pad-note { display: none !impo
 body[data-trail-paused] #trail-boarding { display: none !important; }
 
 #trail-friend-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-#trail-friend-panel p { margin: 7px 0; }
+#trail-friend-panel, #trail-garage-panel p { margin: 7px 0; }
 #trail-invite { display: block; overflow-wrap: anywhere; color: #14634d; }
 
 /* In a short iframe, keep the first-touch hints out of the throttle and brake area. */
@@ -188,3 +188,10 @@ body[data-trail-paused] #trail-boarding { display: none !important; }
   .touch-hints > :first-child { left: max(12px, env(safe-area-inset-left)) !important; }
   body[data-trail-touch] #trail-notice { top: calc(max(9px, env(safe-area-inset-top)) + 62px); left: 9px; transform: none; max-width: min(51%, 19rem); }
 }
+
+/* Garage picker: accessible, scrollable, and usable in landscape on tablets. */
+#trail-garage-cars { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+#trail-garage-cars .trail-card { cursor: pointer; min-height: 60px; padding: 10px; text-align: left; border: 2px solid #b8d0b3; border-radius: 15px; background: #fffef8; color: #1b4538; font: 750 15px/1.25 system-ui, sans-serif; }
+#trail-garage-cars .trail-card[aria-pressed="true"] { border-color: #26754f; background: #dff4d2; }
+#trail-garage-back { margin-top: 12px; min-height: 48px; border: 1px solid #b8d0b3; border-radius: 15px; background: #fffef8; padding: 8px 12px; color: #1b4538; font: inherit; cursor: pointer; }
+@media (max-width: 380px) { #trail-garage-cars { grid-template-columns: 1fr; } }

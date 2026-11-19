@@ -1,0 +1,26 @@
+name: Sketchbook garage tests
+on:
+  pull_request:
+    paths:
+      - 'sidecars/sketchbook/**'
+      - 'tests/sketchbook-garage.test.mjs'
+      - '.github/workflows/sketchbook-garage.yml'
+  push:
+    branches:
+      - feat/sketchbook-vehicle-garage
+jobs:
+  garage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check module syntax
+        run: |
+          node --check sidecars/sketchbook/garage.mjs
+          node --check sidecars/sketchbook/garage-body.mjs
+          node --check sidecars/sketchbook/trail.mjs
+      - name: Test garage
+        run: node --test tests/sketchbook-garage.test.mjs
