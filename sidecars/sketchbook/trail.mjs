@@ -7,6 +7,7 @@ import { worldFriendStatus, makeWorldFriends } from '../../lib/world-friends.mjs
 import { friendRoomCode, makeFriendSession, packFriendPose, readFriendPose } from './friends.mjs?v=1';
 import { distanceTo, LANDMARKS, makeTrail, MEGA_RAMP, pastRampLanding, RAMP_LANDING, STOPS } from './checkpoints.mjs?v=trail6';
 
+import { GARAGE, garageChoice, saveGarageChoice } from './garage.mjs';
 import { makeCrashBursts, vehicleKind, watchVehicleCrashes } from './vehicle-crash.mjs';
 
 const $ = id => document.getElementById(id);
@@ -25,7 +26,8 @@ const movementCodes = new Set();
 const pressedTouchKeys = new Set();
 const touchPanel = $('trail-touch');
 const touchButtons = [...touchPanel.querySelectorAll('button')];
-const panelIds = ['trail-panel', 'trail-picker', 'trail-friend-panel'];
+const panelIds = ['trail-panel', 'trail-picker', 'trail-friend-panel', 'trail-garage-panel'];
+let chosenVehicle = garageChoice(globalThis.localStorage);
 const menuOpen = () => panelIds.some(id => !$(id).hidden) || !!document.querySelector('[data-friend-panel]');
 const lights = [];
 const canvas = () => state.world?.renderer.domElement;
@@ -306,6 +308,35 @@ function panel(name) {
 }
 
 function hideMenus() { panel(null); }
+function buildGarage() {
+  const list = $('trail-garage-cars');
+  for (const vehicle of GARAGE) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'trail-card';
+    button.dataset.vehicle = vehicle.id;
+    button.textContent = vehicle.icon + ' ' + vehicle.name;
+    button.onclick = () => {
+      chosenVehicle = saveGarageChoice(globalThis.localStorage, vehicle.id);
+      paintGarage();
+      panel('trail-panel');
+      notice(vehicle.name + ' selected for your next Mega Ramp run.', 4);
+    };
+    list.append(button);
+  }
+  paintGarage();
+}
+function paintGarage() {
+  for (const button of $('trail-garage-cars').children) {
+    const active = button.dataset.vehicle === chosenVehicle.id;
+    button.setAttribute('aria-pressed', String(active));
+    button.textContent = GARAGE.find(vehicle => vehicle.id === button.dataset.vehicle).icon + ' ' +
+      GARAGE.find(vehicle => vehicle.id === button.dataset.vehicle).name + (active ? ' ✓' : '');
+  }
+}
+$('trail-garage').onclick = () => { pause(true); panel('trail-garage-panel'); };
+$('trail-garage-back').onclick = () => panel('trail-panel');
+buildGarage();
 
 function openMenu() {
   if (!state.ready || trail.pending || state.finished) return;
@@ -343,7 +374,8 @@ addEventListener('keydown', event => {
     wifi.shadowRoot?.querySelector('[data-k="cancel"], [data-id="cancel"], [data-id="later"]')?.click();
     return;
   }
-  if (!$('trail-picker').hidden) closeStartingPlaces();
+  if (!$('trail-garage-panel').hidden) panel('trail-panel');
+  else if (!$('trail-picker').hidden) closeStartingPlaces();
   else if (!$('trail-friend-panel').hidden) panel('trail-panel');
   else if (!$('trail-panel').hidden) resumeGame();
   else openMenu();
