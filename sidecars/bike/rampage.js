@@ -174,13 +174,15 @@ const cam = { x: 0, y: 0, shake: 0 };
 function addShake(v) { cam.shake = Math.min(28, cam.shake + v); }
 
 const GRAV = 0.34, SUB = 4, WHEEL_R = 16, WHEEL_BASE = 50, WHEEL_OFF_Y = 14;
-const SPRING = 0.22, DAMP = 0.28, ENGINE = 0.72, TOP = 34, FRICTION = 0.78, AIR_CTRL = 0.028, MAX_AV = 0.085;
+const SPRING = 0.22, DAMP = 0.28, ENGINE = 0.72, TOP = 34, FRICTION = 0.78, AIR_CTRL = 0.05, MAX_AV = 0.085;
 /** Wheelie: how far the nose lifts while leaning back with the gas on (radians from the slope), and without gas. */
 const WHEELIE = 0.62, WHEELIE_COAST = 0.34;
 /** A wheelie this long (frames, about 2/3 of a second) or longer scores when it ends. */
 const WHEELIE_MIN = 40;
-/** Top spin while leaning in the air: fast enough for a full flip off a ramp (about 0.9 s of air). */
-const MAX_AV_AIR = 0.125;
+/** Top spin while leaning in the air: a full flip fits in a crest jump of 25 or so frames of air. */
+const MAX_AV_AIR = 0.25;
+/** A flip counts this close to a full turn (radians): the landing already settles the bike onto its wheels from there. */
+const FLIP_SLACK = 0.7;
 
 let bike, level, levelIdx, prevGround, peakFall, airTime, flipAccum, frameAngStart;
 let lastCheckpoint, totalFlips, comboScore, elapsed, crashFreeze, finished, finishStars;
@@ -278,11 +280,14 @@ function physicsStep(scale) {
   const now = performance.now();
   const leaning = canLean(now);
   const air = leanScale(now);
-  const avCap = inScare(now) ? MAX_AV * 1.55 : !onGround && (input.back() || input.fwd()) ? MAX_AV_AIR : MAX_AV;
+  // Real air (a few frames off the dirt, not a wheelie's bounce): leaning spins fast enough to flip.
+  const flying = !onGround && airTime >= 4;
+  const avCap = inScare(now) ? MAX_AV * 1.55 : flying && (input.back() || input.fwd()) ? MAX_AV_AIR : MAX_AV;
+  const spin = (flying ? AIR_CTRL : 0.02) * air * scale;
   if (!onGround) {
     if (leaning && air > 0) {
-      if (input.back()) b.av -= AIR_CTRL * air * scale;
-      if (input.fwd()) b.av += AIR_CTRL * air * scale;
+      if (input.back()) b.av -= spin;
+      if (input.fwd()) b.av += spin;
     } else {
       const want = Math.atan(terrainSlope(b.x, level));
       b.av += turnOf(want - b.ang) * 0.05 * scale;
@@ -313,7 +318,9 @@ function physicsStep(scale) {
 
   if (leaning && now >= scareSafeUntil) {
     const head = rot(0, -36, b.ang);
-    if (b.y + head.y > terrainY(b.x + head.x, level) + 4) return { onGround, touching, crash: true };
+    // A crash is the rider's head in the dirt with the bike well off its wheels; landing a flip nearly upright rides on.
+    const tipped = Math.abs(turnOf(b.ang - Math.atan(terrainSlope(b.x, level)))) > 1.05;
+    if (tipped && b.y + head.y > terrainY(b.x + head.x, level) + 4) return { onGround, touching, crash: true };
   }
   return { onGround, touching, crash: false };
 }
@@ -417,7 +424,7 @@ function updatePlay(dt) {
       }
     }
     if (airTime > 8 && canLean()) {
-      const n = Math.floor(Math.abs(flipAccum) / (Math.PI * 2));
+      const n = Math.floor((Math.abs(flipAccum) + FLIP_SLACK) / (Math.PI * 2));
       if (n > 0) { totalFlips += n; comboScore += n * 250; audio.flip(n); flashFlip = { n, t: 90, back: flipAccum < 0 }; }
     }
     // Landed: count the bike's angle as one turn again, so it doesn't unwind the flip on the ground.
@@ -1147,6 +1154,8 @@ window.DirtRampage = {
       wheelie: wheelieFrames,
       flips: totalFlips,
       wheelies: totalWheelies,
+      air: airTime,
+      spin: +flipAccum.toFixed(2),
       grounded: !!prevGround,
       vx: bike ? +bike.vx.toFixed(2) : 0,
       ang: bike ? +bike.ang.toFixed(3) : 0,
