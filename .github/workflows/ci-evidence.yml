@@ -47,7 +47,7 @@ jobs:
                   continue
               metadata = json.loads(out)
               notice(f'Run {run} metadata', json.dumps({key:metadata.get(key) for key in ['id','run_attempt','head_sha','status','conclusion']}))
-              code, out, error = cli(['run','view',str(run),'--repo',repo,'--log-failed'])
+              code, out, error = cli(['run','view',str(run),'--repo',repo,'--attempt','1','--log-failed'])
               if code:
                   job_code, jobs_text, job_error = cli(['api',f'repos/{repo}/actions/runs/{run}/jobs'])
                   logs=[]
