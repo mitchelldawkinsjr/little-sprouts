@@ -8,6 +8,7 @@ import { friendRoomCode, makeFriendSession, packFriendPose, readFriendPose } fro
 import { distanceTo, LANDMARKS, makeTrail, MEGA_RAMP, pastRampLanding, RAMP_LANDING, STOPS } from './checkpoints.mjs?v=trail6';
 
 import { GARAGE, garageChoice, saveGarageChoice } from './garage.mjs';
+import { applyGarageVehicle } from './garage-body.mjs';
 import { makeCrashBursts, vehicleKind, watchVehicleCrashes } from './vehicle-crash.mjs';
 
 const $ = id => document.getElementById(id);
@@ -308,6 +309,12 @@ function panel(name) {
 }
 
 function hideMenus() { panel(null); }
+function applySelectedGarage() {
+  if (!state.world) return;
+  for (const car of state.world.vehicles) {
+    if (vehicleKind(car) === 'car') applyGarageVehicle(runtime, car, chosenVehicle.id);
+  }
+}
 function buildGarage() {
   const list = $('trail-garage-cars');
   for (const vehicle of GARAGE) {
@@ -319,6 +326,7 @@ function buildGarage() {
     button.onclick = () => {
       chosenVehicle = saveGarageChoice(globalThis.localStorage, vehicle.id);
       paintGarage();
+      applySelectedGarage();
       panel('trail-panel');
       notice(vehicle.name + ' selected for your next Mega Ramp run.', 4);
     };
@@ -658,6 +666,7 @@ async function loaded() {
     state.world.cameraOperator.phi = 18;
     state.world.cameraOperator.targetRadius = 4.4;
   }
+  applySelectedGarage();
   vehicleCrashes.track(state.world.vehicles);
   state.world.setTimeScale(1);
   state.ready = true;
