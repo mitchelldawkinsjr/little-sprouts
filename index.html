@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <!-- three.js for the 3D games that load inside the app on demand (Garden chase). -->
+  <script type="importmap">{ "imports": { "three": "./vendor/three/build/three.module.js?v=r187" } }</script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#264b3c">
   <meta name="mobile-web-app-capable" content="yes">
@@ -12,7 +14,7 @@
   <link rel="icon" href="icons/icon-192.png" type="image/png">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
   <link rel="stylesheet" href="vendor/fonts/fonts.css?v=r187">
-  <link rel="stylesheet" href="style.css?v=tablet1-ask1-boss1">
+  <link rel="stylesheet" href="style.css?v=tablet1-ask1-boss1-3d1">
   <link rel="stylesheet" href="lib/game-touch.css?v=1">
 </head>
 <body>
@@ -330,7 +332,7 @@
     <button type="button" class="quiet" id="listenAgain">Hear it again</button>
     <button type="button" class="quiet" id="listenBack">← All games</button>
   </div>
-  <script type="module" src="app.js?v=reset2-boss1"></script>
+  <script type="module" src="app.js?v=reset2-boss1-3d1"></script>
   <script type="module" src="lib/fire-updater.js"></script>
 </body>
 </html>

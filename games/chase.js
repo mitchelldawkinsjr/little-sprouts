@@ -170,6 +170,45 @@ function drawMark(ctx, choice, x, y, s) {
 }
 
 // The player is the learner's garden buddy (ADR 0001); it walks while moving.
+/** The answer card over a berry, centred on a `w` x `h` canvas: the 3D view shows it as a floating card. */
+export function paintBerryLabel(ctx, berry, w, h) {
+  ctx.clearRect(0, 0, w, h);
+  if (berry.shape) {
+    const s = h * 0.9;
+    ctx.fillStyle = '#faf9f5';
+    ctx.strokeStyle = '#244b3d';
+    ctx.lineWidth = 6;
+    roundBox(ctx, (w - s) / 2, (h - s) / 2, s, s, 22);
+    ctx.fill();
+    ctx.stroke();
+    drawMark(ctx, berry, w / 2, h / 2, s * 1.15);
+    return;
+  }
+  let fill = Math.round(h * 0.5);
+  ctx.font = `700 ${fill}px Outfit, sans-serif`;
+  while (fill > 14 && ctx.measureText(berry.label).width > w * 0.78 - (berry.fill ? fill : 0)) {
+    fill -= 2;
+    ctx.font = `700 ${fill}px Outfit, sans-serif`;
+  }
+  const textW = ctx.measureText(berry.label).width;
+  const mark = berry.fill ? fill : 0;
+  const pw = Math.min(w - 8, textW + mark + 36);
+  const ph = Math.min(h - 8, fill + 30);
+  const x = (w - pw) / 2;
+  const y = (h - ph) / 2;
+  ctx.fillStyle = '#faf9f5';
+  ctx.strokeStyle = '#244b3d';
+  ctx.lineWidth = 6;
+  roundBox(ctx, x, y, pw, ph, 20);
+  ctx.fill();
+  ctx.stroke();
+  if (mark) drawMark(ctx, berry, x + 18 + mark * 0.35, h / 2, fill);
+  ctx.fillStyle = '#24332c';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(berry.label, x + (mark ? mark + 24 : 18), h / 2 + 2);
+}
+
 function drawBeetle(ctx, kind, x, y, s, dir, dying, moving) {
   drawBuddy(ctx, kind, x + s / 2, y + s * 0.95, s * 1.05, {
     flip: dir === 'left',
@@ -446,6 +485,42 @@ export function mountChase(root, { buddy, prompt, choices = [], copies = 2, play
     hunter.y = next.y;
   };
 
+  // The 3D view (games/chase3d.js) loads while the first frames draw flat. If it can't keep up on this
+  // device, the game goes back to the flat view and remembers that here.
+  let view3d = null;
+  let slowWindows = 0;
+  let frameTimes = [];
+  let since3d = 0;
+  const VIEW_KEY = 'sprouts-chase-view';
+  // 'flat' is remembered after a slow device falls back; '3d' (or 'boxes', the weakest devices' look) forces 3D with no fallback, for testing.
+  const viewPref = (() => { try { return localStorage.getItem(VIEW_KEY) || ''; } catch { return ''; } })();
+  const flatOnly = viewPref === 'flat';
+  if (!flatOnly) {
+    import('./chase3d.js?v=chase3d1').then(m => {
+      if (session.dead) return;
+      view3d = m.makeChase3d(stage, { map, rows: ROWS, cols: COLS, unit: UNIT, wall: WALL, kind, boss: hunter?.design ?? null, paintLabel: paintBerryLabel, ...(viewPref === 'boxes' ? { look: 'boxes' } : {}) });
+      canvas.hidden = true;
+      since3d = performance.now();
+    }).catch(() => { /* no WebGL: the flat view carries on */ });
+  }
+  const goFlat = () => {
+    view3d?.dispose();
+    view3d = null;
+    canvas.hidden = false;
+    try { localStorage.setItem(VIEW_KEY, 'flat'); } catch { /* private window */ }
+  };
+  /** After a settling-in spell, two slow 3-second spells in a row (under about 22 frames a second) mean flat. */
+  const watchSpeed = (now, dt) => {
+    if (!view3d || viewPref === '3d' || viewPref === 'boxes' || now - since3d < 4000) return;
+    frameTimes.push(dt);
+    if (frameTimes.reduce((a, b) => a + b, 0) < 3) return;
+    const sorted = frameTimes.slice().sort((a, b) => a - b);
+    const median = sorted[sorted.length >> 1];
+    frameTimes = [];
+    slowWindows = median > 0.045 ? slowWindows + 1 : 0;
+    if (slowWindows >= 2) goFlat();
+  };
+
   const fit = () => {
     const cssW = Math.max(280, stage.clientWidth || 640);
     const cssH = Math.max(220, stage.clientHeight || 480);
@@ -457,6 +532,7 @@ export function mountChase(root, { buddy, prompt, choices = [], copies = 2, play
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     width = cssW;
     height = cssH;
+    view3d?.resize(cssW, cssH);
   };
 
   const draw = () => {
@@ -545,8 +621,10 @@ export function mountChase(root, { buddy, prompt, choices = [], copies = 2, play
 
   const frame = now => {
     if (session.dead) return;
-    const dt = Math.min(0.05, last ? (now - last) / 1000 : 0.016);
+    const raw = last ? (now - last) / 1000 : 0.016;
+    const dt = Math.min(0.05, raw);
     last = now;
+    if (raw < 1) watchSpeed(now, raw);
     fit();
     tick += 1;
     berries.forEach(berry => { berry.flash = Math.max(0, berry.flash - dt); });
@@ -574,7 +652,8 @@ export function mountChase(root, { buddy, prompt, choices = [], copies = 2, play
         } else if (passed()) armed = true;
       }
     }
-    draw();
+    if (view3d) view3d.draw({ player, moving: player.dir !== 'none', dying, critters, hunter, list: berries, tick, dt });
+    else draw();
     session.raf = requestAnimationFrame(frame);
   };
 
@@ -615,12 +694,13 @@ export function mountChase(root, { buddy, prompt, choices = [], copies = 2, play
     else steer(dy < 0 ? 'up' : 'down');
     drag = { x: e.clientX, y: e.clientY, id: e.pointerId };
   };
-  canvas.addEventListener('pointerdown', onPointerDown);
-  canvas.addEventListener('pointermove', onPointerMove);
+  stage.addEventListener('pointerdown', onPointerDown);
+  stage.addEventListener('pointermove', onPointerMove);
   session.cleanups.push(() => {
     document.removeEventListener('keydown', onKey);
-    canvas.removeEventListener('pointerdown', onPointerDown);
-    canvas.removeEventListener('pointermove', onPointerMove);
+    stage.removeEventListener('pointerdown', onPointerDown);
+    stage.removeEventListener('pointermove', onPointerMove);
+    view3d?.dispose();
   });
   session.raf = requestAnimationFrame(frame);
 }
