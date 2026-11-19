@@ -24,9 +24,12 @@ final class SafariSpeechTests: XCTestCase {
 
     private func expect(_ label: String, timeout: TimeInterval = 45,
                         file: StaticString = #filePath, line: UInt = #line) {
-        XCTAssertTrue(safari.webViews.staticTexts[label].waitForExistence(timeout: timeout),
-                      "Missing Safari speech result: \(label)\n\(safari.debugDescription)",
-                      file: file, line: line)
+        if !safari.webViews.staticTexts[label].waitForExistence(timeout: timeout) {
+            let observed = safari.webViews.staticTexts.allElementsBoundByIndex
+                .map { $0.label }.joined(separator: "\n")
+            XCTFail("Missing Safari speech result: \(label)\nObserved page text:\n\(observed)\nFull hierarchy:\n\(safari.debugDescription)",
+                    file: file, line: line)
+        }
     }
 
     private func tap(_ label: String, file: StaticString = #filePath, line: UInt = #line) {
@@ -35,12 +38,17 @@ final class SafariSpeechTests: XCTestCase {
         button.tap()
     }
 
-    func testIncludedRecordingAndRealEnglishQuestionsInSafari() throws {
+    func testIncludedRecordingInSafari() throws {
         expect("Speech fixture ready")
         expect("English voice ready")
 
         tap("Play included recording")
         expect("Recording passed")
+    }
+
+    func testRealEnglishQuestionsAndReplayInSafari() throws {
+        expect("Speech fixture ready")
+        expect("English voice ready")
 
         tap("Play new question")
         expect("Question passed")

@@ -30,3 +30,12 @@ check.
 To run on a Mac with Xcode, XcodeGen, and an available iPhone Simulator, follow
 the workflow commands. The fixture URL is
 `http://127.0.0.1:4179/tools/iphone-simulator/speech.html`.
+
+To inspect a retained run without booting another simulator, dispatch the same
+workflow with `evidence_run_id` set to that Actions run's numeric ID. The
+evidence-only job downloads the same repository's `iphone-safari-speech-evidence`
+artifact and re-reads its XCTest summary with the current reporting script. It
+retains the parsed summary and original screenshot and explicitly identifies
+the original run and outcome. A failed original run remains a failure; reading
+its artifact does not constitute a new playback test. Leave `evidence_run_id`
+empty to run the normal iPhone Simulator Safari checks.

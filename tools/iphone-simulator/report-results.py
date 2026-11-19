@@ -2,11 +2,25 @@
 import json
 import os
 from pathlib import Path
+import re
 import sys
 
 
 def escaped(message):
     return message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+
+
+def concise(message):
+    # Safari's accessibility dump has many nested container frames before the
+    # visible playback result. Keep the actual labels and diagnostics first.
+    lines = []
+    for line in message.splitlines():
+        if re.match(r"^\s*(?:→)?(?:Other|WebView|Window|ScrollView|Application),", line):
+            continue
+        if line.strip().startswith(("Attributes:", "Element subtree:")):
+            continue
+        lines.append(line.strip())
+    return "\n".join(lines)
 
 
 def failure_messages(value):
@@ -56,12 +70,13 @@ if failed:
         build = build_path.read_text(errors="replace").splitlines()
         selected = [line for line in build if any(word in line.lower() for word in ("error:", "failed", "timed out"))]
         messages = (selected or build)[-10:]
-    text = "\n".join(dict.fromkeys(messages)) or "The native Safari test failed before creating an XCTest result or build log."
+    text = "\n".join(concise(message) for message in dict.fromkeys(messages)) or "The native Safari test failed before creating an XCTest result or build log."
     print(f"::error title=iPhone Simulator Safari verification failed::{escaped(text[:4000])}")
     if outcome == "success":
         sys.exit(1)
 elif outcome == "success":
-    if summary.get("passedTests", 0) < 1 or summary.get("failedTests", 0) or summary.get("skippedTests", 0):
+    expected = int(os.environ.get("SPROUTS_SAFARI_EXPECTED_TESTS", "1"))
+    if summary.get("passedTests", 0) < expected or summary.get("failedTests", 0) or summary.get("skippedTests", 0):
         print("::error::Native playback is unverified: require at least one passing XCTest, zero failures and zero skipped tests.")
         sys.exit(1)
     print(f"::notice title=iPhone Simulator Safari verified::{escaped(' '.join(lines[:3]))}")

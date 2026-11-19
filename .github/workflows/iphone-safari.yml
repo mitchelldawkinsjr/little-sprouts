@@ -2,6 +2,12 @@ name: iPhone Simulator Safari speech
 
 on:
   workflow_dispatch:
+    inputs:
+      evidence_run_id:
+        description: 'Inspect an existing Safari run artifact without running new playback tests'
+        required: false
+        default: ''
+        type: string
   pull_request:
     paths:
       - 'lib/speech*'
@@ -23,6 +29,8 @@ permissions:
 
 jobs:
   safari-speech:
+    name: ${{ github.event_name == 'workflow_dispatch' && inputs.evidence_run_id != '' && 'Native Safari not requested (evidence only)' || 'safari-speech' }}
+    if: github.event_name != 'workflow_dispatch' || inputs.evidence_run_id == ''
     runs-on: macos-15
     timeout-minutes: 25
     steps:
@@ -68,6 +76,7 @@ jobs:
         if: always()
         env:
           SPROUTS_SAFARI_TEST_OUTCOME: ${{ steps.safari_test.outcome }}
+          SPROUTS_SAFARI_EXPECTED_TESTS: '2'
         run: |
           if [ -d "$RUNNER_TEMP/sprouts-safari.xcresult" ]; then
             xcrun xcresulttool get test-results summary \
@@ -94,5 +103,65 @@ jobs:
             ${{ runner.temp }}/sprouts-safari-build.log
             ${{ runner.temp }}/sprouts-speech-server.log
             ${{ runner.temp }}/sprouts-simulators.json
+          if-no-files-found: warn
+          retention-days: 7
+
+  inspect-existing-evidence:
+    name: Inspect prior native results
+    if: github.event_name == 'workflow_dispatch' && inputs.evidence_run_id != ''
+    runs-on: macos-15
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Identify the original run
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVIDENCE_RUN_ID: ${{ inputs.evidence_run_id }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$EVIDENCE_RUN_ID" =~ ^[0-9]+$ ]]; then
+            echo '::error::evidence_run_id must be a numeric Actions run ID from this repository.'
+            exit 1
+          fi
+          conclusion="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$EVIDENCE_RUN_ID" --jq .conclusion)"
+          echo "conclusion=$conclusion" >> "$GITHUB_OUTPUT"
+          echo "::notice title=Existing iPhone Safari evidence::Inspecting run $EVIDENCE_RUN_ID ($conclusion); no new playback test is being run."
+          echo "Evidence-only inspection of [run $EVIDENCE_RUN_ID](https://github.com/$GITHUB_REPOSITORY/actions/runs/$EVIDENCE_RUN_ID), original outcome: **$conclusion**. This job does not run new playback tests." >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/download-artifact@v4
+        with:
+          name: iphone-safari-speech-evidence
+          path: ${{ runner.temp }}/existing-safari-evidence
+          run-id: ${{ inputs.evidence_run_id }}
+          github-token: ${{ github.token }}
+      - name: Read the original native XCTest result
+        env:
+          SPROUTS_SAFARI_TEST_OUTCOME: ${{ steps.source.outputs.conclusion }}
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/existing-safari-evidence"
+          result_bundle="$(find "$evidence" -name '*.xcresult' -type d -print -quit)"
+          if [ -z "$result_bundle" ]; then
+            echo '::error::The selected artifact contains no XCTest result bundle; native playback remains unverified.'
+            exit 1
+          fi
+          xcrun xcresulttool get test-results summary --path "$result_bundle" --compact > "$evidence/sprouts-safari-summary.json"
+          python3 tools/iphone-simulator/report-results.py \
+            "$evidence/sprouts-safari-summary.json" \
+            "$evidence/sprouts-safari-build.log"
+          if [ "$SPROUTS_SAFARI_TEST_OUTCOME" != success ]; then
+            echo '::error::The original native Safari test run did not pass. Reprocessing its artifact does not change that outcome.'
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: iphone-safari-reprocessed-${{ inputs.evidence_run_id }}
+          path: |
+            ${{ runner.temp }}/existing-safari-evidence/sprouts-safari-summary.json
+            ${{ runner.temp }}/existing-safari-evidence/sprouts-safari-result.png
           if-no-files-found: warn
           retention-days: 7
