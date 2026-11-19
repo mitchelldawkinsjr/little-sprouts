@@ -1,4 +1,4 @@
-"""Regressions for Fire Tablet friend QR camera and chirp microphone permissions."""
+"""Regressions for the generated Fire Tablet Android project."""
 import shutil
 import subprocess
 import sys
@@ -33,9 +33,25 @@ class FriendMediaPermissionsTests(unittest.TestCase):
             gradle = root / ".fire-build/android/app/build.gradle"
             gradle.write_text("// minimal generated test build.gradle\n")
 
+            wrapper = root / ".fire-build/android/gradle/wrapper/gradle-wrapper.properties"
+            wrapper.parent.mkdir(parents=True)
+            wrapper.write_text(
+                "distributionBase=GRADLE_USER_HOME\n"
+                r"distributionUrl=https\://services.gradle.org/distributions/gradle-8.11.1-all.zip" "\n"
+                "networkTimeout=10000\n"
+                "validateDistributionUrl=true\n"
+            )
             for _ in range(2):
                 subprocess.run([sys.executable, str(tools / "install-updater.py")],
                                cwd=root, check=True, capture_output=True, text=True)
+            wrapper_lines = wrapper.read_text().splitlines()
+            self.assertCountEqual(wrapper_lines, [
+                "distributionBase=GRADLE_USER_HOME",
+                "validateDistributionUrl=true",
+                r"distributionUrl=https\://services.gradle.org/distributions/gradle-8.11.1-bin.zip",
+                "distributionSha256Sum=f397b287023acdba1e9f6fc5ea72d22dd63669d59ed4a289a29b1a76eee151c6",
+                "networkTimeout=120000",
+            ])
             document = ET.parse(manifest).getroot()
             permissions = [node.get(ANDROID + "name") for node in document.findall("uses-permission")]
             for permission in (

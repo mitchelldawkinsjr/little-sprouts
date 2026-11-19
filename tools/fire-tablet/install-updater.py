@@ -1,8 +1,27 @@
-"""Patch the generated Capacitor Android project with the native Wi-Fi updater."""
+"""Apply Little Sprouts patches to the generated Capacitor Android project."""
 from pathlib import Path
 import xml.etree.ElementTree as ET
 root = Path(__file__).resolve().parents[2]
-app = root / ".fire-build/android/app/src/main"
+android = root / ".fire-build/android"
+wrapper = android / "gradle/wrapper/gradle-wrapper.properties"
+# Capacitor generates a fresh wrapper for both APK workflows. Keep its Gradle
+# version, but download only the binaries and tolerate slower CI connections.
+# Official checksum: https://gradle.org/release-checksums/#v8.11.1
+distribution = r"https\://services.gradle.org/distributions/gradle-8.11.1"
+settings = {
+    "distributionUrl": distribution + "-bin.zip",
+    "distributionSha256Sum": "f397b287023acdba1e9f6fc5ea72d22dd63669d59ed4a289a29b1a76eee151c6",
+    "networkTimeout": "120000",
+}
+lines = wrapper.read_text(encoding="utf-8").splitlines()
+urls = [line.partition("=")[2] for line in lines if line.startswith("distributionUrl=")]
+if urls not in ([distribution + "-all.zip"], [settings["distributionUrl"]]):
+    raise SystemExit("Unexpected Capacitor Gradle distribution. Review the pinned version and checksum.")
+lines = [line for line in lines if line.partition("=")[0] not in settings]
+lines.extend(f"{key}={value}" for key, value in settings.items())
+wrapper.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+app = android / "app/src/main"
 java = app / "java/org/littlesprouts/learning"
 java.mkdir(parents=True, exist_ok=True)
 (java / "UpdaterPlugin.java").write_text((root / "tools/fire-tablet/UpdaterPlugin.java").read_text())
@@ -76,7 +95,7 @@ tree.write(manifest, encoding="utf-8", xml_declaration=True)
 xml = app / "res/xml"
 xml.mkdir(parents=True, exist_ok=True)
 (xml / "sprouts_update_paths.xml").write_text('<?xml version="1.0" encoding="utf-8"?><paths xmlns:android="http://schemas.android.com/apk/res/android"><files-path name="updates" path="updates/" /></paths>')
-gradle = root / ".fire-build/android/app/build.gradle"
+gradle = android / "app/build.gradle"
 text = gradle.read_text()
 if "// Sprouts native audio assets" not in text:
     gradle.write_text(text + """
