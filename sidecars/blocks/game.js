@@ -177,12 +177,13 @@ function setMode(mode) {
   // A build kit is picked: the hand is empty, and a tap puts the whole kit down.
   if (uiEntity.GetComponent('UIController').Kit) tools.held_.visible = false;
   const dig = tools.Mode === 'dig';
-  uiEntity.GetComponent('UIController').ShowMode(tools.Mode);
-  $('modeIcon').textContent = dig ? '⛏' : '🧱';
-  $('modeText').textContent = dig ? 'Dig' : 'Build';
-  $('mode').classList.toggle('on', dig);
+  const sword = tools.Mode === 'sword';
+  uiEntity.GetComponent('UIController').ShowMode(sword ? 'dig' : tools.Mode);
+  $('modeIcon').textContent = sword ? '⚔️' : dig ? '⛏' : '🧱';
+  $('modeText').textContent = sword ? 'Sword' : dig ? 'Dig' : 'Build';
+  $('mode').classList.toggle('on', dig || sword);
 }
-$('mode').addEventListener('click', () => setMode(tools.Mode === 'dig' ? 'build' : 'dig'));
+$('mode').addEventListener('click', () => setMode(tools.Mode === 'build' ? 'dig' : tools.Mode === 'dig' ? 'sword' : 'build'));
 
 // ---- Save the world in this browser.
 let saveDirty = false;
@@ -891,9 +892,36 @@ function tappedChest(ndc) {
   return true;
 }
 
+// Sword attacks are short-range, face-directed and cannot affect friendly players or blocks.
+let lastSwordSwing = -Infinity;
+function swingAtBug() {
+  const now = performance.now();
+  if (now - lastSwordSwing < 550) return;
+  lastSwordSwing = now;
+  tools.SwingSword();
+  blip(430, 0.13, 'triangle', 0.1);
+  const p = playerFeet();
+  const fx = -Math.sin(player.Yaw), fz = -Math.cos(player.Yaw);
+  let target = null, nearest = Infinity;
+  for (const bug of night.bugs) {
+    if (bug.state !== 'come') continue;
+    const dx = bug.x - p.x, dz = bug.z - p.z;
+    const dist = Math.hypot(dx, dz);
+    if (dist > 4 || dist < 0.1 || (dx * fx + dz * fz) / dist < 0.55) continue;
+    if (dist < nearest) { target = bug; nearest = dist; }
+  }
+  if (!target) return;
+  target.state = 'leave';
+  target.fade = 0;
+  burst(new THREE.Vector3(target.x, target.y + 1, target.z));
+  note('⚔️ Great swing! The bug ran away!', 2);
+  blip(820, 0.17, 'sine', 0.1);
+}
+
 function act(ndc) {
   if (friend.loading || quest.open || questionHolding() || night.grab) return;
   if (tappedChest(ndc || { x: 0, y: 0 })) return;
+  if (tools.Mode === 'sword') { swingAtBug(); return; }
   if (tools.Mode === 'build' && ui.Kit) { placeKit(ui.Kit, ndc); return; }
   tools.Act(ndc);
 }
