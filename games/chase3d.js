@@ -166,8 +166,12 @@ export function makeChase3d(host, { map, rows, cols, unit, wall, kind, boss, pai
 
   // The child's built boss, standing on the paths, its body following the head like a chain.
   let bossRig = null;
-  if (boss) {
-    bossRig = makeBoss(boss);
+  /** Build (or swap, or remove with null) the boss; the start screen's builder calls this on every change. */
+  function setBoss(design) {
+    bossRig?.dispose();
+    bossRig = null;
+    if (!design) return;
+    bossRig = makeBoss(design);
     const rigs = [bossRig.lead, ...bossRig.segs.map(seg => seg.group)];
     rigs.forEach(piece => piece.scale.multiplyScalar(BOSS_SCALE));
     bossRig.group.updateMatrixWorld(true);
@@ -175,6 +179,7 @@ export function makeChase3d(host, { map, rows, cols, unit, wall, kind, boss, pai
     bossRig.pieces = rigs;
     scene.add(bossRig.group);
   }
+  setBoss(boss);
 
   // Berries: a red berry with a leaf, and its answer on a card that always faces the camera.
   const berryGeo = keep(new THREE.SphereGeometry(0.36, 14, 10));
@@ -222,16 +227,29 @@ export function makeChase3d(host, { map, rows, cols, unit, wall, kind, boss, pai
     const halfH = Math.min(D, VIEW_CELLS * CELL) / 2;
     camDist = halfH / Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) / Math.sin(TILT) * 1.05;
   }
-  function follow(x, z, snap) {
-    const halfH = camDist * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * 0.9;
+  let zoom = 1;
+  /** `close`: the builder is open, so come in near the boss and keep it clear of the card (right of it, or above on a phone). */
+  function follow(x, z, snap, close = false, dt = 1 / 60) {
+    // Eases in about half a second whatever the frame rate.
+    const k = snap ? 1 : 1 - Math.exp(-dt * 5);
+    zoom += ((close ? 0.45 : 1) - zoom) * k;
+    const dist = camDist * zoom;
+    const halfH = dist * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * 0.9;
     const halfW = halfH * camera.aspect;
-    const clampTo = (v, half, size) => (half * 2 >= size ? 0 : THREE.MathUtils.clamp(v, -size / 2 + half, size / 2 - half));
-    const tx = clampTo(x, halfW, W + CELL);
-    const tz = clampTo(z, halfH, D + CELL);
-    const k = snap ? 1 : 0.08;
+    let tx;
+    let tz;
+    if (close) {
+      const wide = camera.aspect >= 1.1;
+      tx = x - (wide ? halfW * 0.4 : 0);
+      tz = z + (wide ? 0 : halfH * 0.45);
+    } else {
+      const clampTo = (v, half, size) => (half * 2 >= size ? 0 : THREE.MathUtils.clamp(v, -size / 2 + half, size / 2 - half));
+      tx = clampTo(x, halfW, W + CELL);
+      tz = clampTo(z, halfH, D + CELL);
+    }
     target.x += (tx - target.x) * k;
     target.z += (tz - target.z) * k;
-    camera.position.copy(camDir).multiplyScalar(camDist).add(target);
+    camera.position.copy(camDir).multiplyScalar(dist).add(target);
     camera.lookAt(target);
   }
   let snapped = false;
@@ -248,7 +266,8 @@ export function makeChase3d(host, { map, rows, cols, unit, wall, kind, boss, pai
       fitCamera();
     },
     /** Draw one frame of the game. `snap` is the game's own state, read only. */
-    draw({ player, moving, dying, critters, hunter, list, tick, dt }) {
+    setBoss,
+    draw({ player, moving, dying, critters, hunter, list, tick, dt, focus = 'buddy' }) {
       const t = tick / 60;
       // Buddy: faces the way it goes, runs while moving, and spins down when caught.
       toWorld(player.x, player.y, unit, cols, rows, at);
@@ -258,7 +277,11 @@ export function makeChase3d(host, { map, rows, cols, unit, wall, kind, boss, pai
       buddy.group.scale.setScalar(BUDDY_SCALE * (dying > 0 ? Math.max(0.3, dying) : 1));
       buddy.animate(dt, moving && dying <= 0 ? 1 : 0, t);
       grass?.update(t, at);
-      follow(at.x, at.z, !snapped);
+      // The camera follows the buddy, or the boss while the builder is open.
+      if (focus === 'boss' && hunter) {
+        const b = toWorld(hunter.x, hunter.y, unit, cols, rows);
+        follow(b.x, b.z, !snapped, true, dt);
+      } else follow(at.x, at.z, !snapped, false, dt);
       snapped = true;
 
       critters.forEach((snail, i) => {

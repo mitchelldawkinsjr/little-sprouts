@@ -53,7 +53,7 @@ import { mountSky, stopSky } from '../games/sky.js?v=ask-first2-r2-sfx1';
 import { mountPlanet, stopPlanet } from '../games/planet.js?v=sky-rocks2-sfx1';
 import { mountPuzzle, stopPuzzle } from '../games/puzzle.js?v=puzzle-glass-sfx1';
 import { mountMatch, stopMatch } from '../games/match.js?v=pair-match2-sfx1';
-import { mountChase, stopChase } from '../games/chase.js?v=gear2-sfx1-boss1-3d1';
+import { mountChase, stopChase } from '../games/chase.js?v=gear2-sfx1-boss1-3d4';
 import { mountHop, stopHop } from '../games/hop.js?v=gear2-sfx1';
 import { mountToast, stopToast } from '../games/toast.js?v=ask-first-r2-sfx1';
 import { mountGlide, stopGlide } from '../games/glide.js?v=boom1-ask1';
@@ -104,8 +104,6 @@ import { wornGear } from '../logic/shop.mjs?v=shop3';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=aviator1';
 import { bossName, readBoss } from '../lib/boss-design.mjs';
-import { makeBossBuilder } from '../lib/boss-builder.mjs';
-import { drawBoss2d } from '../lib/boss-2d.mjs?v=chase1';
 
 const words = list => new Set(list.split(' '));
 const SCREEN = words('catch lanes');
@@ -1162,73 +1160,6 @@ export function registerMounts(rt) {
   function setChaseBoss(on) {
     try { on ? localStorage.removeItem(CHASE_BOSS_OFF) : localStorage.setItem(CHASE_BOSS_OFF, '1'); } catch { /* private window */ }
   }
-  function chaseReadyBody(howTo) {
-    const boss = chaseBoss();
-    const row = boss
-      ? `<div class="chase-boss"><canvas class="boss-preview" width="240" height="120" aria-hidden="true"></canvas><p><b>${esc(bossName(boss))}</b> will chase you too!</p><div class="chase-boss-buttons"><button type="button" class="stylebtn" id="bossBuild">Change my boss</button><button type="button" class="stylebtn" id="bossOff">No boss</button></div></div>`
-      : `<div class="chase-boss"><p>Want a boss to chase you?</p><button type="button" class="stylebtn" id="bossBuild">🐛 Build your boss</button></div>`;
-    return `<p>${howTo}</p>${row}<button class="primary" id="arm">I’m ready! →</button>`;
-  }
-  /** Keep a small boss preview canvas moving while it's on the page. */
-  function previewBoss(canvas, design) {
-    const ctx = canvas.getContext('2d');
-    let tick = 0;
-    const draw = () => {
-      if (!canvas.isConnected) return;
-      const d = design();
-      const { width: w, height: h } = canvas;
-      ctx.clearRect(0, 0, w, h);
-      const s = h * 0.42;
-      const x = w * 0.62;
-      const trail = Array.from({ length: 40 }, (_, i) => [x - (i + 1) * 4, h / 2 + Math.sin((tick - i * 3) / 9) * h * 0.06]);
-      drawBoss2d(ctx, d, { x, y: h / 2 + Math.sin(tick / 9) * h * 0.06, s, dir: 'right', trail, tick });
-      tick += 1;
-      requestAnimationFrame(draw);
-    };
-    draw();
-  }
-  function wireChaseBoss() {
-    const preview = document.querySelector('.chase-boss .boss-preview');
-    if (preview) previewBoss(preview, () => chaseBoss() ?? readBoss());
-    const off = $('#bossOff');
-    if (off) off.onclick = () => { setChaseBoss(false); renderGame(); };
-    const build = $('#bossBuild');
-    if (build) build.onclick = openBossBuilder;
-  }
-  function openBossBuilder() {
-    const dialog = document.createElement('dialog');
-    dialog.className = 'boss-builder';
-    dialog.setAttribute('aria-label', 'Build your boss');
-    dialog.innerHTML = `<div class="modal-head"><h2>Build your boss</h2><button type="button" aria-label="Close" data-close>✕</button></div>
-      <canvas class="boss-preview" width="320" height="150" aria-hidden="true"></canvas>
-      <p class="boss-name" aria-live="polite"></p>
-      <div class="presets" aria-label="Ready-made bosses"></div>
-      <div class="picks"></div>
-      <div class="boss-actions"><button type="button" class="stylebtn" data-surprise>Surprise me</button><button type="button" class="primary" data-done>Done</button></div>`;
-    document.body.append(dialog);
-    let design = null;
-    const builder = makeBossBuilder({
-      presets: dialog.querySelector('.presets'),
-      picks: dialog.querySelector('.picks'),
-      name: dialog.querySelector('.boss-name'),
-      surprise: dialog.querySelector('[data-surprise]'),
-      done: dialog.querySelector('[data-done]'),
-      onChange(next) { design = next; },
-      onSave() {
-        setChaseBoss(true);
-        dialog.close();
-      }
-    });
-    design = builder.set(readBoss());
-    previewBoss(dialog.querySelector('.boss-preview'), () => design);
-    dialog.querySelector('[data-close]').onclick = () => dialog.close();
-    dialog.addEventListener('close', () => {
-      dialog.remove();
-      if (rt.game?.mode === 'chase' && rt.game.phase === 'ready') renderGame();
-    });
-    dialog.showModal();
-  }
-
   function renderGame() {
     stopArcade();
     stopLunar();
@@ -1285,7 +1216,8 @@ export function registerMounts(rt) {
       const court = g.level >= 3 ? 'The hoop drifts, and a rock is in the way.' : g.level >= 2 ? 'The hoop drifts.' : 'The hoop stays still.';
       body = `<p class="hint">Shooting on ${esc(g.place)}. ${court}</p><div id="arcade"></div>${g.freePlay ? '' : `<div class="choices">${picks}</div>`}`;
     }
-    else if (chase && g.phase === 'ready') body = chaseReadyBody(howTo);
+    // Garden chase's start screen is the garden itself, with its own menu card (games/chase.js).
+    else if (chase && g.phase === 'ready') body = '<div id="arcade"></div>';
     else if (HAS_READY.has(g.mode) && g.phase === 'ready') body = `<p>${howTo}</p><button class="primary" id="arm">I’m ready! →</button>`;
     else if (chase) body = `<div id="chaseShow">${g.show || ''}</div><div id="arcade"></div>`;
     else if (bridge) body = `<div id="askShow">${g.show || ''}</div><div id="arcade"></div><div class="choices" id="askChoices">${picks}</div>`;
@@ -1365,7 +1297,8 @@ export function registerMounts(rt) {
       if (title) title.textContent = g.prompt;
       $('#reveal').hidden = true;
     };
-    if (chase && g.phase === 'ready') wireChaseBoss();
+    // The menu card says how to play, so the big heading would only repeat it ("Hear it again" still reads it).
+    if (chase && g.phase === 'ready') $('.playarea h1')?.remove();
     if ($('#arm')) {
       if (g.mode === 'lanes' && g.style !== 'reach') {
         g.pace = g.pace || 'steady';
@@ -2170,11 +2103,22 @@ export function registerMounts(rt) {
         }
       });
     }
-    if (chase && g.phase !== 'ready') {
+    if (chase) {
+      const ready = g.phase === 'ready';
       mountChase($('#arcade'), {
         buddy: profileSprite(rt.p(), rt.data.active),
         prompt: g.prompt,
-        choices: g.tokens,
+        choices: ready ? [] : g.tokens,
+        intro: ready ? {
+          howTo: g.howTo,
+          onPlay() {
+            if (rt.game !== g) return;
+            g.started = true;
+            rt.question();
+          },
+          saveBoss() { setChaseBoss(true); },
+          noBoss() { setChaseBoss(false); }
+        } : null,
         copies: g.board.copies,
         cols: g.board.cols,
         rows: g.board.rows,

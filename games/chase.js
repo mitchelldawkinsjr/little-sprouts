@@ -8,6 +8,7 @@ import { drawBuddy, buddyKind } from '../lib/buddy2d.mjs?v=gear2';
 import { esc, shuffle } from '../logic.mjs?v=structure3';
 import { drawBoss2d } from '../lib/boss-2d.mjs?v=chase1';
 import { bossName } from '../lib/boss-design.mjs';
+import { makeBossBuilder } from '../lib/boss-builder.mjs';
 
 const UNIT = 10;
 const STEP = 2;
@@ -270,6 +271,15 @@ function drawHedges(ctx, map, cell, ox, oy) {
 const BOSS_PACE = { 1: 0.78, 2: 0.68, 3: 0.6 };
 const BOSS_START = [9, 1];
 
+/** The boss in its den: at the top, its body trailing back along the path to the left (so it's never bunched up). */
+function denPose(hunter) {
+  hunter.x = BOSS_START[0] * UNIT;
+  hunter.y = BOSS_START[1] * UNIT;
+  hunter.dir = 'right';
+  hunter.trail = Array.from({ length: 10 }, (_, i) => [hunter.x - (i + 1) * STEP, hunter.y]);
+  return hunter;
+}
+
 /** Where a hunting boss turns at a crossing: the open way (not back, unless it must) that gets closest to the buddy. */
 export function bossTurn(map, c, r, dir, target, wander = 0) {
   const back = { left: 'right', right: 'left', up: 'down', down: 'up' }[dir];
@@ -288,7 +298,12 @@ export function bossTurn(map, c, r, dir, target, wander = 0) {
   return pool.reduce((best, d) => (far(d) < far(best) ? d : best));
 }
 
-export function mountChase(root, { buddy, prompt, choices = [], copies = 2, playerSpeed = 3.4, bugSpeed = 2.15, bugs = 1, boss = null, reduced, onDone, onMiss }) {
+/**
+ * `intro` turns the board into the start screen, as Grass maze and Boss chase have: the garden in the background,
+ * still, with a menu card (how to play, Play, Build boss). Build boss swaps in the builder card, and the boss
+ * changes live in its den. intro: { howTo, onPlay(), saveBoss(design), noBoss() }.
+ */
+export function mountChase(root, { buddy, prompt, choices = [], copies = 2, playerSpeed = 3.4, bugSpeed = 2.15, bugs = 1, boss = null, intro = null, reduced, onDone, onMiss }) {
   const kind = buddyKind(buddy);
   stopChase();
   const session = {
@@ -318,7 +333,7 @@ export function mountChase(root, { buddy, prompt, choices = [], copies = 2, play
       if (MAP[r][c] === PATH) openSpots.push([c, r]);
     }
   }
-  const list = choices.length ? choices : [{ label: '?', ok: true }];
+  const list = intro ? [] : choices.length ? choices : [{ label: '?', ok: true }];
   const berries = [];
   list.forEach(choice => {
     const n = choice.ok ? Math.max(1, copies) : 1;
@@ -353,7 +368,7 @@ export function mountChase(root, { buddy, prompt, choices = [], copies = 2, play
   });
   const player = { x: 9 * UNIT, y: 19 * UNIT, dir: 'none', due: '' };
   // Build your boss: the design the child made, hunting through the hedges. `trail` is where its head has been.
-  const hunter = boss ? { x: BOSS_START[0] * UNIT, y: BOSS_START[1] * UNIT, dir: 'down', trail: [], design: boss, name: bossName(boss) } : null;
+  let hunter = boss ? denPose({ design: boss, name: bossName(boss) }) : null;
   const bossRate = hunter ? playerRate * (BOSS_PACE[boss.size] ?? 0.68) : 0;
   let bossAcc = 0;
   let missed = false;
@@ -394,12 +409,7 @@ export function mountChase(root, { buddy, prompt, choices = [], copies = 2, play
     shake();
     call(onMiss, byBoss ? 'boss' : 'bug');
     // The boss goes back to its den, so the buddy gets a fair start.
-    if (byBoss) {
-      hunter.x = BOSS_START[0] * UNIT;
-      hunter.y = BOSS_START[1] * UNIT;
-      hunter.dir = 'down';
-      hunter.trail.length = 0;
-    }
+    if (byBoss) denPose(hunter);
   };
   const eatBerry = (c, r) => {
     const berry = berries.find(item => !item.gone && item.c === c && item.r === r);
@@ -485,6 +495,84 @@ export function mountChase(root, { buddy, prompt, choices = [], copies = 2, play
     hunter.y = next.y;
   };
 
+  // ---- The start screen: a card over the garden, and the boss builder ----
+  let menuEl = null;
+  let building = false;
+  const cardButtons = () => [...(menuEl?.querySelectorAll('.chase-card:not([hidden]) button') ?? [])].filter(b => !b.hidden && !b.disabled);
+  const moveFocus = step => {
+    const list = cardButtons();
+    if (!list.length) return;
+    const i = list.indexOf(document.activeElement);
+    list[(i + step + list.length) % list.length].focus();
+  };
+  const setBoss = design => {
+    if (!design) hunter = null;
+    else if (!hunter) hunter = denPose({ design, name: bossName(design) });
+    else Object.assign(hunter, { design, name: bossName(design) });
+    view3d?.setBoss(design);
+  };
+  const paintMenu = () => {
+    const card = menuEl.querySelector('[data-card="menu"]');
+    card.querySelector('[data-boss-line]').textContent = hunter ? `${hunter.name} the boss hunts you too!` : 'Build a boss to chase you, if you dare!';
+    card.querySelector('[data-build]').textContent = hunter ? 'Change boss' : 'Build boss';
+    card.querySelector('[data-noboss]').hidden = !hunter;
+  };
+  if (intro) {
+    menuEl = document.createElement('div');
+    menuEl.className = 'chase-menu';
+    menuEl.innerHTML = `<div class="chase-card" data-card="menu">
+        <h2>Garden chase</h2>
+        <p>${esc(intro.howTo)}</p>
+        <ul class="chase-help"><li>Arrows, a swipe, or a controller to steer</li><li data-boss-line></li></ul>
+        <div class="chase-actions"><button type="button" class="primary" data-play>Play</button><button type="button" class="stylebtn" data-build>Build boss</button><button type="button" class="stylebtn" data-noboss>No boss</button></div>
+      </div>
+      <div class="chase-card chase-builder" data-card="builder" hidden>
+        <h2>Build your boss</h2>
+        <p class="boss-name" aria-live="polite"></p>
+        <div class="presets" aria-label="Ready-made bosses"></div>
+        <div class="picks"></div>
+        <div class="chase-actions"><button type="button" class="stylebtn" data-surprise>Surprise me</button><button type="button" class="primary" data-done>Done</button></div>
+      </div>`;
+    stage.append(menuEl);
+    const menuCard = menuEl.querySelector('[data-card="menu"]');
+    const builderCard = menuEl.querySelector('[data-card="builder"]');
+    const showBuilder = on => {
+      building = on;
+      menuCard.hidden = on;
+      builderCard.hidden = !on;
+      menuEl.classList.toggle('building', on);
+      if (!on) paintMenu();
+      cardButtons()[0]?.focus({ preventScroll: true });
+    };
+    const builder = makeBossBuilder({
+      presets: builderCard.querySelector('.presets'),
+      picks: builderCard.querySelector('.picks'),
+      name: builderCard.querySelector('.boss-name'),
+      surprise: builderCard.querySelector('[data-surprise]'),
+      done: builderCard.querySelector('[data-done]'),
+      onChange: design => setBoss(design),
+      onSave(design) {
+        setBoss(design);
+        call(intro.saveBoss, design);
+        showBuilder(false);
+      }
+    });
+    menuCard.querySelector('[data-play]').onclick = () => call(intro.onPlay);
+    menuCard.querySelector('[data-build]').onclick = () => {
+      const design = builder.set(hunter?.design ?? null);
+      setBoss(design);
+      showBuilder(true);
+    };
+    menuCard.querySelector('[data-noboss]').onclick = () => {
+      setBoss(null);
+      call(intro.noBoss);
+      paintMenu();
+      cardButtons()[0]?.focus({ preventScroll: true });
+    };
+    paintMenu();
+    requestAnimationFrame(() => menuCard.querySelector('[data-play]')?.focus({ preventScroll: true }));
+  }
+
   // The 3D view (games/chase3d.js) loads while the first frames draw flat. If it can't keep up on this
   // device, the game goes back to the flat view and remembers that here.
   let view3d = null;
@@ -496,7 +584,7 @@ export function mountChase(root, { buddy, prompt, choices = [], copies = 2, play
   const viewPref = (() => { try { return localStorage.getItem(VIEW_KEY) || ''; } catch { return ''; } })();
   const flatOnly = viewPref === 'flat';
   if (!flatOnly) {
-    import('./chase3d.js?v=chase3d1').then(m => {
+    import('./chase3d.js?v=chase3d4').then(m => {
       if (session.dead) return;
       view3d = m.makeChase3d(stage, { map, rows: ROWS, cols: COLS, unit: UNIT, wall: WALL, kind, boss: hunter?.design ?? null, paintLabel: paintBerryLabel, ...(viewPref === 'boxes' ? { look: 'boxes' } : {}) });
       canvas.hidden = true;
@@ -631,7 +719,7 @@ export function mountChase(root, { buddy, prompt, choices = [], copies = 2, play
     if (dying > 0) {
       dying = Math.max(0, dying - dt / (reduced ? 0.45 : 0.7));
       if (dying === 0) resetPlayer();
-    } else if (!finished && !questionHolding()) {
+    } else if (!finished && !intro && !questionHolding()) {
       let playerSteps = 0;
       let snailSteps = 0;
       [playerAcc, playerSteps] = takeSteps(playerAcc, playerRate, dt);
@@ -652,13 +740,13 @@ export function mountChase(root, { buddy, prompt, choices = [], copies = 2, play
         } else if (passed()) armed = true;
       }
     }
-    if (view3d) view3d.draw({ player, moving: player.dir !== 'none', dying, critters, hunter, list: berries, tick, dt });
+    if (view3d) view3d.draw({ player, moving: player.dir !== 'none', dying, critters, hunter, list: berries, tick, dt, focus: building && hunter ? 'boss' : 'buddy' });
     else draw();
     session.raf = requestAnimationFrame(frame);
   };
 
   const steer = dir => {
-    if (!DIRS.includes(dir) || finished || dying > 0) return;
+    if (!DIRS.includes(dir) || finished || dying > 0 || intro) return;
     player.due = dir;
     if (player.dir === 'none') player.dir = dir;
   };
@@ -672,6 +760,8 @@ export function mountChase(root, { buddy, prompt, choices = [], copies = 2, play
     const dir = keyDir(e);
     if (!dir || e.type !== 'keydown' || e.repeat) return;
     e.preventDefault();
+    // On the start screen the arrows (and a controller's stick) move between the card's buttons.
+    if (menuEl) return moveFocus(dir === 'left' || dir === 'up' ? -1 : 1);
     steer(dir);
   };
   document.addEventListener('keydown', onKey);
