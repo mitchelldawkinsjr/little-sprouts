@@ -1020,7 +1020,8 @@ test('sidecar games stay a list a new bootstrapped game can join', async () => {
   const bike = sidecarGame('bike');
   assert.equal(bike.title, 'Dirt ride');
   assert.match(bike.src, /^sidecars\/bike\/index\.html/);
-  assert.match(bike.howTo, /Level 1 stays upright/);
+  assert.match(bike.howTo, /wheelie/);
+  assert.match(bike.howTo, /backflip/);
   const flight = sidecarGame('flight');
   assert.equal(flight.title, 'Sky flight');
   assert.match(flight.src, /^sidecars\/flight\/index\.html/);
