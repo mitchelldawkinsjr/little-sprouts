@@ -12,6 +12,11 @@ on:
       - '.gitignore'
   workflow_dispatch:
 
+# Back-to-back merges otherwise run two `docker compose up` at once and collide on container names.
+concurrency:
+  group: deploy-mitch-cloud
+  cancel-in-progress: false
+
 jobs:
   deploy:
     name: Deploy app to mitch-cloud
