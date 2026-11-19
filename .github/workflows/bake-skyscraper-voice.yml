@@ -5,11 +5,11 @@ on:
     branches: [chore/bake-skyscraper-voice]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   bake:
-    runs-on: macos-15
+    runs-on: macos-15-intel
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
@@ -31,7 +31,7 @@ jobs:
           import { dirname, join } from 'node:path';
           import { bakedPath, voiceIds } from './lib/speech-core.mjs';
           const text = 'You got a skyscraper! Tap the ground to build a tall tower.';
-          const root = '.baked-skyscraper';
+          const root = 'baked-skyscraper';
           const rows = [];
           for (const voice of voiceIds) {
             const path = bakedPath({ voice, text });
@@ -46,9 +46,24 @@ jobs:
           writeFileSync(join(root, 'manifest.json'), JSON.stringify({ text, clips: rows }, null, 2));
           console.log(JSON.stringify(rows));
           JS
+      - name: Commit only the generated recordings on this temporary branch
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { readFileSync } from 'node:fs';
+          import { spawnSync } from 'node:child_process';
+          const manifest = JSON.parse(readFileSync('baked-skyscraper/manifest.json', 'utf8'));
+          assert.equal(manifest.clips.length, 9);
+          const result = spawnSync('git', ['add', '--', ...manifest.clips.map(clip => clip.path)], { stdio: 'inherit' });
+          assert.equal(result.status, 0);
+          JS
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Add all nine skyscraper reward recordings'
+          git push origin HEAD:chore/bake-skyscraper-voice
       - uses: actions/upload-artifact@v4
         with:
           name: skyscraper-reward-recordings
-          path: .baked-skyscraper/
+          path: baked-skyscraper/
           if-no-files-found: error
           retention-days: 7
