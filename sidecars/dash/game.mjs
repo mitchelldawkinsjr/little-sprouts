@@ -550,6 +550,8 @@ function useBuddy(kind) {
 
 const camTo = new THREE.Vector3().copy(CAM_MENU);
 const camLook = new THREE.Vector3(0, 3, 0);
+const LOOK_HOME = new THREE.Vector3(0, 3, 0);
+const lookTo = new THREE.Vector3().copy(LOOK_HOME);
 function resize() {
   renderer.setSize(innerWidth, innerHeight, false);
   camera.aspect = innerWidth / innerHeight;
@@ -566,9 +568,19 @@ function fitZ(z) {
 function moveCamera(dt, snap = false) {
   const goal = state.phase === 'over' || state.phase === 'end' ? CAM_OVER : state.phase === 'menu' ? CAM_MENU : CAM_GAME;
   camTo.set(goal.x, goal.y, fitZ(goal.z));
+  lookTo.copy(LOOK_HOME);
+  if (!builderEl.hidden) {
+    // Building a boss: close in on it where it waits in the menu, framed beside the card (right of it on a
+    // wide screen, above it on a phone, where the card sits at the bottom).
+    const p = onGarden(Math.PI * 0.62, 1.2);
+    const wide = camera.aspect >= 1;
+    camTo.set(p.x + 3, p.y + (wide ? 3 : 4), wide ? 18 : 27);
+    lookTo.set(p.x + (wide ? -5 : 1.5), p.y + (wide ? 1 : -5.5), 0);
+  }
   // The pen pulls back over three seconds, and eases back in as the run starts again.
   const k = snap ? 1 : 1 - Math.exp(-dt * (state.phase === 'over' || state.phase === 'replay' ? 1.1 : 2));
   camera.position.lerp(camTo, k);
+  camLook.lerp(lookTo, k);
   camera.lookAt(camLook);
   // The pen's fog starts at the camera's distance and fades out by about twice that.
   const reach = camera.position.length();
