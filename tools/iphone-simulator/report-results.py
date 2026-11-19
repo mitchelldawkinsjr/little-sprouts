@@ -58,6 +58,8 @@ if failed:
         messages = (selected or build)[-10:]
     text = "\n".join(dict.fromkeys(messages)) or "The native Safari test failed before creating an XCTest result or build log."
     print(f"::error title=iPhone Simulator Safari verification failed::{escaped(text[:4000])}")
+    if outcome == "success":
+        sys.exit(1)
 elif outcome == "success":
     if summary.get("passedTests", 0) < 1 or summary.get("failedTests", 0) or summary.get("skippedTests", 0):
         print("::error::Native playback is unverified: require at least one passing XCTest, zero failures and zero skipped tests.")
