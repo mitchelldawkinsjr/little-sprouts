@@ -6,6 +6,9 @@ import { sfx } from '../lib/game-sound.mjs?v=audio2';
 import { questionHolding } from '../lib/hold.js?v=hold2';
 import { drawBuddy, buddyKind } from '../lib/buddy2d.mjs?v=gear2';
 import { esc, shuffle } from '../logic.mjs?v=structure3';
+import { drawBoss2d } from '../lib/boss-2d.mjs?v=chase1';
+import { bossName } from '../lib/boss-design.mjs';
+import { makeBossBuilder } from '../lib/boss-builder.mjs';
 
 const UNIT = 10;
 const STEP = 2;
@@ -168,6 +171,45 @@ function drawMark(ctx, choice, x, y, s) {
 }
 
 // The player is the learner's garden buddy (ADR 0001); it walks while moving.
+/** The answer card over a berry, centred on a `w` x `h` canvas: the 3D view shows it as a floating card. */
+export function paintBerryLabel(ctx, berry, w, h) {
+  ctx.clearRect(0, 0, w, h);
+  if (berry.shape) {
+    const s = h * 0.9;
+    ctx.fillStyle = '#faf9f5';
+    ctx.strokeStyle = '#244b3d';
+    ctx.lineWidth = 6;
+    roundBox(ctx, (w - s) / 2, (h - s) / 2, s, s, 22);
+    ctx.fill();
+    ctx.stroke();
+    drawMark(ctx, berry, w / 2, h / 2, s * 1.15);
+    return;
+  }
+  let fill = Math.round(h * 0.5);
+  ctx.font = `700 ${fill}px Outfit, sans-serif`;
+  while (fill > 14 && ctx.measureText(berry.label).width > w * 0.78 - (berry.fill ? fill : 0)) {
+    fill -= 2;
+    ctx.font = `700 ${fill}px Outfit, sans-serif`;
+  }
+  const textW = ctx.measureText(berry.label).width;
+  const mark = berry.fill ? fill : 0;
+  const pw = Math.min(w - 8, textW + mark + 36);
+  const ph = Math.min(h - 8, fill + 30);
+  const x = (w - pw) / 2;
+  const y = (h - ph) / 2;
+  ctx.fillStyle = '#faf9f5';
+  ctx.strokeStyle = '#244b3d';
+  ctx.lineWidth = 6;
+  roundBox(ctx, x, y, pw, ph, 20);
+  ctx.fill();
+  ctx.stroke();
+  if (mark) drawMark(ctx, berry, x + 18 + mark * 0.35, h / 2, fill);
+  ctx.fillStyle = '#24332c';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(berry.label, x + (mark ? mark + 24 : 18), h / 2 + 2);
+}
+
 function drawBeetle(ctx, kind, x, y, s, dir, dying, moving) {
   drawBuddy(ctx, kind, x + s / 2, y + s * 0.95, s * 1.05, {
     flip: dir === 'left',
@@ -225,7 +267,43 @@ function drawHedges(ctx, map, cell, ox, oy) {
   }
 }
 
-export function mountChase(root, { buddy, prompt, choices = [], copies = 2, playerSpeed = 3.4, bugSpeed = 2.15, bugs = 1, reduced, onDone, onMiss }) {
+/** The child's built boss hunts slower than the buddy can run, so it can always be outrun; a bigger boss is slower. */
+const BOSS_PACE = { 1: 0.78, 2: 0.68, 3: 0.6 };
+const BOSS_START = [9, 1];
+
+/** The boss in its den: at the top, its body trailing back along the path to the left (so it's never bunched up). */
+function denPose(hunter) {
+  hunter.x = BOSS_START[0] * UNIT;
+  hunter.y = BOSS_START[1] * UNIT;
+  hunter.dir = 'right';
+  hunter.trail = Array.from({ length: 10 }, (_, i) => [hunter.x - (i + 1) * STEP, hunter.y]);
+  return hunter;
+}
+
+/** Where a hunting boss turns at a crossing: the open way (not back, unless it must) that gets closest to the buddy. */
+export function bossTurn(map, c, r, dir, target, wander = 0) {
+  const back = { left: 'right', right: 'left', up: 'down', down: 'up' }[dir];
+  const open = DIRS.filter(d => {
+    const [dx, dy] = delta(d);
+    return isFloor(map, c + Math.sign(dx), r + Math.sign(dy));
+  });
+  const ways = open.filter(d => d !== back);
+  const pool = ways.length ? ways : open;
+  if (!pool.length) return dir;
+  if (wander > 0 && Math.random() < wander) return pool[Math.floor(Math.random() * pool.length)];
+  const far = d => {
+    const [dx, dy] = delta(d);
+    return Math.hypot(c + Math.sign(dx) - target[0], r + Math.sign(dy) - target[1]);
+  };
+  return pool.reduce((best, d) => (far(d) < far(best) ? d : best));
+}
+
+/**
+ * `intro` turns the board into the start screen, as Grass maze and Boss chase have: the garden in the background,
+ * still, with a menu card (how to play, Play, Build boss). Build boss swaps in the builder card, and the boss
+ * changes live in its den. intro: { howTo, onPlay(), saveBoss(design), noBoss() }.
+ */
+export function mountChase(root, { buddy, prompt, choices = [], copies = 2, playerSpeed = 3.4, bugSpeed = 2.15, bugs = 1, boss = null, intro = null, reduced, onDone, onMiss }) {
   const kind = buddyKind(buddy);
   stopChase();
   const session = {
@@ -244,7 +322,7 @@ export function mountChase(root, { buddy, prompt, choices = [], copies = 2, play
   const calm = reduced ? 0.62 : 1;
   const playerRate = (5.2 * playerSpeed / 3.4) * calm;
   const bugRate = (4.4 * bugSpeed / 2.15) * calm;
-  root.innerHTML = `<div class="chase-play"><div class="chase" role="application" aria-label="${esc(prompt)}. Steer through the garden paths. Eat only the matching berries. Stay away from the snails."><canvas></canvas></div><div class="steer pad"><button type="button" class="steer-btn" data-dir="left" aria-label="Move left">←</button><button type="button" class="steer-btn" data-dir="up" aria-label="Move up">↑</button><button type="button" class="steer-btn" data-dir="down" aria-label="Move down">↓</button><button type="button" class="steer-btn" data-dir="right" aria-label="Move right">→</button></div></div>`;
+  root.innerHTML = `<div class="chase-play"><div class="chase" role="application" aria-label="${esc(prompt)}. Steer through the garden paths. Eat only the matching berries. Stay away from the snails${boss ? ` and ${esc(bossName(boss))}` : ''}."><canvas></canvas></div><div class="steer pad"><button type="button" class="steer-btn" data-dir="left" aria-label="Move left">←</button><button type="button" class="steer-btn" data-dir="up" aria-label="Move up">↑</button><button type="button" class="steer-btn" data-dir="down" aria-label="Move down">↓</button><button type="button" class="steer-btn" data-dir="right" aria-label="Move right">→</button></div></div>`;
   const stage = root.querySelector('.chase');
   const canvas = stage.querySelector('canvas');
   const ctx = canvas.getContext('2d');
@@ -255,7 +333,7 @@ export function mountChase(root, { buddy, prompt, choices = [], copies = 2, play
       if (MAP[r][c] === PATH) openSpots.push([c, r]);
     }
   }
-  const list = choices.length ? choices : [{ label: '?', ok: true }];
+  const list = intro ? [] : choices.length ? choices : [{ label: '?', ok: true }];
   const berries = [];
   list.forEach(choice => {
     const n = choice.ok ? Math.max(1, copies) : 1;
@@ -289,6 +367,10 @@ export function mountChase(root, { buddy, prompt, choices = [], copies = 2, play
     };
   });
   const player = { x: 9 * UNIT, y: 19 * UNIT, dir: 'none', due: '' };
+  // Build your boss: the design the child made, hunting through the hedges. `trail` is where its head has been.
+  let hunter = boss ? denPose({ design: boss, name: bossName(boss) }) : null;
+  const bossRate = hunter ? playerRate * (BOSS_PACE[boss.size] ?? 0.68) : 0;
+  let bossAcc = 0;
   let missed = false;
   let finished = false;
   let dying = 0;
@@ -314,16 +396,20 @@ export function mountChase(root, { buddy, prompt, choices = [], copies = 2, play
     dying = 0;
   };
   const gap = snail => Math.hypot(snail.x - player.x, snail.y - player.y);
-  const touching = () => critters.some(snail => gap(snail) < 10);
-  const passed = () => critters.every(snail => gap(snail) >= 24);
+  const bossHere = () => hunter && gap(hunter) < 10;
+  const touching = () => critters.some(snail => gap(snail) < 10) || bossHere();
+  const passed = () => critters.every(snail => gap(snail) >= 24) && (!hunter || gap(hunter) >= 24);
   const caught = () => {
     if (finished || dying > 0 || !armed) return;
+    const byBoss = bossHere();
     missed = true;
     dying = 1;
     armed = false;
     sfx('bump');
     shake();
-    call(onMiss, 'bug');
+    call(onMiss, byBoss ? 'boss' : 'bug');
+    // The boss goes back to its den, so the buddy gets a fair start.
+    if (byBoss) denPose(hunter);
   };
   const eatBerry = (c, r) => {
     const berry = berries.find(item => !item.gone && item.c === c && item.r === r);
@@ -395,6 +481,134 @@ export function mountChase(root, { buddy, prompt, choices = [], copies = 2, play
     go();
   };
 
+  const stepBoss = () => {
+    if (onGrid(hunter)) {
+      const c = Math.round(hunter.x / UNIT);
+      const r = Math.round(hunter.y / UNIT);
+      // A little wandering, so a child can lose it round a hedge.
+      hunter.dir = bossTurn(map, c, r, hunter.dir, [player.x / UNIT, player.y / UNIT], 0.15);
+    }
+    const next = moved(hunter, hunter.dir);
+    hunter.trail.unshift([hunter.x, hunter.y]);
+    if (hunter.trail.length > 60) hunter.trail.length = 60;
+    hunter.x = next.x;
+    hunter.y = next.y;
+  };
+
+  // ---- The start screen: a card over the garden, and the boss builder ----
+  let menuEl = null;
+  let building = false;
+  const cardButtons = () => [...(menuEl?.querySelectorAll('.chase-card:not([hidden]) button') ?? [])].filter(b => !b.hidden && !b.disabled);
+  const moveFocus = step => {
+    const list = cardButtons();
+    if (!list.length) return;
+    const i = list.indexOf(document.activeElement);
+    list[(i + step + list.length) % list.length].focus();
+  };
+  const setBoss = design => {
+    if (!design) hunter = null;
+    else if (!hunter) hunter = denPose({ design, name: bossName(design) });
+    else Object.assign(hunter, { design, name: bossName(design) });
+    view3d?.setBoss(design);
+  };
+  const paintMenu = () => {
+    const card = menuEl.querySelector('[data-card="menu"]');
+    card.querySelector('[data-boss-line]').textContent = hunter ? `${hunter.name} the boss hunts you too!` : 'Build a boss to chase you, if you dare!';
+    card.querySelector('[data-build]').textContent = hunter ? 'Change boss' : 'Build boss';
+    card.querySelector('[data-noboss]').hidden = !hunter;
+  };
+  if (intro) {
+    menuEl = document.createElement('div');
+    menuEl.className = 'chase-menu';
+    menuEl.innerHTML = `<div class="chase-card" data-card="menu">
+        <h2>Garden chase</h2>
+        <p>${esc(intro.howTo)}</p>
+        <ul class="chase-help"><li>Arrows, a swipe, or a controller to steer</li><li data-boss-line></li></ul>
+        <div class="chase-actions"><button type="button" class="primary" data-play>Play</button><button type="button" class="stylebtn" data-build>Build boss</button><button type="button" class="stylebtn" data-noboss>No boss</button></div>
+      </div>
+      <div class="chase-card chase-builder" data-card="builder" hidden>
+        <h2>Build your boss</h2>
+        <p class="boss-name" aria-live="polite"></p>
+        <div class="presets" aria-label="Ready-made bosses"></div>
+        <div class="picks"></div>
+        <div class="chase-actions"><button type="button" class="stylebtn" data-surprise>Surprise me</button><button type="button" class="primary" data-done>Done</button></div>
+      </div>`;
+    stage.append(menuEl);
+    const menuCard = menuEl.querySelector('[data-card="menu"]');
+    const builderCard = menuEl.querySelector('[data-card="builder"]');
+    const showBuilder = on => {
+      building = on;
+      menuCard.hidden = on;
+      builderCard.hidden = !on;
+      menuEl.classList.toggle('building', on);
+      if (!on) paintMenu();
+      cardButtons()[0]?.focus({ preventScroll: true });
+    };
+    const builder = makeBossBuilder({
+      presets: builderCard.querySelector('.presets'),
+      picks: builderCard.querySelector('.picks'),
+      name: builderCard.querySelector('.boss-name'),
+      surprise: builderCard.querySelector('[data-surprise]'),
+      done: builderCard.querySelector('[data-done]'),
+      onChange: design => setBoss(design),
+      onSave(design) {
+        setBoss(design);
+        call(intro.saveBoss, design);
+        showBuilder(false);
+      }
+    });
+    menuCard.querySelector('[data-play]').onclick = () => call(intro.onPlay);
+    menuCard.querySelector('[data-build]').onclick = () => {
+      const design = builder.set(hunter?.design ?? null);
+      setBoss(design);
+      showBuilder(true);
+    };
+    menuCard.querySelector('[data-noboss]').onclick = () => {
+      setBoss(null);
+      call(intro.noBoss);
+      paintMenu();
+      cardButtons()[0]?.focus({ preventScroll: true });
+    };
+    paintMenu();
+    requestAnimationFrame(() => menuCard.querySelector('[data-play]')?.focus({ preventScroll: true }));
+  }
+
+  // The 3D view (games/chase3d.js) loads while the first frames draw flat. If it can't keep up on this
+  // device, the game goes back to the flat view and remembers that here.
+  let view3d = null;
+  let slowWindows = 0;
+  let frameTimes = [];
+  let since3d = 0;
+  const VIEW_KEY = 'sprouts-chase-view';
+  // 'flat' is remembered after a slow device falls back; '3d' (or 'boxes', the weakest devices' look) forces 3D with no fallback, for testing.
+  const viewPref = (() => { try { return localStorage.getItem(VIEW_KEY) || ''; } catch { return ''; } })();
+  const flatOnly = viewPref === 'flat';
+  if (!flatOnly) {
+    import('./chase3d.js?v=chase3d4').then(m => {
+      if (session.dead) return;
+      view3d = m.makeChase3d(stage, { map, rows: ROWS, cols: COLS, unit: UNIT, wall: WALL, kind, boss: hunter?.design ?? null, paintLabel: paintBerryLabel, ...(viewPref === 'boxes' ? { look: 'boxes' } : {}) });
+      canvas.hidden = true;
+      since3d = performance.now();
+    }).catch(() => { /* no WebGL: the flat view carries on */ });
+  }
+  const goFlat = () => {
+    view3d?.dispose();
+    view3d = null;
+    canvas.hidden = false;
+    try { localStorage.setItem(VIEW_KEY, 'flat'); } catch { /* private window */ }
+  };
+  /** After a settling-in spell, two slow 3-second spells in a row (under about 22 frames a second) mean flat. */
+  const watchSpeed = (now, dt) => {
+    if (!view3d || viewPref === '3d' || viewPref === 'boxes' || now - since3d < 4000) return;
+    frameTimes.push(dt);
+    if (frameTimes.reduce((a, b) => a + b, 0) < 3) return;
+    const sorted = frameTimes.slice().sort((a, b) => a - b);
+    const median = sorted[sorted.length >> 1];
+    frameTimes = [];
+    slowWindows = median > 0.045 ? slowWindows + 1 : 0;
+    if (slowWindows >= 2) goFlat();
+  };
+
   const fit = () => {
     const cssW = Math.max(280, stage.clientWidth || 640);
     const cssH = Math.max(220, stage.clientHeight || 480);
@@ -406,6 +620,7 @@ export function mountChase(root, { buddy, prompt, choices = [], copies = 2, play
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     width = cssW;
     height = cssH;
+    view3d?.resize(cssW, cssH);
   };
 
   const draw = () => {
@@ -427,6 +642,14 @@ export function mountChase(root, { buddy, prompt, choices = [], copies = 2, play
       const [x, y] = at(snail.x, snail.y);
       drawSnail(ctx, x, y, cell, snail.color, snail.dir, tick);
     });
+    if (hunter) {
+      const [hx, hy] = at(hunter.x, hunter.y);
+      const trail = hunter.trail.map(([tx, ty]) => {
+        const [px, py] = at(tx, ty);
+        return [px + cell / 2, py + cell / 2];
+      });
+      drawBoss2d(ctx, hunter.design, { x: hx + cell / 2, y: hy + cell / 2, s: cell, dir: hunter.dir, trail, tick });
+    }
     const [px, py] = at(player.x, player.y);
     drawBeetle(ctx, kind, px, py, cell, player.dir === 'none' ? 'up' : player.dir, dying, player.dir !== 'none');
     berries.forEach(berry => {
@@ -486,24 +709,29 @@ export function mountChase(root, { buddy, prompt, choices = [], copies = 2, play
 
   const frame = now => {
     if (session.dead) return;
-    const dt = Math.min(0.05, last ? (now - last) / 1000 : 0.016);
+    const raw = last ? (now - last) / 1000 : 0.016;
+    const dt = Math.min(0.05, raw);
     last = now;
+    if (raw < 1) watchSpeed(now, raw);
     fit();
     tick += 1;
     berries.forEach(berry => { berry.flash = Math.max(0, berry.flash - dt); });
     if (dying > 0) {
       dying = Math.max(0, dying - dt / (reduced ? 0.45 : 0.7));
       if (dying === 0) resetPlayer();
-    } else if (!finished && !questionHolding()) {
+    } else if (!finished && !intro && !questionHolding()) {
       let playerSteps = 0;
       let snailSteps = 0;
       [playerAcc, playerSteps] = takeSteps(playerAcc, playerRate, dt);
       [ghostAcc, snailSteps] = takeSteps(ghostAcc, bugRate, dt);
-      const cycles = Math.max(playerSteps, snailSteps);
+      let bossSteps = 0;
+      if (hunter) [bossAcc, bossSteps] = takeSteps(bossAcc, bossRate, dt);
+      const cycles = Math.max(playerSteps, snailSteps, bossSteps);
       for (let i = 0; i < cycles; i++) {
         if (i < playerSteps) stepPlayer();
         if (dying > 0) break;
         if (i < snailSteps) critters.forEach(stepSnail);
+        if (i < bossSteps) stepBoss();
         if (touching()) {
           if (armed) {
             caught();
@@ -512,12 +740,13 @@ export function mountChase(root, { buddy, prompt, choices = [], copies = 2, play
         } else if (passed()) armed = true;
       }
     }
-    draw();
+    if (view3d) view3d.draw({ player, moving: player.dir !== 'none', dying, critters, hunter, list: berries, tick, dt, focus: building && hunter ? 'boss' : 'buddy' });
+    else draw();
     session.raf = requestAnimationFrame(frame);
   };
 
   const steer = dir => {
-    if (!DIRS.includes(dir) || finished || dying > 0) return;
+    if (!DIRS.includes(dir) || finished || dying > 0 || intro) return;
     player.due = dir;
     if (player.dir === 'none') player.dir = dir;
   };
@@ -531,6 +760,8 @@ export function mountChase(root, { buddy, prompt, choices = [], copies = 2, play
     const dir = keyDir(e);
     if (!dir || e.type !== 'keydown' || e.repeat) return;
     e.preventDefault();
+    // On the start screen the arrows (and a controller's stick) move between the card's buttons.
+    if (menuEl) return moveFocus(dir === 'left' || dir === 'up' ? -1 : 1);
     steer(dir);
   };
   document.addEventListener('keydown', onKey);
@@ -553,12 +784,13 @@ export function mountChase(root, { buddy, prompt, choices = [], copies = 2, play
     else steer(dy < 0 ? 'up' : 'down');
     drag = { x: e.clientX, y: e.clientY, id: e.pointerId };
   };
-  canvas.addEventListener('pointerdown', onPointerDown);
-  canvas.addEventListener('pointermove', onPointerMove);
+  stage.addEventListener('pointerdown', onPointerDown);
+  stage.addEventListener('pointermove', onPointerMove);
   session.cleanups.push(() => {
     document.removeEventListener('keydown', onKey);
-    canvas.removeEventListener('pointerdown', onPointerDown);
-    canvas.removeEventListener('pointermove', onPointerMove);
+    stage.removeEventListener('pointerdown', onPointerDown);
+    stage.removeEventListener('pointermove', onPointerMove);
+    view3d?.dispose();
   });
   session.raf = requestAnimationFrame(frame);
 }

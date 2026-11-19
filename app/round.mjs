@@ -45,7 +45,7 @@ import { stopSky } from '../games/sky.js?v=ask-first2-r2-sfx1';
 import { stopPlanet } from '../games/planet.js?v=sky-rocks2-sfx1';
 import { stopPuzzle } from '../games/puzzle.js?v=puzzle-glass-sfx1';
 import { stopMatch } from '../games/match.js?v=pair-match2-sfx1';
-import { stopChase } from '../games/chase.js?v=gear2-sfx1';
+import { stopChase } from '../games/chase.js?v=gear2-sfx1-boss1-3d4';
 import { stopHop } from '../games/hop.js?v=gear2-sfx1';
 import { stopToast } from '../games/toast.js?v=ask-first-r2-sfx1';
 import { stopGlide } from '../games/glide.js?v=boom1-ask1';
@@ -64,7 +64,7 @@ import { stopCrayon } from '../games/crayon.js?v=crayon-more-sfx1';
 import { stopMarble } from '../games/marble.js?v=gear2-sfx1';
 import { stopBridge } from '../games/bridge.js?v=gear2-sfx1';
 import { stopMaze } from '../games/maze.js?v=gear2-sfx1';
-import { lessonResult, postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=power8';
+import { lessonResult, postSidecar, sidecarGame, stopSidecar } from '../lib/sidecar.js?v=power9';
 import { $, esc } from './runtime.mjs?v=lean-r2';
 import { ARCADE } from './arcade-modes.mjs?v=aviator1';
 
