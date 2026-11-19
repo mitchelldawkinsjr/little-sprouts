@@ -76,7 +76,10 @@ function run(selector, label, delay) {
 }
 document.querySelector('#direct').onclick = () => run('#directResult', 'Direct voice', 0);
 document.querySelector('#delayed').onclick = () => run('#delayedResult', 'Delayed voice', 1500);
-document.querySelector('#app').onclick = () => location.assign('/tools/iphone-simulator/speech.html');
+document.querySelector('#app').onclick = () => {
+  document.querySelector('#ready').textContent = 'Opening app speech check';
+  location.assign('/tools/iphone-simulator/speech.html');
+};
 report({ userAgent: navigator.userAgent, englishVoices: speechSynthesis.getVoices().filter(voice => /^en([-_]|$)/i.test(voice.lang)).length });
 </script>
 </html>

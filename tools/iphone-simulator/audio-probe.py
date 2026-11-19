@@ -39,6 +39,8 @@ except (OSError, subprocess.TimeoutExpired) as error:
 (directory / "sprouts-host-audio-probe.json").write_text(json.dumps(report, indent=2))
 level = "notice" if ready else "warning"
 message = "Short host output tone completed." if ready else "Host output tone failed or timed out; native simulator playback may be blocked by the runner audio route."
+message += " " + json.dumps(report["playback"], separators=(",", ":"))
+message = message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
 print(f"::{level} title=macOS host audio probe::{message}")
 print(json.dumps(report, indent=2))
 # This is a prerequisite diagnostic, not a replacement for the native Safari test.

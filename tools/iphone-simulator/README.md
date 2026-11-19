@@ -6,6 +6,13 @@ real shared speech module, decodes a shipped AAC recording through real Web Audi
 and speaks a new question and two replays through the real iOS English speech
 service. One replay follows a background/foreground transition.
 
+Both native playback and evidence inspection use the standard
+`macos-15-intel` GitHub-hosted runner with `DEVELOPER_DIR` pinned to
+`/Applications/Xcode_26.2.app/Contents/Developer`. This keeps XCTest, Safari's
+simulator runtime, and the result reader on the same Xcode toolchain rather
+than relying on the runner's older default Xcode selection. No larger or paid
+runner class is requested.
+
 Three XCTest cases run in order. An isolated `plain.html` control runs first,
 before the app's speech module has loaded. It speaks directly during a trusted
 tap and then 1500 ms after a second tap using real browser utterances, with no
@@ -20,6 +27,27 @@ action's initial status is unchanged. Each handler changes that status before
 any asynchronous playback, so this never retries a started line. App fixture
 page-load checks also reject WebContent reloads rather than hiding them with a
 successful retry.
+
+The normal `speech_case: full` run selects only the three `SafariSpeechTests`
+cases above. Because the plain control warms Apple's speech service first, a
+passing full run does not establish the first app question on a cold service.
+
+An optional manual dispatch with `speech_case: cold-app` creates a fresh iPhone
+Simulator and opens the app speech fixture directly. It selects only
+`ColdAppSpeechTests`, whose single test taps **Play new question** before any
+plain system voice control or included recording. The app's own gesture priming
+still runs normally, and the actual delayed question must complete through the
+real iOS browser voice. The page-load guard rejects a WebContent reload.
+This independent job is named **Native Safari cold app (manual)** and requires
+one passing test; it cannot replace the normal three-test **safari-speech**
+check. For example:
+
+```sh
+gh workflow run iphone-safari.yml --ref <branch> -f speech_case=cold-app
+```
+
+Leaving `evidence_run_id` populated always requests evidence inspection only,
+regardless of `speech_case`; it does not start a new simulator playback run.
 
 A read-only host preflight captures `system_profiler` audio-device data and
 tries a quarter-second output tone with `afplay`, bounded to 15 seconds. A failed

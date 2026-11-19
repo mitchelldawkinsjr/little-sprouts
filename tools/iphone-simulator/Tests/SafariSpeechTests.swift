@@ -1,7 +1,7 @@
 import XCTest
 
-final class SafariSpeechTests: XCTestCase {
-    private let safari = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")
+class SafariSpeechTestCase: XCTestCase {
+    let safari = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")
 
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -22,7 +22,7 @@ final class SafariSpeechTests: XCTestCase {
         add(screenshot)
     }
 
-    private func expect(_ label: String, timeout: TimeInterval = 45,
+    func expect(_ label: String, timeout: TimeInterval = 45,
                         file: StaticString = #filePath, line: UInt = #line) {
         if !safari.webViews.staticTexts[label].waitForExistence(timeout: timeout) {
             let observed = safari.webViews.staticTexts.allElementsBoundByIndex
@@ -32,14 +32,14 @@ final class SafariSpeechTests: XCTestCase {
         }
     }
 
-    private func tap(_ label: String, file: StaticString = #filePath, line: UInt = #line) {
+    func tap(_ label: String, file: StaticString = #filePath, line: UInt = #line) {
         let button = safari.webViews.buttons[label]
         XCTAssertTrue(button.waitForExistence(timeout: 15), "Missing button: \(label)", file: file, line: line)
         XCTAssertTrue(button.isHittable, "Safari button is not hittable: \(label)", file: file, line: line)
         button.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
     }
 
-    private func tap(_ label: String, replacing initialText: String,
+    func tap(_ label: String, replacing initialText: String,
                      file: StaticString = #filePath, line: UInt = #line) {
         // Safari can consume a focus/toolbar tap without synthesizing a click.
         // Retry only while the action's synchronous status is still untouched;
@@ -56,6 +56,9 @@ final class SafariSpeechTests: XCTestCase {
         XCTFail("Safari tap did not activate \(label). Observed page text:\n\(observed)", file: file, line: line)
     }
 
+}
+
+final class SafariSpeechTests: SafariSpeechTestCase {
     func test0PlainSystemVoiceControl() throws {
         expect("Native control ready")
         tap("Speak directly", replacing: "Direct voice not checked")
@@ -109,6 +112,20 @@ final class SafariSpeechTests: XCTestCase {
         safari.activate()
         tap("Hear it again", replacing: "Replay passed")
         expect("Replay after background passed")
+        expect("Fixture page loads: 1")
+    }
+}
+
+// Selected independently by the optional cold-app workflow input. No plain
+// system control or recording runs before the first real application question.
+final class ColdAppSpeechTests: SafariSpeechTestCase {
+    func testColdFirstQuestionInSafari() throws {
+        expect("Speech fixture ready")
+        expect("English voice ready")
+        expect("Fixture page loads: 1")
+
+        tap("Play new question", replacing: "Question not checked")
+        expect("Question passed")
         expect("Fixture page loads: 1")
     }
 }
