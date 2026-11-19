@@ -3,6 +3,12 @@
 // Dirt Bike Rampage — the dirt ride engine, with Little Sprouts hooks.
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
+const results = document.getElementById('results');
+const nextLevel = document.getElementById('ride-next');
+const replayLevel = document.getElementById('ride-replay');
+const resultStars = document.getElementById('result-stars');
+const resultTime = document.getElementById('result-time');
+const resultTricks = document.getElementById('result-tricks');
 const W = 1280, H = 720;
 const GROUND_BASE = H * 0.60;
 const TOUCH = matchMedia('(pointer:coarse)').matches || ('ontouchstart' in window);
@@ -185,10 +191,11 @@ const MAX_AV_AIR = 0.25;
 const FLIP_SLACK = 0.7;
 
 let bike, level, levelIdx, prevGround, peakFall, airTime, flipAccum, frameAngStart;
-let lastCheckpoint, totalFlips, comboScore, elapsed, crashFreeze, finished, finishStars;
+let lastCheckpoint, totalFlips, comboScore, elapsed, crashFreeze;
 // Tilt is always on: lean back and forward on the ground (wheelies) and in the air (flips).
 // `gentle` (Level 1, or reduced motion) keeps it forgiving: a tip-over bounces back upright instead of crashing.
 let gentle = true, airScale = 0.85, learnerLevel = 1, learnerReduced = false;
+let learnerTrackSet = false;
 let wheelieFrames = 0, wheelieGap = 0, totalWheelies = 0, flashWheelie = null;
 let rideTime = 0, askAfter = 9, sproutsPaused = false, boostUntil = 0, scareUntil = 0, scareSafeUntil = 0;
 let onAsk = function () {};
@@ -220,8 +227,9 @@ function startLevel(idx) {
   lastCheckpoint = 150;
   spawnBikeAt(150);
   totalFlips = 0; comboScore = 0; elapsed = 0; crashFreeze = 0;
-  wheelieFrames = 0; totalWheelies = 0; flashWheelie = null;
-  finished = false; finishStars = 0;
+  wheelieFrames = 0; wheelieGap = 0; totalWheelies = 0; flashWheelie = null; flashFlip = null;
+  boostUntil = 0; scareUntil = 0; scareSafeUntil = 0;
+  results.hidden = true;
   particles.length = 0;
   cam.x = bike.x - W * 0.34; cam.y = bike.y - H * 0.52; cam.shake = 0;
   audio.startEngine();
@@ -447,19 +455,16 @@ function updatePlay(dt) {
 
   updateParticles();
 
-  if (bike.x >= level.finish && !finished) {
-    if (embedded) {
-      startLevel(levelIdx);
-      return;
-    }
-    finished = true;
+  if (bike.x >= level.finish) {
     const g = level.finish / 300, s = level.finish / 230;
-    finishStars = elapsed <= g ? 3 : elapsed <= s ? 2 : 1;
+    const finishStars = elapsed <= g ? 3 : elapsed <= s ? 2 : 1;
     if (bestTimes[levelIdx] == null || elapsed < bestTimes[levelIdx]) { bestTimes[levelIdx] = elapsed; Store.set('best', bestTimes); }
     if ((bestStars[levelIdx] || 0) < finishStars) { bestStars[levelIdx] = finishStars; Store.set('stars', bestStars); }
     if (levelIdx + 1 < LEVELS.length && unlocked < levelIdx + 2) { unlocked = levelIdx + 2; Store.set('unlocked', unlocked); }
     audio.finish(finishStars); audio.stopEngine();
     state = 'complete';
+    clearRideKeys();
+    showResults(finishStars);
     return;
   }
 
@@ -857,7 +862,7 @@ function drawTouchControls() {
   }
 }
 
-let menuBtns = [], pauseBtns = [], completeBtns = [], levelCards = [];
+let menuBtns = [], pauseBtns = [], levelCards = [];
 function drawMenu() {
   drawBackground(LEVELS[0].pal);
   ctx.textAlign = 'center';
@@ -927,27 +932,26 @@ function drawPauseOverlay() {
   ];
   for (const b of pauseBtns) btn(b, hover === b.id);
 }
-function drawComplete() {
-  drawScene();
-  ctx.fillStyle = 'rgba(8,10,16,0.78)'; ctx.fillRect(0, 0, W, H);
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#9fffa0'; ctx.font = 'bold 54px Trebuchet MS';
-  ctx.fillText('LEVEL COMPLETE!', W / 2, 170);
-  drawStars(W / 2 - 64, 240, finishStars, 26);
-  ctx.fillStyle = '#fff'; ctx.font = '26px Trebuchet MS';
-  ctx.fillText('Time: ' + fmtTime(elapsed), W / 2, 320);
-  ctx.font = '20px Trebuchet MS'; ctx.fillStyle = '#cfd6e0';
-  ctx.fillText('Flips: ' + totalFlips + '    Wheelies: ' + totalWheelies + '    Bonus: ' + comboScore, W / 2, 354);
-  if (bestTimes[levelIdx] != null) ctx.fillText('Best: ' + fmtTime(bestTimes[levelIdx]), W / 2, 384);
-  ctx.textAlign = 'left';
-  const hasNext = levelIdx + 1 < LEVELS.length;
-  completeBtns = [
-    { id: 'retry', x: W / 2 - (hasNext ? 230 : 110), y: 420, w: 220, h: 52, t: 'Retry' },
-    { id: 'menu', x: W / 2 - 110, y: 488, w: 220, h: 46, t: 'Level Select' },
-  ];
-  if (hasNext) completeBtns.unshift({ id: 'next', x: W / 2 + 10, y: 420, w: 220, h: 52, t: 'Next Level', hc: '#9fffa0' });
-  for (const b of completeBtns) btn(b, hover === b.id);
+function showResults(stars) {
+  resultStars.textContent = '★'.repeat(stars) + '☆'.repeat(3 - stars);
+  resultStars.setAttribute('aria-label', stars + ' out of 3 stars');
+  resultTime.textContent = 'Time ' + fmtTime(elapsed) + ' · Best ' + fmtTime(bestTimes[levelIdx]);
+  resultTricks.textContent = 'Flips ' + totalFlips + ' · Wheelies ' + totalWheelies + ' · Bonus ' + comboScore;
+  nextLevel.hidden = levelIdx + 1 >= LEVELS.length;
+  results.hidden = false;
+  (nextLevel.hidden ? replayLevel : nextLevel).focus({ preventScroll: true });
 }
+function chooseResult(action) {
+  if (state !== 'complete' || (action === 'next' && nextLevel.hidden)) return;
+  audio.init(); audio.resume(); audio.click();
+  if (action === 'select') {
+    results.hidden = true;
+    state = 'menu';
+  } else startLevel(levelIdx + (action === 'next' ? 1 : 0));
+}
+nextLevel.addEventListener('click', () => chooseResult('next'));
+replayLevel.addEventListener('click', () => chooseResult('replay'));
+document.getElementById('ride-select').addEventListener('click', () => chooseResult('select'));
 function drawScene() {
   const pal = level.pal;
   ctx.save();
@@ -977,7 +981,7 @@ const input = {
 };
 addEventListener('keydown', e => {
   if (e.target && e.target.classList && e.target.classList.contains('spell-key')) return;
-  if (sproutsPaused) return;
+  if (sproutsPaused || state === 'complete') return;
   audio.init(); audio.resume();
   keys[e.code] = true;
   if (state === 'play') {
@@ -1006,7 +1010,6 @@ canvas.addEventListener('pointermove', e => {
     if (inRect(p, topBtns.pause)) hover = 'pause';
     if (inRect(p, topBtns.mute)) hover = 'mute';
   } else if (state === 'pause') { for (const b of pauseBtns) if (inRect(p, b)) hover = b.id; }
-  else if (state === 'complete') { for (const b of completeBtns) if (inRect(p, b)) hover = b.id; }
 });
 canvas.addEventListener('pointerdown', e => {
   audio.init(); audio.resume();
@@ -1027,14 +1030,6 @@ canvas.addEventListener('pointerdown', e => {
       if (b.id === 'resume') { state = 'play'; audio.startEngine(); }
       else if (b.id === 'restart') startLevel(levelIdx);
       else if (b.id === 'menu') { audio.stopEngine(); state = 'menu'; }
-      return;
-    }
-  } else if (state === 'complete') {
-    for (const b of completeBtns) if (inRect(p, b)) {
-      audio.click();
-      if (b.id === 'retry') startLevel(levelIdx);
-      else if (b.id === 'next') startLevel(Math.min(LEVELS.length - 1, levelIdx + 1));
-      else if (b.id === 'menu') state = 'menu';
       return;
     }
   }
@@ -1058,8 +1053,13 @@ function applyLearner(levelNo, reduced) {
   gentle = lv < 2 || !!reduced;
   airScale = gentle ? 0.85 : lv === 2 ? 1 : 1.15;
   askAfter = learnerReduced ? 11 : lv >= 3 ? 7 : 9;
-  const idx = Math.min(LEVELS.length - 1, reduced ? 0 : lv - 1);
-  if (state !== 'play' || levelIdx !== idx) startLevel(idx);
+  // The learner sets the starting trail once. Later questions update the
+  // handling, not the trail the rider chose or the results they are reading.
+  if (!learnerTrackSet) {
+    learnerTrackSet = true;
+    const idx = learnerReduced ? 0 : lv - 1;
+    if (state !== 'play' || levelIdx !== idx) startLevel(idx);
+  }
 }
 function frame(now) {
   let dt = (now - last) / 1000; last = now;
@@ -1082,7 +1082,7 @@ function frame(now) {
     }
   }
   else if (state === 'pause') drawPauseOverlay();
-  else if (state === 'complete') drawComplete();
+  else if (state === 'complete') drawScene();
   requestAnimationFrame(frame);
 }
 
@@ -1097,6 +1097,7 @@ window.DirtRampage = {
   },
   arm() { rideTime = 0; },
   grant(ok) {
+    if (state === 'complete' || state === 'menu') return;
     const now = performance.now();
     if (ok) {
       scareUntil = 0;
