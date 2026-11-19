@@ -85,7 +85,28 @@
       .actions button { border: 0; border-radius: 4px; padding: 12px 22px; font: 20px var(--cap); letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; background: var(--coral); color: #fff; box-shadow: 0 4px 0 #b44b39; }
       .actions button:active { transform: translateY(2px); box-shadow: 0 2px 0 #b44b39; }
       .actions button.second { background: var(--leaf); box-shadow: 0 4px 0 #46702f; }
+      .actions button.third { background: var(--bark); box-shadow: 0 4px 0 #3a2b19; }
       .actions button[hidden] { display: none; }
+      /* Build your boss: the card moves aside (left on a wide screen, low on a phone) so the boss shows in the garden. */
+      #builder { width: min(380px, 100%); padding: 14px; border-radius: 10px; background: #fffaf3e6; }
+      #builder[hidden] { display: none; }
+      #builder h1 { font-size: clamp(30px, 7vw, 44px); }
+      #bossName { margin: 0 0 10px; font: 800 20px var(--read); color: var(--coral); }
+      .presets { display: flex; justify-content: center; gap: 6px; margin: 0 0 10px; flex-wrap: wrap; }
+      .preset { width: 44px; height: 44px; border: 0; border-radius: 8px; font-size: 24px; line-height: 1; cursor: pointer; background: #f3e3cf; box-shadow: 0 3px 0 #d9bfa0; }
+      .preset.on { background: var(--peach); box-shadow: 0 3px 0 var(--coral); }
+      .pick { display: grid; grid-template-columns: 48px 1fr 48px; align-items: center; gap: 8px; margin: 0 0 6px; }
+      .pick button { border: 0; border-radius: 6px; padding: 8px 0; font-size: 22px; line-height: 1; cursor: pointer; background: var(--leaf); color: #fff; box-shadow: 0 3px 0 #46702f; }
+      .pick .what { font: 700 17px var(--read); color: var(--ink); }
+      .pick .what small { display: block; font: 12px var(--cap); letter-spacing: 2px; text-transform: uppercase; color: var(--leaf); }
+      #builder button.pad-focus { outline: 4px solid var(--bark); outline-offset: 2px; }
+      @media (min-width: 760px) { #overlay.building { place-items: center start; padding-left: 4vw; background: transparent; } }
+      @media (max-width: 759px) {
+        #overlay.building { place-items: end center; background: transparent; }
+        #builder h1 { display: none; }
+        .pick { margin-bottom: 4px; }
+        .pick .what { font-size: 15px; }
+      }
       .actions button:disabled { opacity: 0.5; cursor: default; }
       .actions button.pad-focus { outline: 4px solid var(--bark); outline-offset: 3px; }
       @media (prefers-reduced-motion: reduce) { #caught { transition: none; } }
@@ -108,7 +129,7 @@
     <div id="again" hidden aria-live="polite"><span id="overStats"></span><span class="tap">Tap to run again</span></div>
     <div id="instructions" hidden>Tap to jump<span class="light"> — grab the carrots and the right answer / jump the rocks</span></div>
     <div id="overlay">
-      <div class="card">
+      <div class="card" id="menuCard">
         <h1 id="title">Garden dash</h1>
         <p id="verdict" hidden></p>
         <p id="reason" hidden></p>
@@ -122,9 +143,20 @@
         <div class="actions">
           <button id="play" type="button" disabled>Loading…</button>
           <button id="endless" class="second" type="button" hidden>Endless run</button>
+          <button id="build" class="third" type="button">Build boss</button>
+        </div>
+      </div>
+      <div class="card" id="builder" hidden>
+        <h1>Build your boss</h1>
+        <p id="bossName" aria-live="polite"></p>
+        <div id="presets" class="presets" aria-label="Ready-made bosses"></div>
+        <div id="picks"></div>
+        <div class="actions">
+          <button id="surprise" class="third" type="button">Surprise me</button>
+          <button id="done" type="button">Done</button>
         </div>
       </div>
     </div>
-    <script type="module" src="./game.mjs?v=offline4"></script>
+    <script type="module" src="./game.mjs?v=offline4-boss1"></script>
   </body>
 </html>

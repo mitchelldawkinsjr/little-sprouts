@@ -24,12 +24,18 @@ import { makeBuddy, buddyKind, BUDDIES } from '../../lib/buddy3d.mjs?v=gear2';
 import { resolveAutoQuality, pixelRatioCap, rendererOptions, isPerformanceTier } from '../../lib/device-tier.mjs?v=low-end1';
 import { readPad, actionDown, moveDirs } from '../../lib/pad-core.mjs?v=pad-rt';
 import { to, killTweensOf, update as tweenUpdate, Ease } from './tween.mjs?v=dash3';
+import { makeBoss } from '../../lib/boss-model.mjs';
+import { DEFAULT_BOSS, bossName, readBoss } from '../../lib/boss-design.mjs';
+import { makeBossBuilder } from '../../lib/boss-builder.mjs';
 
 const $ = (id) => document.getElementById(id);
 const stage = $('world');
 const overlay = $('overlay');
 const playBtn = $('play');
 const endlessBtn = $('endless');
+const buildBtn = $('build');
+const builderEl = $('builder');
+const menuCard = $('menuCard');
 const titleEl = $('title');
 const verdictEl = $('verdict');
 const reasonEl = $('reason');
@@ -395,8 +401,44 @@ function makeCaterpillar() {
   return { group: all, segs, head, jaw, eyes, holder };
 }
 
-const chaser = makeCaterpillar();
+/**
+ * Build your boss: the boss the child built (here, in Boss chase, or in Garden chase; they share one) chases
+ * instead of the caterpillar. It's dressed in the caterpillar's shape: a group per body piece to place round the
+ * garden, plus the head, jaw, eyes, and the holder the buddy hangs from after a munch.
+ */
+function makeBossChaser(design) {
+  const boss = makeBoss(design);
+  // Boss chase swims with the middle on its path; here the lowest part (the legs) stands on the garden.
+  boss.group.updateMatrixWorld(true);
+  const lift = Math.max(0, -new THREE.Box3().setFromObject(boss.group).min.y);
+  const all = new THREE.Group();
+  const segs = [boss.lead, ...boss.segs.map(seg => seg.group)].map(piece => {
+    const group = new THREE.Group();
+    piece.position.set(0, lift, 0);
+    group.add(piece);
+    all.add(group);
+    return { group, body: piece };
+  });
+  // How far round the garden each piece sits behind the head: the boss's own spacing, bent onto the circle.
+  const gaps = [0];
+  boss.spacing.forEach(d => gaps.push(gaps[gaps.length - 1] + d / R));
+  shadowed(all);
+  return { group: all, segs, head: boss.head, jaw: boss.jaw, eyes: boss.eyes, holder: boss.holder, boss, gaps, name: bossName(design) };
+}
+
+const makeChaser = design => (design ? makeBossChaser(design) : makeCaterpillar());
+let chaser = makeChaser(readBoss());
 scene.add(chaser.group);
+
+/** Swap the chaser (only from the menu). A buddy still hanging from the old one comes back to the garden first. */
+function setChaser(design) {
+  if (hanging || (hero.group.parent && hero.group.parent !== scene)) releaseHero();
+  scene.remove(chaser.group);
+  chaser.boss?.dispose();
+  chaser = makeChaser(design);
+  scene.add(chaser.group);
+  paintBlurb();
+}
 
 /*
  * The munch scene's poses. The pen tweens its monster's torso, head, mouth, tail, and eyes,
@@ -550,7 +592,7 @@ function jump() {
  * hear the question again). So inside Sprouts the game only listens to keys. On its own page
  * it reads the controller itself, with the same buttons.
  */
-const menuButtons = () => [playBtn, endlessBtn].filter(b => !b.hidden && !b.disabled);
+const menuButtons = () => (builderEl.hidden ? [playBtn, endlessBtn, buildBtn] : [...builderEl.querySelectorAll('button')]).filter(b => !b.hidden && !b.disabled);
 let menuFocus = 0;
 function focusMenu(step) {
   const list = menuButtons();
@@ -952,6 +994,38 @@ function startGame(mode) {
   } else if (state.asking) state.nextAt = performance.now() + 4000;   // endless: a first stretch of running, then questions
   paintHud();
 }
+/* ---------- Build your boss: the shared builder, with the boss itself changing in the garden behind the card ---------- */
+const BLURB = $('blurb').textContent;
+function paintBlurb() {
+  $('blurb').textContent = chaser.name
+    ? `${chaser.name} is chasing your garden buddy round the garden. Jump to catch the right answer and zoom away!`
+    : BLURB;
+}
+const bossBuilder = makeBossBuilder({
+  presets: $('presets'),
+  picks: $('picks'),
+  name: $('bossName'),
+  surprise: $('surprise'),
+  done: $('done'),
+  onChange: design => setChaser(design),
+  onSave(design) {
+    setChaser(design);
+    builderEl.hidden = true;
+    menuCard.hidden = false;
+    overlay.classList.remove('building');
+    menuFocus = 0;
+  }
+});
+buildBtn.addEventListener('click', () => {
+  bossBuilder.set(readBoss() ?? DEFAULT_BOSS);
+  menuCard.hidden = true;
+  builderEl.hidden = false;
+  overlay.classList.add('building');
+  menuFocus = 0;
+  focusMenu(0);
+});
+paintBlurb();
+
 playBtn.addEventListener('click', () => startGame(playBtn.dataset.mode === 'endless' || state.arcade ? 'endless' : 'quiz'));
 endlessBtn.addEventListener('click', () => startGame('endless'));
 
@@ -1120,7 +1194,7 @@ function animateChaser(dt) {
   const munching = state.phase === 'over' || state.phase === 'replay';
   const last = chaser.segs.length - 1;
   chaser.segs.forEach((seg, i) => {
-    const a = angle + i * 0.085;
+    const a = angle + (chaser.gaps ? chaser.gaps[i] : i * 0.085);
     const hop = munching ? 0 : Math.abs(Math.sin(clock.t * 10 - i * 0.8)) * 0.35;
     const lift = munching ? cat.sit * (SIT_LIFT[i] || 0) + (i === last ? cat.tailUp * 0.25 : 0) : hop;
     place(seg.group, a, 0.05 + lift);
@@ -1137,14 +1211,22 @@ function animateChaser(dt) {
     // Sits up with the buddy in its mouth and looks about, pleased.
     head.rotation.z = cat.headZ;
     head.rotation.y = cat.headY;
-    chaser.jaw.rotation.z = -cat.jaw;
-    chaser.eyes.forEach(e => { e.scale.y = Math.max(0.05, cat.blink); });
+    // A built boss opens its own kind of mouth (jaw, fangs, or beak), so it chomps through its own animation.
+    if (chaser.boss) chaser.boss.animate(clock.t, 0.2, cat.jaw > 0.4 ? 1 : 0, Math.max(0.05, cat.blink));
+    else {
+      chaser.jaw.rotation.z = -cat.jaw;
+      chaser.eyes.forEach(e => { e.scale.y = Math.max(0.05, cat.blink); });
+    }
     return;
   }
   head.rotation.z = Math.sin(clock.t * 10) * 0.08;
   head.rotation.y = 0;
-  chaser.jaw.rotation.z = -0.15 - Math.abs(Math.sin(clock.t * 8)) * 0.45;
   const blink = Math.sin(clock.t * 2.3) > 0.97 ? 0.1 : 1;
+  if (chaser.boss) {
+    chaser.boss.animate(clock.t, 1.2, 0.6, blink);
+    return;
+  }
+  chaser.jaw.rotation.z = -0.15 - Math.abs(Math.sin(clock.t * 8)) * 0.45;
   chaser.eyes.forEach(e => { e.scale.y = blink; });
 }
 
