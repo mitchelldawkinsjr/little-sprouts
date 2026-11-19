@@ -32,6 +32,7 @@
     <p class="trail-panel-intro">Take a break or pick your next adventure.</p>
     <div id="trail-actions">
       <button type="button" id="trail-resume" class="trail-card trail-primary" data-trail-back><span class="trail-icon" aria-hidden="true">▶</span><strong>Keep playing</strong></button>
+      <button type="button" id="trail-garage" class="trail-card"><span class="trail-icon" aria-hidden="true">🚗</span><strong>Vehicle garage</strong><small>Choose your ride</small></button>
       <button type="button" id="trail-starts" class="trail-card" hidden><span class="trail-icon" aria-hidden="true">🗺️</span><strong>Starting places</strong><small>Pick a ramp, race, or runway</small></button>
       <button type="button" id="trail-friends" class="trail-card"><span class="trail-icon" aria-hidden="true">🤝</span><strong id="trail-friends-label">Play with a friend</strong><small>Explore together</small></button>
       <button type="button" id="trail-return" class="trail-card" hidden><span class="trail-icon" aria-hidden="true">🧭</span><strong>Back to the trail</strong><small>Return to your last stop</small></button>
@@ -44,6 +45,13 @@
     <p class="trail-panel-intro">Pick a place. Your lit beacons stay lit.</p>
     <div id="trail-scenarios"></div>
     <button type="button" id="trail-close" class="trail-back" data-trail-back>← Back to menu</button>
+  </section>
+  <section id="trail-garage-panel" role="dialog" aria-modal="true" aria-labelledby="trail-garage-title" hidden data-pad-menu data-touch-ignore>
+    <span class="trail-kicker">🚗 PICK YOUR RIDE</span>
+    <h2 id="trail-garage-title">Vehicle garage</h2>
+    <p class="trail-panel-intro">Choose your vehicle style for the next Mega Ramp run.</p>
+    <div id="trail-garage-cars"></div>
+    <button type="button" id="trail-garage-back" class="trail-back" data-trail-back>← Back to menu</button>
   </section>
   <section id="trail-friend-panel" role="dialog" aria-modal="true" aria-labelledby="trail-friend-title" hidden data-pad-menu data-touch-ignore>
     <span id="trail-room-size" class="trail-kicker">🤝 UP TO FOUR PLAYERS</span>
@@ -76,6 +84,6 @@
   <p id="trail-boarding" role="status" hidden></p>
   <p id="trail-help" hidden></p>
   <script src="./build/sketchbook.min.js?v=trail1"></script>
-  <script type="module" src="./trail.mjs?v=group1-crash2-lite1"></script>
+  <script type="module" src="./trail.mjs?v=garage1"></script>
 </body>
 </html>
