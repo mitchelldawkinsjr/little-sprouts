@@ -443,10 +443,8 @@ function pickReward(options, title, onPick) {
 
 function grantPrize(prize) {
   const won = prize.kind === 'kit' ? KITS[prize.id] : POWERS[prize.id];
-  if (!firstHome) {
-    if (prize.kind === 'kit') ui.AddKit(prize.id);
-    else powerUp(prize.id);
-  }
+  if (prize.kind === 'kit') ui.AddKit(prize.id);
+  else powerUp(prize.id);
   note(`${won.icon} ${won.line}`, 4.5);
   speakLine(won.line);
   saveDirty = true;
@@ -478,8 +476,10 @@ function mark(ok) {
   // With the bugs turned off there is no night, so a lantern would never light.
   if (bugsOff && prize.id === 'lantern') prize.id = 'jump';
   const won = prize.kind === 'kit' ? KITS[prize.id] : POWERS[prize.id];
-  if (prize.kind === 'kit') ui.AddKit(prize.id);
-  else powerUp(prize.id);
+  if (!firstHome) {
+    if (prize.kind === 'kit') ui.AddKit(prize.id);
+    else powerUp(prize.id);
+  }
   if (quest.chest) burst(quest.chest.group.position);
   clearChest();
   blip(780, 0.12, 'sine', 0.12);
@@ -491,7 +491,7 @@ function mark(ok) {
       quest.dayAsks = Math.max(0, quest.dayAsks - 1);
       note(`${won.icon} ${won.line}${quest.dayAsks ? '' : ' More gift boxes come tomorrow morning.'}`, 4.5);
     } else if (quest.rights >= quest.goal) startFree();
-    else note(`${won.icon} ${won.line}${colour}`, 4.5);
+    else if (!firstHome) note(`${won.icon} ${won.line}${colour}`, 4.5);
     saveDirty = true;
     if (firstHome) pickReward(FIRST_HOME_CHOICES.map(id => ({ kind: 'kit', id })), 'Choose your first home!', grantPrize);
   }, reduced ? 300 : 700);
@@ -573,7 +573,7 @@ function paintHud() {
   const c = quest.chest;
   const questEl = $('quest');
   questEl.hidden = !asking() || !c;
-  $('stars').hidden = !!soloInventory || quest.free || solo && quest.rights === 0;
+  $('stars').hidden = !!soloInventory || (quest.free && combatStars === 0) || (solo && quest.rights === 0 && combatStars === 0);
   $('starCount').textContent = `${quest.rights} / ${quest.goal} · ⚔️ ${combatStars}`;
   if (!c || !asking()) return;
   const p = player.camera_.position;
