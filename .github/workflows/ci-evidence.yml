@@ -21,6 +21,7 @@ jobs:
           repo = 'mitchelldawkinsjr/little-sprouts'
           runs = [44536222217, 44536222119, 44536220927]
           def redact(text):
+              text = ''.join(c for c in text if c in '\n\r\t' or ord(c) >= 32)
               def clean_url(match):
                   try:
                       url = urlsplit(match.group())
@@ -51,7 +52,7 @@ jobs:
               metadata = json.loads(out)
               notice(f'Run {run} metadata', json.dumps({key:metadata.get(key) for key in ['id','run_attempt','head_sha','status','conclusion']}))
               job = {44536222217:135602234569, 44536222119:135602235211, 44536220927:135602239376}[run]
-              code, out, error = cli(['api',f'repos/{repo}/actions/jobs/{job}/logs'])
+              code, out, error = cli(['api','--allow-escape-sequences',f'repos/{repo}/actions/jobs/{job}/logs'])
               if code:
                   out = 'Job ' + str(job) + ' log download failed: ' + error
               lines = out.splitlines()
