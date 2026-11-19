@@ -187,8 +187,8 @@ try {
     assert.equal(await page.evaluate(() => speechCalls.length), interrupted.calls, 'partially heard words must wait for a manual retry');
     await page.locator('#speechNotice button').tap();
     await completeAfter(page, before.metrics.completed);
-    assert.equal(await page.evaluate(() => speechCalls.at(-1).text), interrupted.text);
-    assert.equal(await page.evaluate(() => speechCalls.at(-1).completed), true);
+    await page.waitForFunction(({ count, text }) => speechCalls.slice(count).some(call => call.text === text && call.completed),
+      { count: interrupted.calls, text: interrupted.text });
     assert.equal(await page.locator('#speechNotice').count(), 0);
 
     await goHome(page);

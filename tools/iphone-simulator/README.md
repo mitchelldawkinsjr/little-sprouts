@@ -9,7 +9,7 @@ service. One replay follows a background/foreground transition.
 There are no browser API, speech, audio, or gesture stand-ins in this check. The
 fixture's Content Security Policy blocks the model worker to force the real
 production worker-failure/browser fallback consistently; questions
-start 80 ms after a real tap to exercise iOS's asynchronous speech permission
+start 1500 ms after a real tap to exercise iOS's asynchronous speech permission
 boundary. Included recordings still use real Web Audio. Missing
 simulator runtimes, English voices, playback completion events, or successful
 results fail the job. The workflow retains the XCTest result bundle and simulator

@@ -51,7 +51,7 @@ async function check(selector, text, expectedEngine, label) {
   output.textContent = `${label} playing`;
   try {
     // Cross the async boundary that originally made iPhone questions silent.
-    if (expectedEngine === 'browser') await new Promise(resolve => setTimeout(resolve, 80));
+    if (expectedEngine === 'browser') await new Promise(resolve => setTimeout(resolve, 1500));
     const result = await speakAndWait(text);
     report({ label, ...result, metrics: getSpeechStatus().metrics });
     output.textContent = result.status === 'completed' && result.engine === expectedEngine
