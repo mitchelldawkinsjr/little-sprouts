@@ -24,7 +24,10 @@ jobs:
               def clean_url(match):
                   try:
                       url = urlsplit(match.group())
-                      return urlunsplit((url.scheme, url.hostname or '', url.path, '', ''))
+                      host = url.hostname or ''
+                      if url.port is not None:
+                          host += ':' + str(url.port)
+                      return urlunsplit((url.scheme, host, url.path, '', ''))
                   except ValueError:
                       return '[redacted URL]'
               text = re.sub(r'https?://[^\s"<>]+', clean_url, text)
