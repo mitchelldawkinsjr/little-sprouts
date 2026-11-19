@@ -34,7 +34,7 @@ import {
 } from '../lib/speech.js?v=offline4';
 import { findBuiltSidecars, sidecarGame, sidecarIsBuilt } from '../lib/sidecar.js?v=power9';
 import { bigGamesOn, nativeApp, setBigGames } from '../lib/big-games.mjs';
-import { spriteHtml } from '../lib/home-ui.mjs?v=rivals1-chase1';
+import { spriteHtml } from '../lib/home-ui.mjs?v=rivals1-chase2';
 import { wornGear } from '../logic/shop.mjs?v=shop3';
 import { voiceStatusText } from '../lib/parent-ui.mjs?v=structure2';
 import { refreshDiagnostics } from '../lib/diagnostics.mjs';
