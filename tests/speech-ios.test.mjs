@@ -235,6 +235,7 @@ test('a synchronous browser start retains its completion timeout', async t => {
   await Promise.resolve();
   t.mock.timers.tick(10000);
   assert.equal((await line).status, 'failed');
+  assert.equal(speech.getSpeechStatus().speechError, 'browser-playback-timeout');
   assert.equal(speech.getSpeechStatus().metrics.completed, 0);
 });
 

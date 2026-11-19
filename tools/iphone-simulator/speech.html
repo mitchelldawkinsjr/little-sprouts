@@ -22,6 +22,7 @@
 <output id="questionResult">Question not checked</output>
 <button type="button" id="replay">Hear it again</button>
 <output id="replayResult">Replay not checked</output>
+<output id="visits">Counting fixture page loads</output>
 <pre id="gestures"></pre>
 <pre id="details"></pre>
 <script>
@@ -51,6 +52,7 @@
     }, { capture: true, passive: true });
   }
   window.speechFixtureGestures = data;
+  document.querySelector('#visits').textContent = `Fixture page loads: ${data.visits}`;
   save();
   paint();
 })();
