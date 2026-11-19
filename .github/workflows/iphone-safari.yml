@@ -97,10 +97,11 @@ jobs:
             if curl -fsS http://127.0.0.1:4179/healthz; then break; fi
             sleep 1
           done
-          curl -fsS http://127.0.0.1:4179/tools/iphone-simulator/speech.html >/dev/null
           fixture=plain.html
           if [ "$SPROUTS_SAFARI_CASE" = cold-app ]; then fixture=speech.html; fi
-          xcrun simctl openurl "$SPROUTS_SIMULATOR_ID" "http://127.0.0.1:4179/tools/iphone-simulator/$fixture"
+          curl -fsS "http://127.0.0.1:4179/tools/iphone-simulator/$fixture" >/dev/null
+          python3 tools/iphone-simulator/open-safari.py "$SPROUTS_SIMULATOR_ID" \
+            "http://127.0.0.1:4179/tools/iphone-simulator/$fixture" "$RUNNER_TEMP"
       - name: Test actual iOS Safari recordings and system speech
         id: safari_test
         run: |
@@ -148,6 +149,7 @@ jobs:
             ${{ runner.temp }}/sprouts-safari-build.log
             ${{ runner.temp }}/sprouts-speech-server.log
             ${{ runner.temp }}/sprouts-simulators.json
+            ${{ runner.temp }}/sprouts-safari-startup.json
             ${{ runner.temp }}/sprouts-host-audio.json
             ${{ runner.temp }}/sprouts-host-audio-probe.json
           if-no-files-found: warn

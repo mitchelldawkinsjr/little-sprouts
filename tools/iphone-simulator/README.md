@@ -13,6 +13,12 @@ simulator runtime, and the result reader on the same Xcode toolchain rather
 than relying on the runner's older default Xcode selection. No larger or paid
 runner class is requested.
 
+Safari is explicitly launched after boot, and opening the local fixture is
+retried at most three times with bounded command timeouts. Cold simulator URL
+launches can return POSIX timeout 60 before any page or speech code runs. The
+startup report preserves every attempt; exhausting retries fails the check and
+never counts as playback verification.
+
 Three XCTest cases run in order. An isolated `plain.html` control runs first,
 before the app's speech module has loaded. It speaks directly during a trusted
 tap and then 1500 ms after a second tap using real browser utterances, with no
