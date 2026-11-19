@@ -77,6 +77,6 @@ if failed:
 elif outcome == "success":
     expected = int(os.environ.get("SPROUTS_SAFARI_EXPECTED_TESTS", "1"))
     if summary.get("passedTests", 0) < expected or summary.get("failedTests", 0) or summary.get("skippedTests", 0):
-        print("::error::Native playback is unverified: require at least one passing XCTest, zero failures and zero skipped tests.")
+        print(f"::error::Native playback is unverified: require at least {expected} passing XCTest(s), zero failures and zero skipped tests.")
         sys.exit(1)
     print(f"::notice title=iPhone Simulator Safari verified::{escaped(' '.join(lines[:3]))}")

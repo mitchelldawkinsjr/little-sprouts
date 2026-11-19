@@ -35,7 +35,8 @@ final class SafariSpeechTests: XCTestCase {
     private func tap(_ label: String, file: StaticString = #filePath, line: UInt = #line) {
         let button = safari.webViews.buttons[label]
         XCTAssertTrue(button.waitForExistence(timeout: 15), "Missing button: \(label)", file: file, line: line)
-        button.tap()
+        XCTAssertTrue(button.isHittable, "Safari button is not hittable: \(label)", file: file, line: line)
+        button.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
     }
 
     func testIncludedRecordingInSafari() throws {
