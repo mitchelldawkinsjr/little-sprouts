@@ -24,7 +24,7 @@ import { chestDistance, goalFrom, localQuestion, nextLetterOk, normalizeAsk, rea
 import { BUGS, COME_FROM, CYCLE, LINES, MAX_BUGS, NIGHT, bugTarget, canGrab, feetBlock, nightBugs, sheltered, skyAt, stepToward } from './night.mjs?v=fort1';
 import { bossName, randomBoss } from '../../lib/boss-design.mjs';
 import { animate as animateBug, dropBug, makeBossBug, makeCaterpillar, makeSpider } from './bugs.js?v=fort1';
-import { DAY_BOXES, KITS, NEW_DAY, POWERS, TOO_CLOSE, TOUGH_LINE, boosts, facingFromYaw, kitCells, kitToWorld, prizeFor, toughPrize } from './prizes.mjs?v=fort1';
+import { DAY_BOXES, KITS, NEW_DAY, POWERS, TOO_CLOSE, TOUGH_LINE, boosts, facingFromYaw, kitCells, kitToWorld, prizeFor, toughPrize, FIRST_HOME_CHOICES, allRewards } from './prizes.mjs?v=fort1';
 import { makeWorldFriends, mountWorldFriendControls } from '../../lib/world-friends.mjs';
 import { SEND_EVERY, SKY_EVERY, STILL_EVERY, readEdit, readSpot, worldCollector, worldParts } from './friends.mjs?v=blocks5';
 import { BUDDIES, buddyGear, buddyKind, makeBuddy } from '../../lib/buddy3d.mjs?v=gear2';
@@ -177,15 +177,18 @@ function setMode(mode) {
   // A build kit is picked: the hand is empty, and a tap puts the whole kit down.
   if (uiEntity.GetComponent('UIController').Kit) tools.held_.visible = false;
   const dig = tools.Mode === 'dig';
-  uiEntity.GetComponent('UIController').ShowMode(tools.Mode);
-  $('modeIcon').textContent = dig ? '⛏' : '🧱';
-  $('modeText').textContent = dig ? 'Dig' : 'Build';
-  $('mode').classList.toggle('on', dig);
+  const sword = tools.Mode === 'sword';
+  const bow = tools.Mode === 'bow';
+  uiEntity.GetComponent('UIController').ShowMode(sword || bow ? 'dig' : tools.Mode);
+  $('modeIcon').textContent = bow ? '🏹' : sword ? '⚔️' : dig ? '⛏' : '🧱';
+  $('modeText').textContent = bow ? 'Bow' : sword ? 'Sword' : dig ? 'Dig' : 'Build';
+  $('mode').classList.toggle('on', dig || sword || bow);
 }
-$('mode').addEventListener('click', () => setMode(tools.Mode === 'dig' ? 'build' : 'dig'));
+$('mode').addEventListener('click', () => setMode(tools.Mode === 'build' ? 'dig' : tools.Mode === 'dig' ? 'sword' : tools.Mode === 'sword' ? 'bow' : 'build'));
 
 // ---- Save the world in this browser.
 let saveDirty = false;
+let combatStars = Math.max(0, Number(saved?.combatStars) || 0);
 voxels.onEdit = () => { saveDirty = true; };
 function save() {
   try {
@@ -199,7 +202,8 @@ function save() {
       pitch: own ? own.pitch : player.Pitch,
       unlocked: soloInventory?.unlocked ?? ui.Unlocked,
       selected: soloInventory?.selected ?? ui.Selected,
-      kits: soloInventory?.kits ?? ui.Kits
+      kits: soloInventory?.kits ?? ui.Kits,
+      combatStars
     }));
     saveDirty = false;
   } catch { /* storage full or blocked: the world still plays */ }
@@ -413,6 +417,39 @@ function spellTap(button) {
   else send('pick', { index: 0 });
 }
 
+// Use the same accessible picker for the opening home and defeating a boss.
+function pickReward(options, title, onPick) {
+  const overlay = document.createElement('div');
+  overlay.setAttribute('role', 'dialog'); overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-label', title);
+  Object.assign(overlay.style, { position: 'fixed', inset: '0', zIndex: '1000', background: '#142d28e8', display: 'grid', placeItems: 'center', padding: '16px', overflowY: 'auto' });
+  const panel = document.createElement('div');
+  Object.assign(panel.style, { background: '#fff8e6', borderRadius: '20px', padding: '20px', maxWidth: '520px', width: '100%', color: '#243c32', textAlign: 'center' });
+  const heading = document.createElement('h2'); heading.textContent = title; panel.append(heading);
+  const grid = document.createElement('div');
+  Object.assign(grid.style, { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(125px,1fr))', gap: '10px' });
+  for (const prize of options) {
+    const item = prize.kind === 'kit' ? KITS[prize.id] : POWERS[prize.id];
+    const button = document.createElement('button'); button.type = 'button';
+    button.textContent = `${item.icon} ${item.label}`;
+    Object.assign(button.style, { padding: '16px 8px', fontSize: '17px', borderRadius: '12px', background: '#d7f1c4', color: '#173927', border: '2px solid #5d9951', cursor: 'pointer' });
+    button.addEventListener('click', () => { overlay.remove(); player.input.frozen = false; tools.enabled = true; onPick(prize); });
+    grid.append(button);
+  }
+  panel.append(grid); overlay.append(panel); document.body.append(overlay);
+  player.input.frozen = true; tools.enabled = false;
+  grid.querySelector('button')?.focus();
+}
+
+function grantPrize(prize) {
+  const won = prize.kind === 'kit' ? KITS[prize.id] : POWERS[prize.id];
+  if (prize.kind === 'kit') ui.AddKit(prize.id);
+  else powerUp(prize.id);
+  note(`${won.icon} ${won.line}`, 4.5);
+  speakLine(won.line);
+  saveDirty = true;
+}
+
 function mark(ok) {
   if (!quest.open) return;
   quest.pending = false;
@@ -434,12 +471,15 @@ function mark(ok) {
   quest.ask = null;
   const reward = texture_defs.REWARDS.find(t => !ui.Unlocked.includes(t));
   if (reward) ui.Unlock(reward);
+  const firstHome = quest.rights === 1;
   const prize = tough ? { kind: 'kit', id: toughPrize(quest.missed) } : prizeFor(quest.rights);
   // With the bugs turned off there is no night, so a lantern would never light.
   if (bugsOff && prize.id === 'lantern') prize.id = 'jump';
   const won = prize.kind === 'kit' ? KITS[prize.id] : POWERS[prize.id];
-  if (prize.kind === 'kit') ui.AddKit(prize.id);
-  else powerUp(prize.id);
+  if (!firstHome) {
+    if (prize.kind === 'kit') ui.AddKit(prize.id);
+    else powerUp(prize.id);
+  }
   if (quest.chest) burst(quest.chest.group.position);
   clearChest();
   blip(780, 0.12, 'sine', 0.12);
@@ -451,11 +491,12 @@ function mark(ok) {
       quest.dayAsks = Math.max(0, quest.dayAsks - 1);
       note(`${won.icon} ${won.line}${quest.dayAsks ? '' : ' More gift boxes come tomorrow morning.'}`, 4.5);
     } else if (quest.rights >= quest.goal) startFree();
-    else note(`${won.icon} ${won.line}${colour}`, 4.5);
+    else if (!firstHome) note(`${won.icon} ${won.line}${colour}`, 4.5);
     saveDirty = true;
+    if (firstHome) pickReward(FIRST_HOME_CHOICES.map(id => ({ kind: 'kit', id })), 'Choose your first home!', grantPrize);
   }, reduced ? 300 : 700);
   // After the host's own "yes", so the two do not talk over each other.
-  setTimeout(() => speakLine(won.line), 1300);
+  if (!firstHome) setTimeout(() => speakLine(won.line), 1300);
   paintHud();
 }
 
@@ -532,8 +573,8 @@ function paintHud() {
   const c = quest.chest;
   const questEl = $('quest');
   questEl.hidden = !asking() || !c;
-  $('stars').hidden = !!soloInventory || quest.free || solo && quest.rights === 0;
-  $('starCount').textContent = `${quest.rights} / ${quest.goal}`;
+  $('stars').hidden = !!soloInventory || (quest.free && combatStars === 0) || (solo && quest.rights === 0 && combatStars === 0);
+  $('starCount').textContent = `${quest.rights} / ${quest.goal} · ⚔️ ${combatStars}`;
   if (!c || !asking()) return;
   const p = player.camera_.position;
   const dx = c.x - p.x;
@@ -642,7 +683,7 @@ function spawnBug(kind) {
     const model = design ? makeBossBug(design) : kind === 'spider' ? makeSpider() : makeCaterpillar();
     model.segs.forEach(seg => seg.position.set(x, y, z));
     renderer.scene_.add(model.group);
-    const bug = { kind, model, name: design ? bossName(design) : '', x, z, y, spin: angle, heading: angle + Math.PI, t: rnd() * 10, state: 'come', fade: 0 };
+    const bug = { kind, model, name: design ? bossName(design) : '', x, z, y, spin: angle, heading: angle + Math.PI, t: rnd() * 10, state: 'come', fade: 0, hp: kind === 'boss' ? 6 : kind === 'spider' ? 3 : 2 };
     placeBug(bug, 0);
     night.bugs.push(bug);
     return true;
@@ -891,9 +932,48 @@ function tappedChest(ndc) {
   return true;
 }
 
+// Hits earn stars, while bugs can still grab and munch the player between attacks.
+let lastAttack = -Infinity;
+function attackBug(weapon) {
+  const now = performance.now();
+  const cooldown = weapon === 'bow' ? 850 : 550;
+  if (now - lastAttack < cooldown) return;
+  lastAttack = now;
+  tools.SwingSword();
+  blip(weapon === 'bow' ? 650 : 430, 0.13, 'triangle', 0.1);
+  const p = playerFeet();
+  const fx = -Math.sin(player.Yaw), fz = -Math.cos(player.Yaw);
+  const reach = weapon === 'bow' ? 24 : 4;
+  let target = null, nearest = Infinity;
+  for (const bug of night.bugs) {
+    if (bug.state !== 'come') continue;
+    const dx = bug.x - p.x, dz = bug.z - p.z;
+    const dist = Math.hypot(dx, dz);
+    if (dist > reach || dist < 0.1 || (dx * fx + dz * fz) / dist < (weapon === 'bow' ? 0.94 : 0.55)) continue;
+    if (dist < nearest) { target = bug; nearest = dist; }
+  }
+  if (!target) return;
+  const damage = weapon === 'sword' && powers.strength > 0 ? 3 : 1;
+  target.hp -= damage;
+  combatStars += damage;
+  burst(new THREE.Vector3(target.x, target.y + 1, target.z));
+  blip(820, 0.17, 'sine', 0.1);
+  note(`⭐ +${damage} star${damage === 1 ? '' : 's'}! ${target.hp > 0 ? 'Hit again!' : 'Bug defeated!'}`, 2);
+  if (target.hp <= 0) {
+    target.state = 'leave'; target.fade = 0;
+    combatStars += target.kind === 'boss' ? 10 : 3;
+    if (target.kind === 'boss') {
+      pickReward(allRewards().filter(r => !bugsOff || r.id !== 'lantern'), '🏆 Boss defeated! Choose any reward!', grantPrize);
+    }
+  }
+  saveDirty = true;
+  paintHud();
+}
+
 function act(ndc) {
   if (friend.loading || quest.open || questionHolding() || night.grab) return;
   if (tappedChest(ndc || { x: 0, y: 0 })) return;
+  if (tools.Mode === 'sword' || tools.Mode === 'bow') { attackBug(tools.Mode); return; }
   if (tools.Mode === 'build' && ui.Kit) { placeKit(ui.Kit, ndc); return; }
   tools.Act(ndc);
 }
@@ -922,7 +1002,7 @@ function placeKit(id, ndc) {
 }
 
 // Seconds left on super jump and super speed. The lantern is held until night, then lit all night.
-const powers = { jump: 0, speed: 0, lantern: 'off' };   // lantern: 'off' | 'held' | 'lit'
+const powers = { jump: 0, speed: 0, strength: 0, lantern: 'off' };   // lantern: 'off' | 'held' | 'lit'
 function powerUp(id) {
   if (id === 'lantern') powers.lantern = night.sky?.phase === 'night' ? 'lit' : 'held';
   else powers[id] = POWERS[id].seconds;
@@ -933,6 +1013,7 @@ function stepPowers(dt) {
   if (!paused) {
     powers.jump = Math.max(0, powers.jump - dt);
     powers.speed = Math.max(0, powers.speed - dt);
+    powers.strength = Math.max(0, powers.strength - dt);
   }
   const phase = night.sky?.phase;
   if (powers.lantern === 'held' && phase === 'night') powers.lantern = 'lit';

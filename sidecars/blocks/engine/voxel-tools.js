@@ -108,14 +108,47 @@ export const voxel_tools = (() => {
       this.trowel_.rotation.set(-0.5, 0.35, 0);
       uiCamera.add(this.trowel_);
 
+      // Child-friendly voxel sword, held in the same first-person space as the digging tool.
+      const gold = new THREE.MeshLambertMaterial({ color: 0xf2c94c, depthTest: false });
+      const silver = new THREE.MeshLambertMaterial({ color: 0xc5e7f5, depthTest: false });
+      const grip = new THREE.MeshLambertMaterial({ color: 0x7351a2, depthTest: false });
+      this.sword_ = new THREE.Group();
+      const piece = (w, h, d, material, x, y, z) => {
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
+        mesh.position.set(x, y, z); this.sword_.add(mesh);
+      };
+      piece(0.16, 0.18, 0.62, grip, 0, 0, 0.32);
+      piece(0.6, 0.15, 0.15, gold, 0, 0, -0.05);
+      piece(0.22, 0.2, 1.1, silver, 0, 0, -0.68);
+      piece(0.15, 0.15, 0.2, gold, 0, 0, 0.7);
+      // A chunky toy bow with a visible string and nocked arrow.
+      this.bow_ = new THREE.Group();
+      const bowWood = new THREE.MeshLambertMaterial({ color: 0x9b6439, depthTest: false });
+      const string = new THREE.MeshBasicMaterial({ color: 0xf8f4df, depthTest: false });
+      const shaft = new THREE.MeshLambertMaterial({ color: 0xf5d89c, depthTest: false });
+      for (const [y, tilt] of [[0.42, -0.35], [-0.42, 0.35]]) {
+        const limb = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.85, 0.14), bowWood);
+        limb.position.set(0, y, 0); limb.rotation.z = tilt; this.bow_.add(limb);
+      }
+      const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 1.7, 5), string);
+      this.bow_.add(cord);
+      const arrow = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 1.2), shaft);
+      arrow.position.z = -0.35; this.bow_.add(arrow);
+      this.bow_.position.set(1.05, -0.9, -2.3);
+      uiCamera.add(this.bow_);
+      this.sword_.position.set(1.1, -1.0, -2.4);
+      this.sword_.rotation.set(-0.5, 0.35, 0);
+      uiCamera.add(this.sword_);
       this.UpdateVoxelMesh_();
       this.SetMode(this.mode_);
     }
 
     SetMode(mode) {
-      this.mode_ = mode === 'dig' ? 'dig' : 'build';
+      this.mode_ = ['dig', 'sword', 'bow'].includes(mode) ? mode : 'build';
       this.held_.visible = this.mode_ === 'build';
       this.trowel_.visible = this.mode_ === 'dig';
+      this.sword_.visible = this.mode_ === 'sword';
+      this.bow_.visible = this.mode_ === 'bow';
       this.Broadcast({topic: 'tools.mode', value: this.mode_});
     }
 
@@ -173,9 +206,11 @@ export const voxel_tools = (() => {
       return null;
     }
 
+    SwingSword() { this.swing_ = 1; }
+
     // Build or dig once. `aim` is a screen point, or null for the middle. Returns what happened.
     Act(aim = this.aim) {
-      if (!this.enabled) return null;
+      if (!this.enabled || ['sword', 'bow'].includes(this.mode_)) return null;
       const target = this.FindTarget_(aim);
       if (!target) return null;
       const player = this.FindEntity('player').GetComponent('PlayerController');
@@ -235,6 +270,8 @@ export const voxel_tools = (() => {
       const s = Math.sin(this.swing_ * Math.PI);
       this.held_.rotation.x = -s * 0.6;
       this.trowel_.rotation.x = -0.5 - s * 0.9;
+      this.sword_.rotation.x = -0.5 - s * 1.2;
+      this.bow_.rotation.x = -s * 0.35;
 
       this.build_.group.visible = false;
       this.dig_.group.visible = false;
