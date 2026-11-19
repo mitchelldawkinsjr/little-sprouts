@@ -38,8 +38,10 @@ const touch = matchMedia('(any-pointer: coarse)').matches || navigator.maxTouchP
 document.body.classList.toggle('touch', touch);
 
 const tier = resolveAutoQuality({ embedded: !solo });
-const lowGpu = isPerformanceTier(tier);
-hack_defs.WORLD_SIZE = lowGpu ? 4 : 7;
+// Lite mode (lib/lite-mode.js) on a weak device: the low-GPU path always, and from level 2 a nearer horizon.
+const liteLevel = window.SproutsLite?.level ?? 0;
+const lowGpu = isPerformanceTier(tier) || liteLevel > 0;
+hack_defs.WORLD_SIZE = liteLevel >= 2 ? 3 : lowGpu ? 4 : 7;
 const viewBlocks = hack_defs.WORLD_SIZE * hack_defs.WORLD_BLOCK_SIZE;
 const fogRange = [viewBlocks * 0.55, viewBlocks * 0.95];
 const workers = Math.max(1, Math.min(lowGpu ? 2 : 4, (navigator.hardwareConcurrency || 2) - 1));
