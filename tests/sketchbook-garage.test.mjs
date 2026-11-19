@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { GARAGE, garageVehicle, garageChoice, saveGarageChoice } from '../sidecars/sketchbook/garage.mjs';
-import { makeGarageBody, applyGarageVehicle } from '../sidecars/sketchbook/garage-body.mjs';
+import { makeGarageBody, applyGarageVehicle, tuneGarageHandling } from '../sidecars/sketchbook/garage-body.mjs';
 
 test('garage offers six distinct vehicles and safely persists selections', () => {
   assert.equal(GARAGE.length, 6);
@@ -42,4 +42,32 @@ test('garage bodies are original geometry and swapping retains car physics', () 
   assert.equal(stock.visible, true);
   assert.equal(container.children.length, 1);
   assert.ok(makeGarageBody(T, 'buggy'));
+});
+
+test('handling changes motor, steering and suspension without changing collision', () => {
+  const calls = [];
+  const wheels = Array.from({ length: 4 }, () => ({
+    frictionSlip: 5, suspensionStiffness: 20, suspensionRestLength: .3,
+    dampingCompression: 4, dampingRelaxation: 5
+  }));
+  const ray = {
+    wheelInfos: wheels,
+    applyEngineForce(force, index) { calls.push(['engine', force, index]); },
+    setSteeringValue(angle, index) { calls.push(['steer', angle, index]); }
+  };
+  const car = { rayCastVehicle: ray, collision: { id: 'unchanged' } };
+  assert.equal(tuneGarageHandling(car, 'sports'), true);
+  ray.applyEngineForce(100, 2);
+  ray.setSteeringValue(.5, 0);
+  assert.equal(calls[0][1], 120);
+  assert.equal(calls[1][1], .57);
+  assert.equal(wheels[0].frictionSlip, 5 * 1.14);
+  assert.equal(wheels[0].suspensionRestLength, .3 * .88);
+  tuneGarageHandling(car, 'classic');
+  ray.applyEngineForce(100, 2);
+  assert.equal(calls[2][1], 100);
+  assert.equal(wheels[0].frictionSlip, 5);
+  assert.equal(wheels[0].suspensionRestLength, .3);
+  assert.deepEqual(car.collision, { id: 'unchanged' });
+  assert.equal(ray.userData.sproutsGarageStock.engine !== ray.applyEngineForce, true);
 });
