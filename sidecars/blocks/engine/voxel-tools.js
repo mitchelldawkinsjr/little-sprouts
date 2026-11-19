@@ -108,14 +108,31 @@ export const voxel_tools = (() => {
       this.trowel_.rotation.set(-0.5, 0.35, 0);
       uiCamera.add(this.trowel_);
 
+      // Child-friendly voxel sword, held in the same first-person space as the digging tool.
+      const gold = new THREE.MeshLambertMaterial({ color: 0xf2c94c, depthTest: false });
+      const silver = new THREE.MeshLambertMaterial({ color: 0xc5e7f5, depthTest: false });
+      const grip = new THREE.MeshLambertMaterial({ color: 0x7351a2, depthTest: false });
+      this.sword_ = new THREE.Group();
+      const piece = (w, h, d, material, x, y, z) => {
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
+        mesh.position.set(x, y, z); this.sword_.add(mesh);
+      };
+      piece(0.16, 0.18, 0.62, grip, 0, 0, 0.32);
+      piece(0.6, 0.15, 0.15, gold, 0, 0, -0.05);
+      piece(0.22, 0.2, 1.1, silver, 0, 0, -0.68);
+      piece(0.15, 0.15, 0.2, gold, 0, 0, 0.7);
+      this.sword_.position.set(1.1, -1.0, -2.4);
+      this.sword_.rotation.set(-0.5, 0.35, 0);
+      uiCamera.add(this.sword_);
       this.UpdateVoxelMesh_();
       this.SetMode(this.mode_);
     }
 
     SetMode(mode) {
-      this.mode_ = mode === 'dig' ? 'dig' : 'build';
+      this.mode_ = ['dig', 'sword'].includes(mode) ? mode : 'build';
       this.held_.visible = this.mode_ === 'build';
       this.trowel_.visible = this.mode_ === 'dig';
+      this.sword_.visible = this.mode_ === 'sword';
       this.Broadcast({topic: 'tools.mode', value: this.mode_});
     }
 
@@ -173,9 +190,11 @@ export const voxel_tools = (() => {
       return null;
     }
 
+    SwingSword() { this.swing_ = 1; }
+
     // Build or dig once. `aim` is a screen point, or null for the middle. Returns what happened.
     Act(aim = this.aim) {
-      if (!this.enabled) return null;
+      if (!this.enabled || this.mode_ === 'sword') return null;
       const target = this.FindTarget_(aim);
       if (!target) return null;
       const player = this.FindEntity('player').GetComponent('PlayerController');
@@ -235,6 +254,7 @@ export const voxel_tools = (() => {
       const s = Math.sin(this.swing_ * Math.PI);
       this.held_.rotation.x = -s * 0.6;
       this.trowel_.rotation.x = -0.5 - s * 0.9;
+      this.sword_.rotation.x = -0.5 - s * 1.2;
 
       this.build_.group.visible = false;
       this.dig_.group.visible = false;
