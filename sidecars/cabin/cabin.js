@@ -476,7 +476,7 @@ const audio = {
   pickup(id) {
     if (!this.ok()) return;
     const t = this.t(), o = this.out(0.6, 0, 0.3);
-    const arps = { med: [65, 69, 72, 77, 81], dmg: [67, 72, 76, 79, 84], ammo: [69, 74, 78, 81, 86] };
+    const arps = { med: [65, 69, 72, 77, 81], dmg: [67, 72, 76, 79, 84], ammo: [69, 74, 78, 81, 86], fast: [72, 76, 79, 84, 88], wide: [64, 69, 73, 76, 81], feet: [70, 74, 77, 82, 86], shield: [60, 67, 72, 76, 79] };
     (arps[id] || arps.med).forEach((m, i) => {
       this.osc(o, t + i * 0.055, { w: id === 'dmg' ? 'pulse12' : 'pulse25', f: midiHz(m), dur: 0.18, v: 0.26 });
       this.osc(o, t + i * 0.055, { w: 'tri', f: midiHz(m - 12), dur: 0.12, v: 0.22 });
@@ -1745,6 +1745,10 @@ const state = {
   // timed power-ups from drops (seconds remaining)
   pDamage: 0,
   pAmmo: 0,
+  pRate: 0,      // FAST SPRAY: twice the spray rate
+  pSpread: 0,    // SPRINKLER BURST: two extra streams
+  pSpeed: 0,     // FAST FEET: faster walking
+  pShield: 0,    // BUBBLE: no lost hearts
   sinceDrop: 0,  // kills since the last drop (pity timer)
   // wave control
   toSpawn: 0,
@@ -1920,6 +1924,10 @@ function updateHUD() {
   let pu = '';
   if (state.pDamage > 0) pu += `<div style="color:#5ac8e8">SUPER SPRAY ${clock(state.pDamage)}</div>`;
   if (state.pAmmo > 0) pu += `<div style="color:#9ad8a0">FULL CAN ${clock(state.pAmmo)}</div>`;
+  if (state.pRate > 0) pu += `<div style="color:#f2d04a">FAST SPRAY ${clock(state.pRate)}</div>`;
+  if (state.pSpread > 0) pu += `<div style="color:#7ad0f0">SPRINKLER BURST ${clock(state.pSpread)}</div>`;
+  if (state.pSpeed > 0) pu += `<div style="color:#f08a5a">FAST FEET ${clock(state.pSpeed)}</div>`;
+  if (state.pShield > 0) pu += `<div style="color:#b9a2f2">BUBBLE ${clock(state.pShield)}</div>`;
   hud.powerups.innerHTML = pu;
   let m = '';
   for (let i = 0; i < state.magSize; i++) {
@@ -2053,7 +2061,7 @@ function presentQuestion(q) {
 
 // What a Little Sprouts answer does in the cabin, once its card closes and play can be seen:
 // a right answer showers treats around the buddy: 3 for a first try, one more for each first
-// try in a row (up to 6), and 2 after a miss. Any miss on the card spills the watering can,
+// try in a row (up to 6), and 2 after a miss. Treats from a right answer stay until they're picked up. Any miss on the card spills the watering can,
 // so the round starts with a refill. Never a lost heart.
 let answerStreak = 0;
 function answerResult(missed) {
@@ -2079,7 +2087,7 @@ function answerResult(missed) {
     spawnDrop(type, {
       x: THREE.MathUtils.clamp(player.position.x + Math.cos(a) * r, -lim, lim),
       z: THREE.MathUtils.clamp(player.position.z + Math.sin(a) * r, -lim, lim),
-    });
+    }, !missed);
   }
   showToast(missed ? `Can spilled! Refill · ${count} treats` : answerStreak > 1 ? `${answerStreak} in a row! ${count} treats` : `Yay! ${count} treats`, '#e0b84a');
 }
@@ -2360,7 +2368,7 @@ function fire() {
     if (state.mag <= 0) startReload();
   }
   state.shots++;
-  state.fireCd = state.fireRate;
+  state.fireCd = state.fireRate * (state.pRate > 0 ? 0.5 : 1);
 
   const aim = new THREE.Vector3(aimPoint.x - player.position.x, 0, aimPoint.z - player.position.z);
   if (aim.lengthSq() < 1e-4) return;
@@ -2369,7 +2377,7 @@ function fire() {
   // spawn at the spout; SPRINKLER fans extra streams around the aim line
   const mp = new THREE.Vector3();
   muzzle.getWorldPosition(mp);
-  const count = 1 + state.spread;
+  const count = 1 + state.spread + (state.pSpread > 0 ? 2 : 0);
   for (let k = 0; k < count; k++) {
     const a = (k - (count - 1) / 2) * 0.13;
     const c = Math.cos(a), s = Math.sin(a);
@@ -2954,7 +2962,18 @@ const DROP_TYPES = [
   { id: 'med',  name: '+1 HEART',      color: 0xe06a7a, weight: 40 },
   { id: 'dmg',  name: 'SUPER SPRAY',   color: 0x5ac8e8, weight: 25 },
   { id: 'ammo', name: 'FULL CAN',      color: 0x9ad8a0, weight: 25 },
+  { id: 'fast',   name: 'FAST SPRAY',      color: 0xf2d04a, weight: 15 },
+  { id: 'wide',   name: 'SPRINKLER BURST', color: 0x7ad0f0, weight: 15 },
+  { id: 'feet',   name: 'FAST FEET',       color: 0xf08a5a, weight: 15 },
+  { id: 'shield', name: 'BUBBLE',          color: 0xb9a2f2, weight: 10 },
 ];
+/**
+ * How long each timed power-up lasts, in seconds (doubled from the first 10 and 8). Picking up one you
+ * already have adds its time, up to POWER_MAX, so a shower of treats is never wasted.
+ */
+const POWER_TIME = { dmg: 20, ammo: 16, fast: 20, wide: 20, feet: 20, shield: 16 };
+const POWER_KEY = { dmg: 'pDamage', ammo: 'pAmmo', fast: 'pRate', wide: 'pSpread', feet: 'pSpeed', shield: 'pShield' };
+const POWER_MAX = 60;
 // each pickup is a little blocky item in a soft glow of its color
 const K = 0x1a1a1a;
 const DROP_MODELS = {
@@ -2978,6 +2997,28 @@ const DROP_MODELS = {
     [0.2, 0.05, 0.06, 0, 0.2, -0.18, 0x4f7a9e, 0, 0, 0, 0.02],
     [0.26, 0.05, 0.02, 0, 0.02, 0.152, 0x9ad8a0, 0, 0, 0, 0.005],
   ],
+  fast: [ // a zigzag lightning bolt
+    [0.14, 0.2, 0.1, 0.06, 0.16, 0, 0xf2d04a, 0, 0, 0.5, 0.03],
+    [0.22, 0.08, 0.1, 0, 0.04, 0, 0xffe27a, 0, 0, 0, 0.03],
+    [0.14, 0.22, 0.1, -0.06, -0.1, 0, 0xf2d04a, 0, 0, 0.5, 0.03],
+  ],
+  wide: [ // a sprinkler head with three nozzles
+    [0.36, 0.1, 0.36, 0, -0.1, 0, 0x4a8a4a, 0, 0, 0, 0.03],
+    [0.12, 0.2, 0.12, 0, 0.04, 0, 0x8a8a8a, 0, 0, 0, 0.02],
+    [0.08, 0.08, 0.2, -0.12, 0.18, 0, 0x7ad0f0, 0, 0.6, 0, 0.02],
+    [0.08, 0.08, 0.2, 0, 0.2, 0, 0x7ad0f0, 0, 0, 0, 0.02],
+    [0.08, 0.08, 0.2, 0.12, 0.18, 0, 0x7ad0f0, 0, -0.6, 0, 0.02],
+  ],
+  feet: [ // a running shoe
+    [0.42, 0.14, 0.2, 0.02, -0.08, 0, 0xf08a5a, 0, 0, 0, 0.04],
+    [0.2, 0.16, 0.2, -0.1, 0.06, 0, 0xe0704a, 0, 0, 0, 0.03],
+    [0.44, 0.05, 0.22, 0.02, -0.17, 0, 0xf4f0e8, 0, 0, 0, 0.02],
+    [0.1, 0.03, 0.21, 0.08, -0.01, 0, 0xffffff, 0, 0, 0, 0.01],
+  ],
+  shield: [ // a round bubble with a shine
+    [0.38, 0.38, 0.38, 0, 0.02, 0, 0xb9a2f2, 0.6, 0.6, 0, 0.12],
+    [0.1, 0.1, 0.04, -0.08, 0.12, 0.19, 0xffffff, 0, 0, 0, 0.03],
+  ],
 };
 const dropMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, emissive: 0x1c1c1c });
 const dropGlow = glowTexture();
@@ -3000,12 +3041,13 @@ function maybeDrop(pos) {
   spawnDrop(pool.find(t => (r -= t.weight) < 0) || pool[0], pos);
 }
 
-function spawnDrop(type, pos) {
+/** `keep`: a reward for a right answer stays until it's picked up; other drops vanish after DROP_LIFE. */
+function spawnDrop(type, pos, keep = false) {
   const d = new THREE.Group();
   const item = new THREE.Mesh(type.geo, dropMat); item.castShadow = true; item.scale.setScalar(1.25); d.add(item);
   const glow = new THREE.Sprite(type.glow); glow.scale.setScalar(2.6); d.add(glow);
   d.position.set(pos.x, 0.7, pos.z);
-  d.userData = { type, life: DROP_LIFE, t: Math.random() * 6 };
+  d.userData = { type, life: keep ? Infinity : DROP_LIFE, t: Math.random() * 6 };
   scene.add(d);
   drops.push(d);
 }
@@ -3013,9 +3055,10 @@ function spawnDrop(type, pos) {
 function collect(type) {
   audio.pickup(type.id);
   showToast(type.name, '#' + type.color.toString(16).padStart(6, '0'));
-  if (type.id === 'med') state.hp = Math.min(state.maxHp, state.hp + 1);
-  else if (type.id === 'dmg') state.pDamage = 10;
-  else if (type.id === 'ammo') { state.pAmmo = 8; state.reloading = false; state.mag = state.magSize; }
+  if (type.id === 'med') { state.hp = Math.min(state.maxHp, state.hp + 1); return; }
+  const key = POWER_KEY[type.id];
+  state[key] = Math.min(POWER_MAX, state[key] + POWER_TIME[type.id]);
+  if (type.id === 'ammo') { state.reloading = false; state.mag = state.magSize; }
 }
 function updateDrops(dt) {
   const lim = HALF - 0.9;
@@ -3194,7 +3237,7 @@ function resetGame(keep = false) {
     mag: BASE_STATS.magSize, reloading: false, reloadT: 0,
     fireCd: 0, dmgCd: 0, toSpawn: 0, spawnTimer: 0,
     intermission: 0, choosing: false, shake: 0, upgrades: {},
-    pDamage: 0, pAmmo: 0, sinceDrop: 0,
+    pDamage: 0, pAmmo: 0, pRate: 0, pSpread: 0, pSpeed: 0, pShield: 0, sinceDrop: 0,
   });
   if (keep) {
     state.intermission = SWOOP_TIME * 0.85;
@@ -3545,6 +3588,12 @@ function walkToward(z, dx, dz, speed, turn, dt) {
 
 function hurtPlayer() {
   if (state.dmgCd > 0 || nap.t > 0) return false;
+  if (state.pShield > 0) {
+    // BUBBLE: the hit splashes off instead of costing a heart
+    state.dmgCd = HURT_IFRAMES;
+    splashAt(player.position.x, 0.9, player.position.z, 8, 0.8);
+    return false;
+  }
   state.hp--;
   state.dmgCd = HURT_IFRAMES;
   damageFlash();
@@ -3666,8 +3715,9 @@ function update(dt) {
     const moving = !!(mx || mz);
     if (moving) {
       const l = Math.hypot(mx, mz);
-      player.position.x += (mx / l) * state.speed * dt;
-      player.position.z += (mz / l) * state.speed * dt;
+      const pace = state.speed * (state.pSpeed > 0 ? 1.4 : 1);
+      player.position.x += (mx / l) * pace * dt;
+      player.position.z += (mz / l) * pace * dt;
     }
     // clamp inside cabin
     const lim = HALF - 0.7;
@@ -3696,8 +3746,7 @@ function update(dt) {
       state.reloadT += dt;
       if (state.reloadT >= state.reloadTime) finishReload();
     }
-    state.pDamage = Math.max(0, state.pDamage - dt);
-    state.pAmmo = Math.max(0, state.pAmmo - dt);
+    for (const key of Object.values(POWER_KEY)) state[key] = Math.max(0, state[key] - dt);
     updateDrops(dt);
 
     // --- waves ---
@@ -4226,4 +4275,4 @@ requestAnimationFrame(loop);
 // host that attached its listener after this module ran.
 bridge.ready();
 // Test hook for _test.html (?test=1) only; the shipped game doesn't expose its state.
-if (new URLSearchParams(location.search).has('test')) window.__cabin = { state, sidecar, raiders, die, friend, nap, bullets, hurtPlayer, player, touch, padState, remotes, link };
+if (new URLSearchParams(location.search).has('test')) window.__cabin = { state, sidecar, raiders, die, friend, nap, bullets, hurtPlayer, player, touch, padState, remotes, link, drops, answerResult, startGame, updateDrops };
