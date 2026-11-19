@@ -2,6 +2,20 @@ name: iPhone Simulator Safari speech
 
 on:
   workflow_dispatch:
+    inputs:
+      speech_case:
+        description: 'Playback case: full checks or an independent cold first app question'
+        required: false
+        default: full
+        type: choice
+        options:
+          - full
+          - cold-app
+      evidence_run_id:
+        description: 'Inspect an existing Safari run artifact without running new playback tests'
+        required: false
+        default: ''
+        type: string
   pull_request:
     paths:
       - 'lib/speech*'
@@ -21,10 +35,17 @@ on:
 permissions:
   contents: read
 
+env:
+  DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+
 jobs:
   safari-speech:
-    runs-on: macos-15
+    name: ${{ github.event_name == 'workflow_dispatch' && inputs.evidence_run_id != '' && 'Native Safari not requested (evidence only)' || github.event_name == 'workflow_dispatch' && inputs.speech_case == 'cold-app' && 'Native Safari cold app (manual)' || 'safari-speech' }}
+    if: github.event_name != 'workflow_dispatch' || inputs.evidence_run_id == ''
+    runs-on: macos-15-intel
     timeout-minutes: 25
+    env:
+      SPROUTS_SAFARI_CASE: ${{ github.event_name == 'workflow_dispatch' && inputs.speech_case || 'full' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -32,15 +53,42 @@ jobs:
           node-version: 24
       - name: Install Xcode project generator
         run: brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
-      - name: Boot an installed iPhone Simulator
+      - name: Inspect the host audio output route
+        run: python3 tools/iphone-simulator/audio-probe.py "$RUNNER_TEMP"
+      - name: Boot an iPhone Simulator
         run: |
           set -euo pipefail
           xcrun simctl list devices available --json > "$RUNNER_TEMP/sprouts-simulators.json"
           simulator_id="$(python3 tools/iphone-simulator/select-device.py < "$RUNNER_TEMP/sprouts-simulators.json")"
+          if [ "$SPROUTS_SAFARI_CASE" = cold-app ]; then
+            # Create new device data; a prior Safari visit must not warm this case.
+            simulator_id="$(python3 - "$RUNNER_TEMP/sprouts-simulators.json" "$simulator_id" <<'PY'
+          import json
+          import subprocess
+          import sys
+
+          devices = json.load(open(sys.argv[1]))['devices']
+          selected = [(runtime, device) for runtime, rows in devices.items()
+                      for device in rows if device['udid'] == sys.argv[2]]
+          if len(selected) != 1:
+              sys.exit('Cannot identify the selected iPhone runtime for a fresh cold-app device.')
+          runtime, device = selected[0]
+          device_type = device.get('deviceTypeIdentifier')
+          if not device_type:
+              types = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'devicetypes', '--json']))
+              matching = [row['identifier'] for row in types['devicetypes'] if row['name'] == device['name']]
+              if len(matching) != 1:
+                  sys.exit('Cannot identify the iPhone device type for a fresh cold-app device.')
+              device_type = matching[0]
+          print(subprocess.check_output(['xcrun', 'simctl', 'create', 'Sprouts Cold Speech', device_type, runtime], text=True).strip())
+          PY
+          )"
+          fi
           echo "SPROUTS_SIMULATOR_ID=$simulator_id" >> "$GITHUB_ENV"
           xcrun simctl boot "$simulator_id"
           open -a Simulator --args -CurrentDeviceUDID "$simulator_id"
           xcrun simctl bootstatus "$simulator_id" -b
+          xcrun simctl list devices available --json > "$RUNNER_TEMP/sprouts-simulators.json"
       - name: Serve the real app speech module and open Safari
         run: |
           set -euo pipefail
@@ -49,20 +97,41 @@ jobs:
             if curl -fsS http://127.0.0.1:4179/healthz; then break; fi
             sleep 1
           done
-          curl -fsS http://127.0.0.1:4179/tools/iphone-simulator/speech.html >/dev/null
-          xcrun simctl openurl "$SPROUTS_SIMULATOR_ID" http://127.0.0.1:4179/tools/iphone-simulator/speech.html
+          fixture=plain.html
+          if [ "$SPROUTS_SAFARI_CASE" = cold-app ]; then fixture=speech.html; fi
+          curl -fsS "http://127.0.0.1:4179/tools/iphone-simulator/$fixture" >/dev/null
+          python3 tools/iphone-simulator/open-safari.py "$SPROUTS_SIMULATOR_ID" \
+            "http://127.0.0.1:4179/tools/iphone-simulator/$fixture" "$RUNNER_TEMP"
       - name: Test actual iOS Safari recordings and system speech
+        id: safari_test
         run: |
           set -euo pipefail
           xcodegen generate --spec tools/iphone-simulator/project.yml
+          test_class=SafariSpeechTests
+          if [ "$SPROUTS_SAFARI_CASE" = cold-app ]; then test_class=ColdAppSpeechTests; fi
           xcodebuild test \
             -project tools/iphone-simulator/SproutsSafariSpeech.xcodeproj \
             -scheme SafariSpeech \
             -destination "id=$SPROUTS_SIMULATOR_ID" \
             -parallel-testing-enabled NO \
+            "-only-testing:SafariSpeechUITests/$test_class" \
             -derivedDataPath "$RUNNER_TEMP/sprouts-safari-build" \
             -resultBundlePath "$RUNNER_TEMP/sprouts-safari.xcresult" \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee "$RUNNER_TEMP/sprouts-safari-build.log"
+      - name: Summarize native Safari results
+        if: always()
+        env:
+          SPROUTS_SAFARI_TEST_OUTCOME: ${{ steps.safari_test.outcome }}
+          SPROUTS_SAFARI_EXPECTED_TESTS: ${{ github.event_name == 'workflow_dispatch' && inputs.speech_case == 'cold-app' && '1' || '3' }}
+        run: |
+          if [ -d "$RUNNER_TEMP/sprouts-safari.xcresult" ]; then
+            xcrun xcresulttool get test-results summary \
+              --path "$RUNNER_TEMP/sprouts-safari.xcresult" \
+              --compact > "$RUNNER_TEMP/sprouts-safari-summary.json" || true
+          fi
+          python3 tools/iphone-simulator/report-results.py \
+            "$RUNNER_TEMP/sprouts-safari-summary.json" \
+            "$RUNNER_TEMP/sprouts-safari-build.log"
       - name: Capture simulator evidence
         if: always()
         run: |
@@ -76,7 +145,72 @@ jobs:
           path: |
             ${{ runner.temp }}/sprouts-safari.xcresult
             ${{ runner.temp }}/sprouts-safari-result.png
+            ${{ runner.temp }}/sprouts-safari-summary.json
+            ${{ runner.temp }}/sprouts-safari-build.log
             ${{ runner.temp }}/sprouts-speech-server.log
             ${{ runner.temp }}/sprouts-simulators.json
+            ${{ runner.temp }}/sprouts-safari-startup.json
+            ${{ runner.temp }}/sprouts-host-audio.json
+            ${{ runner.temp }}/sprouts-host-audio-probe.json
+          if-no-files-found: warn
+          retention-days: 7
+
+  inspect-existing-evidence:
+    name: Inspect prior native results
+    if: github.event_name == 'workflow_dispatch' && inputs.evidence_run_id != ''
+    runs-on: macos-15-intel
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Identify the original run
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVIDENCE_RUN_ID: ${{ inputs.evidence_run_id }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$EVIDENCE_RUN_ID" =~ ^[0-9]+$ ]]; then
+            echo '::error::evidence_run_id must be a numeric Actions run ID from this repository.'
+            exit 1
+          fi
+          conclusion="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$EVIDENCE_RUN_ID" --jq .conclusion)"
+          echo "conclusion=$conclusion" >> "$GITHUB_OUTPUT"
+          echo "::notice title=Existing iPhone Safari evidence::Inspecting run $EVIDENCE_RUN_ID ($conclusion); no new playback test is being run."
+          echo "Evidence-only inspection of [run $EVIDENCE_RUN_ID](https://github.com/$GITHUB_REPOSITORY/actions/runs/$EVIDENCE_RUN_ID), original outcome: **$conclusion**. This job does not run new playback tests." >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/download-artifact@v4
+        with:
+          name: iphone-safari-speech-evidence
+          path: ${{ runner.temp }}/existing-safari-evidence
+          run-id: ${{ inputs.evidence_run_id }}
+          github-token: ${{ github.token }}
+      - name: Read the original native XCTest result
+        env:
+          SPROUTS_SAFARI_TEST_OUTCOME: ${{ steps.source.outputs.conclusion }}
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/existing-safari-evidence"
+          result_bundle="$(find "$evidence" -name '*.xcresult' -type d -print -quit)"
+          if [ -z "$result_bundle" ]; then
+            echo '::error::The selected artifact contains no XCTest result bundle; native playback remains unverified.'
+            exit 1
+          fi
+          xcrun xcresulttool get test-results summary --path "$result_bundle" --compact > "$evidence/sprouts-safari-summary.json"
+          python3 tools/iphone-simulator/report-results.py \
+            "$evidence/sprouts-safari-summary.json" \
+            "$evidence/sprouts-safari-build.log"
+          if [ "$SPROUTS_SAFARI_TEST_OUTCOME" != success ]; then
+            echo '::error::The original native Safari test run did not pass. Reprocessing its artifact does not change that outcome.'
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: iphone-safari-reprocessed-${{ inputs.evidence_run_id }}
+          path: |
+            ${{ runner.temp }}/existing-safari-evidence/sprouts-safari-summary.json
+            ${{ runner.temp }}/existing-safari-evidence/sprouts-safari-result.png
           if-no-files-found: warn
           retention-days: 7

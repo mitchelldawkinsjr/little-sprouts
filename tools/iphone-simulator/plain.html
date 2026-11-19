@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Plain iPhone Safari speech control</title>
+<style>
+  body { font: 18px system-ui; padding: 16px; color: #203e30; }
+  h1 { font-size: 24px; margin: 12px 0; }
+  p { font-size: 16px; }
+  button { display: block; font: inherit; padding: 14px; margin: 12px 0; }
+  output { display: block; margin: 10px 0; }
+  pre { font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+</style>
+<h1>Plain Safari speech control</h1>
+<p>No app imports, priming, cancellation, selected voice or browser API replacements.</p>
+<output id="ready">Native control ready</output>
+<button type="button" id="direct">Speak directly</button>
+<output id="directResult">Direct voice not checked</output>
+<button type="button" id="delayed">Speak after delay</button>
+<output id="delayedResult">Delayed voice not checked</output>
+<button type="button" id="app">Open app speech check</button>
+<pre id="details"></pre>
+<script>
+const retained = [];
+const events = [];
+function report(event) {
+  events.push(event);
+  document.querySelector('#details').textContent = JSON.stringify(events, null, 2);
+}
+function run(selector, label, delay) {
+  const output = document.querySelector(selector);
+  output.textContent = `${label} waiting`;
+  const say = () => {
+    let started = false, done = false;
+    const line = new SpeechSynthesisUtterance('The garden has seven flowers.');
+    line.lang = 'en-US';
+    line.rate = 1;
+    line.volume = 1;
+    retained.push(line);
+    const timer = setTimeout(() => {
+      if (done) return;
+      done = true;
+      output.textContent = `${label} timed out`;
+      report({ label, result: 'timeout', started, paused: speechSynthesis.paused, speaking: speechSynthesis.speaking });
+    }, 15000);
+    line.onstart = () => {
+      if (done) return;
+      started = true;
+      output.textContent = `${label} started`;
+      report({ label, event: 'start' });
+    };
+    line.onend = () => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      output.textContent = started ? `${label} passed` : `${label} failed before start`;
+      report({ label, event: 'end', started });
+    };
+    line.onerror = event => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      output.textContent = `${label} failed: ${event.error}`;
+      report({ label, event: 'error', reason: event.error });
+    };
+    try { speechSynthesis.speak(line); }
+    catch (error) {
+      done = true;
+      clearTimeout(timer);
+      output.textContent = `${label} failed: ${String(error)}`;
+      report({ label, event: 'exception', reason: String(error) });
+    }
+  };
+  if (delay) setTimeout(say, delay);
+  else say();
+}
+document.querySelector('#direct').onclick = () => run('#directResult', 'Direct voice', 0);
+document.querySelector('#delayed').onclick = () => run('#delayedResult', 'Delayed voice', 1500);
+document.querySelector('#app').onclick = () => {
+  document.querySelector('#ready').textContent = 'Opening app speech check';
+  location.assign('/tools/iphone-simulator/speech.html');
+};
+report({ userAgent: navigator.userAgent, englishVoices: speechSynthesis.getVoices().filter(voice => /^en([-_]|$)/i.test(voice.lang)).length });
+</script>
+</html>

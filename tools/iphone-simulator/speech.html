@@ -6,6 +6,8 @@
 <title>Little Sprouts iPhone speech check</title>
 <style>
   body { font: 18px system-ui; padding: 16px; color: #203e30; }
+  h1 { font-size: 24px; margin: 12px 0; }
+  p { font-size: 16px; }
   button { display: block; font: inherit; padding: 14px; margin: 12px 0; }
   output { display: block; margin: 10px 0; }
   pre { font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -20,7 +22,41 @@
 <output id="questionResult">Question not checked</output>
 <button type="button" id="replay">Hear it again</button>
 <output id="replayResult">Replay not checked</output>
+<output id="visits">Counting fixture page loads</output>
+<pre id="gestures"></pre>
 <pre id="details"></pre>
+<script>
+// Keep driver evidence across a WebContent reload without changing browser APIs
+// or rendering during a tap. These counters contain fixed test-element IDs only.
+(() => {
+  const key = 'sprouts-safari-fixture-gestures';
+  let stored;
+  try { stored = JSON.parse(sessionStorage.getItem(key) || 'null'); } catch {}
+  const data = {
+    visits: (stored?.visits || 0) + 1,
+    counts: stored?.counts || {},
+    recent: stored?.recent || []
+  };
+  const save = () => { try { sessionStorage.setItem(key, JSON.stringify(data)); } catch {} };
+  const paint = () => { document.querySelector('#gestures').textContent = JSON.stringify(data); };
+  let paintTimer;
+  for (const type of ['pointerdown', 'pointerup', 'touchstart', 'touchend', 'click']) {
+    document.addEventListener(type, event => {
+      data.counts[type] = (data.counts[type] || 0) + 1;
+      data.recent.push({ type, trusted: event.isTrusted, target: event.target?.id || event.target?.tagName || null });
+      data.recent = data.recent.slice(-12);
+      save();
+      // Allow Safari to finish synthesizing its click before changing any text.
+      clearTimeout(paintTimer);
+      paintTimer = setTimeout(paint, 1000);
+    }, { capture: true, passive: true });
+  }
+  window.speechFixtureGestures = data;
+  document.querySelector('#visits').textContent = `Fixture page loads: ${data.visits}`;
+  save();
+  paint();
+})();
+</script>
 <script type="module">
 // This fixture's CSP blocks the model worker to force the real production
 // worker-failure/browser fallback without changing any browser API.
@@ -38,13 +74,17 @@ const report = entry => {
 onSpeechStatus(status => {
   if (status.speechError) report({ error: status.speechError });
 });
+let voicePoll;
 function voices() {
   const english = speechSynthesis.getVoices().filter(voice => /^en([-_]|$)/i.test(voice.lang));
-  document.querySelector('#voices').textContent = english.length ? 'English voice ready' : 'Waiting for English voice';
+  const message = english.length ? 'English voice ready' : 'Waiting for English voice';
+  const output = document.querySelector('#voices');
+  if (output.textContent !== message) output.textContent = message;
+  if (english.length) clearInterval(voicePoll);
+  return english.length > 0;
 }
-voices();
 speechSynthesis.addEventListener('voiceschanged', voices);
-setInterval(voices, 1000);
+if (!voices()) voicePoll = setInterval(voices, 1000);
 
 async function check(selector, text, expectedEngine, label) {
   const output = document.querySelector(selector);
@@ -53,7 +93,9 @@ async function check(selector, text, expectedEngine, label) {
     // Cross the async boundary that originally made iPhone questions silent.
     if (expectedEngine === 'browser') await new Promise(resolve => setTimeout(resolve, 1500));
     const result = await speakAndWait(text);
-    report({ label, ...result, metrics: getSpeechStatus().metrics });
+    const status = getSpeechStatus();
+    report({ label, ...result, audioState: status.audioState ?? null,
+      speechError: status.speechError, lastEvents: status.log.slice(-5), metrics: status.metrics });
     output.textContent = result.status === 'completed' && result.engine === expectedEngine
       ? `${label} passed` : `${label} failed: ${result.status}, ${result.engine}`;
   } catch (error) {
@@ -64,6 +106,7 @@ document.querySelector('#recording').onclick = () => check('#recordingResult', '
 document.querySelector('#question').onclick = () => check('#questionResult', question, 'browser', 'Question');
 document.querySelector('#replay').onclick = () => check('#replayResult', question, 'browser', ++replays === 1 ? 'Replay' : 'Replay after background');
 document.querySelector('#ready').textContent = 'Speech fixture ready';
-report({ userAgent: navigator.userAgent, platform: navigator.platform });
+report({ userAgent: navigator.userAgent, platform: navigator.platform,
+  visits: window.speechFixtureGestures.visits, gestureCounts: window.speechFixtureGestures.counts });
 </script>
 </html>
