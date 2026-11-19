@@ -12,10 +12,11 @@ export const KITS = {
   pyramid: { label: 'pyramid', icon: '🔺', line: 'You got a pyramid! Tap the ground to put it down, then climb it.' },
   garden: { label: 'flower garden', icon: '🌷', line: 'You got a flower garden! Tap the ground to put it down.' },
   rainbow: { label: 'rainbow wall', icon: '🌈', line: 'You got a rainbow wall! Tap the ground to put it down.' },
+  skyscraper: { label: 'skyscraper', icon: '🏙️', line: 'You got a skyscraper! Tap the ground to build a tall tower.' },
   tree: { label: 'tree', icon: '🌳', line: 'You got a tree! Tap the ground to put it down.' }
 };
 // The home (a fortress, or the little house) comes from the tough question; these take turns after it.
-export const KIT_ORDER = ['stairs', 'bridge', 'pyramid', 'garden', 'rainbow', 'tree'];
+export const KIT_ORDER = ['stairs', 'bridge', 'pyramid', 'garden', 'rainbow', 'tree', 'skyscraper'];
 
 // The first gift box of every visit asks a tough question. Right the first time: a fortress.
 // Right after a miss: the little house. Either way every visit gets a home.
@@ -118,6 +119,16 @@ export function kitCells(id) {
     // A wall seven blocks long, one stripe of each colour from the bottom up.
     const stripes = ['purple', 'blue', 'green', 'yellow', 'orange', 'red'];
     for (let r = -3; r <= 3; r++) stripes.forEach((type, y) => add(r, y, 1, type));
+  } else if (id === 'skyscraper') {
+    // Compact hollow 7x7 tower, twelve floors high, with windows and a roof.
+    for (let y = 0; y <= 35; y++) for (let r = -3; r <= 3; r++) for (let f = 0; f <= 6; f++) {
+      const edge = Math.abs(r) === 3 || f === 0 || f === 6;
+      if (y === 0 || y === 35 || (y % 4 === 0)) add(r, y, f, 'stone');
+      else if (edge) add(r, y, f, y % 4 === 2 ? 'window' : 'brick');
+      else add(r, y, f, '');
+    }
+    // An entrance on the front, with a two-block-tall door.
+    add(0, 1, 0, 'door'); add(0, 2, 0, 'door_top');
   } else if (id === 'tree') {
     const f0 = 1;
     for (let y = 0; y <= 3; y++) add(0, y, f0, 'tree_bark');
