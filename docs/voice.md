@@ -11,6 +11,7 @@ Spoken prompts in the main app go through `lib/speech.js`. `app.js` calls `say()
 | `tests/speech.test.mjs` | Node tests. They run the real `lib/speech.js` and `lib/speech-worker.js` against stand-in Worker, Web Audio, and speech objects. |
 | `tests/speech-ios.test.mjs` | iPhone gesture gates, delayed speech, recordings, pause, and background recovery with stand-ins. |
 | `tools/browser/iphone-speech.mjs` | WebKit and Chromium touch checks with real recording playback and a simulated iOS speech gate. |
+| `tools/browser/iphone-app-speech.mjs` | The actual app UI at iPhone SE and iPhone 13 sizes: open a game, hear/replay/answer questions, retry interruptions, return from background, and turn reading off. The OS speech service is simulated. |
 
 ## iPhone Safari and the Home Screen app
 
@@ -38,10 +39,26 @@ npx playwright install --with-deps webkit
 npm run test:iphone
 ```
 
-CI runs that check with WebKit and Chromium. It decodes and plays a real shipped
-AAC recording, then checks delayed questions, paused speech, and failed-question
-retry. The Node suite additionally checks background interruptions and stale
-completion callbacks.
+CI runs those checks with WebKit and Chromium. They decode and play a real shipped
+AAC recording, then check delayed questions, paused speech, and failed-question
+retry. The full-app check also opens Shape safari through the shelf, answers a
+question, advances, and exercises the visible retry and reading-off controls at
+small and larger iPhone sizes. It simulates the speech service and background
+events; viewport emulation does not provide the iOS operating system. The Node
+suite additionally checks background interruptions and stale completion callbacks.
+
+The separate [iPhone Simulator Safari workflow](../.github/workflows/iphone-safari.yml)
+uses a macOS runner and XCTest taps in Apple's Safari. Its
+[instructions and limitations](../tools/iphone-simulator/README.md) distinguish
+that check from Linux viewport tests. It requires a real English voice and actual
+recording/question/replay completion events; unavailable runtimes or voices fail
+the check. The XCTest result bundle and screenshots are retained with the run.
+
+If Safari unexpectedly reports `interrupted` or `canceled` for the active
+utterance, the line fails with `browser-interrupted`, offers **Hear it again**, and
+allows the next queued question to proceed. It never automatically repeats
+partially heard words. App-initiated stops, leaving a game, and turning reading
+off continue to cancel speech without a failure message.
 
 Before shipping, check audible output on a physical iPhone in both Safari and
 the installed Home Screen app: launch a game by tapping, hear a question that

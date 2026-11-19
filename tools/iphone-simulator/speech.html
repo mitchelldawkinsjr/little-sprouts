@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="worker-src 'none'">
+<title>Little Sprouts iPhone speech check</title>
+<style>
+  body { font: 18px system-ui; padding: 16px; color: #203e30; }
+  button { display: block; font: inherit; padding: 14px; margin: 12px 0; }
+  output { display: block; margin: 10px 0; }
+  pre { font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+</style>
+<h1>iPhone Safari speech</h1>
+<p>This check uses the app's real speech module, real recordings and Apple's real browser voice.</p>
+<output id="ready">Loading speech module</output>
+<output id="voices">Waiting for English voice</output>
+<button type="button" id="recording">Play included recording</button>
+<output id="recordingResult">Recording not checked</output>
+<button type="button" id="question">Play new question</button>
+<output id="questionResult">Question not checked</output>
+<button type="button" id="replay">Hear it again</button>
+<output id="replayResult">Replay not checked</output>
+<pre id="details"></pre>
+<script type="module">
+// This fixture's CSP blocks the model worker to force the real production
+// worker-failure/browser fallback without changing any browser API.
+const { getSpeechStatus, onSpeechStatus, speakAndWait } = await import('/lib/speech.js?v=offline4');
+
+// Browser APIs and gestures are real: XCTest taps Apple's Safari in an iOS
+// Simulator runtime. No speech or audio completion events are synthesized.
+const question = 'What is seventeen plus twenty six?';
+let replays = 0;
+const details = [];
+const report = entry => {
+  details.push(entry);
+  document.querySelector('#details').textContent = JSON.stringify(details, null, 2);
+};
+onSpeechStatus(status => {
+  if (status.speechError) report({ error: status.speechError });
+});
+function voices() {
+  const english = speechSynthesis.getVoices().filter(voice => /^en([-_]|$)/i.test(voice.lang));
+  document.querySelector('#voices').textContent = english.length ? 'English voice ready' : 'Waiting for English voice';
+}
+voices();
+speechSynthesis.addEventListener('voiceschanged', voices);
+setInterval(voices, 1000);
+
+async function check(selector, text, expectedEngine, label) {
+  const output = document.querySelector(selector);
+  output.textContent = `${label} playing`;
+  try {
+    // Cross the async boundary that originally made iPhone questions silent.
+    if (expectedEngine === 'browser') await new Promise(resolve => setTimeout(resolve, 80));
+    const result = await speakAndWait(text);
+    report({ label, ...result, metrics: getSpeechStatus().metrics });
+    output.textContent = result.status === 'completed' && result.engine === expectedEngine
+      ? `${label} passed` : `${label} failed: ${result.status}, ${result.engine}`;
+  } catch (error) {
+    output.textContent = `${label} failed: ${String(error)}`;
+  }
+}
+document.querySelector('#recording').onclick = () => check('#recordingResult', 'Try another one.', 'kokoro', 'Recording');
+document.querySelector('#question').onclick = () => check('#questionResult', question, 'browser', 'Question');
+document.querySelector('#replay').onclick = () => check('#replayResult', question, 'browser', ++replays === 1 ? 'Replay' : 'Replay after background');
+document.querySelector('#ready').textContent = 'Speech fixture ready';
+report({ userAgent: navigator.userAgent, platform: navigator.platform });
+</script>
+</html>
