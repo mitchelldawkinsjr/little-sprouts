@@ -12,6 +12,17 @@
   #stage { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
   canvas { background: #0c0e14; touch-action: none; box-shadow: 0 10px 60px rgba(0,0,0,.7); }
   #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; color: #ffd34d; font-size: 22px; letter-spacing: 2px; }
+  #results { position: fixed; inset: 0; display: grid; place-items: center; overflow: auto; padding: 12px; background: rgba(8,10,16,.78); color: #fff; text-align: center; }
+  #results[hidden] { display: none; }
+  .ride-result { width: min(100%, 480px); padding: clamp(12px, 4vh, 28px); border: 1px solid #52605b; border-radius: 18px; background: #171d24; }
+  .ride-result h1 { color: #9fffa0; font-size: clamp(24px, 6vw, 42px); }
+  #result-stars { margin: 4px 0; color: #ffd34d; font-size: 28px; letter-spacing: 4px; }
+  #result-time, #result-tricks { margin: 6px 0; }
+  #result-tricks { color: #cfd6e0; }
+  .ride-choices { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 14px; }
+  .ride-choices button { min-height: 44px; padding: 8px 14px; border: 0; border-radius: 10px; background: #f3f1e8; color: #10131a; font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer; }
+  #ride-next { background: #9fffa0; }
+  .ride-choices button:focus-visible { outline: 3px solid #ffb348; outline-offset: 2px; }
   #ask { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; background: rgba(20, 16, 12, .45); font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #244b3d; }
   #ask[hidden] { display: none !important; }
   #ask .card { width: min(720px, 92%); background: #faf9f5; border-radius: 22px; padding: 22px 20px 18px; box-shadow: 0 16px 40px #0005; }
@@ -44,9 +55,22 @@
 <body data-game-touch-canvas>
 <div id="stage"><canvas id="game" width="1280" height="720"></canvas></div>
 <div id="loading">LOADING…</div>
+<section id="results" aria-labelledby="result-title" data-pad-menu hidden>
+  <div class="ride-result">
+    <h1 id="result-title">Level complete!</h1>
+    <p id="result-stars" role="img"></p>
+    <p id="result-time"></p>
+    <p id="result-tricks"></p>
+    <div class="ride-choices">
+      <button type="button" id="ride-next">Next Level</button>
+      <button type="button" id="ride-replay">Replay Level</button>
+      <button type="button" id="ride-select">Level Select</button>
+    </div>
+  </div>
+</section>
 <div id="ask" hidden></div>
 <script type="module">import { drawBuddy, buddyKind, buddyColors } from "/lib/buddy2d.mjs?v=gear2"; window.SproutsBuddy = { drawBuddy, buddyKind, buddyColors };</script>
-<script src="rampage.js?v=tricks2"></script>
+<script src="rampage.js?v=results1"></script>
 <script src="sprouts-bridge.js?v=buddy1"></script>
 </body>
 </html>
