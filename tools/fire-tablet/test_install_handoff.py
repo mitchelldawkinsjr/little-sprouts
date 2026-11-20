@@ -9,15 +9,12 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 PLUGIN = (ROOT / "tools/fire-tablet/UpdaterPlugin.java").read_text()
-INSTALLER = (ROOT / "tools/fire-tablet/install-updater.py").read_text()
 
 
 class InstallerHandoffTests(unittest.TestCase):
     def test_verified_apk_stays_out_of_purgeable_cache_until_installer_can_read_it(self):
         self.assertIn('new File(getContext().getFilesDir(), "updates")', PLUGIN)
         self.assertNotIn("getContext().getCacheDir()", PLUGIN)
-        self.assertIn('<files-path name="updates" path="updates/" />', INSTALLER)
-        self.assertNotIn("<cache-path", INSTALLER)
         self.assertIn('getContentResolver().openFileDescriptor(uri, "r")', PLUGIN)
         self.assertIn("descriptor.getStatSize() != apk.length()", PLUGIN)
         self.assertIn("apk.getParentFile().getUsableSpace() < requiredFree", PLUGIN)

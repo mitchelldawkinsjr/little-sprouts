@@ -1,4 +1,5 @@
 """Regressions for the generated Fire Tablet Android project."""
+import re
 import shutil
 import subprocess
 import sys
@@ -12,8 +13,8 @@ SOURCE = Path(__file__).resolve().parent
 ANDROID = "{http://schemas.android.com/apk/res/android}"
 
 
-class FriendMediaPermissionsTests(unittest.TestCase):
-    def test_generated_capacitor_manifest_grants_optional_camera_and_mic_permissions(self):
+class GeneratedAndroidProjectTests(unittest.TestCase):
+    def test_generated_project_preserves_media_permissions_and_reuses_file_provider(self):
         # The generated Android project is temporary; exercise the real patcher
         # rather than asserting that the source contains a couple of strings.
         with tempfile.TemporaryDirectory() as temporary:
@@ -28,8 +29,25 @@ class FriendMediaPermissionsTests(unittest.TestCase):
             manifest.write_text('''<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="org.littlesprouts.learning">
   <uses-permission android:name="android.permission.INTERNET" />
-  <application android:label="Little Sprouts" />
+  <application android:label="Little Sprouts">
+    <provider android:name="androidx.core.content.FileProvider"
+      android:authorities="${applicationId}.fileprovider" android:exported="false"
+      android:grantUriPermissions="true">
+      <meta-data android:name="android.support.FILE_PROVIDER_PATHS"
+        android:resource="@xml/file_paths" />
+    </provider>
+    <provider android:name="androidx.core.content.FileProvider"
+      android:authorities="${applicationId}.updates" android:exported="false"
+      android:grantUriPermissions="true" />
+  </application>
 </manifest>''')
+            paths_file = main / "res/xml/file_paths.xml"
+            paths_file.parent.mkdir(parents=True)
+            paths_file.write_text('''<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+  <external-path name="my_images" path="." />
+  <cache-path name="my_cache_images" path="." />
+</paths>''')
             gradle = root / ".fire-build/android/app/build.gradle"
             gradle.write_text("// minimal generated test build.gradle\n")
 
@@ -42,8 +60,9 @@ class FriendMediaPermissionsTests(unittest.TestCase):
                 "validateDistributionUrl=true\n"
             )
             for _ in range(2):
-                subprocess.run([sys.executable, str(tools / "install-updater.py")],
-                               cwd=root, check=True, capture_output=True, text=True)
+                result = subprocess.run([sys.executable, str(tools / "install-updater.py")],
+                                        cwd=root, capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
             wrapper_lines = wrapper.read_text().splitlines()
             self.assertCountEqual(wrapper_lines, [
                 "distributionBase=GRADLE_USER_HOME",
@@ -67,9 +86,28 @@ class FriendMediaPermissionsTests(unittest.TestCase):
                 found = [node for node in features if node.get(ANDROID + "name") == name]
                 self.assertEqual(len(found), 1)
                 self.assertEqual(found[0].get(ANDROID + "required"), "false")
-            provider = document.find("application/provider")
-            self.assertIsNotNone(provider)
+            providers = document.findall("application/provider")
+            self.assertEqual(len(providers), 1)
+            provider = providers[0]
+            authority = provider.get(ANDROID + "authorities")
+            self.assertEqual(authority, "${applicationId}.fileprovider")
+            self.assertEqual(provider.get(ANDROID + "exported"), "false")
             self.assertEqual(provider.get(ANDROID + "grantUriPermissions"), "true")
+            metadata = provider.findall("meta-data")
+            self.assertEqual(len(metadata), 1)
+            self.assertEqual(metadata[0].get(ANDROID + "name"), "android.support.FILE_PROVIDER_PATHS")
+            self.assertEqual(metadata[0].get(ANDROID + "resource"), "@xml/file_paths")
+
+            paths = ET.parse(paths_file).getroot()
+            self.assertCountEqual([(node.tag, node.get("name"), node.get("path")) for node in paths], [
+                ("external-path", "my_images", "."),
+                ("cache-path", "my_cache_images", "."),
+                ("files-path", "sprouts_updates", "updates/"),
+            ])
+            plugin = main / "java/org/littlesprouts/learning/UpdaterPlugin.java"
+            suffix = authority.removeprefix("${applicationId}")
+            self.assertRegex(plugin.read_text(), r'FileProvider\.getUriForFile\(getContext\(\),'
+                             r'\s*getContext\(\)\.getPackageName\(\)\s*\+\s*"' + re.escape(suffix) + '"')
             activity = main / "java/org/littlesprouts/learning/MainActivity.java"
             self.assertIn("extends BridgeActivity", activity.read_text())
             self.assertIn("registerPlugin(UpdaterPlugin.class)", activity.read_text())
