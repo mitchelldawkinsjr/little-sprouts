@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <script src="/lib/lite-mode.js?v=lite1"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#2f5d34">
+  <title>Garden tag · Little Sprouts</title>
+  <link rel="stylesheet" href="/lib/game-touch.css?v=1">
+  <link rel="stylesheet" href="./tag.css?v=gift1">
+</head>
+<body data-game-touch-canvas>
+  <main aria-label="Garden tag">
+    <div id="stage"></div>
+    <nav id="levels" aria-label="Gardens" data-pad-menu data-touch-ignore>
+      <button type="button" value="1" aria-pressed="true">1 <small>Easy</small></button>
+      <button type="button" value="2" aria-pressed="false">2 <small>Harder</small></button>
+      <button type="button" value="3" aria-pressed="false">3 <small>Very tough</small></button>
+    </nav>
+    <header id="hud" hidden>
+      <div class="chip"><strong>GARDEN TAG</strong><span id="who-it">Run!</span></div>
+      <div class="score"><strong id="clock">60</strong><span id="powers" hidden></span></div>
+      <button id="pause" type="button" data-game-touch aria-label="Pause">Ⅱ</button>
+    </header>
+    <p id="notice" role="status" hidden></p>
+    <section id="menu" aria-labelledby="headline" data-pad-menu data-touch-ignore>
+      <div class="card">
+        <p id="eyebrow">LITTLE SPROUTS · RUN &amp; TAG</p>
+        <h1 id="headline">Garden tag</h1>
+        <p id="description">Whoever has the bee is it. Tag the other buddy to pass the bee along. Open gift boxes for power-ups.</p>
+        <p id="target"></p>
+        <div class="actions">
+          <button id="play" class="primary" type="button" data-pad-back disabled>Loading…</button>
+          <button id="two" type="button" hidden>Two players</button>
+        </div>
+        <div id="how">
+          <p id="help-keys">Arrows or WASD to run, Space to jump. Drag the mouse to look around. Two players: player 1 uses WASD and Space, player 2 uses the arrows and Enter.</p>
+          <p id="help-touch" hidden>Slide a thumb on the left to run. Tap ↑ to jump.</p>
+          <p>Climb the logs one step at a time, and bounce on the red mushrooms. Gift boxes hold power-ups: ⚡ speed, 🫧 a bubble that blocks a tag, 🚀 super jump, 🧊 freeze the other buddy, and 🐝 bee magnet. Answer a question right to open one.</p>
+        </div>
+      </div>
+    </section>
+    <div id="count" hidden><strong id="count-digit"></strong><span id="count-label" role="status"></span></div>
+  </main>
+  <script type="module" src="./game.mjs?v=gift2"></script>
+</body>
+</html>
