@@ -37,6 +37,7 @@ COPY sidecars/pebble /usr/share/nginx/html/sidecars/pebble
 COPY sidecars/boss /usr/share/nginx/html/sidecars/boss
 COPY sidecars/ink-trail /usr/share/nginx/html/sidecars/ink-trail
 COPY sidecars/moon-swing /usr/share/nginx/html/sidecars/moon-swing
+COPY sidecars/garden-tag /usr/share/nginx/html/sidecars/garden-tag
 COPY sidecars/cabin /usr/share/nginx/html/sidecars/cabin
 COPY sidecars/paint-the-plan /usr/share/nginx/html/sidecars/paint-the-plan
 COPY sidecars/station-scout /usr/share/nginx/html/sidecars/station-scout
