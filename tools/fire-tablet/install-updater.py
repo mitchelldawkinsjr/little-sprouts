@@ -78,23 +78,41 @@ for feature in ("android.hardware.camera", "android.hardware.camera.autofocus", 
     entries[0].set(attr("required"), "false")
     for duplicate in entries[1:]:
         document.remove(duplicate)
+# Capacitor already declares a FileProvider with authority ${applicationId}.fileprovider.
+# A second provider using the same FileProvider class causes AndroidX to resolve
+# the first provider's authority, breaking getUriForFile for .updates.
+# Reuse Capacitor's provider and extend its path mapping for staged updates.
 providers = [node for node in application.findall("provider")
-             if node.get(attr("authorities")) == "${applicationId}.updates"]
-if not providers:
-    provider = ET.SubElement(application, "provider", {
-        attr("name"): "androidx.core.content.FileProvider", attr("authorities"): "${applicationId}.updates",
-        attr("exported"): "false", attr("grantUriPermissions"): "true",
-    })
-    ET.SubElement(provider, "meta-data", {
-        attr("name"): "android.support.FILE_PROVIDER_PATHS", attr("resource"): "@xml/sprouts_update_paths",
-    })
-for duplicate in providers[1:]:
-    application.remove(duplicate)
+             if node.get(attr("authorities")) == "${applicationId}.fileprovider"]
+if len(providers) != 1:
+    raise SystemExit("Expected exactly one Capacitor FileProvider")
+provider = providers[0]
+metadata = [node for node in provider.findall("meta-data")
+            if node.get(attr("name")) == "android.support.FILE_PROVIDER_PATHS"]
+if len(metadata) != 1:
+    raise SystemExit("Capacitor FileProvider paths metadata missing")
+resource = metadata[0].get(attr("resource"), "")
+if not resource.startswith("@xml/"):
+    raise SystemExit("Unexpected Capacitor FileProvider path resource")
+xml = app / "res/xml"
+paths_file = xml / (resource[5:] + ".xml")
+if not paths_file.is_file():
+    raise SystemExit(f"Capacitor FileProvider paths missing: {paths_file}")
+paths_tree = ET.parse(paths_file)
+paths_root = paths_tree.getroot()
+if paths_root.tag != "paths":
+    raise SystemExit("Unexpected Capacitor FileProvider paths root")
+if not any(node.tag == "files-path" and node.get("name") == "sprouts_updates"
+           for node in paths_root):
+    ET.SubElement(paths_root, "files-path", {"name": "sprouts_updates", "path": "updates/"})
+    ET.indent(paths_tree, space="    ")
+    paths_tree.write(paths_file, encoding="utf-8", xml_declaration=True)
+# Remove the legacy duplicate provider if an earlier patch already installed it.
+for node in list(application.findall("provider")):
+    if node.get(attr("authorities")) == "${applicationId}.updates":
+        application.remove(node)
 ET.indent(tree, space="    ")
 tree.write(manifest, encoding="utf-8", xml_declaration=True)
-xml = app / "res/xml"
-xml.mkdir(parents=True, exist_ok=True)
-(xml / "sprouts_update_paths.xml").write_text('<?xml version="1.0" encoding="utf-8"?><paths xmlns:android="http://schemas.android.com/apk/res/android"><files-path name="updates" path="updates/" /></paths>')
 gradle = android / "app/build.gradle"
 text = gradle.read_text()
 if "// Sprouts native audio assets" not in text:
