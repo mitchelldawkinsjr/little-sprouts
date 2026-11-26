@@ -11,7 +11,7 @@ import { entity } from './engine/entity.js?v=blocks5';
 import { threejs_component } from './engine/threejs-component.js?v=blocks5';
 import { sparse_voxel_cell_manager } from './engine/sparse-voxel-cell-manager.js?v=blocks5';
 import { cloud_controller } from './engine/cloud-controller.js?v=blocks5';
-import { player_controller } from './engine/player-controller.js?v=blocks5';
+import { player_controller } from './engine/player-controller.js?v=flight1';
 import { voxel_tools } from './engine/voxel-tools.js?v=blocks5';
 import { ui_controller } from './engine/ui-controller.js?v=group1';
 import { hack_defs } from './engine/hack-defs.js?v=blocks5';
@@ -1107,7 +1107,12 @@ stickEl.addEventListener('pointerup', stickEnd);
 stickEl.addEventListener('pointercancel', stickEnd);
 
 let jumpHeld = false;
+let descendHeld = false;
 const jumpEl = $('jump');
+const descendEl = $('descend');
+descendEl.addEventListener('pointerdown', event => { event.preventDefault(); descendHeld = true; });
+['pointerup', 'pointercancel', 'pointerleave'].forEach(type => descendEl.addEventListener(type, () => { descendHeld = false; }));
+addEventListener('blur', () => { jumpHeld = descendHeld = false; });
 jumpEl.addEventListener('pointerdown', event => { event.preventDefault(); jumpHeld = true; });
 ['pointerup', 'pointercancel', 'pointerleave'].forEach(type => jumpEl.addEventListener(type, () => { jumpHeld = false; }));
 
@@ -1160,7 +1165,7 @@ function padInput(dt) {
     return { moveX: 0, moveZ: 0, jump: false };
   }
 
-  if (freshLb) ui.CycleBuildIcon_(-1);
+  if (freshLb && !player.flying) ui.CycleBuildIcon_(-1);
   if (freshRb) ui.CycleBuildIcon_(1);
   if (freshLt) setMode(tools.Mode === 'dig' ? 'build' : 'dig');
   if (fresh) act(null);
@@ -1173,7 +1178,8 @@ function padInput(dt) {
   return {
     moveX: pad.left || pad.right ? dirs.x : stickX,
     moveZ: pad.up || pad.down ? -dirs.y : -stickY,
-    jump
+    jump,
+    descend: lb
   };
 }
 
@@ -1192,6 +1198,10 @@ function gatherInput(dt) {
   player.input.moveX = holding ? 0 : mx;
   player.input.moveZ = holding ? 0 : mz;
   player.input.jump = !holding && (keys.has('Space') || jumpHeld || pad.jump);
+  player.input.descend = !holding && (keys.has('ShiftLeft') || keys.has('ShiftRight') || descendHeld || !!pad.descend);
+  document.body.classList.toggle('flying', player.flying);
+  jumpEl.classList.toggle('on', player.flying);
+  if (!player.flying) descendHeld = false;
 }
 
 // In group Free Build the host is the only authority for edits and snapshots.
@@ -1375,8 +1385,8 @@ function holdForJoin(on) {
     try { speechSynthesis.cancel(); } catch { /* no voice here */ }
     audio?.suspend?.().catch(() => {});
     keys.clear();
-    jumpHeld = false;
-    Object.assign(player.input, { moveX: 0, moveZ: 0, jump: false, lookX: 0, lookY: 0 });
+    jumpHeld = descendHeld = false;
+    Object.assign(player.input, { moveX: 0, moveZ: 0, jump: false, descend: false, lookX: 0, lookY: 0 });
   } else {
     audio?.resume?.().catch(() => {});
   }
