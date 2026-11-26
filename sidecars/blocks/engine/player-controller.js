@@ -25,9 +25,12 @@ export const player_controller = (() => {
       super();
       this.params_ = params;
       // move: x right, z forward (-1..1). look: radians to add this frame. jump: true while held.
-      this.input = { moveX: 0, moveZ: 0, lookX: 0, lookY: 0, jump: false, frozen: false, held: false };
+      this.input = { moveX: 0, moveZ: 0, lookX: 0, lookY: 0, jump: false, descend: false, frozen: false, held: false };
       // Power-ups from the page: how much higher to jump and how much faster to walk (1 is normal).
       this.boost = { jump: 1, speed: 1 };
+      this.flying = false;
+      this.jumpWas_ = false;
+      this.lastJump_ = -Infinity;
     }
 
     InitEntity() {
@@ -108,6 +111,8 @@ export const player_controller = (() => {
       this.ApplyLook_();
       this.velocity_.set(0, 0, 0);
       this.waiting_ = true;
+      this.flying = false;
+      this.lastJump_ = -Infinity;
       this.Parent.SetPosition(this.camera_.position);
     }
 
@@ -115,6 +120,22 @@ export const player_controller = (() => {
       const input = this.input;
       const position = this.camera_.position;
       const voxelManager = this.FindEntity('voxels').GetComponent('SparseVoxelCellManager');
+
+      const now = performance.now();
+      if (input.held || input.frozen || this.waiting_) {
+        this.lastJump_ = -Infinity;
+        if (input.held) this.flying = false;
+      } else if (input.jump && !this.jumpWas_) {
+        if (now - this.lastJump_ <= 350) {
+          this.flying = !this.flying;
+          this.velocity_.set(0, 0, 0);
+          this.standing = false;
+          this.lastJump_ = -Infinity;
+        } else {
+          this.lastJump_ = now;
+        }
+      }
+      this.jumpWas_ = input.jump;
 
       // Held by a night bug: the page moves the camera itself until it lets go.
       if (input.held) {
@@ -151,7 +172,7 @@ export const player_controller = (() => {
       const velocity = this.velocity_;
       const frameDecceleration = new THREE.Vector3(
           velocity.x * this.decceleration_.x,
-          this.decceleration_.y,
+          this.flying ? 0 : this.decceleration_.y,
           velocity.z * this.decceleration_.z
       );
       frameDecceleration.multiplyScalar(timeInSeconds);
@@ -168,10 +189,16 @@ export const player_controller = (() => {
       if (!input.frozen) {
         velocity.z -= this.acceleration_.z * this.boost.speed * input.moveZ * timeInSeconds;
         velocity.x += this.acceleration_.x * this.boost.speed * input.moveX * timeInSeconds;
-        if (input.jump && (this.standing || inWater)) {
+        if (!this.flying && input.jump && (this.standing || inWater)) {
           velocity.y = inWater ? 5 : this.acceleration_.y * this.boost.jump;
           this.standing = false;
         }
+      }
+
+      if (this.flying) {
+        const vertical = input.frozen ? 0 : (Number(input.jump) - Number(input.descend));
+        velocity.y = vertical * 7;
+        if (input.frozen) velocity.set(0, 0, 0);
       }
 
       const near = voxelManager.FindVoxelsNear(position, 3);
@@ -200,7 +227,7 @@ export const player_controller = (() => {
       if (step.x || step.z) {
         const moved = tryMove(step.x, step.z) || tryMove(step.x, 0) || tryMove(0, step.z);
         // A one-block ledge: step up onto it instead of stopping.
-        if (!moved && this.standing) {
+        if (!moved && this.standing && !this.flying) {
           if (tryMove(step.x, step.z, 1.05) || tryMove(step.x, 0, 1.05) || tryMove(0, step.z, 1.05)) {
             this.Parent.Broadcast({topic: 'player.stepped'});
           }
@@ -217,7 +244,7 @@ export const player_controller = (() => {
         position.y += velocity.y * dt;
         if (this.Hits_(boxes, position)) {
           position.copy(oldPosition);
-          if (velocity.y <= 0) this.standing = true;
+          if (velocity.y <= 0 && !this.flying) this.standing = true;
           velocity.y = 0;
           break;
         }
