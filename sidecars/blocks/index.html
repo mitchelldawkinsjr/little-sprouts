@@ -55,6 +55,9 @@
     .round.on { background: var(--warm); }
     #jump { display: none; }
     body.touch #jump { display: flex; }
+    #descend, #flight-status { display: none; }
+    body.touch.flying #descend { display: flex; }
+    body.flying #flight-status { display: block; position: fixed; top: 55px; left: 50%; transform: translateX(-50%); z-index: 4; background: #16382ce0; color: white; padding: 6px 12px; border-radius: 12px; pointer-events: none; }
     #done { position: fixed; right: max(12px, env(safe-area-inset-right)); top: 10px; z-index: 4; padding: 10px 16px; border: 0; border-radius: 14px; background: var(--leaf); color: var(--paper); font-weight: 800; font-size: 17px; cursor: pointer; }
     #done[hidden] { display: none; }
     #friendBox { position: fixed; left: max(12px, env(safe-area-inset-left)); top: 58px; z-index: 4; max-width: min(360px, calc(100vw - 24px)); padding: 10px 14px; border-radius: 14px; background: #faf9f5f2; box-shadow: 0 2px 8px #16382c22; font-weight: 700; font-size: 15px; line-height: 1.3; word-break: break-word; }
@@ -124,7 +127,9 @@
   <button type="button" id="done" hidden>I’m done building</button>
   <div id="bar" data-game-touch role="toolbar" aria-label="Blocks"></div>
   <div class="side" id="tools" data-game-touch>
-    <button type="button" class="round" id="jump" aria-label="Jump"><span class="icon">⤒</span>Jump</button>
+    <button type="button" class="round" id="jump" aria-label="Jump (double tap to fly)"><span class="icon">⤒</span>Jump</button>
+    <button type="button" class="round" id="descend" aria-label="Fly down"><span class="icon">⤓</span>Down</button>
+    <div id="flight-status" role="status">Flying · Double tap jump to land</div>
     <button type="button" class="round" id="friend" aria-label="Play with a friend"><span class="icon">👫</span>Friend</button>
     <button type="button" class="round" id="mode" aria-label="Switch between build and dig"><span class="icon" id="modeIcon">🧱</span><span id="modeText">Build</span></button>
   </div>
@@ -142,6 +147,6 @@
   </div>
   <div id="loading"><span class="sprout" aria-hidden="true">🌱</span><span id="loadingText">Growing the meadow…</span></div>
   <script type="importmap">{ "imports": { "three": "../../vendor/three/build/three.module.js?v=r187" } }</script>
-  <script type="module" src="game.js?v=fort1-lite1"></script>
+  <script type="module" src="game.js?v=flight1"></script>
 </body>
 </html>
